@@ -1,0 +1,4 @@
+openpyxl
+pandas
+PyQt5
+python-dateutil
