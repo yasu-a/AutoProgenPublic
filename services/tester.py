@@ -46,6 +46,7 @@ class ExecutableRunner:
                     timeout=self.__timeout,
                 )
             except subprocess.TimeoutExpired:
+                p.terminate()
                 raise ExecutableRunnerTimeoutError()
             else:
                 assert stderr_text is None, stderr_text
@@ -196,7 +197,8 @@ class StudentEnvironmentTester:
             raise TesterError(
                 result_state=TestCaseResultState.NO_BUILD_FOUND,
             )
-
+        if "28F" in executable_fullpath:
+            print("HERE")
         runner = ExecutableRunner(
             executable_fullpath=executable_fullpath,
             timeout=testcase.config.timeout,
