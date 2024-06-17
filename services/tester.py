@@ -197,8 +197,7 @@ class StudentEnvironmentTester:
             raise TesterError(
                 result_state=TestCaseResultState.NO_BUILD_FOUND,
             )
-        if "28F" in executable_fullpath:
-            print("HERE")
+
         runner = ExecutableRunner(
             executable_fullpath=executable_fullpath,
             timeout=testcase.config.timeout,
