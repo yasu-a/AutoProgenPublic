@@ -1,4 +1,4 @@
-# AutoProgen v0.1
+# AutoProgen v0.2
 
 > [!CAUTION]
 > このソフトウェアは採点を支援するためのものです。
