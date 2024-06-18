@@ -26,6 +26,7 @@ if __name__ == '__main__':
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    # noinspection PyArgumentList
     app.setFont(font())
     app.setStyle('Fusion')
 
@@ -33,5 +34,6 @@ if __name__ == '__main__':
     if welcome.exec_() == QDialog.Accepted:
         state.setup_project(welcome.project_path, app)
         window = MainWindow()
+        # noinspection PyUnresolvedReferences
         window.show()
         app.exec()

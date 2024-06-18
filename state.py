@@ -60,6 +60,7 @@ class ProjectDataManager(QObject):
 
     def commit(self):
         self.__modify_count += 1
+        self._logger.info(f"changes committed; modify_count={self.__modify_count}")
 
     def _save(self):
         with self.data():

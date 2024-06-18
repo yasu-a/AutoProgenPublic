@@ -99,6 +99,18 @@ class TestCaseResultWidget(QWidget):
         self.__testcase_result = testcase_result
         self._update_data()
 
+    def set_line_wrap_enabled(self, e: bool):
+        if e:
+            mode = QPlainTextEdit.WidgetWidth
+        else:
+            mode = QPlainTextEdit.NoWrap
+        self._te_input.setLineWrapMode(mode)
+        self._te_actual_output.setLineWrapMode(mode)
+        self._te_expected_output.setLineWrapMode(mode)
+
+    def get_line_wrap_enabled(self) -> bool:
+        return self._te_input.lineWrapMode() == QPlainTextEdit.WidgetWidth
+
 
 class _TestWidget(QWidget, QObject):
     def __init__(self, parent: QObject = None):
@@ -137,7 +149,9 @@ class _TestWidget(QWidget, QObject):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
+    # noinspection PyArgumentList
     app.setFont(font())
     w = _TestWidget()
+    # noinspection PyUnresolvedReferences
     w.show()
     app.exec()

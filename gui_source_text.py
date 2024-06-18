@@ -26,6 +26,7 @@ class CHighlighter(QSyntaxHighlighter):
         "switch", "typedef", "union", "volatile", "while",
     ]
 
+    # noinspection SpellCheckingInspection
     FUNCTION_NAMES = [
         "malloc", "calloc", "ealloc", "free", "atoi", "atol", "atof", "rand", "rand",
         "exit", "abort", "ystem", "printf", "canf", "fprintf", "fscanf", "puts",
@@ -105,11 +106,12 @@ class SourceTextEdit(QPlainTextEdit):
         self.__init_ui()
 
     def __init_ui(self):
-        self.setFont(font(monospace=True))
+        self.setFont(font(monospace=True, small=True))
         self.setLineWrapMode(QPlainTextEdit.NoWrap)
         self._h = CHighlighter(self.document())
 
     # https://stackoverflow.com/questions/38234021/horizontal-scroll-on-wheelevent-with-shift-too-fast
+    # noinspection DuplicatedCode
     def wheelEvent(self, event: QWheelEvent):
         if event.modifiers() == Qt.ShiftModifier:
             scrollbar = self.horizontalScrollBar()
@@ -143,7 +145,9 @@ class _TestWidget(QWidget, QObject):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
+    # noinspection PyArgumentList
     app.setFont(font())
     w = _TestWidget()
+    # noinspection PyUnresolvedReferences
     w.show()
     app.exec()

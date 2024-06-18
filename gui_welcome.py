@@ -45,6 +45,7 @@ class WelcomeWidget(QWidget):
         if is_path_to_valid_project(path):
             self.project_picked.emit(path)
         else:
+            # noinspection PyTypeChecker,PyUnresolvedReferences
             QMessageBox.warning(
                 self,
                 self.windowTitle(),
@@ -59,6 +60,7 @@ class WelcomeWidget(QWidget):
         if is_path_to_valid_project(path):
             self.project_picked.emit(path)
         else:
+            # noinspection PyTypeChecker,PyUnresolvedReferences
             QMessageBox.warning(
                 self,
                 self.windowTitle(),
@@ -77,6 +79,7 @@ class WelcomeDialog(QDialog):
 
     def __init_ui(self):
         self.setModal(True)
+        # noinspection PyUnresolvedReferences
         self.setWindowTitle("Welcome")
         self.resize(700, 200)
 
