@@ -14,9 +14,9 @@ class FilePathWidget(QWidget):
 
         self._select_file = select_file
 
-        self.__init_ui(text)
+        self._init_ui(text)
 
-    def __init_ui(self, text: str):
+    def _init_ui(self, text: str):
         layout = QHBoxLayout()
         self.setLayout(layout)
 

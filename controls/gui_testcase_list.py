@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import *
 
 import state
 from files.testcase import TestCaseConfigError
-from gui_testcase_content import TestCaseContentEditDialog
+from controls.gui_testcase_content import TestCaseContentEditDialog
 from icons import icon
 
 if TYPE_CHECKING:
@@ -320,10 +320,10 @@ class TestCaseEditWidget(QWidget):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self.__init_ui()
+        self._init_ui()
         self.__init_signals()
 
-    def __init_ui(self):
+    def _init_ui(self):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
@@ -461,14 +461,14 @@ class TestCaseListEditDialog(QDialog):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self.__init_ui()
+        self._init_ui()
 
         self.__update_timer = QTimer(self)
         self.__update_timer.setInterval(200)
         self.__update_timer.timeout.connect(self.__update_timer_timeout)  # type: ignore
         self.__update_timer.start()
 
-    def __init_ui(self):
+    def _init_ui(self):
         self.setWindowTitle("テストケースの編集")
         self.setModal(True)
         self.resize(400, 700)

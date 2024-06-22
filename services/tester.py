@@ -4,7 +4,7 @@ import subprocess
 from typing import TYPE_CHECKING
 
 from models.environment import EnvEntryLabel
-from models.student import Student
+# from models.student import Student
 from models.testcase import TestCase, TestCaseResult, TestSession, TestSessionResult, \
     TestCaseResultState
 
@@ -172,114 +172,114 @@ class TestCaseOutputComparator:
             lines_right=expected_output_lines,
         )
 
-
-class StudentEnvironmentTester:
-    def __init__(self, env_io: "EnvironmentIO", testcase_io: "TestCaseIO"):
-        self.__env_io = env_io
-        self.__testcase_io = testcase_io
-
-    def run_executable_of_student(self, student: Student, target_index: int, testcase: TestCase) \
-            -> list[str]:
-        entry_source = student.env_meta.get_env_entry_by_label_and_number(
-            label=EnvEntryLabel.SOURCE_MAIN,
-            number=target_index,
-        )
-        if entry_source is None:  # ソースがない（未提出？）
-            raise TesterError(
-                result_state=TestCaseResultState.NO_BUILD_FOUND,
-            )
-
-        executable_fullpath = self.__env_io.get_student_env_executable_fullpath(
-            student_id=student.meta.student_id,
-            item_name=entry_source.path,
-        )
-        if executable_fullpath is None:  # ソースはあるけど実行ファイルがない（コンパイル失敗？）
-            raise TesterError(
-                result_state=TestCaseResultState.NO_BUILD_FOUND,
-            )
-
-        runner = ExecutableRunner(
-            executable_fullpath=executable_fullpath,
-            timeout=testcase.config.timeout,
-            input_string=testcase.expected_input,
-        )
-
-        try:
-            output_lines = runner.run()
-        except ExecutableRunnerTimeoutError:
-            raise TesterError(
-                result_state=TestCaseResultState.EXECUTION_TIMEOUT,
-            )
-        return output_lines
-
-    def run_testcase_on_student(self, student: Student, target_index: int, testcase: TestCase) \
-            -> TestCaseResult:
-        try:
-            actual_output_lines = self.run_executable_of_student(student, target_index, testcase)
-        except TesterError as e:
-            result = TestCaseResult(
-                testcase=copy.deepcopy(testcase),
-                actual_output_lines=None,
-                result_state=e.result_state,
-            )
-        else:
-            passed = TestCaseOutputComparator(testcase=testcase).compare_with(
-                actual_output_lines=actual_output_lines,
-            )
-            result = TestCaseResult(
-                testcase=copy.deepcopy(testcase),
-                actual_output_lines=actual_output_lines,
-                result_state=(
-                    TestCaseResultState.OK
-                    if passed
-                    else TestCaseResultState.WRONG_ANSWER
-                ),
-            )
-        return result
-
-    def run_test_session_on_student(self, student: Student, target_index: int) \
-            -> TestSessionResult:
-        try:
-            test_session: TestSession \
-                = self.__testcase_io.validate_and_get_test_session(target_index)
-            # if test_session.is_effectively_empty():
-            #     raise TestCaseConfigError(
-            #         fetal=True,
-            #         reason=f"設問 {target_index:02} には有効なテストケースが１つも定義されていません",
-            #         target_index=target_index,
-            #         testcase_index=None,
-            #     )
-            if test_session.has_no_testcases():
-                raise TestCaseConfigError(
-                    fetal=True,
-                    reason=f"設問 {target_index:02} にテストケースが定義されていません。不要な場合はテストケースの設定で設問を消去してください。",
-                    target_index=target_index,
-                    testcase_index=None,
-                )
-        except TestCaseConfigError as e:
-            return TestSessionResult(
-                testcase_results=None,
-                reason=e.reason,
-            )
-
-        testcase_results = []
-        for testcase in test_session.testcases:
-            testcase_result = self.run_testcase_on_student(
-                student=student,
-                target_index=target_index,
-                testcase=testcase,
-            )
-            testcase_results.append(testcase_result)
-        return TestSessionResult(
-            testcase_results=testcase_results,
-            reason=None,
-        )
-
-    def run_all_tests_on_student(self, student: Student,
-                                 target_indexes: list[int]) -> dict[int, TestSessionResult]:
-        target_test_session_mapping: dict[int, TestSessionResult] \
-            = {}  # target_index -> TestSessionResult
-        for target_index in target_indexes:
-            target_test_session_mapping[target_index] \
-                = self.run_test_session_on_student(student, target_index)
-        return target_test_session_mapping
+#
+# class StudentEnvironmentTester:
+#     def __init__(self, env_io: "EnvironmentIO", testcase_io: "TestCaseIO"):
+#         self.__env_io = env_io
+#         self.__testcase_io = testcase_io
+#
+#     def run_executable_of_student(self, student: Student, target_index: int, testcase: TestCase) \
+#             -> list[str]:
+#         entry_source = student.env_meta.get_env_entry_by_label_and_number(
+#             label=EnvEntryLabel.SOURCE_MAIN,
+#             number=target_index,
+#         )
+#         if entry_source is None:  # ソースがない（未提出？）
+#             raise TesterError(
+#                 result_state=TestCaseResultState.NO_BUILD_FOUND,
+#             )
+#
+#         executable_fullpath = self.__env_io.get_student_env_executable_fullpath(
+#             student_id=student.meta.student_id,
+#             item_name=entry_source.path,
+#         )
+#         if executable_fullpath is None:  # ソースはあるけど実行ファイルがない（コンパイル失敗？）
+#             raise TesterError(
+#                 result_state=TestCaseResultState.NO_BUILD_FOUND,
+#             )
+#
+#         runner = ExecutableRunner(
+#             executable_fullpath=executable_fullpath,
+#             timeout=testcase.config.timeout,
+#             input_string=testcase.expected_input,
+#         )
+#
+#         try:
+#             output_lines = runner.run()
+#         except ExecutableRunnerTimeoutError:
+#             raise TesterError(
+#                 result_state=TestCaseResultState.EXECUTION_TIMEOUT,
+#             )
+#         return output_lines
+#
+#     def run_testcase_on_student(self, student: Student, target_index: int, testcase: TestCase) \
+#             -> TestCaseResult:
+#         try:
+#             actual_output_lines = self.run_executable_of_student(student, target_index, testcase)
+#         except TesterError as e:
+#             result = TestCaseResult(
+#                 testcase=copy.deepcopy(testcase),
+#                 actual_output_lines=None,
+#                 result_state=e.result_state,
+#             )
+#         else:
+#             passed = TestCaseOutputComparator(testcase=testcase).compare_with(
+#                 actual_output_lines=actual_output_lines,
+#             )
+#             result = TestCaseResult(
+#                 testcase=copy.deepcopy(testcase),
+#                 actual_output_lines=actual_output_lines,
+#                 result_state=(
+#                     TestCaseResultState.OK
+#                     if passed
+#                     else TestCaseResultState.WRONG_ANSWER
+#                 ),
+#             )
+#         return result
+#
+#     def run_test_session_on_student(self, student: Student, target_index: int) \
+#             -> TestSessionResult:
+#         try:
+#             test_session: TestSession \
+#                 = self.__testcase_io.validate_and_get_test_session(target_index)
+#             # if test_session.is_effectively_empty():
+#             #     raise TestCaseConfigError(
+#             #         fetal=True,
+#             #         reason=f"設問 {target_index:02} には有効なテストケースが１つも定義されていません",
+#             #         target_index=target_index,
+#             #         testcase_index=None,
+#             #     )
+#             if test_session.has_no_testcases():
+#                 raise TestCaseConfigError(
+#                     fetal=True,
+#                     reason=f"設問 {target_index:02} にテストケースが定義されていません。不要な場合はテストケースの設定で設問を消去してください。",
+#                     target_index=target_index,
+#                     testcase_index=None,
+#                 )
+#         except TestCaseConfigError as e:
+#             return TestSessionResult(
+#                 testcase_results=None,
+#                 reason=e.reason,
+#             )
+#
+#         testcase_results = []
+#         for testcase in test_session.testcases:
+#             testcase_result = self.run_testcase_on_student(
+#                 student=student,
+#                 target_index=target_index,
+#                 testcase=testcase,
+#             )
+#             testcase_results.append(testcase_result)
+#         return TestSessionResult(
+#             testcase_results=testcase_results,
+#             reason=None,
+#         )
+#
+#     def run_all_tests_on_student(self, student: Student,
+#                                  target_indexes: list[int]) -> dict[int, TestSessionResult]:
+#         target_test_session_mapping: dict[int, TestSessionResult] \
+#             = {}  # target_index -> TestSessionResult
+#         for target_index in target_indexes:
+#             target_test_session_mapping[target_index] \
+#                 = self.run_test_session_on_student(student, target_index)
+#         return target_test_session_mapping

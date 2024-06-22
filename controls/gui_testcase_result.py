@@ -4,8 +4,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 from fonts import font
-from gui_testcase_result_state import TestCaseResultStateIndicatorWidget
-from gui_testcase_text import TestCaseTextEdit
+from controls.gui_testcase_result_state import TestCaseResultStateIndicatorWidget
+from controls.gui_testcase_text import TestCaseTextEdit
 from models.testcase import TestCaseResultState, TestCaseResult, TestCase, TestCaseConfig
 
 
@@ -13,12 +13,12 @@ class TestCaseResultWidget(QWidget):
     def __init__(self, testcase_result: TestCaseResult | None = None, parent: QObject = None):
         super().__init__(parent)
 
-        self.__init_ui()
+        self._init_ui()
 
         self.__testcase_result = testcase_result
         self._update_data()
 
-    def __init_ui(self):
+    def _init_ui(self):
         layout = QGridLayout()
         self.setLayout(layout)
 
@@ -116,9 +116,9 @@ class _TestWidget(QWidget, QObject):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self.__init_ui()
+        self._init_ui()
 
-    def __init_ui(self):
+    def _init_ui(self):
         layout = QVBoxLayout()
         self.setLayout(layout)
 

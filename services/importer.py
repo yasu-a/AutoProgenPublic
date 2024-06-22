@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from models.environment import EnvEntryLabel, StudentEnvImportResult, StudentEnvEntry, \
     StudentEnvMeta
-from models.student import StudentMeta
+# from models.student import StudentMeta
 
 if TYPE_CHECKING:
     from files.environment import EnvironmentIO
@@ -137,121 +137,121 @@ class SubmissionArchiveItemMapper:
             label=label,
         )
 
-
-class StudentSubmissionImporter:
-    def __init__(self, env_io: "EnvironmentIO", submission_io: "SubmissionIO"):
-        self.__env_io = env_io
-        self.__submission_io = submission_io
-
-    @classmethod
-    def find_zipfiles(cls, submission_folder_fullpath: str):
-        zipfile_paths = []
-        for filename in os.listdir(submission_folder_fullpath):
-            fullpath = os.path.join(submission_folder_fullpath, filename)
-            if zipfile.is_zipfile(fullpath):
-                zipfile_paths.append(fullpath)
-        return zipfile_paths
-
-    @classmethod
-    def find_one_zipfile(cls, submission_folder_fullpath: str):
-        zipfile_paths = cls.find_zipfiles(submission_folder_fullpath)
-        if len(zipfile_paths) != 1:
-            raise SubmissionFormatError(
-                reason="レポートに含まれているzipファイルが1つではありません"
-            )
-        return zipfile_paths[0]
-
-    @classmethod
-    def iter_zipfile_content_bytes(cls, zipfile_path) -> Iterator[SubmissionArchiveItem]:
-        with zipfile.ZipFile(zipfile_path, "r") as zf:
-            for item_info in zf.infolist():
-                if item_info.is_dir():
-                    continue
-                with zf.open(item_info.filename, "r") as f:
-                    content_bytes = f.read()
-                    yield SubmissionArchiveItem(
-                        item_name=item_info.filename,
-                        content_bytes=content_bytes,
-                    )
-
-    def import_student_and_iter_result(self, student_meta: StudentMeta) \
-            -> Iterator[tuple[StudentEnvImportResult, StudentEnvEntry | None]]:
-        try:
-            self.__env_io.remove_if_exists(student_meta.student_id)
-            if student_meta.submission_folder_name is None:
-                raise SubmissionFormatError(
-                    reason="提出フォルダが存在しません",
-                )
-            submission_folder_fullpath = self.__submission_io.student_submission_folder_fullpath(
-                student_meta.submission_folder_name
-            )
-            zipfile_path = self.find_one_zipfile(submission_folder_fullpath)
-            for item in self.iter_zipfile_content_bytes(zipfile_path):
-                try:
-                    item_to_be_imported = SubmissionArchiveItemMapper.process(item)
-                    absent = self.__env_io.import_if_absent(
-                        student_id=student_meta.student_id,
-                        item_name=item_to_be_imported.item_name,
-                        content_bytes=item_to_be_imported.content_bytes,
-                    )
-                    if not absent:
-                        raise SubmissionArchiveContentError(
-                            item_name=item.item_name,
-                            reason="ファイルが既に存在します",
-                        )
-                except SubmissionArchiveContentError as e:
-                    import_result = StudentEnvImportResult(
-                        source_item_path=item.item_name,
-                        env_item_path=None,
-                        success=False,
-                        reason=e.reason,
-                    )
-                    entry_info = None
-                else:
-                    import_result = StudentEnvImportResult(
-                        source_item_path=item.item_name,
-                        env_item_path=item_to_be_imported.item_name,
-                        success=True,
-                        reason=None,
-                    )
-                    entry_info = StudentEnvEntry(
-                        path=item_to_be_imported.item_name,
-                        label=item_to_be_imported.label,
-                        updated_at=datetime.now(),
-                    )
-                yield import_result, entry_info
-        except PermissionError as e:
-            import_result = StudentEnvImportResult(
-                source_item_path=None,
-                env_item_path=None,
-                success=False,
-                reason=f"{e.strerror}: {e.filename}",
-            )
-            entry_info = None
-            yield import_result, entry_info
-        except SubmissionFormatError as e:
-            import_result = StudentEnvImportResult(
-                source_item_path=None,
-                env_item_path=None,
-                success=False,
-                reason=e.reason,
-            )
-            entry_info = None
-            yield import_result, entry_info
-
-    def import_all_and_create_env_meta(self, student_meta_list: list[StudentMeta]) \
-            -> dict[str, StudentEnvMeta]:  # student_id -> StudentEnvMeta
-        result = {}
-        for student_meta in student_meta_list:
-            import_results = {}
-            entries = {}
-            for import_result, entry_info in self.import_student_and_iter_result(student_meta):
-                import_results[import_result.source_item_path] = import_result
-                if entry_info is not None:
-                    entries[entry_info.path] = entry_info
-            result[student_meta.student_id] = StudentEnvMeta(
-                path=self.__env_io.env_path,
-                import_results=import_results,
-                entries=entries,
-            )
-        return result
+#
+# class StudentSubmissionImporter:
+#     def __init__(self, env_io: "EnvironmentIO", submission_io: "SubmissionIO"):
+#         self.__env_io = env_io
+#         self.__submission_io = submission_io
+#
+#     @classmethod
+#     def find_zipfiles(cls, submission_folder_fullpath: str):
+#         zipfile_paths = []
+#         for filename in os.listdir(submission_folder_fullpath):
+#             fullpath = os.path.join(submission_folder_fullpath, filename)
+#             if zipfile.is_zipfile(fullpath):
+#                 zipfile_paths.append(fullpath)
+#         return zipfile_paths
+#
+#     @classmethod
+#     def find_one_zipfile(cls, submission_folder_fullpath: str):
+#         zipfile_paths = cls.find_zipfiles(submission_folder_fullpath)
+#         if len(zipfile_paths) != 1:
+#             raise SubmissionFormatError(
+#                 reason="レポートに含まれているzipファイルが1つではありません"
+#             )
+#         return zipfile_paths[0]
+#
+#     @classmethod
+#     def iter_zipfile_content_bytes(cls, zipfile_path) -> Iterator[SubmissionArchiveItem]:
+#         with zipfile.ZipFile(zipfile_path, "r") as zf:
+#             for item_info in zf.infolist():
+#                 if item_info.is_dir():
+#                     continue
+#                 with zf.open(item_info.filename, "r") as f:
+#                     content_bytes = f.read()
+#                     yield SubmissionArchiveItem(
+#                         item_name=item_info.filename,
+#                         content_bytes=content_bytes,
+#                     )
+#
+#     def import_student_and_iter_result(self, student_meta: StudentMeta) \
+#             -> Iterator[tuple[StudentEnvImportResult, StudentEnvEntry | None]]:
+#         try:
+#             self.__env_io.remove_if_exists(student_meta.student_id)
+#             if student_meta.submission_folder_name is None:
+#                 raise SubmissionFormatError(
+#                     reason="提出フォルダが存在しません",
+#                 )
+#             submission_folder_fullpath = self.__submission_io.student_submission_folder_fullpath(
+#                 student_meta.submission_folder_name
+#             )
+#             zipfile_path = self.find_one_zipfile(submission_folder_fullpath)
+#             for item in self.iter_zipfile_content_bytes(zipfile_path):
+#                 try:
+#                     item_to_be_imported = SubmissionArchiveItemMapper.process(item)
+#                     absent = self.__env_io.import_if_absent(
+#                         student_id=student_meta.student_id,
+#                         item_name=item_to_be_imported.item_name,
+#                         content_bytes=item_to_be_imported.content_bytes,
+#                     )
+#                     if not absent:
+#                         raise SubmissionArchiveContentError(
+#                             item_name=item.item_name,
+#                             reason="ファイルが既に存在します",
+#                         )
+#                 except SubmissionArchiveContentError as e:
+#                     import_result = StudentEnvImportResult(
+#                         source_item_path=item.item_name,
+#                         env_item_path=None,
+#                         success=False,
+#                         reason=e.reason,
+#                     )
+#                     entry_info = None
+#                 else:
+#                     import_result = StudentEnvImportResult(
+#                         source_item_path=item.item_name,
+#                         env_item_path=item_to_be_imported.item_name,
+#                         success=True,
+#                         reason=None,
+#                     )
+#                     entry_info = StudentEnvEntry(
+#                         path=item_to_be_imported.item_name,
+#                         label=item_to_be_imported.label,
+#                         updated_at=datetime.now(),
+#                     )
+#                 yield import_result, entry_info
+#         except PermissionError as e:
+#             import_result = StudentEnvImportResult(
+#                 source_item_path=None,
+#                 env_item_path=None,
+#                 success=False,
+#                 reason=f"{e.strerror}: {e.filename}",
+#             )
+#             entry_info = None
+#             yield import_result, entry_info
+#         except SubmissionFormatError as e:
+#             import_result = StudentEnvImportResult(
+#                 source_item_path=None,
+#                 env_item_path=None,
+#                 success=False,
+#                 reason=e.reason,
+#             )
+#             entry_info = None
+#             yield import_result, entry_info
+#
+#     def import_all_and_create_env_meta(self, student_meta_list: list[StudentMeta]) \
+#             -> dict[str, StudentEnvMeta]:  # student_id -> StudentEnvMeta
+#         result = {}
+#         for student_meta in student_meta_list:
+#             import_results = {}
+#             entries = {}
+#             for import_result, entry_info in self.import_student_and_iter_result(student_meta):
+#                 import_results[import_result.source_item_path] = import_result
+#                 if entry_info is not None:
+#                     entries[entry_info.path] = entry_info
+#             result[student_meta.student_id] = StudentEnvMeta(
+#                 path=self.__env_io.env_path,
+#                 import_results=import_results,
+#                 entries=entries,
+#             )
+#         return result

@@ -11,12 +11,12 @@ class TestCaseResultStateIndicatorWidget(QFrame):
     def __init__(self, value: TestCaseResultState | None = None, parent: QObject = None):
         super().__init__(parent)
 
-        self.__init_ui()
+        self._init_ui()
 
         self.__value = value
         self._update_value()
 
-    def __init_ui(self):
+    def _init_ui(self):
         self.setFixedSize(QSize(50, 25))
         self.setFrameStyle(QFrame.Plain | QFrame.Panel)
         self.setStyleSheet(
@@ -86,9 +86,9 @@ class _TestWidget(QWidget, QObject):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self.__init_ui()
+        self._init_ui()
 
-    def __init_ui(self):
+    def _init_ui(self):
         layout = QHBoxLayout()
         self.setLayout(layout)
 

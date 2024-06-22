@@ -1,75 +1,75 @@
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from enum import Enum
 
 
-@dataclass(slots=True)
-class TestCaseConfig:
-    allow_spaces_start_of_line: bool
-    allow_spaces_end_of_line: bool
-    allow_multiple_spaces_between_words: bool
-    allow_empty_lines: bool
-    allow_letter_case_difference: bool
-    allowable_line_levenshtein_distance: int
-    timeout: float
-
-    def __post_init__(self):
-        if not isinstance(self.allow_spaces_start_of_line, bool):
-            raise TypeError()
-        if not isinstance(self.allow_spaces_end_of_line, bool):
-            raise TypeError()
-        if not isinstance(self.allow_multiple_spaces_between_words, bool):
-            raise TypeError()
-        if not isinstance(self.allow_empty_lines, bool):
-            raise TypeError()
-        if not isinstance(self.allow_letter_case_difference, bool):
-            raise TypeError()
-        if not isinstance(self.allowable_line_levenshtein_distance, int):
-            raise TypeError()
-        if isinstance(self.timeout, int):
-            self.timeout = float(self.timeout)
-        if not isinstance(self.timeout, float):
-            raise TypeError()
-
-    @classmethod
-    def create_empty(cls):
-        return cls(
-            allow_spaces_start_of_line=True,
-            allow_spaces_end_of_line=True,
-            allow_empty_lines=True,
-            allow_multiple_spaces_between_words=True,
-            allow_letter_case_difference=True,
-            allowable_line_levenshtein_distance=0,
-            timeout=3.0,
-        )
-
-    def to_json(self):
-        return asdict(self)
-
-    @classmethod
-    def from_json(cls, body):
-        return cls(
-            allow_spaces_start_of_line=body["allow_spaces_start_of_line"],
-            allow_spaces_end_of_line=body["allow_spaces_end_of_line"],
-            allow_multiple_spaces_between_words=body["allow_multiple_spaces_between_words"],
-            allow_empty_lines=body["allow_empty_lines"],
-            allow_letter_case_difference=body["allow_letter_case_difference"],
-            allowable_line_levenshtein_distance=body["allowable_line_levenshtein_distance"],
-            timeout=body["timeout"],
-        )
+# @dataclass(slots=True)
+# class TestCaseConfig:
+#     allow_spaces_start_of_line: bool
+#     allow_spaces_end_of_line: bool
+#     replace_multiple_spaces_to_single_space: bool
+#     ignore_new_lines: bool
+#     allow_multiple_spaces_between_words: bool
+#     allow_empty_lines: bool
+#     allow_letter_case_difference: bool
+#     allowable_line_levenshtein_distance: int
+#     timeout: float
+#
+#     def __post_init__(self):
+#         if not isinstance(self.allow_spaces_start_of_line, bool):
+#             raise TypeError()
+#         if not isinstance(self.allow_spaces_end_of_line, bool):
+#             raise TypeError()
+#         if not isinstance(self.allow_multiple_spaces_between_words, bool):
+#             raise TypeError()
+#         if not isinstance(self.allow_empty_lines, bool):
+#             raise TypeError()
+#         if not isinstance(self.allow_letter_case_difference, bool):
+#             raise TypeError()
+#         if not isinstance(self.allowable_line_levenshtein_distance, int):
+#             raise TypeError()
+#         if isinstance(self.timeout, int):
+#             self.timeout = float(self.timeout)
+#         if not isinstance(self.timeout, float):
+#             raise TypeError()
+#
+#     @classmethod
+#     def create_empty(cls):
+#         return cls(
+#             allow_spaces_start_of_line=True,
+#             allow_spaces_end_of_line=True,
+#             allow_empty_lines=True,
+#             allow_multiple_spaces_between_words=True,
+#             allow_letter_case_difference=True,
+#             allowable_line_levenshtein_distance=0,
+#             timeout=3.0,
+#         )
+#
+#     def to_json(self):
+#         return asdict(self)
+#
+#     @classmethod
+#     def from_json(cls, body):
+#         return cls(
+#             allow_spaces_start_of_line=body["allow_spaces_start_of_line"],
+#             allow_spaces_end_of_line=body["allow_spaces_end_of_line"],
+#             allow_multiple_spaces_between_words=body["allow_multiple_spaces_between_words"],
+#             allow_empty_lines=body["allow_empty_lines"],
+#             allow_letter_case_difference=body["allow_letter_case_difference"],
+#             allowable_line_levenshtein_distance=body["allowable_line_levenshtein_distance"],
+#             timeout=body["timeout"],
+#         )
 
 
 @dataclass(slots=True)
 class TestCase:
     expected_input_lines: list[str]
     expected_output_lines: list[str]
-    config: TestCaseConfig
     number: int
 
     def to_json(self):
         return dict(
             expected_input_lines=self.expected_input_lines,
             expected_output_lines=self.expected_output_lines,
-            config=self.config.to_json(),
             number=self.number,
         )
 
@@ -78,7 +78,6 @@ class TestCase:
         return cls(
             expected_input_lines=body["expected_input_lines"],
             expected_output_lines=body["expected_output_lines"],
-            config=TestCaseConfig.from_json(body["config"]),
             number=body["number"],
         )
 
@@ -103,7 +102,6 @@ class TestCase:
         return cls(
             expected_input_lines=[],
             expected_output_lines=[],
-            config=TestCaseConfig.create_empty(),
             number=number
         )
 

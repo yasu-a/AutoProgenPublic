@@ -1,161 +1,344 @@
-import codecs
-import os
-from dataclasses import dataclass
+import functools
+import re
+import shutil
+from datetime import datetime
+from pathlib import Path
 
 import dateutil.parser
+import openpyxl
+import pandas as pd
 
-import state
-from files.environment import EnvironmentIO
-from files.master import StudentMasterIO
-from files.submission import SubmissionIO
-from files.testcase import TestCaseIO
-from models.environment import EnvEntryLabel
-from models.student import StudentMeta, Student
-from models.testcase import TestSessionResult, StudentTestResult
-from services.compiler import StudentEnvCompiler
-from services.importer import StudentSubmissionImporter
-from services.tester import StudentEnvironmentTester
+from files.project import ProjectPathProvider, ProjectIO
+from files.report_archive import ManabaReportArchiveIO
+from models.errors import ManabaReportArchiveIOError, ProjectCreateServiceError
+from models.project_config import ProjectConfig
+from models.reuslts import CompileResult, BuildResult
+from models.stages import AbstractStudentProgress, StudentProgressWithFinishedStage, \
+    StudentProgressStage, StudentProgressUnstarted
+from models.student_master import StudentMaster, Student
+from models.values import TargetID, ProjectName, StudentID
+
+
+# from services.compiler import StudentEnvCompiler
+# from services.importer import StudentSubmissionImporter
+# from services.tester import StudentEnvironmentTester
+
+
+class _UnexpectedStudentMasterExcelError(RuntimeError):
+    def __init__(self, reason: str):
+        self.reason = reason
+
+
+class _StudentMasterExcelReader:
+    @staticmethod
+    def __load_worksheet(workbook: openpyxl.Workbook):
+        if len(workbook.worksheets) != 1:
+            raise _UnexpectedStudentMasterExcelError(
+                reason="ワークブックは1つだけワークシートを含んでいる必要があります"
+            )
+        return workbook.worksheets[0]
+
+    def __init__(self, wb: openpyxl.Workbook):
+        self.__ws = self.__load_worksheet(wb)
+        self.__rows_str = tuple(self.__ws.values)
+
+    @functools.cache
+    def find_row_begin(self) -> int:
+        for i_row, row in enumerate(self.__rows_str):
+            if row[0] is not None and not row[0].strip().startswith("#"):
+                if i_row != 7:
+                    raise _UnexpectedStudentMasterExcelError(
+                        reason="テーブルの開始行が8行目ではありません"
+                    )
+                return i_row
+        raise _UnexpectedStudentMasterExcelError(
+            reason="テーブルの開始行が見つかりません"
+        )
+
+    @functools.cache
+    def find_row_end(self) -> int:
+        for i_row, row in enumerate(self.__rows_str):
+            if row[0] is not None and row[0].strip() == "#end":
+                if i_row <= self.find_row_begin():
+                    raise _UnexpectedStudentMasterExcelError(
+                        reason="テーブルの終了行が開始行の前にあります"
+                    )
+                return i_row
+        raise _UnexpectedStudentMasterExcelError(
+            reason="テーブルの終了行が見つかりません"
+        )
+
+    EXPECTED_HEADER_JP_CONTAINS = [
+        "内部コースID",
+        "コース名",
+        "リンク情報",
+        "ロール",
+        "ユーザID",
+        "学籍番号",
+        "氏名",
+        "氏名（英語）",
+        "メールアドレス",
+        "合計点",
+        "評価",
+        "講評",
+        "提出",
+        "提出日時",
+        "提出回数",
+        "フォルダ",
+    ]
+
+    def get_header(self):
+        return self.__rows_str[self.find_row_begin() - 1]
+
+    def validate_header(self):
+        for col, expected_contains in zip(self.get_header(), self.EXPECTED_HEADER_JP_CONTAINS):
+            if col is None or expected_contains not in col:
+                raise _UnexpectedStudentMasterExcelError(
+                    reason=f"不明な形式のヘッダーです。ヘッダーは{'・'.join(self.EXPECTED_HEADER_JP_CONTAINS)}を含んでいる必要があります。"
+                )
+
+    HEADER = [
+        "course_id",
+        "course_name",
+        "link_info",
+        "role",
+        "user_id",
+        "student_id",
+        "name",
+        "name_en",
+        "email_address",
+        "grade",
+        "sym_grade",
+        "comment",
+        "submission_state",
+        "submitted_at",
+        "num_submissions",
+        "submission_folder",
+        "row_id",
+    ]
+
+    @functools.cached_property
+    def dataframe(self):
+        self.validate_header()
+        rows = []
+        for i_row in range(self.find_row_begin(), self.find_row_end()):
+            row = self.__rows_str[i_row]
+            row = *row, i_row
+            rows.append(row)
+        return pd.DataFrame(rows, columns=self.HEADER)
+
+    def _validate_roles(self):
+        for role in self.dataframe["role"].value_counts().index:
+            if role in ["履修生", "担当教員"]:
+                continue
+            if role.startswith("授業補助者"):
+                continue
+            raise _UnexpectedStudentMasterExcelError(
+                reason=f"不明なロールです: {role}"
+            )
+
+    @functools.cached_property
+    def student_dataframe(self):
+        return self.dataframe.loc[self.dataframe["role"] == "履修生"].copy()
+
+    def _validate_student_ids(self):
+        student_ids = self.student_dataframe["student_id"]
+        for student_id in student_ids:
+            if not re.fullmatch(r"\d{2}[A-Z]\d{7}[A-Z]", student_id):
+                raise _UnexpectedStudentMasterExcelError(
+                    reason=f"不明な形式の学籍番号です: {student_id}"
+                )
+
+    def validate_table(self):
+        self._validate_roles()
+        self._validate_student_ids()
+
+    def get_student_submission_folder_names(self) -> list[str | None]:
+        submission_folder_names = []
+        for _, row in self.student_dataframe.iterrows():
+            i_row = row["row_id"]
+            submission_folder_cell \
+                = self.__ws.cell(row=i_row + 1, column=self.HEADER.index("submission_folder") + 1)
+            if submission_folder_cell.value not in ["", "開く"]:
+                raise _UnexpectedStudentMasterExcelError(
+                    reason=f"不明な形式の「フォルダ」列です: {submission_folder_cell.value}"
+                )
+            if submission_folder_cell.hyperlink is None:
+                link_path = None
+            else:
+                link_path = submission_folder_cell.hyperlink.target
+            if link_path is not None and not link_path.endswith("\\"):
+                raise _UnexpectedStudentMasterExcelError(
+                    reason=f"不明な形式のフォルダパスです: {link_path}"
+                )
+            if link_path is not None:
+                link_path = link_path.rstrip("\\")
+            submission_folder_names.append(link_path)
+        return submission_folder_names
+
+    def as_dataframe(self):
+        df = self.student_dataframe.copy()
+        df["submission_folder_name"] = self.get_student_submission_folder_names()
+        return df
+
+
+class ProjectConstructionService:
+    def __init__(
+            self,
+            *,
+            project_path_provider: ProjectPathProvider,
+            project_io: ProjectIO,
+            manaba_report_archive_io: ManabaReportArchiveIO,
+    ):
+        self._project_path_provider = project_path_provider
+        self._project_io = project_io
+        self._manaba_report_archive_io = manaba_report_archive_io
+
+    def create_project(
+            self,
+            target_id: TargetID,
+    ) -> None:
+        # create project folder
+        self._project_io.create_project_folder()
+
+        # create student master
+
+        try:
+            with self._manaba_report_archive_io.open_master_excel() as f:
+                wb = openpyxl.open(
+                    f,
+                    # read_only=True,  # ハイパーリンクを読み取れなくなる
+                )
+                df = _StudentMasterExcelReader(wb).as_dataframe()
+                student_master = StudentMaster()
+                for _, row in df.iterrows():
+                    has_submission = row["submission_folder_name"] is not None
+                    student = Student(
+                        student_id=StudentID(row["student_id"]),
+                        name=row["name"],
+                        name_en=row["name_en"],
+                        email_address=row["email_address"],
+                        submitted_at=dateutil.parser.parse(
+                            row["submitted_at"]) if has_submission else None,
+                        num_submissions=int(row["num_submissions"]) if has_submission else 0,
+                        submission_folder_name=row["submission_folder_name"],
+                    )
+                    student_master.append(student)
+        except (_UnexpectedStudentMasterExcelError, ManabaReportArchiveIOError) as e:
+            raise ProjectCreateServiceError(
+                reason=f"マスターデータの構成中にエラーが発生しました。\n{e.reason}",
+            )
+        else:
+            self._project_io.write_student_master(student_master)
+        finally:
+            wb.close()
+
+        # read student master file and create mapping from student_id to submission folder name
+        student_master = self._project_io.read_student_master()
+        student_id_to_submission_folder_name_mapping: dict[StudentID, str] = {}
+        for student in student_master:
+            if student.submission_folder_name is not None:
+                student_id_to_submission_folder_name_mapping[student.student_id] \
+                    = student.submission_folder_name
+
+        # extract student submissions
+        try:
+            for student_id, student_submission_folder_name in \
+                    student_id_to_submission_folder_name_mapping.items():
+                self._manaba_report_archive_io.validate_archive_contents(
+                    student_submission_folder_names=set(
+                        student_id_to_submission_folder_name_mapping.values()
+                    ),
+                )
+                it = self._manaba_report_archive_io.iter_student_submission_archive_contents(
+                    student_id=student_id,
+                    student_submission_folder_name=student_submission_folder_name,
+                )
+                submission_extraction_folder_fullpath \
+                    = self._project_path_provider.student_submission_folder_fullpath(student_id)
+                submission_extraction_folder_fullpath.mkdir(parents=True, exist_ok=False)
+                for content_relative_path, fp in it:
+                    dst_fullpath = submission_extraction_folder_fullpath / content_relative_path
+                    # パスにスペースが含まれているとこの先のos.makedirsで失敗するので取り除く
+                    dst_fullpath = Path(*map(str.strip, dst_fullpath.parts))
+                    dst_fullpath = dst_fullpath.resolve()
+                    assert dst_fullpath.parent.is_relative_to(
+                        submission_extraction_folder_fullpath
+                    ), dst_fullpath
+                    dst_fullpath.parent.mkdir(parents=True, exist_ok=True)
+                    with dst_fullpath.open(mode="wb") as f_dst:
+                        shutil.copyfileobj(fp, f_dst)
+        except ManabaReportArchiveIOError as e:
+            raise ProjectCreateServiceError(
+                reason=f"ZIPアーカイブの展開中にエラーが発生しました。\n{e.reason}",
+            )
+
+        # create project config
+        self._project_io.write_config(
+            project_config=ProjectConfig(
+                target_id=target_id,
+            )
+        )
 
 
 class ProjectService:
-    def __init__(self, project_path, env_dir_path):
-        self.__project_path = project_path
-        self.__env_dir_path = env_dir_path
-        self.__master_path = os.path.join(self.__project_path, "reportlist.xlsx")
+    def __init__(self, *, project_io: ProjectIO):
+        self._project_io = project_io
 
-        self.__env_io = EnvironmentIO(env_path=self.__env_dir_path)
-        self.__submission_io = SubmissionIO(project_path=self.__project_path)
-        self.__master_io = StudentMasterIO(master_path=self.__master_path)
-        self.__testcase_io = TestCaseIO(
-            testcase_dir_fullpath=os.path.join(self.__project_path, "testcases"),
-        )
+    def get_project_name(self) -> ProjectName:
+        return self._project_io.get_project_name()
 
-    def create_student_profile_if_not_exists(self):
-        with state.data() as data:
-            if data.has_student_profiles():
-                return
-            df = self.__master_io.read_as_dataframe()
-            for _, row in df.iterrows():
-                has_submission = row["submission_folder_name"] is not None
-                student_meta = StudentMeta(
-                    student_id=row["student_id"],
-                    name=row["name"],
-                    name_en=row["name_en"],
-                    email_address=row["email_address"],
-                    submitted_at=dateutil.parser.parse(
-                        row["submitted_at"]) if has_submission else None,
-                    num_submissions=int(row["num_submissions"]) if has_submission else 0,
-                    submission_folder_name=row["submission_folder_name"],
-                )
-                student = Student.from_meta(student_meta)
-                data.students[student_meta.student_id] = student
-            state.commit_data()
+    def get_target_id(self) -> TargetID:
+        return self._project_io.get_target_id()
 
-    def open_submission_folder_in_explorer(self, student_id: str):
-        with state.data() as data:
-            student = data.students[student_id]
+    def get_student_ids(self) -> list[StudentID]:
+        return [student.student_id for student in self._project_io.students]
 
-        if student.meta.submission_folder_name is None:
-            return
+    def show_student_submission_folder_in_explorer(self, student_id: StudentID) -> None:
+        self._project_io.show_student_submission_folder_in_explorer(student_id)
 
-        submission_folder_fullpath = self.__submission_io.student_submission_folder_fullpath(
-            student.meta.submission_folder_name
-        )
-        os.startfile(submission_folder_fullpath)
+    def get_student_meta(self, student_id: StudentID) -> Student:
+        return self._project_io.students[student_id]
 
-    def create_runtime_environment(self, student_id):
-        with state.data() as data:
-            submission_importer = StudentSubmissionImporter(
-                env_io=self.__env_io,
-                submission_io=self.__submission_io,
+    def is_student_stage_finished(self, student_id: StudentID, stage: StudentProgressStage) -> bool:
+        if stage == StudentProgressStage.BUILD:
+            return self._project_io.is_student_build_finished(student_id)
+        if stage == StudentProgressStage.COMPILE:
+            return self._project_io.is_student_compile_finished(student_id)
+        if stage == StudentProgressStage.EXECUTE:
+            return False
+        assert False, stage
+
+    def get_student_stage_result(self, student_id: StudentID, stage: StudentProgressStage) \
+            -> StudentProgressWithFinishedStage:
+        assert self.is_student_stage_finished(student_id, stage), (student_id, stage)
+        if stage == StudentProgressStage.BUILD:
+            result = self._project_io.read_student_build_result(student_id)
+            return StudentProgressWithFinishedStage[BuildResult](
+                stage=StudentProgressStage.BUILD,
+                result=result,
             )
-            student_mata = data.students[student_id].meta
-            student_env_meta_mapping = submission_importer.import_all_and_create_env_meta(
-                student_meta_list=[student_mata],
+        if stage == StudentProgressStage.COMPILE:
+            result = self._project_io.read_student_compile_result(student_id)
+            return StudentProgressWithFinishedStage[CompileResult](
+                stage=StudentProgressStage.COMPILE,
+                result=result,
             )
-            for student_id, env_meta in student_env_meta_mapping.items():
-                data.students[student_id].env_meta = env_meta
-            state.commit_data()
+        if stage == StudentProgressStage.EXECUTE:
+            raise NotImplementedError()
+        assert False, stage
 
-    def compile_environment(self, student_id):
-        environment_compiler = StudentEnvCompiler(
-            env_io=self.__env_io,
-        )
-        with state.data(readonly=True) as data:
-            student = data.students[student_id]
-        student_compile_result = environment_compiler.compile_and_get_result(student)
-        with state.data() as data:
-            data.students[student_id].compile_result = student_compile_result
-            state.commit_data()
+    def get_student_progress(self, student_id: StudentID) -> AbstractStudentProgress:
+        if self.is_student_stage_finished(student_id, StudentProgressStage.EXECUTE):
+            return self.get_student_stage_result(student_id, StudentProgressStage.EXECUTE)
+        if self.is_student_stage_finished(student_id, StudentProgressStage.COMPILE):
+            return self.get_student_stage_result(student_id, StudentProgressStage.COMPILE)
+        if self.is_student_stage_finished(student_id, StudentProgressStage.BUILD):
+            return self.get_student_stage_result(student_id, StudentProgressStage.BUILD)
+        return StudentProgressUnstarted()
 
-    def run_auto_test(self, student_id):
-        tester = StudentEnvironmentTester(
-            env_io=self.__env_io,
-            testcase_io=self.__testcase_io,
-        )
-        target_indexes = self.__testcase_io.list_target_numbers()
-        with state.data(readonly=True) as data:
-            student = data.students[student_id]
-        test_session_results: dict[int, TestSessionResult] = tester.run_all_tests_on_student(
-            student=student,
-            target_indexes=target_indexes,
-        )
-        with state.data() as data:
-            data.students[student_id].test_result = StudentTestResult(
-                test_session_results=test_session_results,
-            )
-            state.commit_data()
+    def get_student_mtime(self, student_id: StudentID) -> datetime | None:
+        return self._project_io.get_student_mtime(student_id)
 
-    def get_testcase_io(self):  # TODO: Lock this resource
-        return self.__testcase_io
-
-    @classmethod
-    def clear_all_test_results(cls):
-        with state.data() as data:
-            for student in data.students.values():
-                student.test_result = None
-            state.commit_data()
-
-    def get_submitted_source_code_for(self, student_id: str, target_number: int) -> str | None:
-        with state.data() as data:
-            entry_source = data.students[student_id].env_meta.get_env_entry_by_label_and_number(
-                label=EnvEntryLabel.SOURCE_MAIN,
-                number=target_number,
-            )
-        if entry_source is None:
-            return None
-        source_fullpath = self.__env_io.get_student_env_entry_fullpath(
-            student_id=student_id,
-            item_name=entry_source.path,
-        )
-        with codecs.open(source_fullpath, "r", "utf-8") as f:
-            return f.read()
-
-    @dataclass
-    class MarkEntry:
-        student: Student
-        target_number: int
-
-        def __eq__(self, other):
-            return self.student.meta.student_id == other.student.meta.student_id \
-                and self.target_number == other.target_number
-
-    def list_registered_target_numbers(self) -> list[int]:
-        return self.__testcase_io.list_target_numbers()
-
-    def list_mark_entries(self, student_id_filter: list[str] | None = None) -> list[MarkEntry]:
-        entries = []
-        with state.data(readonly=True) as data:
-            for student_id in data.student_ids:
-                if student_id_filter is not None:
-                    if student_id not in student_id_filter:
-                        continue
-                student = data.students[student_id]
-                for target_number in self.list_registered_target_numbers():
-                    entry = self.MarkEntry(
-                        student=student,
-                        target_number=target_number,
-                    )
-                    entries.append(entry)
-        entries = sorted(entries, key=lambda e: e.target_number)
-        return entries
+    def clear_student(self, student_id: StudentID) -> None:
+        self._project_io.clear_student(student_id)

@@ -8,9 +8,9 @@ class TestCaseConfigEditWidget(QFrame):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self.__init_ui()
+        self._init_ui()
 
-    def __init_ui(self):
+    def _init_ui(self):
         self.setFrameStyle(QFrame.Panel | QFrame.Plain)
 
         layout = QGridLayout()

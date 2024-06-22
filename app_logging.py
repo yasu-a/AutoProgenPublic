@@ -163,7 +163,10 @@ def create_logger(name=None, cls: type = None) -> logging.Logger:
             name += f'.{function_name}'
 
     if name is None:
-        raise RuntimeError('failed to determine logger name')
+        raise ValueError('Failed to determine logger name')
+
+    if not re.fullmatch(__RE_NAME, name):
+        raise ValueError(f"Invalid logger name: {name}")
 
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)

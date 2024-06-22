@@ -9,10 +9,10 @@ class TestCaseTextEdit(QPlainTextEdit):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self.__init_ui()
+        self._init_ui()
         self.__init_signals()
 
-    def __init_ui(self):
+    def _init_ui(self):
         self.setFont(font(monospace=True, small=True))
         self.set_show_editing_symbols(True)
         self.setLineWrapMode(QPlainTextEdit.NoWrap)

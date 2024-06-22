@@ -103,9 +103,9 @@ class SourceTextEdit(QPlainTextEdit):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self.__init_ui()
+        self._init_ui()
 
-    def __init_ui(self):
+    def _init_ui(self):
         self.setFont(font(monospace=True, small=True))
         self.setLineWrapMode(QPlainTextEdit.NoWrap)
         self._h = CHighlighter(self.document())
@@ -130,14 +130,14 @@ class _TestWidget(QWidget, QObject):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self.__init_ui()
+        self._init_ui()
 
-    def __init_ui(self):
+    def _init_ui(self):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
         te = SourceTextEdit(self)
-        with codecs.open("test.c", "r", "utf-8") as f:
+        with codecs.open("../test.c", "r", "utf-8") as f:
             te.setPlainText(f.read())
         layout.addWidget(te)
 

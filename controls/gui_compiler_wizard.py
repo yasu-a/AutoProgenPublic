@@ -4,17 +4,18 @@ from PyQt5.QtCore import QObject, pyqtSlot, QThread, pyqtSignal, QTimer
 from PyQt5.QtWidgets import QWizardPage, QVBoxLayout, QLabel, QRadioButton, QPushButton, QLineEdit, \
     QTextEdit, QWizard
 
-from gui_filepath import FilePathWidget
-from services.compiler import CompileError, Compiler
+from controls.gui_filepath import FilePathWidget
+from models.errors import CompileServiceError
+from services.compile import CompileService
 
 
 class CompilerConfigurationWizardWelcomePage(QWizardPage):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self.__init_ui()
+        self._init_ui()
 
-    def __init_ui(self):
+    def _init_ui(self):
         self.setTitle("開発者用コンソールの紐づけ")
 
         layout = QVBoxLayout()
@@ -33,9 +34,9 @@ class CompilerConfigurationWizardSelectMethodPage(QWizardPage):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self.__init_ui()
+        self._init_ui()
 
-    def __init_ui(self):
+    def _init_ui(self):
         self.setTitle("検索方法")
 
         layout = QVBoxLayout()
@@ -57,9 +58,9 @@ class CompilerConfigurationWizardManuallySelectPage(QWizardPage):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self.__init_ui()
+        self._init_ui()
 
-    def __init_ui(self):
+    def _init_ui(self):
         self.setTitle("手動で指定する")
 
         layout = QVBoxLayout()
@@ -135,9 +136,9 @@ class CompilerConfigurationWizardAutomaticallySelectPage(QWizardPage):
 
         self.__worker: CompilerFinderWorker | None = None
 
-        self.__init_ui()
+        self._init_ui()
 
-    def __init_ui(self):
+    def _init_ui(self):
         self.setTitle("自動検索")
 
         layout = QVBoxLayout()
@@ -201,14 +202,14 @@ class CompilerConfigurationWizardAutomaticallySelectPage(QWizardPage):
 
 class CompilerTestingWorker(QThread):
     test_completed = pyqtSignal(str)
-    test_failed = pyqtSignal(CompileError)
+    test_failed = pyqtSignal(CompileServiceError)
 
     def __init__(self, vs_dev_cmd_bat_path, parent: QObject = None):
         super().__init__(parent)
 
         self._current_path = None
         self._stop = False
-        self._compiler = Compiler(
+        self._compiler = CompileService(
             vs_dev_cmd_bat_path=vs_dev_cmd_bat_path,
             cwd_path=os.getcwd(),
             target_relative_path_lst=["test.c"],
@@ -219,11 +220,11 @@ class CompilerTestingWorker(QThread):
         try:
             output = self._compiler.run()
             if not os.path.exists(os.path.join(os.getcwd(), "test.exe")):
-                raise CompileError(
+                raise CompileServiceError(
                     reason="コンパイルは終了しましたが実行ファイルが確認できませんでした",
                     output=output,
                 )
-        except CompileError as e:
+        except CompileServiceError as e:
             self.test_failed.emit(e)  # type: ignore
         else:
             self.test_completed.emit(output)  # type: ignore
@@ -238,9 +239,9 @@ class CompilerConfigurationWizardTestPage(QWizardPage):
 
         self.__worker: CompilerTestingWorker | None = None
 
-        self.__init_ui()
+        self._init_ui()
 
-    def __init_ui(self):
+    def _init_ui(self):
         self.setTitle("テスト")
 
         layout = QVBoxLayout()
@@ -298,7 +299,7 @@ class CompilerConfigurationWizardTestPage(QWizardPage):
         self._te_output.setText(output)
         self._le_dummy.setText("OK")
 
-    @pyqtSlot(CompileError)
+    @pyqtSlot(CompileServiceError)
     def __on_test_failed(self, e):
         self.__worker = None
         self._l_status.setText("テストに失敗しました")
@@ -316,7 +317,7 @@ class CompilerConfigurationWizard(QWizard):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self.__init_ui()
+        self._init_ui()
         self.resize(1000, 600)
 
         self.setPage(
@@ -362,7 +363,7 @@ class CompilerConfigurationWizard(QWizard):
         else:
             assert False, self.currentId()
 
-    def __init_ui(self):
+    def _init_ui(self):
         self.setModal(True)
         self.setWindowTitle("コンパイラの設定")  # type: ignore
 

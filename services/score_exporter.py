@@ -9,7 +9,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from app_logging import create_logger
 
 
-class ScoreExporterExcelError(RuntimeError):
+class _ScoreExporterExcelError(RuntimeError):
     pass
 
 
@@ -22,7 +22,7 @@ class _WorkSheetReader:
         for i_row, row in enumerate(self._rows_str):
             if row[0] is not None and row[0].strip().startswith("#"):
                 return i_row
-        raise ScoreExporterExcelError("ワークシートのヘッダー行が見つかりません")
+        raise _ScoreExporterExcelError("ワークシートのヘッダー行が見つかりません")
 
     def get_i_row_table_begin(self) -> int:
         return self.get_i_row_table_header() + 1
@@ -50,7 +50,7 @@ class _WorkSheetReader:
             student_id_of_row = self.get_student_id_of_row(i_row)
             if student_id == student_id_of_row:
                 return i_row
-        raise ScoreExporterExcelError(
+        raise _ScoreExporterExcelError(
             f"ワークシートに学籍番号{student_id}の行が見つかりません"
         )
 
@@ -59,12 +59,12 @@ class _WorkSheetReader:
         for i_column, title in enumerate(header):
             if title.strip() == f"問{target_number}":
                 return i_column
-        raise ScoreExporterExcelError(f"ワークシートに問{target_number}の列が見つかりません")
+        raise _ScoreExporterExcelError(f"ワークシートに問{target_number}の列が見つかりません")
 
     def validate(self):
         header = self._rows_str[self.get_i_row_table_header()]
         if header[0] != "# 学籍番号" or header[1] != "# 氏名" or header[2] != "# 合計点" or header[3] != "問1":
-            raise ScoreExporterExcelError("このワークシートの形式には対応していません", header)
+            raise _ScoreExporterExcelError("このワークシートの形式には対応していません", header)
 
     def create_index_mapping(self, student_ids: list[str], target_number: int) \
             -> dict[str, tuple[int, int]]:  # i_row, i_column
@@ -103,7 +103,7 @@ class ScoreExporter:
                 ws: Worksheet = wb.get_sheet_by_name(ws_name)
                 try:
                     _WorkSheetReader(ws).validate()
-                except ScoreExporterExcelError:
+                except _ScoreExporterExcelError:
                     self._logger.exception(f"Invalid worksheet: {ws_name}")
                     continue
                 else:
@@ -166,6 +166,7 @@ class ScoreExporter:
             try:
                 wb.save(self._excel_path)
             except PermissionError:
-                raise ScoreExporterExcelError("書き込みを拒否されました。ファイルをExcelで開いていませんか？")
+                raise _ScoreExporterExcelError(
+                    "書き込みを拒否されました。ファイルをExcelで開いていませんか？")
         finally:
             wb.close()

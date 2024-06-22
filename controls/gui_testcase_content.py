@@ -4,8 +4,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 from fonts import font
-from gui_testcase_config import TestCaseConfigEditWidget
-from gui_testcase_text import TestCaseTextEdit
+from controls.gui_testcase_config import TestCaseConfigEditWidget
+from controls.gui_testcase_text import TestCaseTextEdit
 from models.testcase import TestCase
 
 
@@ -13,10 +13,10 @@ class TestCaseContentTextEditWidget(QWidget):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self.__init_ui()
+        self._init_ui()
         self.__init_signals()
 
-    def __init_ui(self):
+    def _init_ui(self):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
@@ -89,13 +89,13 @@ class TestCaseContentEditDialog(QDialog):
     def __init__(self, testcase: TestCase, parent: QObject = None):
         super().__init__(parent)
 
-        self.__init_ui()
+        self._init_ui()
         self.__init_signals()
 
         self.__testcase = testcase
         self.__set_testcase(testcase)
 
-    def __init_ui(self):
+    def _init_ui(self):
         self.setWindowTitle("テストケースの編集")
         self.setModal(True)
 
