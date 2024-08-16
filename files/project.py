@@ -10,7 +10,7 @@ from typing import Optional, Iterable
 from app_logging import create_logger
 from domain.errors import ProjectIOError
 from domain.models.project_config import ProjectConfig
-from domain.models.reuslts import BuildResult, CompileResult
+from domain.models.reuslts import BuildResult, CompileResult, ExecuteResult
 from domain.models.student_master import StudentMaster
 from domain.models.values import ProjectName, TargetID, StudentID, TestCaseID
 
@@ -104,11 +104,30 @@ class ProjectPathProvider:
                                      testcase_id: TestCaseID) -> Path:
         return self.student_test_base_folder_fullpath(student_id) / str(testcase_id)
 
+    def student_execute_result_json_fullpath(self, student_id: StudentID) -> Path:
+        return self.student_test_base_folder_fullpath(student_id) / "__execute_result.json"
+
+    def student_test_stdin_fullpath(self, student_id, testcase_id: TestCaseID):
+        return self.student_test_folder_fullpath(student_id, testcase_id) / "__stdin__"
+
+    def student_test_stdout_fullpath(self, student_id, testcase_id: TestCaseID):
+        return self.student_test_folder_fullpath(student_id, testcase_id) / "__stdout__"
+
+    def student_test_executable_fullpath(self, student_id, testcase_id: TestCaseID):
+        return self.student_test_folder_fullpath(student_id, testcase_id) / "main.exe"
+
     # その他
     def iter_student_dynamic_folder_fullpath(self, student_id: StudentID) -> Iterable[Path]:
         # 生徒のプロジェクトデータの最終更新時刻を確認するフォルダのパスをイテレートする
-        yield self.student_build_folder_fullpath(student_id)
-        yield self.student_test_base_folder_fullpath(student_id)
+        build_folder_fullpath = self.student_build_folder_fullpath(student_id)
+        yield build_folder_fullpath
+
+        test_base_folder_fullpath = self.student_test_base_folder_fullpath(student_id)
+        yield test_base_folder_fullpath
+        if test_base_folder_fullpath.exists():
+            for path in test_base_folder_fullpath.iterdir():
+                if path.is_dir():
+                    yield path
 
 
 class ProjectIO:
@@ -142,6 +161,7 @@ class ProjectIO:
             self,
             src_file_fullpath: Path,
             dst_folder_fullpath: Path,
+            dst_file_name: str = None,
     ) -> None:
         # プロジェクト内のファイルをプロジェクト内のフォルダにコピーする
         assert src_file_fullpath.is_absolute(), src_file_fullpath
@@ -154,7 +174,9 @@ class ProjectIO:
             self._project_path_provider.project_folder_fullpath()
         ), dst_folder_fullpath
         assert dst_folder_fullpath.is_dir(), dst_folder_fullpath
-        shutil.copy(src_file_fullpath, dst_folder_fullpath / src_file_fullpath.name)
+        if dst_file_name is None:
+            dst_file_name = src_file_fullpath.name
+        shutil.copy(src_file_fullpath, dst_folder_fullpath / dst_file_name)
 
     # TODO: move into ProjectCoreIO and share it with other IO classes
     def _copy_files_in_folder_into_folder(
@@ -334,7 +356,7 @@ class ProjectIO:
         for folder_fullpath \
                 in self._project_path_provider.iter_student_dynamic_folder_fullpath(student_id):
             if not folder_fullpath.exists():
-                return None
+                continue
             mtime = folder_fullpath.stat().st_mtime
             if mtime_max is None or mtime > mtime_max:
                 mtime_max = mtime
@@ -430,55 +452,41 @@ class ProjectIO:
         assert body is not None, result_json_fullpath
         return CompileResult.from_json(body)
 
-    def clone_student_executable_to_test_folder(
+    def write_student_execute_result(
             self,
             student_id: StudentID,
-            testcase_id: TestCaseID,
+            result: ExecuteResult,
     ) -> None:
-        """
-        生徒の実行ファイルをテスト用のフォルダにコピーする
-        
-        :param student_id: 生徒ID
-        :param testcase_id: テストケースID
-        """
-
-        # 生徒の実行ファイルのフルパス
-        student_executable_fullpath = self._project_path_provider.student_executable_fullpath(
+        # 生徒の実行結果を永続化する
+        result_json_fullpath = self._project_path_provider.student_execute_result_json_fullpath(
             student_id=student_id,
         )
-        # 生徒のテストフォルダのフルパス
-        student_test_folder_fullpath = self._project_path_provider.student_test_folder_fullpath(
-            student_id=student_id,
-            testcase_id=testcase_id,
+        self._write_json(
+            json_fullpath=result_json_fullpath,
+            body=result.to_json(),
         )
-        # テストフォルダがない場合は生成する
-        student_test_folder_fullpath.mkdir(parents=True, exist_ok=True)
-        # コピーする
-        self._copy_file_into_folder(student_executable_fullpath, student_test_folder_fullpath)
 
-    def clone_folder_contents_to_test_folder(
+    def is_student_execute_finished(
             self,
             student_id: StudentID,
-            testcase_id: TestCaseID,
-            src_folder_fullpath: Path,
-    ):
-        """
-        生徒の指定したフォルダの内容をテスト用のフォルダにコピーする
-
-        :param student_id: 生徒ID
-        :param testcase_id: テストケースID
-        :param src_folder_fullpath: コピー元のフォルダのフルパス
-        """
-
-        # 生徒のテストフォルダのフルパス
-        student_test_folder_fullpath = self._project_path_provider.student_test_folder_fullpath(
+    ) -> bool:
+        # 生徒の実行が終了したかどうかを確認する
+        result_json_fullpath = self._project_path_provider.student_execute_result_json_fullpath(
             student_id=student_id,
-            testcase_id=testcase_id,
         )
-        # テストフォルダがない場合は生成する
-        student_test_folder_fullpath.mkdir(parents=True, exist_ok=True)
-        # コピーする
-        self._copy_files_in_folder_into_folder(
-            src_folder_fullpath=src_folder_fullpath,
-            dst_folder_fullpath=student_test_folder_fullpath,
+        return result_json_fullpath.exists()
+
+    def read_student_execute_result(
+            self,
+            student_id: StudentID,
+    ) -> ExecuteResult:
+        # 生徒の実行結果を読み込む
+        result_json_fullpath = self._project_path_provider.student_execute_result_json_fullpath(
+            student_id=student_id,
         )
+        result_json_fullpath.parent.mkdir(parents=True, exist_ok=True)
+        body = self._read_json(
+            json_fullpath=result_json_fullpath,
+        )
+        assert body is not None, result_json_fullpath
+        return ExecuteResult.from_json(body)

@@ -389,6 +389,7 @@
 # #         return " / ".join(text_lst)
 from base64 import b64encode, b64decode
 from dataclasses import dataclass
+from typing import Iterable
 
 
 def _bytes_to_jsonable(s: bytes) -> str:
@@ -434,7 +435,7 @@ class ExecuteConfigOptions:
 
 @dataclass(slots=True)
 class ExecuteConfig:
-    input_files: ExecuteConfigInputFiles
+    input_files: ExecuteConfigInputFiles  # TODO: input_filesをカプセル化せよ
     options: ExecuteConfigOptions
 
     @classmethod
@@ -450,18 +451,19 @@ class ExecuteConfig:
             options=self.options.to_json(),
         )
 
-    @classmethod
-    def filename_stdin(cls) -> str:  # TODO: remove me
-        return "__stdin__.txt"
-
     def has_stdin(self) -> bool:
-        return self.filename_stdin() in self.input_files
+        return None in self.input_files
+
+    def iter_normal_filenames(self) -> Iterable[str]:
+        for filename in self.input_files:
+            if filename is None:
+                continue
+            yield filename
 
     def count_normal_files(self) -> int:
         return sum(
             1
-            for filename in self.input_files
-            if filename != self.filename_stdin()
+            for _ in self.iter_normal_filenames()
         )
 
 

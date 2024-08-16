@@ -10,13 +10,14 @@ import pandas as pd
 
 from domain.errors import ManabaReportArchiveIOError, ProjectCreateServiceError
 from domain.models.project_config import ProjectConfig
-from domain.models.reuslts import CompileResult, BuildResult
+from domain.models.reuslts import CompileResult, BuildResult, ExecuteResult
 from domain.models.stages import AbstractStudentProgress, StudentProgressWithFinishedStage, \
     StudentProgressStage, StudentProgressUnstarted
 from domain.models.student_master import StudentMaster, Student
 from domain.models.values import TargetID, ProjectName, StudentID
 from files.project import ProjectPathProvider, ProjectIO
 from files.report_archive import ManabaReportArchiveIO
+from files.testcase import TestCaseIO
 
 
 # from services.compiler import StudentEnvCompiler
@@ -281,8 +282,9 @@ class ProjectConstructionService:
 
 
 class ProjectService:
-    def __init__(self, *, project_io: ProjectIO):
+    def __init__(self, *, project_io: ProjectIO, testcase_io: TestCaseIO):
         self._project_io = project_io
+        self._testcase_io = testcase_io
 
     def get_project_name(self) -> ProjectName:
         return self._project_io.get_project_name()
@@ -305,7 +307,7 @@ class ProjectService:
         if stage == StudentProgressStage.COMPILE:
             return self._project_io.is_student_compile_finished(student_id)
         if stage == StudentProgressStage.EXECUTE:
-            return False
+            return self._project_io.is_student_execute_finished(student_id)
         assert False, stage
 
     def get_student_stage_result(self, student_id: StudentID, stage: StudentProgressStage) \
@@ -324,7 +326,11 @@ class ProjectService:
                 result=result,
             )
         if stage == StudentProgressStage.EXECUTE:
-            raise NotImplementedError()
+            result = self._project_io.read_student_execute_result(student_id)
+            return StudentProgressWithFinishedStage[ExecuteResult](
+                stage=StudentProgressStage.EXECUTE,
+                result=result,
+            )
         assert False, stage
 
     def get_student_progress(self, student_id: StudentID) -> AbstractStudentProgress:

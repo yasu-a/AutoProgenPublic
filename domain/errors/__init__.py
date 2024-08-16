@@ -1,3 +1,6 @@
+from domain.models.testcase import ExecuteConfig
+
+
 class ProjectIOError(RuntimeError):
     def __init__(self, reason: str):
         self.reason = reason
@@ -25,8 +28,9 @@ class CompileServiceError(RuntimeError):
 
 
 class ExecuteServiceError(RuntimeError):
-    def __init__(self, *, reason: str):
+    def __init__(self, *, reason: str, execute_config: ExecuteConfig):
         self.reason = reason
+        self.execute_config = execute_config
 
 
 class ProjectCreateServiceError(RuntimeError):
@@ -38,7 +42,6 @@ class ProjectListServiceError(RuntimeError):
     def __init__(self, *, reason: str):
         self.reason = reason
 
-
-class ExecuteConfigEditDomainServiceError(RuntimeError):
-    def __init__(self, *, reason: str):
-        self.reason = reason
+# class ExecuteConfigEditDomainServiceError(RuntimeError):
+#     def __init__(self, *, reason: str):
+#         self.reason = reason

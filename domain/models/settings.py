@@ -6,7 +6,7 @@ from pathlib import Path
 class GlobalSettings:
     compiler_tool_fullpath: Path | None
     compiler_timeout: float
-    execution_timeout: float
+    execution_timeout: float  # TODO: TestCaseConfigで定義しているので未使用
     max_workers: int
 
     @classmethod

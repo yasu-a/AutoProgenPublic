@@ -9,6 +9,7 @@ from files.settings import GlobalPathProvider, GlobalSettingsIO
 from files.testcase import TestCaseIO
 from services.build import BuildService
 from services.compile import CompileService
+from services.execute import ExecuteService
 from services.project import ProjectService, ProjectConstructionService
 from services.project_list import ProjectListService
 from services.settings import GlobalSettingsService
@@ -117,6 +118,7 @@ def get_project_io() -> ProjectIO:
 def get_project_service() -> ProjectService:
     return ProjectService(
         project_io=get_project_io(),
+        testcase_io=get_testcase_io(),
     )
 
 
@@ -157,5 +159,12 @@ def get_testcase_io() -> TestCaseIO:
 @functools.cache
 def get_testcase_edit_service() -> TestCaseEditService:
     return TestCaseEditService(
+        testcase_io=get_testcase_io(),
+    )
+
+
+def get_execute_service() -> ExecuteService:
+    return ExecuteService(
+        project_io=get_project_io(),
         testcase_io=get_testcase_io(),
     )

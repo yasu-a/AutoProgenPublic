@@ -125,7 +125,7 @@ class CompileService:
             output = compiler_tool.run_and_get_output()
         except _VSDevToolError as e:
             raise CompileServiceError(
-                reason=f"コンパイラの実行に失敗しました。\n{e.reason}",
+                reason=f"コンパイルに失敗しました。\n{e.reason}",
                 output=e.output,
             )
 

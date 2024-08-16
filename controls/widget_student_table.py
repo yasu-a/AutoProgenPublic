@@ -209,7 +209,7 @@ class StudentTableModel(QAbstractTableModel):
 
 
 class _StudentObserver(QObject):
-    student_modified = pyqtSignal(StudentID)
+    student_modified = pyqtSignal(StudentID, name="student_modified")
 
     @staticmethod
     def __student_id_cyclic_iterator(student_ids: list[StudentID]) -> Iterable[StudentID]:
@@ -226,7 +226,7 @@ class _StudentObserver(QObject):
         )
 
         self._timer = QTimer(self)
-        self._timer.setInterval(20)
+        self._timer.setInterval(50)
         self._timer.timeout.connect(self._on_timer_timeout)  # type: ignore
         self._timer.start()
 

@@ -1,11 +1,13 @@
+import io
 import json
 import os
+import shutil
 from pathlib import Path
-from typing import Optional
+from typing import Optional, TextIO
 
 from app_logging import create_logger
 from domain.models.testcase import TestCaseConfig
-from domain.models.values import TestCaseID
+from domain.models.values import TestCaseID, StudentID
 from files.project import ProjectPathProvider
 
 
@@ -65,6 +67,46 @@ class TestCaseIO:
         with json_fullpath.open(mode="r", encoding="utf-8") as f:
             return json.load(f)
 
+    # TODO: move ProjectCoreIO methods in ProjectIO and use that instead
+    def _touch(self, *, fullpath: Path, content: bytes = b""):
+        # プロジェクト内のパスにファイルを作る
+        assert fullpath.is_relative_to(
+            self._project_path_provider.project_folder_fullpath()
+        ), fullpath
+        fullpath.parent.mkdir(parents=True, exist_ok=True)
+        with fullpath.open(mode="wb") as f:
+            f.write(content)
+
+    # TODO: move into ProjectCoreIO and share it with other IO classes
+    def _copy_file_into_folder(
+            self,
+            src_file_fullpath: Path,
+            dst_folder_fullpath: Path,
+            dst_file_name: str = None,
+    ) -> None:
+        # プロジェクト内のファイルをプロジェクト内のフォルダにコピーする
+        assert src_file_fullpath.is_absolute(), src_file_fullpath
+        assert src_file_fullpath.is_relative_to(
+            self._project_path_provider.project_folder_fullpath()
+        ), src_file_fullpath
+        assert src_file_fullpath.is_file(), src_file_fullpath
+        assert dst_folder_fullpath.is_absolute(), dst_folder_fullpath
+        assert dst_folder_fullpath.is_relative_to(
+            self._project_path_provider.project_folder_fullpath()
+        ), dst_folder_fullpath
+        assert dst_folder_fullpath.is_dir(), dst_folder_fullpath
+        if dst_file_name is None:
+            dst_file_name = src_file_fullpath.name
+        shutil.copy(src_file_fullpath, dst_folder_fullpath / dst_file_name)
+
+    def _read_file_content(self, *, filepath: Path) -> str:
+        # プロジェクト内のテキストファイルを読み出す
+        assert filepath.is_relative_to(
+            self._project_path_provider.project_folder_fullpath()
+        ), filepath
+        with filepath.open(mode="r", encoding="utf-8") as f:
+            return f.read()
+
     def read_config(self, testcase_id: TestCaseID) -> TestCaseConfig:
         json_fullpath = self._project_path_provider.testcase_config_json_fullpath(
             testcase_id=testcase_id,
@@ -87,6 +129,147 @@ class TestCaseIO:
             testcase_id=testcase_id,
         )
         self._write_json(json_fullpath=json_fullpath, body=config.to_json())
+
+    def clone_student_executable_to_test_folder(
+            self,
+            student_id: StudentID,
+            testcase_id: TestCaseID,
+    ) -> None:
+        """
+        生徒の実行ファイルをテスト用のフォルダにコピーする
+
+        :param student_id: 生徒ID
+        :param testcase_id: テストケースID
+        """
+
+        # 生徒の実行ファイルのフルパス
+        student_executable_fullpath = self._project_path_provider.student_executable_fullpath(
+            student_id=student_id,
+        )
+        # 生徒のテストフォルダの実行ファイルのフルパス
+        student_test_executable_fullpath = self._project_path_provider.student_test_executable_fullpath(
+            student_id=student_id,
+            testcase_id=testcase_id,
+        )
+        # テストフォルダがない場合は生成する
+        student_test_executable_fullpath.parent.mkdir(parents=True, exist_ok=True)
+        # コピーする
+        self._copy_file_into_folder(
+            src_file_fullpath=student_executable_fullpath,
+            dst_folder_fullpath=student_test_executable_fullpath.parent,
+            dst_file_name=student_test_executable_fullpath.name,
+        )
+
+    def create_input_files_to_test_folder(
+            self,
+            student_id: StudentID,
+            testcase_id: TestCaseID,
+    ) -> None:
+        """
+        テストケースの入力ファイルを生徒のテスト用フォルダに生成する
+
+        :param student_id: 生徒ID
+        :param testcase_id: テストケースID
+        """
+
+        # 生徒のテストフォルダのフルパス
+        student_test_folder_fullpath = self._project_path_provider.student_test_folder_fullpath(
+            student_id=student_id,
+            testcase_id=testcase_id,
+        )
+        # テストフォルダがない場合は生成する
+        student_test_folder_fullpath.mkdir(parents=True, exist_ok=True)
+        # テストケースの入力ファイルを生成する
+        config = self.read_config(testcase_id=testcase_id)
+        for filename in config.execute_config.iter_normal_filenames():
+            content_bytes = config.execute_config.input_files[filename]
+            self._touch(
+                fullpath=student_test_folder_fullpath / filename,
+                content=content_bytes,
+            )
+        # 標準入力があればファイルとして作成する
+        if config.execute_config.has_stdin():
+            student_test_stdin_fullpath = self._project_path_provider.student_test_stdin_fullpath(
+                student_id=student_id,
+                testcase_id=testcase_id,
+            )
+            self._touch(
+                fullpath=student_test_stdin_fullpath,
+                content=config.execute_config.input_files[None],
+            )
+
+    def get_stdin_fp(
+            self,
+            student_id: StudentID,
+            testcase_id: TestCaseID,
+    ) -> TextIO:
+        """
+        標準入力を開いてファイルポインタを返す
+
+        :param student_id: 生徒ID
+        :param testcase_id: テストケースID
+        :return: 標準入力のI/O，存在しなければNone
+        """
+
+        # 標準入力のパス
+        stdin_fullpath = self._project_path_provider.student_test_stdin_fullpath(
+            student_id=student_id,
+            testcase_id=testcase_id,
+        )
+        # 存在しなければ空のストリームを返す
+        if not stdin_fullpath.exists():
+            return io.TextIOWrapper(io.BytesIO(b""), encoding='utf-8')
+        # ファイルを開いて返す
+        return stdin_fullpath.open(mode="r", encoding="utf-8")
+
+    def get_executable_fullpath_if_exists(
+            self,
+            student_id: StudentID,
+            testcase_id: TestCaseID,
+    ) -> Path | None:
+        """
+        実行可能ファイルのフルパスを返す
+
+        :param student_id: 生徒ID
+        :param testcase_id: テストケースID
+        :return: 実行可能ファイルのパス，存在しなければNone
+        """
+
+        # 生徒のテストフォルダのフルパス
+        executable_fullpath = self._project_path_provider.student_test_executable_fullpath(
+            student_id=student_id,
+            testcase_id=testcase_id,
+        )
+        # 存在しなければNoneを返す
+        if not executable_fullpath.exists():
+            return None
+        # 存在する場合は実行可能ファイルのパスを返す
+        return executable_fullpath
+
+    def dump_stdout(
+            self,
+            student_id: StudentID,
+            testcase_id: TestCaseID,
+            stdout_text: str,
+    ) -> None:
+        """
+        stdoutのテキストをダンプする
+
+        :param student_id: 生徒ID
+        :param testcase_id: テストケースID
+        :param stdout_text: stdoutのテキスト
+        """
+
+        # 生徒のテストフォルダの標準出力のフルパス
+        stdout_fullpath = self._project_path_provider.student_test_stdout_fullpath(
+            student_id=student_id,
+            testcase_id=testcase_id,
+        )
+        # 生徒のテストフォルダがない場合は生成する
+        stdout_fullpath.parent.mkdir(parents=True, exist_ok=True)
+        # stdoutのテキストをファイルに書き出す
+        with stdout_fullpath.open(mode="w", encoding="utf-8") as f:
+            f.write(stdout_text)
 
 # class TestCaseConfigError(ValueError):
 #     def __init__(
