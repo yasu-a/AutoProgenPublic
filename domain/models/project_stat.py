@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from models.values import ProjectName, TargetID
+from domain.models.values import ProjectName, TargetID
 
 
 @dataclass

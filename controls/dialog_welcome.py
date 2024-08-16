@@ -1,10 +1,10 @@
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
+from controls.dto.new_project_config import NewProjectConfig
 from controls.widget_new_project import NewProjectWidget
 from controls.widget_recent_project import RecentProjectWidget
-from models.new_project_config import NewProjectConfig
-from models.values import ProjectName
+from domain.models.values import ProjectName
 
 
 class WelcomeDialog(QDialog):

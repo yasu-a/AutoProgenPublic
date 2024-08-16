@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QWizardPage, QVBoxLayout, QLabel, QRadioButton, QPus
     QTextEdit, QWizard
 
 from controls.gui_filepath import FilePathWidget
-from models.errors import CompileServiceError
+from domain.errors import CompileServiceError
 from services.compile import CompileService
 
 

@@ -2,11 +2,11 @@ import subprocess
 from pathlib import Path
 
 from app_logging import create_logger
+from domain.errors import ProjectIOError, CompileServiceError
+from domain.models.reuslts import CompileResult
+from domain.models.values import StudentID
 from files.project import ProjectIO
 from files.settings import GlobalSettingsIO
-from models.errors import ProjectIOError, CompileServiceError
-from models.reuslts import CompileResult
-from models.values import StudentID
 
 
 class _VSDevToolError(RuntimeError):
@@ -104,7 +104,7 @@ class CompileService:
             )
 
         try:
-            compile_target_fullpath = self._project_io.get_student_compile_target_fullpath(
+            compile_target_fullpath = self._project_io.get_student_compile_target_source_fullpath(
                 student_id=student_id,
             )
         except ProjectIOError as e:

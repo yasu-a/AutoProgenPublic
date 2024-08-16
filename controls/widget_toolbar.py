@@ -16,6 +16,8 @@ class ToolBar(QToolBar):
         self.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.setIconSize(QSize(25, 25))
 
+        # ツールバーアクションの追加
+
         a = QAction(icon("play"), "実行", self)
         a.setObjectName("run")
         self.addAction(a)

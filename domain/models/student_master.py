@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from models.values import StudentID
+from domain.models.values import StudentID
 
 
 @dataclass(slots=True)

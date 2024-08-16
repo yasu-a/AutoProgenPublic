@@ -5,12 +5,12 @@ from PyQt5.QtWidgets import *
 from fonts import font
 
 
-class TestCaseTextEdit(QPlainTextEdit):
+class PlainTextEdit(QPlainTextEdit):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
         self._init_ui()
-        self.__init_signals()
+        self._init_signals()
 
     def _init_ui(self):
         self.setFont(font(monospace=True, small=True))
@@ -27,7 +27,7 @@ class TestCaseTextEdit(QPlainTextEdit):
         else:
             self.document().setDefaultTextOption(QTextOption())
 
-    def __init_signals(self):
+    def _init_signals(self):
         pass
 
     # https://stackoverflow.com/questions/38234021/horizontal-scroll-on-wheelevent-with-shift-too-fast

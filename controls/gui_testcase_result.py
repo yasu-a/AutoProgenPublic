@@ -3,10 +3,10 @@ import sys
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from fonts import font
 from controls.gui_testcase_result_state import TestCaseResultStateIndicatorWidget
-from controls.gui_testcase_text import TestCaseTextEdit
-from models.testcase import TestCaseResultState, TestCaseResult, TestCase, TestCaseConfig
+from controls.widget_plain_text_edit import PlainTextEdit
+from domain.models.testcase import TestCaseResultState, TestCaseResult, TestCase, TestCaseConfig
+from fonts import font
 
 
 class TestCaseResultWidget(QWidget):
@@ -51,7 +51,7 @@ class TestCaseResultWidget(QWidget):
             label.setAlignment(Qt.AlignCenter)
             layout.addWidget(label, 0, 0)
 
-            self._te_input = TestCaseTextEdit(self)
+            self._te_input = PlainTextEdit(self)
             self._te_input.setReadOnly(True)
             layout.addWidget(self._te_input, 1, 0)
 
@@ -60,7 +60,7 @@ class TestCaseResultWidget(QWidget):
             label.setAlignment(Qt.AlignCenter)
             layout.addWidget(label, 0, 2)
 
-            self._te_actual_output = TestCaseTextEdit(self)
+            self._te_actual_output = PlainTextEdit(self)
             self._te_actual_output.setReadOnly(True)
             layout.addWidget(self._te_actual_output, 1, 2)
 
@@ -69,7 +69,7 @@ class TestCaseResultWidget(QWidget):
             layout.addWidget(label, 0, 4)
 
         if "right":
-            self._te_expected_output = TestCaseTextEdit(self)
+            self._te_expected_output = PlainTextEdit(self)
             self._te_expected_output.setReadOnly(True)
             layout.addWidget(self._te_expected_output, 1, 4)
 

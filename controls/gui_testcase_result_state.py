@@ -3,8 +3,8 @@ import sys
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
+from domain.models.testcase import TestCaseResultState
 from fonts import font
-from models.testcase import TestCaseResultState
 
 
 class TestCaseResultStateIndicatorWidget(QFrame):

@@ -1,18 +1,9 @@
 import os
 import re
-import zipfile
 from abc import ABCMeta
-from datetime import datetime
-from typing import NamedTuple, Collection, Iterator
-from typing import TYPE_CHECKING
+from typing import NamedTuple, Collection
 
-from models.environment import EnvEntryLabel, StudentEnvImportResult, StudentEnvEntry, \
-    StudentEnvMeta
-# from models.student import StudentMeta
-
-if TYPE_CHECKING:
-    from files.environment import EnvironmentIO
-    from files.submission import SubmissionIO
+from domain.models.environment import EnvEntryLabel
 
 
 class EnvItemToImport(NamedTuple):

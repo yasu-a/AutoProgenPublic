@@ -1,9 +1,9 @@
 import re
 
+from domain.errors import ProjectIOError, BuildServiceError
+from domain.models.reuslts import BuildResult
+from domain.models.values import StudentID
 from files.project import ProjectIO
-from models.errors import ProjectIOError, BuildServiceError
-from models.reuslts import BuildResult
-from models.values import StudentID
 
 
 class BuildService:  # environment builder

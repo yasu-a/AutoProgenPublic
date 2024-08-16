@@ -1,16 +1,18 @@
 import functools
 from pathlib import Path
 
+from domain.models.values import ProjectName
 from files.project import ProjectPathProvider, ProjectIO, ProjectPathProviderWithoutDependency, \
     ProjectIOWithoutDependency
 from files.report_archive import ManabaReportArchiveIO
 from files.settings import GlobalPathProvider, GlobalSettingsIO
-from models.values import ProjectName
+from files.testcase import TestCaseIO
 from services.build import BuildService
 from services.compile import CompileService
 from services.project import ProjectService, ProjectConstructionService
 from services.project_list import ProjectListService
 from services.settings import GlobalSettingsService
+from services.testcase_edit import TestCaseEditService
 from tasks.manager import TaskManager
 
 _debug = False
@@ -142,4 +144,18 @@ def get_compile_service() -> CompileService:
     return CompileService(
         global_settings_io=get_global_settings_io(),
         project_io=get_project_io(),
+    )
+
+
+@functools.cache
+def get_testcase_io() -> TestCaseIO:
+    return TestCaseIO(
+        project_path_provider=get_project_path_provider(),
+    )
+
+
+@functools.cache
+def get_testcase_edit_service() -> TestCaseEditService:
+    return TestCaseEditService(
+        testcase_io=get_testcase_io(),
     )

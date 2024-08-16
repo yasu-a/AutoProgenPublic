@@ -3,6 +3,11 @@ class ProjectIOError(RuntimeError):
         self.reason = reason
 
 
+class TestCaseIOError(RuntimeError):
+    def __init__(self, reason: str):
+        self.reason = reason
+
+
 class ManabaReportArchiveIOError(RuntimeError):
     def __init__(self, *, reason: str):
         self.reason = reason
@@ -19,11 +24,21 @@ class CompileServiceError(RuntimeError):
         self.output = output
 
 
+class ExecuteServiceError(RuntimeError):
+    def __init__(self, *, reason: str):
+        self.reason = reason
+
+
 class ProjectCreateServiceError(RuntimeError):
     def __init__(self, reason: str):
         self.reason = reason
 
 
 class ProjectListServiceError(RuntimeError):
+    def __init__(self, *, reason: str):
+        self.reason = reason
+
+
+class ExecuteConfigEditDomainServiceError(RuntimeError):
     def __init__(self, *, reason: str):
         self.reason = reason

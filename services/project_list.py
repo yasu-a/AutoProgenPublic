@@ -2,10 +2,10 @@ from datetime import datetime
 from pathlib import Path
 
 from app_logging import create_logger
+from domain.errors import ProjectListServiceError
+from domain.models.project_stat import ProjectStat
+from domain.models.values import ProjectName
 from files.project import ProjectIOWithoutDependency
-from models.errors import ProjectListServiceError
-from models.project_stat import ProjectStat
-from models.values import ProjectName
 
 
 class ProjectListService:

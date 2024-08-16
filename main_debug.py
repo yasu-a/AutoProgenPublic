@@ -2,11 +2,11 @@ from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
 from controls.dialog_welcome import WelcomeDialog
+from controls.dto.new_project_config import NewProjectConfig
 from controls.window_main import MainWindow
+from domain.errors import ProjectCreateServiceError
+from domain.models.values import ProjectName
 from fonts import font
-from models.errors import ProjectCreateServiceError
-from models.new_project_config import NewProjectConfig
-from models.values import ProjectName
 from service_provider import set_debug, set_project_name, get_project_construction_service
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from models.values import ProjectName, TargetID
+from domain.models.values import ProjectName, TargetID
 
 
 @dataclass

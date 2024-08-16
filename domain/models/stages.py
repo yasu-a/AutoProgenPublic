@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from enum import IntEnum
 from typing import TypeVar, Generic
 
-from models.reuslts import AbstractResult
+from domain.models.reuslts import AbstractResult
 
 
 class StudentProgressStage(IntEnum):
@@ -36,19 +36,19 @@ _ResultType = TypeVar("_ResultType", bound=AbstractResult)
 class AbstractStudentProgress(ABC):
     @abstractmethod
     def get_expected_next_stage(
-            self) -> StudentProgressStage | None:  # None means all stages finished
+            self) -> StudentProgressStage | None:  # None if all stages finished
         raise NotImplementedError()
 
     @abstractmethod
-    def get_finished_stage(self) -> StudentProgressStage | None:  # None means no stages finished
+    def get_finished_stage(self) -> StudentProgressStage | None:  # None if no stages finished
         raise NotImplementedError()
 
     @abstractmethod
-    def is_success(self) -> bool | None:  # None means no stages finished
+    def is_success(self) -> bool | None:  # None if no stages finished
         raise NotImplementedError()
 
     @abstractmethod
-    def get_main_reason(self) -> bool | None:  # None means no stages finished or no error occurred
+    def get_main_reason(self) -> bool | None:  # None if no stages finished or no error occurred
         raise NotImplementedError()
 
     @abstractmethod

@@ -8,15 +8,15 @@ import dateutil.parser
 import openpyxl
 import pandas as pd
 
+from domain.errors import ManabaReportArchiveIOError, ProjectCreateServiceError
+from domain.models.project_config import ProjectConfig
+from domain.models.reuslts import CompileResult, BuildResult
+from domain.models.stages import AbstractStudentProgress, StudentProgressWithFinishedStage, \
+    StudentProgressStage, StudentProgressUnstarted
+from domain.models.student_master import StudentMaster, Student
+from domain.models.values import TargetID, ProjectName, StudentID
 from files.project import ProjectPathProvider, ProjectIO
 from files.report_archive import ManabaReportArchiveIO
-from models.errors import ManabaReportArchiveIOError, ProjectCreateServiceError
-from models.project_config import ProjectConfig
-from models.reuslts import CompileResult, BuildResult
-from models.stages import AbstractStudentProgress, StudentProgressWithFinishedStage, \
-    StudentProgressStage, StudentProgressUnstarted
-from models.student_master import StudentMaster, Student
-from models.values import TargetID, ProjectName, StudentID
 
 
 # from services.compiler import StudentEnvCompiler
@@ -202,7 +202,6 @@ class ProjectConstructionService:
         self._project_io.create_project_folder()
 
         # create student master
-
         try:
             with self._manaba_report_archive_io.open_master_excel() as f:
                 wb = openpyxl.open(

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from PyQt5.QtCore import QMutex
 
-from models.settings import GlobalSettings
+from domain.models.settings import GlobalSettings
 
 
 class GlobalPathProvider:

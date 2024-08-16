@@ -1,16 +1,16 @@
-from models.errors import BuildServiceError, CompileServiceError
-from models.stages import StudentProgressStage
+from domain.errors import BuildServiceError, CompileServiceError
+from domain.models.stages import StudentProgressStage
 from service_provider import get_build_service, get_project_service, get_compile_service
 from tasks.tasks import AbstractStudentTask
 
 
 class StudentTask(AbstractStudentTask):
-    def _clear_student_if_error(self):
+    def _clear_student_if_last_stage_error(self):
         project_service = get_project_service()
         progress = project_service.get_student_progress(self._student_id)
-        if progress.is_success() is None:
+        if progress.is_success() is None:  # どのステージも完了していない
             return
-        if progress.is_success() is True:
+        if progress.is_success() is True:  # 最後のステージが完了している
             return
         project_service.clear_student(self._student_id)
 
@@ -35,7 +35,7 @@ class StudentTask(AbstractStudentTask):
 
     def run(self):
         self._logger.info("TASK ENTER")
-        self._clear_student_if_error()  # TODO: レポートフォルダのハッシュをとって変更が加えられた学生も初期化実行する！！！
+        self._clear_student_if_last_stage_error()  # TODO: レポートフォルダのハッシュをとって変更が加えられた学生も初期化実行する！！！
         project_service = get_project_service()
         prev_stage = None
         while True:

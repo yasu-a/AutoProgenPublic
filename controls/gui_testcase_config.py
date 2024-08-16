@@ -1,7 +1,7 @@
 from PyQt5.QtCore import QObject
 from PyQt5.QtWidgets import QFrame, QGridLayout, QLabel, QCheckBox, QWidget, QHBoxLayout, QSpinBox
 
-from models.testcase import TestCaseConfig
+from domain.models.testcase import TestCaseConfig
 
 
 class TestCaseConfigEditWidget(QFrame):

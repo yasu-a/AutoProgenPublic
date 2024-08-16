@@ -116,15 +116,12 @@ class TargetID:
 
 
 class TestCaseID:
-    def __init__(self, value: int):
-        assert isinstance(value, int)
+    def __init__(self, value: str):
+        assert isinstance(value, str)
         self.__value = value
 
-    def __int__(self) -> int:
-        return self.__value
-
     def __str__(self) -> str:
-        return str(int(self))
+        return self.__value
 
     def __hash__(self):
         return hash(self.__value)
@@ -134,7 +131,7 @@ class TestCaseID:
         return self.__value == other.__value
 
     def __repr__(self):
-        return f"{type(self).__name__}({self.__value})"
+        return f"{type(self).__name__}(\"{self.__value}\")"
 
     def __lt__(self, other):
         assert isinstance(other, type(self))
@@ -145,4 +142,4 @@ class TestCaseID:
 
     @classmethod
     def from_json(cls, value):
-        return cls(int(value))
+        return cls(value)

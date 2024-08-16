@@ -1,18 +1,8 @@
-import copy
 import re
 import subprocess
-from typing import TYPE_CHECKING
 
-from models.environment import EnvEntryLabel
 # from models.student import Student
-from models.testcase import TestCase, TestCaseResult, TestSession, TestSessionResult, \
-    TestCaseResultState
-
-if TYPE_CHECKING:
-    from files.environment import EnvironmentIO
-    from files.testcase import TestCaseIO
-
-from files.testcase import TestCaseConfigError
+from domain.models.testcase import TestCase, TestCaseResultState
 
 
 class TesterError(ValueError):

@@ -5,8 +5,8 @@ from PyQt5.QtCore import QObject, QTimer, QMutex
 from PyQt5.QtWidgets import qApp
 
 from app_logging import create_logger
+from domain.models.values import StudentID
 from files.settings import GlobalSettingsIO
-from models.values import StudentID
 from tasks.tasks import AbstractStudentTask, AbstractTask
 
 

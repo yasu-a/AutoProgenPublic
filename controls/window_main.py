@@ -2,6 +2,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
+from controls.dialog_testcase_list_edit import TestCaseListEditDialog
 from controls.widget_student_table import StudentTableWidget
 from controls.widget_toolbar import ToolBar
 from icons import icon
@@ -37,10 +38,12 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(icon("title"))
         self.resize(1500, 800)
 
+        # ツールバー
         self._tool_bar = ToolBar(self)
         # noinspection PyUnresolvedReferences
         self.addToolBar(self._tool_bar)
 
+        # 生徒のテーブル
         self._w_student_table = StudentTableWidget(self)
         # noinspection PyUnresolvedReferences
         self.setCentralWidget(self._w_student_table)
@@ -57,6 +60,9 @@ class MainWindow(QMainWindow):
                         student_id=student_id,
                     )
                 )
+        elif name == "edit-testcases":
+            dialog = TestCaseListEditDialog(self)
+            dialog.exec_()
         else:
             assert False, name
         # if name == "run":

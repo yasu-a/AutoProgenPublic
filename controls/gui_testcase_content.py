@@ -3,10 +3,10 @@ import copy
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from fonts import font
 from controls.gui_testcase_config import TestCaseConfigEditWidget
-from controls.gui_testcase_text import TestCaseTextEdit
-from models.testcase import TestCase
+from controls.widget_plain_text_edit import PlainTextEdit
+from domain.models.testcase import TestCase
+from fonts import font
 
 
 class TestCaseContentTextEditWidget(QWidget):
@@ -39,14 +39,14 @@ class TestCaseContentTextEditWidget(QWidget):
             layout_grid.addWidget(label, 0, 2)
 
         if "text-edit":
-            self._te_input = TestCaseTextEdit(self)  # type: ignore
+            self._te_input = PlainTextEdit(self)  # type: ignore
             self._te_input.setFont(font(monospace=True))
             layout_grid.addWidget(self._te_input, 1, 0)
 
             label = QLabel("▷", self)
             layout_grid.addWidget(label, 1, 1)
 
-            self._te_output = TestCaseTextEdit(self)  # type: ignore
+            self._te_output = PlainTextEdit(self)  # type: ignore
             self._te_output.setFont(font(monospace=True))
             layout_grid.addWidget(self._te_output, 1, 2)
 

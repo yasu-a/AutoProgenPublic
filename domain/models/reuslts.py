@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from models.errors import BuildServiceError, CompileServiceError
+from domain.errors import BuildServiceError, CompileServiceError
 
 
 @dataclass
@@ -77,3 +77,16 @@ class CompileResult(AbstractResult):
             reason=body["reason"],
             output=body["output"],
         )
+
+
+@dataclass
+class ExecuteResult(AbstractResult):
+    # config: ExecuteConfig
+    # output: ExecuteOutput
+
+    def to_json(self):
+        raise NotImplementedError()
+
+    @classmethod
+    def from_json(cls, body):
+        raise NotImplementedError()

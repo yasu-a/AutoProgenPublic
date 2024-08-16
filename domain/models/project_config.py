@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from models.values import TargetID
+from domain.models.values import TargetID
 
 
 @dataclass

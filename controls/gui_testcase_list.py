@@ -6,8 +6,8 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
 import state
-from files.testcase import TestCaseConfigError
 from controls.gui_testcase_content import TestCaseContentEditDialog
+from files.testcase import TestCaseConfigError
 from icons import icon
 
 if TYPE_CHECKING:

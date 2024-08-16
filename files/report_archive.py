@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import Iterable
 
 from app_logging import create_logger
-from models.errors import ManabaReportArchiveIOError
-from models.values import StudentID
+from domain.errors import ManabaReportArchiveIOError
+from domain.models.values import StudentID
 
 
 class ManabaReportArchiveIO:

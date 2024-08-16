@@ -9,7 +9,7 @@ from fonts import font
 
 
 # https://github.com/baoboa/pyqt5/blob/master/examples/richtext/syntaxhighlighter.py
-class CHighlighter(QSyntaxHighlighter):
+class _CHighlighter(QSyntaxHighlighter):
     TYPE_KEYWORDS = [
         "void", "char", "short", "int", "long", "float", "double", "signed", "unsigned", "_Bool",
         "_Complex", "_Imaginary", "size_t", "wchar_t", "int8_t", "int16_t", "int32_t", "int64_t",
@@ -108,7 +108,7 @@ class SourceTextEdit(QPlainTextEdit):
     def _init_ui(self):
         self.setFont(font(monospace=True, small=True))
         self.setLineWrapMode(QPlainTextEdit.NoWrap)
-        self._h = CHighlighter(self.document())
+        self._h = _CHighlighter(self.document())
 
     # https://stackoverflow.com/questions/38234021/horizontal-scroll-on-wheelevent-with-shift-too-fast
     # noinspection DuplicatedCode

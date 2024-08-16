@@ -6,9 +6,9 @@ from PyQt5.QtGui import QColor, QWheelEvent, QFont
 from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
+from domain.models.stages import StudentProgressStage, AbstractStudentProgress
+from domain.models.values import StudentID
 from fonts import font
-from models.stages import StudentProgressStage, AbstractStudentProgress
-from models.values import StudentID
 from service_provider import get_project_service
 
 
@@ -212,7 +212,7 @@ class _StudentObserver(QObject):
     student_modified = pyqtSignal(StudentID)
 
     @staticmethod
-    def student_id_cyclic_iterator(student_ids: list[StudentID]) -> Iterable[StudentID]:
+    def __student_id_cyclic_iterator(student_ids: list[StudentID]) -> Iterable[StudentID]:
         while True:
             for student_id in student_ids:
                 yield student_id
@@ -222,7 +222,7 @@ class _StudentObserver(QObject):
 
         self._service = get_project_service()
         self._student_id_iter = iter(
-            self.student_id_cyclic_iterator(self._service.get_student_ids())
+            self.__student_id_cyclic_iterator(self._service.get_student_ids())
         )
 
         self._timer = QTimer(self)
@@ -239,8 +239,9 @@ class _StudentObserver(QObject):
         prev_mtime = self._student_id_mtime_mapping.get(student_id)
         current_mtime = self._service.get_student_mtime(student_id)
         if prev_mtime != current_mtime:
-            # noinspection PyUnresolvedReferences
-            self.student_modified.emit(student_id)
+            if prev_mtime is not None:  # 初めて巡回したときは更新を行わない
+                # noinspection PyUnresolvedReferences
+                self.student_modified.emit(student_id)
         self._student_id_mtime_mapping[student_id] = current_mtime
 
 
