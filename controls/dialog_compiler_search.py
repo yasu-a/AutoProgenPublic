@@ -5,7 +5,7 @@ from PyQt5.QtGui import QCloseEvent, QShowEvent
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QWidget, QLabel, QMessageBox, QInputDialog
 
 from app_logging import create_logger
-from service_provider import get_compiler_location_search_service
+from application.dependency import get_compiler_location_search_service
 
 
 class _CompilerSearchWorker(QThread):

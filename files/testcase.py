@@ -1,21 +1,26 @@
 import io
-import json
 import os
-import shutil
 from pathlib import Path
-from typing import Optional, TextIO
+from typing import TextIO
 
 from app_logging import create_logger
 from domain.models.testcase import TestCaseConfig
 from domain.models.values import TestCaseID, StudentID
+from files.project_core import ProjectCoreIO
 from files.project_path_provider import ProjectPathProvider
 
 
 class TestCaseIO:
     _logger = create_logger()
 
-    def __init__(self, *, project_path_provider: ProjectPathProvider):
+    def __init__(
+            self,
+            *,
+            project_path_provider: ProjectPathProvider,
+            project_core_io: ProjectCoreIO,
+    ):
         self._project_path_provider = project_path_provider
+        self._project_core_io = project_core_io
 
     def open_in_explorer(self) -> None:
         testcase_folder_fullpath \
@@ -33,85 +38,11 @@ class TestCaseIO:
                 id_lst.append(TestCaseID(path.stem))
         return id_lst
 
-    # TODO: move ProjectCoreIO methods in ProjectIO and use that instead
-    def _unlink(self, path: Path) -> None:
-        # プロジェクト内のファイルを削除する
-        assert path.is_absolute(), path
-        assert path.is_relative_to(
-            self._project_path_provider.project_folder_fullpath()
-        ), path
-        self._logger.info(f"unlink {path!s}")
-        path.unlink(missing_ok=False)
-
-    # TODO: move ProjectCoreIO methods in ProjectIO and use that instead
-    def _write_json(self, *, json_fullpath: Path, body):
-        # プロジェクト内のパスにjsonを書き込む
-        assert json_fullpath.is_relative_to(
-            self._project_path_provider.project_folder_fullpath()
-        ), json_fullpath
-        json_fullpath.parent.mkdir(parents=True, exist_ok=True)
-        with json_fullpath.open(mode="w", encoding="utf-8") as f:
-            json.dump(
-                body,
-                f,
-                indent=2,
-                ensure_ascii=False,
-            )
-
-    # TODO: move ProjectCoreIO methods in ProjectIO and use that instead
-    def _read_json(self, *, json_fullpath: Path) -> Optional:
-        # プロジェクト内のパスからjsonを読み出す
-        assert json_fullpath.is_relative_to(
-            self._project_path_provider.project_folder_fullpath()
-        ), json_fullpath
-        with json_fullpath.open(mode="r", encoding="utf-8") as f:
-            return json.load(f)
-
-    # TODO: move ProjectCoreIO methods in ProjectIO and use that instead
-    def _touch(self, *, fullpath: Path, content: bytes = b""):
-        # プロジェクト内のパスにファイルを作る
-        assert fullpath.is_relative_to(
-            self._project_path_provider.project_folder_fullpath()
-        ), fullpath
-        fullpath.parent.mkdir(parents=True, exist_ok=True)
-        with fullpath.open(mode="wb") as f:
-            f.write(content)
-
-    # TODO: move into ProjectCoreIO and share it with other IO classes
-    def _copy_file_into_folder(
-            self,
-            src_file_fullpath: Path,
-            dst_folder_fullpath: Path,
-            dst_file_name: str = None,
-    ) -> None:
-        # プロジェクト内のファイルをプロジェクト内のフォルダにコピーする
-        assert src_file_fullpath.is_absolute(), src_file_fullpath
-        assert src_file_fullpath.is_relative_to(
-            self._project_path_provider.project_folder_fullpath()
-        ), src_file_fullpath
-        assert src_file_fullpath.is_file(), src_file_fullpath
-        assert dst_folder_fullpath.is_absolute(), dst_folder_fullpath
-        assert dst_folder_fullpath.is_relative_to(
-            self._project_path_provider.project_folder_fullpath()
-        ), dst_folder_fullpath
-        assert dst_folder_fullpath.is_dir(), dst_folder_fullpath
-        if dst_file_name is None:
-            dst_file_name = src_file_fullpath.name
-        shutil.copy(src_file_fullpath, dst_folder_fullpath / dst_file_name)
-
-    def _read_file_content(self, *, filepath: Path) -> str:
-        # プロジェクト内のテキストファイルを読み出す
-        assert filepath.is_relative_to(
-            self._project_path_provider.project_folder_fullpath()
-        ), filepath
-        with filepath.open(mode="r", encoding="utf-8") as f:
-            return f.read()
-
     def read_config(self, testcase_id: TestCaseID) -> TestCaseConfig:
         json_fullpath = self._project_path_provider.testcase_config_json_fullpath(
             testcase_id=testcase_id,
         )
-        json_body = self._read_json(json_fullpath=json_fullpath)
+        json_body = self._project_core_io.read_json(json_fullpath=json_fullpath)
         return TestCaseConfig.from_json(json_body)
 
     def create_config(self, testcase_id: TestCaseID) -> None:
@@ -122,13 +53,13 @@ class TestCaseIO:
         json_fullpath = self._project_path_provider.testcase_config_json_fullpath(
             testcase_id=testcase_id,
         )
-        self._unlink(path=json_fullpath)
+        self._project_core_io.unlink(path=json_fullpath)
 
     def write_config(self, testcase_id: TestCaseID, config: TestCaseConfig) -> None:
         json_fullpath = self._project_path_provider.testcase_config_json_fullpath(
             testcase_id=testcase_id,
         )
-        self._write_json(json_fullpath=json_fullpath, body=config.to_json())
+        self._project_core_io.write_json(json_fullpath=json_fullpath, body=config.to_json())
 
     def clone_student_executable_to_test_folder(
             self,
@@ -154,7 +85,7 @@ class TestCaseIO:
         # テストフォルダがない場合は生成する
         student_test_executable_fullpath.parent.mkdir(parents=True, exist_ok=True)
         # コピーする
-        self._copy_file_into_folder(
+        self._project_core_io.copy_file_into_folder(
             src_file_fullpath=student_executable_fullpath,
             dst_folder_fullpath=student_test_executable_fullpath.parent,
             dst_file_name=student_test_executable_fullpath.name,
@@ -183,8 +114,8 @@ class TestCaseIO:
         config = self.read_config(testcase_id=testcase_id)
         for filename in config.execute_config.iter_normal_filenames():
             content_bytes = config.execute_config.input_files[filename]
-            self._touch(
-                fullpath=student_test_folder_fullpath / filename,
+            self._project_core_io.touch(
+                file_fullpath=student_test_folder_fullpath / filename,
                 content=content_bytes,
             )
         # 標準入力があればファイルとして作成する
@@ -193,8 +124,8 @@ class TestCaseIO:
                 student_id=student_id,
                 testcase_id=testcase_id,
             )
-            self._touch(
-                fullpath=student_test_stdin_fullpath,
+            self._project_core_io.touch(
+                file_fullpath=student_test_stdin_fullpath,
                 content=config.execute_config.input_files[None],
             )
 

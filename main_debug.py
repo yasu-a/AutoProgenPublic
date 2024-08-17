@@ -1,13 +1,15 @@
 from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
+from application.current_project import set_current_project_name
+from application.debug import set_debug
+from application.dependency import get_project_construction_service
 from controls.dialog_welcome import WelcomeDialog
 from controls.dto.new_project_config import NewProjectConfig
 from controls.window_main import MainWindow
 from domain.errors import ProjectCreateServiceError
 from domain.models.values import ProjectName
 from fonts import font
-from service_provider import set_debug, set_project_name, get_project_construction_service
 
 if __name__ == '__main__':
     import sys
@@ -39,10 +41,10 @@ if __name__ == '__main__':
         result = welcome.get_result()
         if isinstance(result, ProjectName):
             project_name: ProjectName = result
-            set_project_name(project_name)
+            set_current_project_name(project_name)
         elif isinstance(result, NewProjectConfig):
             new_project_config: NewProjectConfig = result
-            set_project_name(new_project_config.project_name)
+            set_current_project_name(new_project_config.project_name)
             try:
                 get_project_construction_service(
                     manaba_report_archive_fullpath=new_project_config.manaba_report_archive_fullpath,

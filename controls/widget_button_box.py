@@ -59,4 +59,5 @@ class ButtonBox(QWidget):
     def __on_b_clicked(self):
         b = self.sender()
         command_name = b.objectName()
+        # noinspection PyUnresolvedReferences
         self.triggered.emit(command_name)

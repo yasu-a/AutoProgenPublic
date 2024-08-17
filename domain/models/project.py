@@ -10,7 +10,7 @@
 #     def to_json(self):
 #         return dict(
 #             students={k: v.to_json() for k, v in self.students.items()},
-#             # testflows TODO: impl
+#             # testflows
 #             version=self.version,
 #         )
 #
@@ -21,7 +21,7 @@
 #                 k: Student.from_json(body["students"][k])
 #                 for k in sorted(body["students"])
 #             }),
-#             # test_sessions={},  # TODO: impl
+#             # test_sessions={},
 #             version=tuple(body["version"]),
 #         )
 #

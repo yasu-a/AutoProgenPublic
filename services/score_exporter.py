@@ -63,7 +63,10 @@ class _WorkSheetReader:
 
     def validate(self):
         header = self._rows_str[self.get_i_row_table_header()]
-        if header[0] != "# 学籍番号" or header[1] != "# 氏名" or header[2] != "# 合計点" or header[3] != "問1":
+        if header[0] != "# 学籍番号" \
+                or header[1] != "# 氏名" \
+                or header[2] != "# 合計点" \
+                or header[3] != "問1":
             raise _ScoreExporterExcelError("このワークシートの形式には対応していません", header)
 
     def create_index_mapping(self, student_ids: list[str], target_number: int) \

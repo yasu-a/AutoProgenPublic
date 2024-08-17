@@ -1,12 +1,14 @@
 import functools
 from pathlib import Path
 
-from domain.models.values import ProjectName
+from application.current_project import get_current_project_name
 from files.build_test import BuildTestIO
 from files.compile_tool import CompileToolIO
 from files.global_path_provider import GlobalPathProvider
-from files.project import ProjectIO, ProjectIOWithoutDependency
-from files.project_path_provider import ProjectPathProvider, ProjectPathProviderWithoutDependency
+from files.progress import ProgressIO
+from files.project import ProjectIOWithoutDependency, ProjectIO
+from files.project_core import ProjectCoreIO
+from files.project_path_provider import ProjectPathProviderWithoutDependency, ProjectPathProvider
 from files.report_archive import ManabaReportArchiveIO
 from files.settings import GlobalSettingsIO
 from files.testcase import TestCaseIO
@@ -21,20 +23,12 @@ from services.settings import GlobalSettingsEditService
 from services.testcase_edit import TestCaseEditService
 from tasks.manager import TaskManager
 
-_debug = False
 
-
-def set_debug(debug: bool):
-    global _debug
-    _debug = debug
-
-
-def is_debug() -> bool:
-    return _debug
-
-
+# プロジェクトに依存しないプロジェクト系
 def get_project_path_provider_without_dependency(project_list_folder_fullpath: Path) \
         -> ProjectPathProviderWithoutDependency:
+    # 特定のプロジェクトに依存しないProjectPathProvider
+    # TODO: _without_dependency系クラスを解消せよ
     return ProjectPathProviderWithoutDependency(
         project_list_folder_fullpath=project_list_folder_fullpath,
     )
@@ -42,6 +36,8 @@ def get_project_path_provider_without_dependency(project_list_folder_fullpath: P
 
 def get_project_io_without_dependency(project_list_folder_fullpath: Path) \
         -> ProjectIOWithoutDependency:
+    # 特定のプロジェクトに依存しないProjectIO
+    # TODO: _without_dependency系クラスを解消せよ
     return ProjectIOWithoutDependency(
         project_path_provider_without_dependency=get_project_path_provider_without_dependency(
             project_list_folder_fullpath=project_list_folder_fullpath,
@@ -59,10 +55,16 @@ def get_project_list_service() -> ProjectListService:
     )
 
 
+# Manabaレポートzipファイル
+
+
 def get_manaba_report_archive_io(manaba_report_archive_fullpath: Path) -> ManabaReportArchiveIO:
     return ManabaReportArchiveIO(
         manaba_report_archive_fullpath=manaba_report_archive_fullpath,
     )
+
+
+# グローバル
 
 
 def get_global_path_provider() -> GlobalPathProvider:
@@ -84,18 +86,7 @@ def get_global_settings_edit_service() -> GlobalSettingsEditService:
     )
 
 
-_project_name: ProjectName | None = None
-
-
-def set_project_name(project_name: ProjectName):
-    global _project_name
-    assert _project_name is None, _project_name
-    _project_name = project_name
-
-
-def _get_project_fullpath() -> Path:
-    assert _project_name is not None, _project_name
-    return get_project_list_service().create_project_folder_fullpath(_project_name)
+# タスクマネージャ
 
 
 @functools.cache
@@ -105,10 +96,26 @@ def get_task_manager() -> TaskManager:
     )
 
 
+# アクティブなプロジェクト
+
+
+def get_current_project_fullpath() -> Path:
+    project_name = get_current_project_name()
+    assert project_name is not None, project_name
+    return get_project_list_service().create_project_folder_fullpath(project_name)
+
+
 @functools.cache
 def get_project_path_provider() -> ProjectPathProvider:
     return ProjectPathProvider(
-        project_folder_fullpath=_get_project_fullpath(),
+        project_folder_fullpath=get_current_project_fullpath(),
+    )
+
+
+@functools.cache
+def get_project_core_io() -> ProjectCoreIO:
+    return ProjectCoreIO(
+        project_path_provider=get_project_path_provider(),
     )
 
 
@@ -116,6 +123,15 @@ def get_project_path_provider() -> ProjectPathProvider:
 def get_project_io() -> ProjectIO:
     return ProjectIO(
         project_path_provider=get_project_path_provider(),
+        project_core_io=get_project_core_io(),
+    )
+
+
+@functools.cache
+def get_progress_io() -> ProgressIO:
+    return ProgressIO(
+        project_path_provider=get_project_path_provider(),
+        project_core_io=get_project_core_io(),
     )
 
 
@@ -124,6 +140,7 @@ def get_project_service() -> ProjectService:
     return ProjectService(
         project_io=get_project_io(),
         testcase_io=get_testcase_io(),
+        progress_io=get_progress_io(),
     )
 
 
@@ -145,6 +162,7 @@ def get_project_construction_service(
 def get_build_service() -> BuildService:
     return BuildService(
         project_io=get_project_io(),
+        progress_io=get_progress_io(),
     )
 
 
@@ -158,6 +176,7 @@ def get_compile_service() -> CompileService:
         global_settings_io=get_global_settings_io(),
         project_io=get_project_io(),
         compile_tool_io=get_compile_tool_io(),
+        progress_io=get_progress_io(),
     )
 
 
@@ -165,6 +184,7 @@ def get_compile_service() -> CompileService:
 def get_testcase_io() -> TestCaseIO:
     return TestCaseIO(
         project_path_provider=get_project_path_provider(),
+        project_core_io=get_project_core_io(),
     )
 
 
@@ -180,6 +200,7 @@ def get_execute_service() -> ExecuteService:
     return ExecuteService(
         project_io=get_project_io(),
         testcase_io=get_testcase_io(),
+        progress_io=get_progress_io(),
     )
 
 
@@ -191,6 +212,7 @@ def get_build_test_io() -> BuildTestIO:
     return BuildTestIO(
         global_path_provider=get_global_path_provider(),
         project_path_provider=get_project_path_provider(),
+        project_core_io=get_project_core_io(),
     )
 
 

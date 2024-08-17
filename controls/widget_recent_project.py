@@ -1,8 +1,8 @@
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
+from application.dependency import get_project_list_service
 from domain.models.values import ProjectName
-from service_provider import get_project_list_service
 
 
 class RecentProjectListColumns:
@@ -62,6 +62,7 @@ class RecentProjectWidget(QGroupBox):
 
         self._table_recent_projects = QTableView(self)
         self._table_recent_projects.setModel(self._model_recent_projects)
+        # noinspection PyTypeChecker
         self._table_recent_projects.setVerticalHeader(None)
         self._table_recent_projects.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._table_recent_projects.setSelectionMode(QAbstractItemView.SingleSelection)

@@ -1,10 +1,10 @@
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
+from application.dependency import get_testcase_edit_service
 from controls.dialog_testcase_config_edit import TestCaseConfigEditDialog
 from controls.widget_button_box import ButtonBox
 from domain.models.values import TestCaseID
-from service_provider import get_testcase_edit_service
 
 
 class TestCaseListWidget(QListWidget):

@@ -1,6 +1,6 @@
-from domain.models.stages import StudentProgressStage
-from service_provider import get_build_service, get_project_service, get_compile_service, \
+from application.dependency import get_project_service, get_build_service, get_compile_service, \
     get_execute_service
+from domain.models.stages import StudentProgressStage
 from tasks.tasks import AbstractStudentTask
 
 

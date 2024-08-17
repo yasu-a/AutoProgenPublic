@@ -55,7 +55,7 @@
 #                 None
 #                 if body["test_result"] is None
 #                 else StudentTestResult.from_json(body["test_result"])
-#             ),  # TODO: impl
+#             ),
 #         )
 #
 #     @classmethod

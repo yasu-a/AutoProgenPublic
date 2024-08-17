@@ -1,13 +1,14 @@
+import psutil
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
+from application.dependency import get_task_manager, get_project_service
 from controls.dialog_global_settings import GlobalSettingsEditDialog
 from controls.dialog_testcase_list_edit import TestCaseListEditDialog
 from controls.widget_student_table import StudentTableWidget
 from controls.widget_toolbar import ToolBar
 from icons import icon
-from service_provider import get_project_service, get_task_manager
 from tasks.task_impls import StudentTask
 
 
@@ -21,7 +22,7 @@ class MainWindow(QMainWindow):
         self.__init_signals()
 
         timer = QTimer(self)
-        timer.setInterval(100)
+        timer.setInterval(500)
         timer.timeout.connect(self.__status_info_update_timer_timeout)  # type: ignore
         timer.start()  # type: ignore
         self.__context_info_update_timer = timer
@@ -45,6 +46,7 @@ class MainWindow(QMainWindow):
         self.addToolBar(self._tool_bar)
 
         # 生徒のテーブル
+        # noinspection PyTypeChecker
         self._w_student_table = StudentTableWidget(self)
         # noinspection PyUnresolvedReferences
         self.setCentralWidget(self._w_student_table)
@@ -65,6 +67,7 @@ class MainWindow(QMainWindow):
             dialog = GlobalSettingsEditDialog()
             dialog.exec_()
         elif name == "edit-testcases":
+            # noinspection PyTypeChecker
             dialog = TestCaseListEditDialog(self)
             dialog.exec_()
         else:
@@ -203,10 +206,19 @@ class MainWindow(QMainWindow):
 
     def __status_info_update_timer_timeout(self):
         task_manager = get_task_manager()
+        io_count = psutil.disk_io_counters()
+        cpu_percent = psutil.cpu_percent()
+        ram_percent = psutil.virtual_memory().percent
         # noinspection PyUnresolvedReferences
         status_bar: QStatusBar = self.statusBar()
         status_bar.showMessage(
             f"タスク：{task_manager.get_running_task_count()}/{task_manager.get_task_count()} "
+            # f"I/O read: {io_count.read_bytes // 1000:,}KB "
+            # f"I/O write: {io_count.write_bytes // 1000:,}KB "
+            f"I/O read: {io_count.read_time}ms "
+            f"I/O write: {io_count.write_time}ms "
+            f"CPU usage: {int(cpu_percent)}% "
+            f"RAM usage: {int(ram_percent)}% "
             # f"開発者ツール：{settings_compiler.get_vs_dev_cmd_bat_path()}"
         )
         if task_manager.get_task_count() != 0:

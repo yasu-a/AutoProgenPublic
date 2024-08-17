@@ -3,12 +3,19 @@ import re
 from domain.errors import ProjectIOError, BuildServiceError
 from domain.models.reuslts import BuildResult
 from domain.models.values import StudentID
+from files.progress import ProgressIO
 from files.project import ProjectIO
 
 
 class BuildService:  # environment builder
-    def __init__(self, project_io: ProjectIO):
+    def __init__(
+            self,
+            *,
+            project_io: ProjectIO,
+            progress_io: ProgressIO,
+    ):
         self._project_io = project_io
+        self._progress_io = progress_io
 
     def _build(self, student_id: StudentID) -> None:
         if not self._project_io.students[student_id].is_submitted:
@@ -69,7 +76,7 @@ class BuildService:  # environment builder
         else:
             result = BuildResult.success()
 
-        self._project_io.write_student_build_result(
-            student_id=student_id,
-            result=result,
-        )
+        with self._progress_io.with_student(student_id) as progress_io_with_student:
+            progress_io_with_student.write_student_build_result(
+                result=result,
+            )

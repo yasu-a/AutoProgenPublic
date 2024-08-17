@@ -261,7 +261,7 @@
 # #
 # # @dataclass(slots=True)
 # # class TestSession:
-# #     testcases: list[TestCase]  # TODO: testcases are unordered
+# #     testcases: list[TestCase]
 # #
 # #     def to_json(self):
 # #         return dict(

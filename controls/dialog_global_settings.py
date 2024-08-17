@@ -5,12 +5,12 @@ from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
+from application.dependency import get_global_settings_edit_service, \
+    get_compiler_location_search_service, get_compile_test_service
 from controls.dialog_compiler_search import CompilerSearchDialog
 from domain.errors import CompileTestServiceError
 from domain.models.settings import GlobalSettings
 from icons import icon
-from service_provider import get_compiler_location_search_service, get_compile_test_service, \
-    get_global_settings_edit_service
 
 
 class CompilerToolPathEditWidget(QWidget):
@@ -212,11 +212,11 @@ class GlobalSettingsEditWidget(QWidget):
 
         # noinspection PyTypeChecker
         self._w_compiler_timeout = CompilerTimeoutWidget(self)
-        add_item("コンパイル待ち時間 (秒)", self._w_compiler_timeout)
+        add_item("コンパイルのタイムアウト (秒)", self._w_compiler_timeout)
 
         # noinspection PyTypeChecker
         self._w_max_workers = MaxWorkersWidget(self)
-        add_item("並列タスク実行数", self._w_max_workers)
+        add_item("並列タスク実行数（反映するには再起動が必要です）", self._w_max_workers)
 
         layout_root.addStretch(1)
 

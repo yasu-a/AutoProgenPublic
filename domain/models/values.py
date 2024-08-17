@@ -76,7 +76,7 @@ class StudentID:
 
 
 class TargetID:
-    def __init__(self, value: int):
+    def __init__(self, value: int | str):
         try:
             value = int(value)
         except ValueError:

@@ -6,10 +6,10 @@ from PyQt5.QtGui import QColor, QWheelEvent, QFont
 from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
+from application.dependency import get_project_service
 from domain.models.stages import StudentProgressStage, AbstractStudentProgress
 from domain.models.values import StudentID
 from fonts import font
-from service_provider import get_project_service
 
 
 class StudentTableColumns:
@@ -78,13 +78,16 @@ class StudentTableModelDataProvider:
             student_id: StudentID,
             stage: StudentProgressStage,
     ):
-        # TODO: セッションの同期が取れていないせいでstageのresult.jsonの存在を確認してからresult.jsonが削除されると落ちる
-        if self._project_service.is_student_stage_finished(student_id, stage):
-            result = self._project_service.get_student_stage_result(student_id, stage)
-            if result.is_success():
-                return "✔"
-            else:
-                return "エラー"
+        result = self._project_service.get_student_progress_of_stage_if_finished(
+            student_id=student_id,
+            stage=stage,
+        )
+        if result is None:
+            return ""
+        elif result.is_success():
+            return "✔"
+        else:
+            return "エラー"
 
     @data_provider(
         column=StudentTableColumns.COL_STAGE_BUILD,
@@ -133,12 +136,16 @@ class StudentTableModelDataProvider:
         column=StudentTableColumns.COL_TESTCASE_RESULT,
     )
     def get_display_role_of_testcase_result(self, student_id: StudentID, role: QtRoleType):
+        _ = student_id
+        _ = role
         return None
 
     @data_provider(
         column=StudentTableColumns.COL_MARK_RESULT,
     )
     def get_display_role_of_mark_result(self, student_id: StudentID, role: QtRoleType):
+        _ = student_id
+        _ = role
         return None
 
     def _find_cell_provider(self, column: int):

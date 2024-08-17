@@ -3,6 +3,7 @@ from domain.errors import ProjectIOError, CompileServiceError, CompileToolIOErro
 from domain.models.reuslts import CompileResult
 from domain.models.values import StudentID
 from files.compile_tool import CompileToolIO
+from files.progress import ProgressIO
 from files.project import ProjectIO
 from files.settings import GlobalSettingsIO
 
@@ -15,10 +16,12 @@ class CompileService:
             *,
             global_settings_io: GlobalSettingsIO,
             project_io: ProjectIO,
+            progress_io: ProgressIO,
             compile_tool_io: CompileToolIO,
     ):
         self._global_settings_io = global_settings_io
         self._project_io = project_io
+        self._progress_io = progress_io
         self._compile_tool_io = compile_tool_io
 
     def _compile_and_get_output(self, student_id: StudentID) -> str:
@@ -66,7 +69,7 @@ class CompileService:
         else:
             result = CompileResult.success(output)
 
-        self._project_io.write_student_compile_result(
-            student_id=student_id,
-            result=result,
-        )
+        with self._progress_io.with_student(student_id) as progress_io_with_student:
+            progress_io_with_student.write_student_compile_result(
+                result=result,
+            )

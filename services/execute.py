@@ -6,6 +6,7 @@ from domain.models.reuslts import ExecuteResult, TestCaseExecuteResultSet, TestC
     ExecuteResultFlag
 from domain.models.testcase import ExecuteConfig
 from domain.models.values import TestCaseID, StudentID
+from files.progress import ProgressIO
 from files.project import ProjectIO
 from files.testcase import TestCaseIO
 
@@ -17,7 +18,13 @@ class ExecutableRunnerTimeoutError(ValueError):
 
 
 class ExecutableRunner:
-    def __init__(self, *, executable_fullpath: str, timeout: float, input_fp: TextIO):
+    def __init__(
+            self,
+            *,
+            executable_fullpath: str,
+            timeout: float,
+            input_fp: TextIO,
+    ):
         self._executable_fullpath = executable_fullpath
         self._timeout = timeout
         self._input_fp = input_fp
@@ -50,9 +57,11 @@ class ExecuteService:
             *,
             project_io: ProjectIO,
             testcase_io: TestCaseIO,
+            progress_io: ProgressIO,
     ):
         self._project_io = project_io
         self._testcase_io = testcase_io
+        self._progress_io = progress_io
 
     def _construct_test_folder_from_testcase(self, student_id: StudentID, testcase_id: TestCaseID):
         self._testcase_io.clone_student_executable_to_test_folder(
@@ -126,7 +135,8 @@ class ExecuteService:
         result = ExecuteResult.success(
             testcase_result_set=testcase_result_set,
         )
-        self._project_io.write_student_execute_result(
-            student_id=student_id,
-            result=result,
-        )
+
+        with self._progress_io.with_student(student_id) as progress_io_with_student:
+            progress_io_with_student.write_student_execute_result(
+                result=result,
+            )

@@ -4,11 +4,11 @@ from PyQt5.QtWidgets import QWidget, QTabWidget, QVBoxLayout, QDialog, QHBoxLayo
     QMessageBox, QInputDialog, QGridLayout, QLabel, QDoubleSpinBox
 
 from app_logging import create_logger
+from application.dependency import get_testcase_edit_service
 from controls.widget_button_box import ButtonBox
 from controls.widget_plain_text_edit import PlainTextEdit
 from domain.models.testcase import ExecuteConfigInputFiles, TestCaseConfig, ExecuteConfigOptions
 from domain.models.values import TestCaseID
-from service_provider import get_testcase_edit_service
 
 
 class TestCaseExecuteConfigInputFilesEditWidget(QWidget):

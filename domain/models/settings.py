@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from application.debug import is_debug
+
 
 @dataclass
 class GlobalSettings:
@@ -11,9 +13,9 @@ class GlobalSettings:
     @classmethod
     def create_default(cls) -> "GlobalSettings":
         return cls(
-            compiler_tool_fullpath=Path(  # TODO: remove this path
+            compiler_tool_fullpath=Path(
                 r"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat",
-            ),
+            ) if is_debug() else None,
             compiler_timeout=15,
             max_workers=8,
         )
