@@ -32,7 +32,7 @@ class StudentTask(AbstractStudentTask):
             self._logger.info(f"Not implemented stage: {stage!r}")
 
     def run(self):
-        self._logger.info("TASK ENTER")
+        self._logger.info("Task started")
         # TODO: レポートフォルダのハッシュをとって変更が加えられた学生も初期化を実行する！！！
         # TODO: テストケースのハッシュをとって変更が加えられた場合も初期化を実行する！！！
         self._clear_student_if_last_stage_error(force=True)  # TODO: デバッグ用にforce=True
@@ -48,4 +48,4 @@ class StudentTask(AbstractStudentTask):
                 break
             self._dispatch_stage(next_stage)
             prev_stage = next_stage
-        self._logger.info("TASK EXIT")
+        self._logger.info("Task finished")

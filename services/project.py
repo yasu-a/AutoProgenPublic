@@ -15,7 +15,8 @@ from domain.models.stages import AbstractStudentProgress, StudentProgressWithFin
     StudentProgressStage, StudentProgressUnstarted
 from domain.models.student_master import StudentMaster, Student
 from domain.models.values import TargetID, ProjectName, StudentID
-from files.project import ProjectPathProvider, ProjectIO
+from files.project import ProjectIO
+from files.project_path_provider import ProjectPathProvider
 from files.report_archive import ManabaReportArchiveIO
 from files.testcase import TestCaseIO
 

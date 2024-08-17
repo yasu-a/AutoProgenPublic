@@ -8,7 +8,7 @@ from typing import Optional, TextIO
 from app_logging import create_logger
 from domain.models.testcase import TestCaseConfig
 from domain.models.values import TestCaseID, StudentID
-from files.project import ProjectPathProvider
+from files.project_path_provider import ProjectPathProvider
 
 
 class TestCaseIO:

@@ -6,7 +6,6 @@ from pathlib import Path
 class GlobalSettings:
     compiler_tool_fullpath: Path | None
     compiler_timeout: float
-    execution_timeout: float  # TODO: TestCaseConfigで定義しているので未使用
     max_workers: int
 
     @classmethod
@@ -16,7 +15,6 @@ class GlobalSettings:
                 r"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat",
             ),
             compiler_timeout=15,
-            execution_timeout=5,
             max_workers=8,
         )
 

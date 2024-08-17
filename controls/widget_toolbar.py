@@ -22,8 +22,8 @@ class ToolBar(QToolBar):
         a.setObjectName("run")
         self.addAction(a)
 
-        a = QAction(icon("vs"), "コンパイラの設定", self)
-        a.setObjectName("configure-compiler")
+        a = QAction(icon("vs"), "設定", self)
+        a.setObjectName("settings")
         self.addAction(a)
 
         a = QAction(icon("testing"), "テストケースの編集", self)

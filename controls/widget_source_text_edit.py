@@ -137,7 +137,7 @@ class _TestWidget(QWidget, QObject):
         self.setLayout(layout)
 
         te = SourceTextEdit(self)
-        with codecs.open("../test.c", "r", "utf-8") as f:
+        with codecs.open("../vctest/test.c", "r", "utf-8") as f:
             te.setPlainText(f.read())
         layout.addWidget(te)
 

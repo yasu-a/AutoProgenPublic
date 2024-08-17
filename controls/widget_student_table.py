@@ -78,6 +78,7 @@ class StudentTableModelDataProvider:
             student_id: StudentID,
             stage: StudentProgressStage,
     ):
+        # TODO: セッションの同期が取れていないせいでstageのresult.jsonの存在を確認してからresult.jsonが削除されると落ちる
         if self._project_service.is_student_stage_finished(student_id, stage):
             result = self._project_service.get_student_stage_result(student_id, stage)
             if result.is_success():

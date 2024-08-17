@@ -2,17 +2,22 @@ import functools
 from pathlib import Path
 
 from domain.models.values import ProjectName
-from files.project import ProjectPathProvider, ProjectIO, ProjectPathProviderWithoutDependency, \
-    ProjectIOWithoutDependency
+from files.build_test import BuildTestIO
+from files.compile_tool import CompileToolIO
+from files.global_path_provider import GlobalPathProvider
+from files.project import ProjectIO, ProjectIOWithoutDependency
+from files.project_path_provider import ProjectPathProvider, ProjectPathProviderWithoutDependency
 from files.report_archive import ManabaReportArchiveIO
-from files.settings import GlobalPathProvider, GlobalSettingsIO
+from files.settings import GlobalSettingsIO
 from files.testcase import TestCaseIO
 from services.build import BuildService
 from services.compile import CompileService
+from services.compile_test import CompileTestService
+from services.compiler_search import CompilerLocationSequentialSearchService
 from services.execute import ExecuteService
 from services.project import ProjectService, ProjectConstructionService
 from services.project_list import ProjectListService
-from services.settings import GlobalSettingsService
+from services.settings import GlobalSettingsEditService
 from services.testcase_edit import TestCaseEditService
 from tasks.manager import TaskManager
 
@@ -73,8 +78,8 @@ def get_global_settings_io() -> GlobalSettingsIO:
     )
 
 
-def get_global_settings_service() -> GlobalSettingsService:
-    return GlobalSettingsService(
+def get_global_settings_edit_service() -> GlobalSettingsEditService:
+    return GlobalSettingsEditService(
         global_settings_io=get_global_settings_io(),
     )
 
@@ -136,16 +141,23 @@ def get_project_construction_service(
     )
 
 
+@functools.cache
 def get_build_service() -> BuildService:
     return BuildService(
         project_io=get_project_io(),
     )
 
 
+@functools.cache
+def get_compile_tool_io() -> CompileToolIO:
+    return CompileToolIO()
+
+
 def get_compile_service() -> CompileService:
     return CompileService(
         global_settings_io=get_global_settings_io(),
         project_io=get_project_io(),
+        compile_tool_io=get_compile_tool_io(),
     )
 
 
@@ -163,8 +175,29 @@ def get_testcase_edit_service() -> TestCaseEditService:
     )
 
 
+@functools.cache
 def get_execute_service() -> ExecuteService:
     return ExecuteService(
         project_io=get_project_io(),
         testcase_io=get_testcase_io(),
+    )
+
+
+def get_compiler_location_search_service() -> CompilerLocationSequentialSearchService:
+    return CompilerLocationSequentialSearchService()
+
+
+def get_build_test_io() -> BuildTestIO:
+    return BuildTestIO(
+        global_path_provider=get_global_path_provider(),
+        project_path_provider=get_project_path_provider(),
+    )
+
+
+@functools.cache
+def get_compile_test_service() -> CompileTestService:
+    return CompileTestService(
+        global_settings_io=get_global_settings_io(),
+        build_test_io=get_build_test_io(),
+        compile_tool_io=get_compile_tool_io(),
     )

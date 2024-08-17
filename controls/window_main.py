@@ -2,6 +2,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
+from controls.dialog_global_settings import GlobalSettingsEditDialog
 from controls.dialog_testcase_list_edit import TestCaseListEditDialog
 from controls.widget_student_table import StudentTableWidget
 from controls.widget_toolbar import ToolBar
@@ -60,6 +61,9 @@ class MainWindow(QMainWindow):
                         student_id=student_id,
                     )
                 )
+        elif name == "settings":
+            dialog = GlobalSettingsEditDialog()
+            dialog.exec_()
         elif name == "edit-testcases":
             dialog = TestCaseListEditDialog(self)
             dialog.exec_()
