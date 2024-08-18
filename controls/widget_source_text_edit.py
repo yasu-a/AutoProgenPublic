@@ -5,6 +5,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
+from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
 from fonts import font
 
 
@@ -99,7 +100,7 @@ class _CHighlighter(QSyntaxHighlighter):
             start_index = self.comment_start_expression.indexIn(text, start_index + comment_length)
 
 
-class SourceTextEdit(QPlainTextEdit):
+class SourceTextEdit(QPlainTextEdit, HorizontalScrollWithShiftAndWheelMixin):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
@@ -109,21 +110,6 @@ class SourceTextEdit(QPlainTextEdit):
         self.setFont(font(monospace=True, small=True))
         self.setLineWrapMode(QPlainTextEdit.NoWrap)
         self._h = _CHighlighter(self.document())
-
-    # https://stackoverflow.com/questions/38234021/horizontal-scroll-on-wheelevent-with-shift-too-fast
-    # noinspection DuplicatedCode
-    def wheelEvent(self, event: QWheelEvent):
-        if event.modifiers() == Qt.ShiftModifier:
-            scrollbar = self.horizontalScrollBar()
-        else:
-            scrollbar = self.verticalScrollBar()
-
-        action = QAbstractSlider.SliderSingleStepAdd
-        if event.angleDelta().y() > 0:
-            action = QAbstractSlider.SliderSingleStepSub
-
-        for _ in range(6):
-            scrollbar.triggerAction(action)
 
 
 class _TestWidget(QWidget, QObject):

@@ -22,6 +22,10 @@ class ToolBar(QToolBar):
         a.setObjectName("run")
         self.addAction(a)
 
+        a = QAction(icon("delete"), "クリア", self)
+        a.setObjectName("clear")
+        self.addAction(a)
+
         a = QAction(icon("vs"), "設定", self)
         a.setObjectName("settings")
         self.addAction(a)
@@ -30,7 +34,7 @@ class ToolBar(QToolBar):
         a.setObjectName("edit-testcases")
         self.addAction(a)
 
-        a = QAction(icon("mark"), "一括採点", self)
+        a = QAction(icon("mark"), "採点", self)
         a.setObjectName("mark")
         self.addAction(a)
 

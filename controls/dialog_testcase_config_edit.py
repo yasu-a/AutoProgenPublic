@@ -1,17 +1,22 @@
+from enum import IntEnum, auto
+
 from PyQt5.QtCore import QObject, Qt, pyqtSlot
-from PyQt5.QtGui import QCloseEvent
+from PyQt5.QtGui import QCloseEvent, QDoubleValidator
 from PyQt5.QtWidgets import QWidget, QTabWidget, QVBoxLayout, QDialog, QHBoxLayout, \
-    QMessageBox, QInputDialog, QGridLayout, QLabel, QDoubleSpinBox
+    QMessageBox, QInputDialog, QGridLayout, QLabel, QDoubleSpinBox, QCheckBox, QSpinBox, QLineEdit
 
 from app_logging import create_logger
 from application.dependency import get_testcase_edit_service
 from controls.widget_button_box import ButtonBox
 from controls.widget_plain_text_edit import PlainTextEdit
-from domain.models.testcase import ExecuteConfigInputFiles, TestCaseConfig, ExecuteConfigOptions
-from domain.models.values import TestCaseID
+from domain.models.testcase import InputFileMapping, TestCaseConfig, ExecuteConfigOptions, \
+    TestConfig, TestCaseExecuteConfig, TestConfigOptions, ExpectedTokenList, \
+    ExpectedOutputFileMapping, \
+    InputFile
+from domain.models.values import TestCaseID, SpecialFileType, FileID
 
 
-class TestCaseExecuteConfigInputFilesEditWidget(QWidget):
+class TestCaseInputFileMappingEditWidget(QWidget):
     _logger = create_logger()
 
     def __init__(self, parent: QObject = None):
@@ -37,133 +42,231 @@ class TestCaseExecuteConfigInputFilesEditWidget(QWidget):
     def _init_signals(self):
         self._buttons.triggered.connect(self.__buttons_triggered)
 
-    __STDIN_TAB_TITLE = "＜標準入力＞"
+    __STDIN_TAB_TITLE = "[標準入力]"
 
-    @pyqtSlot(ExecuteConfigInputFiles)
-    def set_data(self, input_files: ExecuteConfigInputFiles):
-        self._w_tab.clear()
-        for filename, content_bytes in input_files.items():
-            te = PlainTextEdit()
-            te.set_show_editing_symbols(False)
-            te.setPlainText(content_bytes.decode("utf-8"))
-            if filename is None:
-                self._w_tab.addTab(te, self.__STDIN_TAB_TITLE)
-            else:
-                self._w_tab.addTab(te, filename)
+    @classmethod
+    def __file_id_to_tab_title(cls, file_id: FileID) -> str:
+        if file_id.is_special:
+            assert file_id.special_file_type == SpecialFileType.STDIN, file_id
+            tab_title = cls.__STDIN_TAB_TITLE
+        else:
+            tab_title = str(file_id)
+        return tab_title
 
-    @pyqtSlot()
-    def get_data(self) -> ExecuteConfigInputFiles:
-        # apply editing to instance and return it
-        input_files = ExecuteConfigInputFiles()
+    @classmethod
+    def __tab_title_to_file_id(cls, tab_title: str) -> FileID:
+        if tab_title == cls.__STDIN_TAB_TITLE:
+            return FileID.STDIN
+        else:
+            return FileID(tab_title)
+
+    def __find_tab_title(self, tab_title: str) -> int | None:  # None if not found
         for i_tab in range(self._w_tab.count()):
-            filename = self._w_tab.tabText(i_tab)
-            content_string = self._w_tab.widget(i_tab).toPlainText()
-            if filename == self.__STDIN_TAB_TITLE:
-                filename = None
-            input_files[filename] = content_string.encode("utf-8")
-        return input_files
-
-    def __find_filename(self, filename: str | None) -> int | None:
-        if filename is None:
-            filename = self.__STDIN_TAB_TITLE
-        for i_tab in range(self._w_tab.count()):
-            if self._w_tab.tabText(i_tab) == filename:
+            if self._w_tab.tabText(i_tab) == tab_title:
                 return i_tab
         return None
 
-    def __has_filename(self, filename: str | None) -> bool:
-        return self.__find_filename(filename) is not None
+    def __has_tab_title(self, tab_title: str) -> bool:
+        return self.__find_tab_title(tab_title) is not None
+
+    def __insert_tab(
+            self,
+            *,
+            tab_title: str,
+            insert_at: int = None,
+            content_string: str = "",
+    ) -> None:
+        if insert_at is None:
+            insert_at = self._w_tab.count()
+        # noinspection PyTypeChecker
+        te = PlainTextEdit(self)
+        te.set_show_editing_symbols(False)
+        te.setPlainText(content_string)
+        self._w_tab.insertTab(insert_at, te, tab_title)
+
+    def __rename_tab(
+            self,
+            *,
+            current_tab_title: str,
+            new_tab_title: str,
+    ) -> None:
+        i_tab = self.__find_tab_title(current_tab_title)
+        assert i_tab is not None
+        self._w_tab.setTabText(i_tab, new_tab_title)
+
+    def __delete_tab(
+            self,
+            *,
+            tab_title: str,
+    ) -> None:
+        i_tab = self.__find_tab_title(tab_title)
+        assert i_tab is not None
+        self._w_tab.removeTab(i_tab)
+
+    def _current_tab_title(self) -> str | None:
+        i_tab = self._w_tab.currentIndex()
+        if i_tab < 0:
+            return None
+        return self._w_tab.tabText(i_tab)
+
+    @pyqtSlot(InputFileMapping)
+    def set_data(self, input_files: InputFileMapping) -> None:
+        """
+        このウィジェットに入力ファイルのデータを設定します。
+
+        Args:
+            input_files (InputFileMapping): 設定する入力ファイルのデータ。
+        """
+        self._w_tab.clear()
+        for file_id, input_file in input_files.items():
+            self.__insert_tab(
+                tab_title=self.__file_id_to_tab_title(file_id),
+                content_string=input_file.content_string,
+            )
+
+    @pyqtSlot()
+    def get_data(self) -> InputFileMapping:
+        """
+        このウィジェットの入力ファイルのデータを返します。
+
+        Returns:
+            InputFileMapping: 編集された入力ファイルのデータ。
+        """
+        input_files = InputFileMapping()
+        for i_tab in range(self._w_tab.count()):  # 各タブに対して
+            # タイトル
+            tab_title = self._w_tab.tabText(i_tab)
+            file_id = self.__tab_title_to_file_id(tab_title)
+            # 内容
+            content_string = self._w_tab.widget(i_tab).toPlainText()
+            # データに設定
+            input_files[file_id] = InputFile(
+                file_id=file_id,
+                content=content_string,
+            )
+        return input_files
 
     @pyqtSlot()
     def dispatch_action_add_stdin(self):
-        if self.__has_filename(self.__STDIN_TAB_TITLE):
+        if self.__has_tab_title(self.__STDIN_TAB_TITLE):
             QMessageBox.critical(
                 self,
                 "標準入力の追加",
                 "標準入力がすでに存在します。"
             )
             return
-        te = PlainTextEdit()
-        te.set_show_editing_symbols(False)
-        te.setPlainText("")
-        self._w_tab.insertTab(0, te, self.__STDIN_TAB_TITLE)
+        self.__insert_tab(tab_title=self.__STDIN_TAB_TITLE, insert_at=0)
 
-    @pyqtSlot()
-    def dispatch_action_add_file(self):
-        filename, ok = QInputDialog.getText(
-            self,
-            "ファイルの追加",
-            "新しい入力ファイル名を入力してください",
-            text="",
-        )
-        if not ok:
-            return
-        filename = filename.strip()
-        if not filename:
-            return
-        if self.__has_filename(filename):
-            QMessageBox.critical(
-                self,
-                "ファイルの追加",
-                f"同じ名前の入力ファイルが存在します。"
-            )
-            return
-        if filename == self.__STDIN_TAB_TITLE:
+    class _NormalTabTitleValidationResult(IntEnum):
+        EMPTY = auto()  # 空の入力
+        SPECIAL = auto()  # 通常のファイル名でない
+        NAME_EXISTS = auto()  # 既に存在するファイル名
+        FILE_ID_CONVERSION_FAILURE = auto()  # FileIDに変換できないファイル名
+        VALID = auto()  # 正しいファイル名
+
+    def __validate_normal_tab_title_and_show_message(self, new_tab_title: str) \
+            -> _NormalTabTitleValidationResult:  # True if valid
+        # 空文字
+        if not new_tab_title:
+            return self._NormalTabTitleValidationResult.EMPTY
+        # 標準入力と同じ名前
+        if new_tab_title == self.__STDIN_TAB_TITLE:
             QMessageBox.critical(
                 self,
                 "ファイルの追加",
                 "そのファイル名は追加できません。"
             )
-            return
-        te = PlainTextEdit()
-        te.set_show_editing_symbols(False)
-        te.setPlainText("")
-        self._w_tab.insertTab(0, te, filename)
-
-    @pyqtSlot(str)
-    def dispatch_action_rename(self, filename: str):
-        new_filename, ok = QInputDialog.getText(
-            self,
-            "ファイル名の変更",
-            f"「{filename}」の新しいファイル名を入力してください",
-            text=filename,
-        )
-        if not ok:
-            return
-        new_filename = new_filename.strip()
-        if not new_filename:
-            return
-        if self.__has_filename(new_filename):
+            return self._NormalTabTitleValidationResult.SPECIAL
+        # 既に同じ名前のファイルが存在する
+        if self.__has_tab_title(new_tab_title):
+            QMessageBox.critical(
+                self,
+                "ファイルの追加",
+                f"同じ名前の入力ファイルが存在します。"
+            )
+            return self._NormalTabTitleValidationResult.NAME_EXISTS
+        # 一度FileIDに変換してみる
+        try:
+            _ = FileID(new_tab_title)
+        except ValueError:
             QMessageBox.critical(
                 self,
                 "ファイル名の変更",
-                f"同じ名前の入力ファイルが既に存在します。"
+                f"不正なファイル名です。"
             )
-            return
-        i_tab = self.__find_filename(filename)
-        assert i_tab is not None
-        self._w_tab.setTabText(i_tab, new_filename)
+            return self._NormalTabTitleValidationResult.FILE_ID_CONVERSION_FAILURE
+        return self._NormalTabTitleValidationResult.VALID
+
+    @pyqtSlot()
+    def dispatch_action_add_file(self):
+        new_tab_title = ""
+        while True:
+            # 入力を要求する
+            new_tab_title, ok = QInputDialog.getText(
+                self,
+                "ファイルの追加",
+                "新しい入力ファイル名を入力してください",
+                text=new_tab_title,
+            )
+            # キャンセルされたら中断
+            if not ok:
+                return
+            # 空白を取り除く
+            new_tab_title = new_tab_title.strip()
+            # 検証
+            validation_result = self.__validate_normal_tab_title_and_show_message(new_tab_title)
+            if validation_result == self._NormalTabTitleValidationResult.VALID:
+                break
+            elif validation_result in [self._NormalTabTitleValidationResult.EMPTY]:
+                return
+            else:
+                continue
+        # タブを挿入する
+        self.__insert_tab(tab_title=new_tab_title)
 
     @pyqtSlot(str)
-    def dispatch_action_delete(self, filename: str):
+    def dispatch_action_rename(self, tab_title: str):
+        # 標準入力をリネームしようとしていたらキャンセル
+        if tab_title == self.__STDIN_TAB_TITLE:
+            return
+
+        new_tab_title = tab_title
+        while True:
+            # 入力を要求する
+            new_tab_title, ok = QInputDialog.getText(
+                self,
+                "ファイル名の変更",
+                f"「{tab_title}」の新しいファイル名を入力してください",
+                text=new_tab_title,
+            )
+            # キャンセルされたら中断
+            if not ok:
+                return
+            # 空白を取り除く
+            new_tab_title = new_tab_title.strip()
+            # 検証
+            validation_result = self.__validate_normal_tab_title_and_show_message(new_tab_title)
+            if validation_result == self._NormalTabTitleValidationResult.VALID:
+                break
+            elif validation_result in [self._NormalTabTitleValidationResult.EMPTY]:
+                return
+            else:
+                continue
+        # リネームする
+        self.__rename_tab(current_tab_title=tab_title, new_tab_title=new_tab_title)
+
+    @pyqtSlot(str)
+    def dispatch_action_delete(self, tab_title: str):
         res = QMessageBox.critical(
             self,
             "ファイルの削除",
-            f"ファイル「{filename}」を削除しますか？",
+            f"ファイル「{tab_title}」を削除しますか？",
             buttons=QMessageBox.Yes | QMessageBox.No,
             defaultButton=QMessageBox.No,
         )
         if res != QMessageBox.Yes:
             return
-        i_tab = self.__find_filename(filename)
-        assert i_tab is not None
-        self._w_tab.removeTab(i_tab)
-
-    def _current_filename(self) -> str | None:
-        i_tab = self._w_tab.currentIndex()
-        if i_tab < 0:
-            return None
-        return self._w_tab.tabText(i_tab)
+        self.__delete_tab(tab_title=tab_title)
 
     @pyqtSlot(str)
     def __buttons_triggered(self, name: str):
@@ -172,15 +275,15 @@ class TestCaseExecuteConfigInputFilesEditWidget(QWidget):
         elif name == "add-file":
             self.dispatch_action_add_file()
         elif name == "rename":
-            filename = self._current_filename()
-            if filename is None:
+            tab_title = self._current_tab_title()
+            if tab_title is None:
                 return
-            self.dispatch_action_rename(filename)
+            self.dispatch_action_rename(tab_title)
         elif name == "delete":
-            filename = self._current_filename()
-            if filename is None:
+            tab_title = self._current_tab_title()
+            if tab_title is None:
                 return
-            self.dispatch_action_delete(filename)
+            self.dispatch_action_delete(tab_title)
         else:
             assert False, name
 
@@ -225,6 +328,111 @@ class TestCaseExecuteConfigOptionsEditWidget(QWidget):
         return options
 
 
+class TestCaseExpectedOutputFileMappingEditWidget(QWidget):
+    def __init__(self, parent: QObject = None):
+        super().__init__(parent)
+
+        self._init_ui()
+        self._init_signals()
+
+    def _init_ui(self):
+        pass
+
+    def _init_signals(self):
+        pass
+
+    @pyqtSlot()
+    def set_data(self, token_list: ExpectedTokenList):
+        pass
+
+    @pyqtSlot()
+    def get_data(self) -> ExpectedOutputFileMapping:
+        return ExpectedOutputFileMapping()
+
+
+class ScientificDoubleLineEdit(QLineEdit):
+    def __init__(self, parent: QObject = None):
+        super().__init__(parent)
+
+        self._init_ui()
+        self._init_signals()
+
+    def _init_ui(self):
+        self._validator = QDoubleValidator(self)
+        self._validator.setDecimals(6)
+        self._validator.setNotation(QDoubleValidator.ScientificNotation)
+        self.setValidator(self._validator)
+
+    def _init_signals(self):
+        pass
+
+    @pyqtSlot()
+    def set_value(self, value: float) -> None:
+        self.setText(f"{value:.6E}")
+
+    def get_value(self) -> float:
+        return float(self.text())
+
+
+class TestCaseTestConfigOptionsEditWidget(QWidget):
+    def __init__(self, parent: QObject = None):
+        super().__init__(parent)
+
+        self._init_ui()
+        self._init_signals()
+
+    def _init_ui(self):
+        layout_root = QVBoxLayout()
+        self.setLayout(layout_root)
+
+        layout_content = QGridLayout()
+        layout_root.addLayout(layout_content)
+
+        layout_content.addWidget(QLabel("トークンを順序通りマッチングする", self), 0, 0)
+
+        self._cb_ordered_matching = QCheckBox(self)
+        layout_content.addWidget(self._cb_ordered_matching, 0, 1)
+
+        layout_content.addWidget(QLabel("実数をマッチングするときに許容する最大誤差", self), 1, 0)
+
+        self._le_float_tolerance = ScientificDoubleLineEdit(self)
+        layout_content.addWidget(self._le_float_tolerance, 1, 1)
+
+        layout_content.addWidget(QLabel("許可する編集距離", self), 2, 0)
+
+        self._le_allowable_edit_distance = QSpinBox(self)
+        self._le_allowable_edit_distance.setMinimum(0)
+        self._le_allowable_edit_distance.setMaximum(10)
+        layout_content.addWidget(self._le_allowable_edit_distance, 2, 1)
+
+        layout_content.addWidget(QLabel("空白を無視する", self), 3, 0)
+
+        self._cb_ignore_whitespace = QCheckBox(self)
+        layout_content.addWidget(self._cb_ignore_whitespace, 3, 1)
+
+        layout_root.addStretch(1)
+
+    def _init_signals(self):
+        pass
+
+    @pyqtSlot()
+    def set_data(self, options: TestConfigOptions):
+        self._cb_ordered_matching.setChecked(options.ordered_matching)
+        self._le_float_tolerance.set_value(options.float_tolerance)
+        self._le_allowable_edit_distance.setValue(options.allowable_edit_distance)
+        self._cb_ignore_whitespace.setChecked(options.ignore_whitespace)
+
+    @pyqtSlot()
+    def get_data(self) -> TestConfigOptions:
+        options = TestConfigOptions(
+            ordered_matching=self._cb_ordered_matching.isChecked(),
+            float_tolerance=self._le_float_tolerance.get_value(),
+            allowable_edit_distance=self._le_allowable_edit_distance.value(),
+            ignore_whitespace=self._cb_ignore_whitespace.isChecked(),
+        )
+        return options
+
+
 class TestCaseConfigEditWidget(QTabWidget):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
@@ -236,25 +444,48 @@ class TestCaseConfigEditWidget(QTabWidget):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        self._w_execute_config_input_file_edit = TestCaseExecuteConfigInputFilesEditWidget(self)
-        self.addTab(self._w_execute_config_input_file_edit, "入力ストリーム")
+        self._w_input_files_edit = TestCaseInputFileMappingEditWidget(self)
+        self.addTab(self._w_input_files_edit, "入力ストリームの構成")
 
         self._w_execute_config_options_edit = TestCaseExecuteConfigOptionsEditWidget(self)
         self.addTab(self._w_execute_config_options_edit, "実行のオプション")
+
+        self._w_expected_output_files_edit = TestCaseExpectedOutputFileMappingEditWidget(self)
+        self.addTab(self._w_expected_output_files_edit, "出力ストリームの自動テスト構成")
+
+        self._w_test_config_options_edit = TestCaseTestConfigOptionsEditWidget(self)
+        self.addTab(self._w_test_config_options_edit, "自動テストのオプション")
 
     def _init_signals(self):
         pass
 
     @pyqtSlot()
     def set_data(self, config: TestCaseConfig):
-        self._w_execute_config_input_file_edit.set_data(config.execute_config.input_files)
-        self._w_execute_config_options_edit.set_data(config.execute_config.options)
+        self._w_input_files_edit.set_data(
+            config.execute_config._input_files,
+        )
+        self._w_execute_config_options_edit.set_data(
+            config.execute_config._options,
+        )
+        self._w_expected_output_files_edit.set_data(
+            config.test_config.expected_output_files,
+        )
+        self._w_test_config_options_edit.set_data(
+            config.test_config.options,
+        )
 
     @pyqtSlot()
     def get_data(self) -> TestCaseConfig:
-        config = TestCaseConfig.create_new()
-        config.execute_config.input_files = self._w_execute_config_input_file_edit.get_data()
-        config.execute_config.options = self._w_execute_config_options_edit.get_data()
+        config = TestCaseConfig(
+            execute_config=TestCaseExecuteConfig(
+                input_files=self._w_input_files_edit.get_data(),
+                options=self._w_execute_config_options_edit.get_data(),
+            ),
+            test_config=TestConfig(
+                expected_output_files=self._w_expected_output_files_edit.get_data(),
+                options=self._w_test_config_options_edit.get_data(),
+            ),
+        )
         return config
 
 

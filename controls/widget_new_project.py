@@ -7,8 +7,8 @@ from PyQt5.QtWidgets import *
 
 from application.debug import is_debug
 from application.dependency import get_project_list_service
-from controls.dto.new_project_config import NewProjectConfig
 from domain.models.values import TargetID, ProjectName
+from dto.new_project_config import NewProjectConfig
 from icons import icon
 
 
@@ -39,6 +39,10 @@ class ProjectZipFileSelectorWidget(QWidget):
         self._le_fullpath = QLineEdit(self)
         self._le_fullpath.setReadOnly(True)
         self._le_fullpath.setPlaceholderText("reportlist.xlsxが入ったZIPファイルを選択してください")
+        if is_debug():
+            self._le_fullpath.setText(
+                str(Path("~/report_5.zip").expanduser().resolve())
+            )
         layout.addWidget(self._le_fullpath)
 
         self._b_select_folder = QPushButton(self)
@@ -77,12 +81,6 @@ class ProjectZipFileSelectorWidget(QWidget):
             return None
         else:
             return "選択したZIPファイルの形式には対応していません。reportlist.xlsxが含まれたzipファイルを選択してください。"
-
-    def showEvent(self, *args, **kwargs):
-        if is_debug():
-            self._le_fullpath.setText(
-                str(Path("~/report_5.zip").expanduser().resolve())
-            )
 
 
 class ProjectNameLineEdit(QLineEdit):

@@ -1,9 +1,10 @@
+import functools
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import IntEnum
 from typing import TypeVar, Generic
 
-from domain.models.reuslts import AbstractResult
+from domain.models.result_base import AbstractResult
 
 
 class StudentProgressStage(IntEnum):
@@ -18,8 +19,13 @@ class StudentProgressStage(IntEnum):
             return None
 
     @classmethod
+    @functools.cache
+    def list_stages(cls) -> tuple["StudentProgressStage", ...]:
+        return tuple(sorted(cls, key=lambda x: x.value))
+
+    @classmethod
     def get_first_stage(cls) -> "StudentProgressStage":
-        return sorted(cls, key=lambda x: x.value)[0]
+        return cls.list_stages()[0]
 
     # def __contains__(self, other) -> bool:
     #     if not isinstance(other, StudentProgressStage):

@@ -2,11 +2,12 @@ from datetime import datetime
 from typing import Any, Callable, Iterable
 
 from PyQt5.QtCore import *
-from PyQt5.QtGui import QColor, QWheelEvent, QFont
+from PyQt5.QtGui import QColor, QFont
 from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
 from application.dependency import get_project_service
+from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
 from domain.models.stages import StudentProgressStage, AbstractStudentProgress
 from domain.models.values import StudentID
 from fonts import font
@@ -52,6 +53,10 @@ class StudentTableModelDataProvider:
     def _foreground_link_text(cls) -> QColor:
         return QColor("blue")
 
+    @classmethod
+    def _foreground_dead_link_text(cls) -> QColor:
+        return QColor("red").darker()
+
     @data_provider(
         column=StudentTableColumns.COL_STUDENT_ID,
     )
@@ -61,7 +66,10 @@ class StudentTableModelDataProvider:
         elif role == Qt.FontRole:
             return self._font_link_text()
         elif role == Qt.ForegroundRole:
-            return self._foreground_link_text()
+            if self._project_service.has_student_submission_folder(student_id):
+                return self._foreground_link_text()
+            else:
+                return self._foreground_dead_link_text()
 
     @data_provider(
         column=StudentTableColumns.COL_NAME,
@@ -234,7 +242,7 @@ class _StudentObserver(QObject):
         )
 
         self._timer = QTimer(self)
-        self._timer.setInterval(50)
+        self._timer.setInterval(5)
         self._timer.timeout.connect(self._on_timer_timeout)  # type: ignore
         self._timer.start()
 
@@ -253,7 +261,7 @@ class _StudentObserver(QObject):
         self._student_id_mtime_mapping[student_id] = current_mtime
 
 
-class StudentTableWidget(QTableView):
+class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
     _logger = create_logger()
 
     # selection_changed = pyqtSignal(str)  # type: ignore  # student_id
@@ -320,18 +328,3 @@ class StudentTableWidget(QTableView):
         index_begin = self._model.createIndex(i_row, 0)
         index_end = self._model.createIndex(i_row, self._model.columnCount() - 1)
         self.dataChanged(index_begin, index_end)
-
-    # https://stackoverflow.com/questions/38234021/horizontal-scroll-on-wheelevent-with-shift-too-fast
-    # noinspection DuplicatedCode
-    def wheelEvent(self, event: QWheelEvent):
-        if event.modifiers() == Qt.ShiftModifier:
-            scrollbar = self.horizontalScrollBar()
-        else:
-            scrollbar = self.verticalScrollBar()
-
-        action = QAbstractSlider.SliderSingleStepAdd
-        if event.angleDelta().y() > 0:
-            action = QAbstractSlider.SliderSingleStepSub
-
-        for _ in range(6):
-            scrollbar.triggerAction(action)

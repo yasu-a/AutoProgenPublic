@@ -95,11 +95,26 @@ class ProjectIO:  # TODO: BuildIO, CompileIO, ExecuteIOを分離する
         # プロジェクトの設問IDを取得する
         return self.read_config().target_id
 
+    def calculate_student_submission_folder_hash(self, student_id: StudentID) -> int:
+        # 生徒の提出フォルダのハッシュを計算する
+        submission_folder_fullpath \
+            = self._project_path_provider.student_submission_folder_fullpath(student_id)
+        return self._project_core_io.calculate_folder_hash(
+            folder_fullpath=submission_folder_fullpath,
+        )
+
+    def has_student_submission_folder(self, student_id: StudentID) -> bool:
+        # 生徒の提出フォルダが存在するかどうか確認する
+        submission_folder_fullpath \
+            = self._project_path_provider.student_submission_folder_fullpath(student_id)
+        return submission_folder_fullpath.exists()
+
     def show_student_submission_folder_in_explorer(self, student_id: StudentID) -> None:
         # 生徒の提出フォルダをエクスプローラで開く
         submission_folder_fullpath \
             = self._project_path_provider.student_submission_folder_fullpath(student_id)
-        os.startfile(submission_folder_fullpath)
+        if submission_folder_fullpath.exists():
+            os.startfile(submission_folder_fullpath)
 
     def iter_student_source_file_relative_path_in_submission_folder(
             self,

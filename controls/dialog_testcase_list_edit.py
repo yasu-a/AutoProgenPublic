@@ -79,7 +79,7 @@ class TestCaseListEditWidget(QWidget):
     @pyqtSlot()
     def dispatch_action_add(self):
         testcase_name, ok = QInputDialog.getText(
-            self,
+            self,  # type: ignore
             "新しいテストケース",
             "新しいテストケースの名前を入力してください",
             text=str(get_testcase_edit_service().create_new_testcase_id()),
@@ -96,7 +96,7 @@ class TestCaseListEditWidget(QWidget):
     @pyqtSlot(TestCaseID)
     def dispatch_action_delete(self, testcase_id: TestCaseID):
         res = QMessageBox.warning(
-            self,
+            self,  # type: ignore
             "テストケースの削除",
             f"テストケース「{testcase_id!s}」を削除しますか？",
             buttons=QMessageBox.Yes | QMessageBox.No,
@@ -138,6 +138,7 @@ class TestCaseListEditDialog(QDialog):
         self._init_ui()
 
     def _init_ui(self):
+        # noinspection PyUnresolvedReferences
         self.setWindowTitle("テストケースの編集")
         self.setModal(True)
         self.resize(400, 700)

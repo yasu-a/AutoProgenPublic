@@ -17,6 +17,7 @@ from services.compile import CompileService
 from services.compile_test import CompileTestService
 from services.compiler_search import CompilerLocationSequentialSearchService
 from services.execute import ExecuteService
+from services.mark_snapshot import MarkSnapshotService
 from services.project import ProjectService, ProjectConstructionService
 from services.project_list import ProjectListService
 from services.settings import GlobalSettingsEditService
@@ -132,6 +133,8 @@ def get_progress_io() -> ProgressIO:
     return ProgressIO(
         project_path_provider=get_project_path_provider(),
         project_core_io=get_project_core_io(),
+        project_io=get_project_io(),
+        testcase_io=get_testcase_io(),
     )
 
 
@@ -204,10 +207,12 @@ def get_execute_service() -> ExecuteService:
     )
 
 
+# インスタンスごとのスコープなのでキャッシュしない
 def get_compiler_location_search_service() -> CompilerLocationSequentialSearchService:
     return CompilerLocationSequentialSearchService()
 
 
+@functools.cache
 def get_build_test_io() -> BuildTestIO:
     return BuildTestIO(
         global_path_provider=get_global_path_provider(),
@@ -222,4 +227,13 @@ def get_compile_test_service() -> CompileTestService:
         global_settings_io=get_global_settings_io(),
         build_test_io=get_build_test_io(),
         compile_tool_io=get_compile_tool_io(),
+    )
+
+
+@functools.cache
+def get_mark_snapshot_service() -> MarkSnapshotService:
+    return MarkSnapshotService(
+        project_io=get_project_io(),
+        testcase_io=get_testcase_io(),
+        progress_io=get_progress_io(),
     )

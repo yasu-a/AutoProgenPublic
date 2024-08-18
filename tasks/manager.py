@@ -49,8 +49,16 @@ class TaskStack(QObject):
         with self._lock():
             self._student_tasks[student_task.student_id] = student_task
 
-    def _iter_tasks(self) -> Iterable[AbstractTask]:
-        yield from self._student_tasks.values()
+    def _iter_tasks(self, *, task_cls: type = None) -> Iterable[AbstractTask]:
+        def iter_all():
+            yield from self._student_tasks.values()
+
+        for task in iter_all():
+            if task_cls is not None:
+                if isinstance(task, task_cls):
+                    yield task
+            else:
+                yield task
 
     def _pop_task(self, task_to_be_deleted: AbstractTask) -> None:
         for student_id, student_task in self._student_tasks.items():
@@ -58,8 +66,8 @@ class TaskStack(QObject):
                 self._student_tasks.pop(student_id)
                 return
 
-    def _get_task_count(self) -> int:
-        return len(list(self._iter_tasks()))
+    def _get_task_count(self, *, task_cls: type = None) -> int:
+        return len(list(self._iter_tasks(task_cls=task_cls)))
 
     def _get_running_task_count(self) -> int:
         return sum([task.isRunning() for task in self._iter_tasks()])
@@ -75,13 +83,13 @@ class TaskStack(QObject):
             if self._get_running_task_count() < self._max_workers:
                 for task in self._iter_tasks():
                     if not task.isRunning():
-                        self._logger.info(f"Task {task} started")
+                        # self._logger.debug(f"Task {task} started")
                         task.start()
                         break
 
-    def get_task_count(self) -> int:
+    def get_task_count(self, *, task_cls: type = None) -> int:
         with self._lock():
-            return self._get_task_count()
+            return self._get_task_count(task_cls=task_cls)
 
     def get_running_task_count(self) -> int:
         with self._lock():
@@ -89,9 +97,10 @@ class TaskStack(QObject):
 
     def kill_all(self) -> None:
         with self._lock():
-            for task in self._iter_tasks():
+            for task in list(self._iter_tasks()):
                 task.terminate()
                 task.wait()
+                self._pop_task(task)
 
 
 class TaskManager(QObject):
@@ -108,6 +117,9 @@ class TaskManager(QObject):
 
     def get_task_count(self) -> int:
         return self._task_stack.get_task_count()
+
+    def get_student_task_count(self) -> int:
+        return self._task_stack.get_task_count(task_cls=AbstractStudentTask)
 
     def get_running_task_count(self) -> int:
         return self._task_stack.get_running_task_count()

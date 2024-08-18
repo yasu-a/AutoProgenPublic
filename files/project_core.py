@@ -1,4 +1,7 @@
+import hashlib
+import itertools
 import json
+import os
 import shutil
 from pathlib import Path
 from typing import Optional
@@ -119,15 +122,42 @@ class ProjectCoreIO:
         with json_fullpath.open(mode="r", encoding="utf-8") as f:
             return json.load(f)
 
-    def touch(self, *, file_fullpath: Path, content: bytes = b""):
+    def touch(self, *, file_fullpath: Path, content_bytes: bytes = b""):
         # プロジェクト内のパスにファイルを作る
         self.__check_path_may_not_exist(file_fullpath)
         file_fullpath.parent.mkdir(parents=True, exist_ok=True)
         with file_fullpath.open(mode="wb") as f:
-            f.write(content)
+            f.write(content_bytes)
 
-    def read_file_content(self, *, filepath: Path) -> str:
+    def read_file_content_str(self, *, file_fullpath: Path) -> str:
         # プロジェクト内のテキストファイルを読み出す
-        self.__check_file_location(filepath)
-        with filepath.open(mode="r", encoding="utf-8") as f:
+        self.__check_file_location(file_fullpath)
+        with file_fullpath.open(mode="r", encoding="utf-8") as f:
             return f.read()
+
+    def read_file_content_bytes(self, *, file_fullpath: Path) -> bytes:
+        # プロジェクト内のバイナリファイルを読み出す
+        self.__check_file_location(file_fullpath)
+        with file_fullpath.open(mode="rb") as f:
+            return f.read()
+
+    def calculate_folder_hash(self, *, folder_fullpath: Path) -> int:
+        self.__check_folder_location(folder_fullpath)
+
+        entries: list[dict] = []
+        for root, dirs, files in os.walk(str(folder_fullpath)):
+            root = Path(root)
+            for name in itertools.chain(dirs, files):
+                path = root / name
+                stat = path.stat()
+                hash_src = dict(path=str(path), mtime=stat.st_mtime, size=stat.st_size)
+                entries.append(hash_src)
+        entries = sorted(entries, key=lambda item: item["path"])
+
+        sub_hash_entries: list[bytes] = []
+        for entry in entries:
+            h = hashlib.md5(str(entry).encode("utf-8")).digest()
+            sub_hash_entries.append(h)
+
+        hash_src = b"".join(sub_hash_entries)
+        return int.from_bytes(hashlib.md5(hash_src).digest(), byteorder="big")

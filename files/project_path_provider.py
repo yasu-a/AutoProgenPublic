@@ -88,6 +88,14 @@ class ProjectPathProvider:
     def student_test_executable_fullpath(self, student_id, testcase_id: TestCaseID):
         return self.student_test_folder_fullpath(student_id, testcase_id) / "main.exe"
 
+    # 採点
+
+    def student_mark_folder_fullpath(self, student_id: StudentID) -> Path:
+        return self.project_folder_fullpath() / "mark" / str(student_id)
+
+    def student_mark_data_json_fullpath(self, student_id: StudentID) -> Path:
+        return self.student_mark_folder_fullpath(student_id) / "__mark_result.json"
+
     # その他
     def iter_student_dynamic_folder_fullpath(self, student_id: StudentID) -> Iterable[Path]:
         # 生徒のプロジェクトデータの最終更新時刻を確認するフォルダのパスをイテレートする

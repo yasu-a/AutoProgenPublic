@@ -1,4 +1,4 @@
-from domain.models.testcase import ExecuteConfig
+from domain.models.testcase import TestCaseExecuteConfig
 
 
 class ProjectIOError(RuntimeError):
@@ -28,7 +28,7 @@ class CompileServiceError(RuntimeError):
 
 
 class ExecuteServiceError(RuntimeError):
-    def __init__(self, *, reason: str, execute_config: ExecuteConfig):
+    def __init__(self, *, reason: str, execute_config: TestCaseExecuteConfig):
         self.reason = reason
         self.execute_config = execute_config
 

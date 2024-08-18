@@ -1,6 +1,6 @@
 from app_logging import create_logger
 from domain.errors import ProjectIOError, CompileServiceError, CompileToolIOError
-from domain.models.reuslts import CompileResult
+from domain.models.result_compile import CompileResult
 from domain.models.values import StudentID
 from files.compile_tool import CompileToolIO
 from files.progress import ProgressIO
@@ -69,7 +69,7 @@ class CompileService:
         else:
             result = CompileResult.success(output)
 
-        with self._progress_io.with_student(student_id) as progress_io_with_student:
-            progress_io_with_student.write_student_compile_result(
+        with self._progress_io.with_student(student_id) as student_progress_io:
+            student_progress_io.write_student_compile_result(
                 result=result,
             )

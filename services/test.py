@@ -273,3 +273,13 @@
 # #             target_test_session_mapping[target_index] \
 # #                 = self.run_test_session_on_student(student, target_index)
 # #         return target_test_session_mapping
+
+# class AutoTestService:
+#     # 採点時に利用する自動テストを行う
+#     # テストはステージ化できない。テストはBUILDの成功・失敗に関わらず採点時に実行される。
+#
+#     def __init__(self):
+#         pass
+#
+#     def test_and_get_result(self, project_mark_snapshot: ProjectMarkSnapshot) -> TestResult:
+#

@@ -8,14 +8,14 @@ import dateutil.parser
 import openpyxl
 import pandas as pd
 
+from app_logging import create_logger
 from domain.errors import ManabaReportArchiveIOError, ProjectCreateServiceError
 from domain.models.project_config import ProjectConfig
-from domain.models.reuslts import CompileResult, BuildResult, ExecuteResult
 from domain.models.stages import AbstractStudentProgress, StudentProgressWithFinishedStage, \
-    StudentProgressStage, StudentProgressUnstarted
+    StudentProgressStage
 from domain.models.student_master import StudentMaster, Student
 from domain.models.values import TargetID, ProjectName, StudentID
-from files.progress import ProgressIO, ProgressIOWithContext
+from files.progress import ProgressIO
 from files.project import ProjectIO
 from files.project_path_provider import ProjectPathProvider
 from files.report_archive import ManabaReportArchiveIO
@@ -284,6 +284,8 @@ class ProjectConstructionService:
 
 
 class ProjectService:  # TODO: ProgressServiceを分離する
+    _logger = create_logger()
+
     def __init__(
             self,
             *,
@@ -304,121 +306,49 @@ class ProjectService:  # TODO: ProgressServiceを分離する
     def get_student_ids(self) -> list[StudentID]:
         return [student.student_id for student in self._project_io.students]
 
+    def has_student_submission_folder(self, student_id: StudentID) -> bool:
+        return self._project_io.has_student_submission_folder(student_id)
+
     def show_student_submission_folder_in_explorer(self, student_id: StudentID) -> None:
         self._project_io.show_student_submission_folder_in_explorer(student_id)
 
     def get_student_meta(self, student_id: StudentID) -> Student:
         return self._project_io.students[student_id]
 
-    @classmethod
-    def __is_student_stage_finished(
-            cls,
-            *,
-            progress_io_with_student: ProgressIOWithContext,
-            stage: StudentProgressStage,
-    ) -> bool:
-        if stage == StudentProgressStage.BUILD:
-            return progress_io_with_student.is_student_build_finished()
-        if stage == StudentProgressStage.COMPILE:
-            return progress_io_with_student.is_student_compile_finished()
-        if stage == StudentProgressStage.EXECUTE:
-            return progress_io_with_student.is_student_execute_finished()
-        assert False, stage
-
-    def is_student_stage_finished(
-            self,
-            student_id: StudentID,
-            stage: StudentProgressStage,
-    ) -> bool:
-        with self._progress_io.with_student(student_id) as progress_io_with_student:
-            return self.__is_student_stage_finished(
-                progress_io_with_student=progress_io_with_student,
-                stage=stage,
-            )
-
-    @classmethod
-    def __get_student_stage_result(
-            cls,
-            *,
-            progress_io_with_student: ProgressIOWithContext,
-            stage: StudentProgressStage
-    ) -> StudentProgressWithFinishedStage:
-        if stage == StudentProgressStage.BUILD:
-            result = progress_io_with_student.read_student_build_result()
-            return StudentProgressWithFinishedStage[BuildResult](
-                stage=StudentProgressStage.BUILD,
-                result=result,
-            )
-        if stage == StudentProgressStage.COMPILE:
-            result = progress_io_with_student.read_student_compile_result()
-            return StudentProgressWithFinishedStage[CompileResult](
-                stage=StudentProgressStage.COMPILE,
-                result=result,
-            )
-        if stage == StudentProgressStage.EXECUTE:
-            result = progress_io_with_student.read_student_execute_result()
-            return StudentProgressWithFinishedStage[ExecuteResult](
-                stage=StudentProgressStage.EXECUTE,
-                result=result,
-            )
-        assert False, stage
-
-    def __get_student_progress_of_stage_if_finished(
-            self,
-            progress_io_with_student: ProgressIOWithContext,
-            stage: StudentProgressStage
-    ) -> StudentProgressWithFinishedStage | None:  # stageがそもそも終了していなければNone
-        is_finished = self.__is_student_stage_finished(
-            progress_io_with_student=progress_io_with_student,
-            stage=stage,
-        )
-        if not is_finished:
-            return None
-        return self.__get_student_stage_result(
-            progress_io_with_student=progress_io_with_student,
-            stage=stage,
-        )
-
     def get_student_progress_of_stage_if_finished(
             self,
             student_id: StudentID,
             stage: StudentProgressStage
-    ) -> StudentProgressWithFinishedStage:
-        with self._progress_io.with_student(student_id) as progress_io_with_student:
-            return self.__get_student_progress_of_stage_if_finished(
-                progress_io_with_student=progress_io_with_student,
+    ) -> StudentProgressWithFinishedStage | None:
+        with self._progress_io.with_student(student_id) as student_progress_io:
+            return student_progress_io.get_student_progress_of_stage_if_finished(
                 stage=stage,
             )
 
     def get_student_progress(self, student_id: StudentID) -> AbstractStudentProgress:
-        with self._progress_io.with_student(student_id) as progress_io_with_student:
-            result = self.__get_student_progress_of_stage_if_finished(
-                progress_io_with_student=progress_io_with_student,
-                stage=StudentProgressStage.EXECUTE,
+        with self._progress_io.with_student(student_id) as student_progress_io:
+            return student_progress_io.get_student_progress()
+
+    def determine_student_next_stage_with_result(
+            self,
+            student_id: StudentID,
+    ) -> StudentProgressStage | None:
+        with self._progress_io.with_student(student_id) as student_progress_io:
+            return student_progress_io.determine_student_next_stage_with_result()
+
+    def clear_student_to_start_stage(self, student_id: StudentID,
+                                     stage: StudentProgressStage) -> None:
+        with self._progress_io.with_student(student_id) as student_progress_io:
+            student_progress_io.clear_student_to_start_stage(
+                stage=stage,
             )
-            if result is not None:
-                return result
 
-            result = self.__get_student_progress_of_stage_if_finished(
-                progress_io_with_student=progress_io_with_student,
-                stage=StudentProgressStage.COMPILE,
-            )
-            if result is not None:
-                return result
-
-            result = self.__get_student_progress_of_stage_if_finished(
-                progress_io_with_student=progress_io_with_student,
-                stage=StudentProgressStage.BUILD,
-            )
-            if result is not None:
-                return result
-
-        return StudentProgressUnstarted()
-
-    def clear_student(self, student_id: StudentID) -> None:
-        with self._progress_io.with_student(student_id) as progress_io_with_student:
-            progress_io_with_student.clear_student()
+    def clear_all_stages_of_student(self, student_id: StudentID) -> None:
+        self.clear_student_to_start_stage(
+            student_id=student_id,
+            stage=StudentProgressStage.get_first_stage(),
+        )
 
     def get_student_mtime(self, student_id: StudentID) -> datetime | None:
-        with self._progress_io.with_student(student_id) as progress_io_with_student:
-            return progress_io_with_student.get_student_mtime()
+        with self._progress_io.with_student(student_id) as student_progress_io:
+            return student_progress_io.get_student_mtime()

@@ -1,17 +1,9 @@
 import itertools
-from dataclasses import dataclass
 
 from domain.models.testcase import TestCaseConfig
 from domain.models.values import TestCaseID
+from dto.testcase_summary import TestCaseEditTestCaseSummary
 from files.testcase import TestCaseIO
-
-
-@dataclass(frozen=True)
-class TestCaseSummary:
-    id: TestCaseID
-    name: str
-    has_stdin: bool
-    num_normal_files: int
 
 
 class TestCaseEditService:
@@ -24,13 +16,13 @@ class TestCaseEditService:
     def list_testcase_ids(self) -> list[TestCaseID]:
         return self._testcase_io.list_ids()
 
-    def get_summary(self, testcase_id: TestCaseID) -> TestCaseSummary:
+    def get_summary(self, testcase_id: TestCaseID) -> TestCaseEditTestCaseSummary:
         config = self._testcase_io.read_config(testcase_id)
-        return TestCaseSummary(
+        return TestCaseEditTestCaseSummary(
             id=testcase_id,
             name=str(testcase_id),
-            has_stdin=config.execute_config.has_stdin(),
-            num_normal_files=config.execute_config.count_normal_files(),
+            has_stdin=config.execute_config.input_files.has_stdin,
+            num_normal_files=config.execute_config.input_files.normal_file_count,
         )
 
     def get_config(self, testcase_id: TestCaseID) -> TestCaseConfig:

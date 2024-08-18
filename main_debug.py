@@ -5,10 +5,10 @@ from application.current_project import set_current_project_name
 from application.debug import set_debug
 from application.dependency import get_project_construction_service
 from controls.dialog_welcome import WelcomeDialog
-from controls.dto.new_project_config import NewProjectConfig
 from controls.window_main import MainWindow
 from domain.errors import ProjectCreateServiceError
 from domain.models.values import ProjectName
+from dto.new_project_config import NewProjectConfig
 from fonts import font
 
 if __name__ == '__main__':
@@ -65,7 +65,7 @@ if __name__ == '__main__':
         window = MainWindow()
         # noinspection PyUnresolvedReferences
         window.show()
-        app.exec()
+        sys.exit(app.exec_())
 
     # app = QApplication(sys.argv)
     # # noinspection PyArgumentList

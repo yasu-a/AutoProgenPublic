@@ -67,7 +67,7 @@ class CompilerToolPathEditWidget(QWidget):
     @pyqtSlot()
     def _b_open_clicked(self):
         filepath, _ = QFileDialog.getOpenFileName(
-            self,
+            self,  # type: ignore
             "VsDevCmd.batを開く",
             filter="VsDevCmd.bat (*VsDevCmd.bat)",
         )
@@ -81,7 +81,6 @@ class CompilerToolPathEditWidget(QWidget):
 
     @pyqtSlot()
     def _b_search_clicked(self):
-        # noinspection PyTypeChecker
         dialog_auto_find = CompilerSearchDialog(self)
         dialog_auto_find.exec_()
         if dialog_auto_find.get_value() is not None:
@@ -97,13 +96,13 @@ class CompilerToolPathEditWidget(QWidget):
         except CompileTestServiceError as e:
             self._logger.exception("Failed to test compiler")
             QMessageBox.critical(
-                self,
+                self,  # type: ignore
                 "コンパイルテスト",
                 f"{e.reason}\n\n{e.output or ''}",
             )
         else:
             QMessageBox.information(
-                self,
+                self,  # type: ignore
                 "コンパイルテスト",
                 "コンパイルが終了しました。コンパイラは正しく動作しています。",
             )
@@ -257,6 +256,7 @@ class GlobalSettingsEditDialog(QDialog):
         self._init_signals()
 
     def _init_ui(self):
+        # noinspection PyUnresolvedReferences
         self.setWindowTitle("設定")
         self.setModal(True)
         self.resize(700, 700)
@@ -271,6 +271,7 @@ class GlobalSettingsEditDialog(QDialog):
     def _init_signals(self):
         pass
 
+    # noinspection PyMethodOverriding
     def closeEvent(self, evt: QCloseEvent):
         reason = self._w_settings_edit.validate_and_get_reason()
         if reason is None:
@@ -278,7 +279,7 @@ class GlobalSettingsEditDialog(QDialog):
         else:
             # ユーザーにエラーを示して変更を破棄して閉じるか閉じずに編集するかを聞く
             res = QMessageBox.warning(
-                self,
+                self,  # type: ignore
                 "設定",
                 f"設定内容にエラーがあります。\n\n{reason}\n\n設定内容を破棄して終了しますか？",
                 QMessageBox.Yes | QMessageBox.No,

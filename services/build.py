@@ -1,7 +1,7 @@
 import re
 
 from domain.errors import ProjectIOError, BuildServiceError
-from domain.models.reuslts import BuildResult
+from domain.models.result_build import BuildResult
 from domain.models.values import StudentID
 from files.progress import ProgressIO
 from files.project import ProjectIO
@@ -74,9 +74,13 @@ class BuildService:  # environment builder
         except BuildServiceError as e:
             result = BuildResult.error(e)
         else:
-            result = BuildResult.success()
+            result = BuildResult.success(
+                submission_folder_hash=self._project_io.calculate_student_submission_folder_hash(
+                    student_id=student_id,
+                )
+            )
 
-        with self._progress_io.with_student(student_id) as progress_io_with_student:
-            progress_io_with_student.write_student_build_result(
+        with self._progress_io.with_student(student_id) as student_progress_io:
+            student_progress_io.write_student_build_result(
                 result=result,
             )
