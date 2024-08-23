@@ -127,7 +127,9 @@ class MarkStudentListWidget(QListWidget):
             # リストに登録
             self._w_item_mapping[student_id] = item_widget
             # Qtのリスト項目を初期化
-            list_item = QListWidgetItem(self)
+            # QListWidgetItemのコンストラクタにselfをつけてはいけない！！！
+            # https://forum.qt.io/topic/30164/adding-item-to-beginning-of-qlistwidget-doesn-t-work-for-me-solved
+            list_item = QListWidgetItem()
             list_item.setSizeHint(item_widget.sizeHint())
             # リストに追加
             self.addItem(list_item)
@@ -225,7 +227,7 @@ class MarkResultTestCaseListWidget(QListWidget):
             # リストに登録
             self._w_item_mapping[test_result.testcase_id] = item_widget
             # Qtのリスト項目を初期化
-            list_item = QListWidgetItem(self)
+            list_item = QListWidgetItem()
             list_item.setSizeHint(item_widget.sizeHint())
             # リストに追加
             self.addItem(list_item)

@@ -171,8 +171,13 @@ class AbstractExpectedToken(ABC):
     def from_json(cls, body: dict):
         sub_classes = cls.__subclasses__()
         for sub_cls in sub_classes:
-            if type(sub_cls).__name__ == body["type"]:
+            if sub_cls.__name__ == body["type"]:
                 return sub_cls._from_json(body)
+        assert False, body
+
+    @classmethod
+    def create_default(cls) -> "AbstractExpectedToken":
+        raise NotImplementedError()
 
 
 class TextExpectedToken(AbstractExpectedToken):
@@ -195,6 +200,10 @@ class TextExpectedToken(AbstractExpectedToken):
     def value(self) -> str:
         return self._value
 
+    @classmethod
+    def create_default(cls) -> "TextExpectedToken":
+        return TextExpectedToken(value="")
+
 
 class FloatExpectedToken(AbstractExpectedToken):
     def __init__(self, value: float):
@@ -215,6 +224,10 @@ class FloatExpectedToken(AbstractExpectedToken):
     @property
     def value(self) -> float:
         return self._value
+
+    @classmethod
+    def create_default(cls) -> "FloatExpectedToken":
+        return FloatExpectedToken(value=0.0)
 
 
 class ExpectedTokenList(list[AbstractExpectedToken]):
@@ -265,6 +278,13 @@ class ExpectedOutputFile:
     @property
     def expected_tokens(self) -> ExpectedTokenList:
         return self._expected_tokens
+
+    @classmethod
+    def create_default(cls, file_id: FileID) -> "ExpectedOutputFile":
+        return cls(
+            file_id=file_id,
+            expected_tokens=ExpectedTokenList(),
+        )
 
 
 class ExpectedOutputFileMapping(dict[FileID, ExpectedOutputFile]):

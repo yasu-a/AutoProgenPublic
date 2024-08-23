@@ -47,11 +47,11 @@ class ButtonBox(QWidget):
     def _iter_buttons(self) -> Iterable[QPushButton]:
         yield from self.layout().findChildren(QPushButton)
 
-    def set_button_width(self, v):
+    def set_button_width(self, v):  # FIXME: not working
         for b in self._iter_buttons():
             b.setFixedWidth(v)
 
-    def set_button_height(self, v):
+    def set_button_height(self, v):  # FIXME: not working
         for b in self._iter_buttons():
             b.setFixedHeight(v)
 
