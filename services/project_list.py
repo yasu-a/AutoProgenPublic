@@ -2,7 +2,6 @@ from datetime import datetime
 from pathlib import Path
 
 from app_logging import create_logger
-from domain.errors import ProjectListServiceError
 from domain.models.project_stat import ProjectStat
 from domain.models.values import ProjectName
 from files.project import ProjectIOWithoutDependency
@@ -30,15 +29,6 @@ class ProjectListService:
             if child_dir_fullpath.name == str(name):
                 return True
         return False
-
-    def create_project_folder_fullpath(self, name: ProjectName) -> Path:
-        return self._base_fullpath / str(name)
-
-    def add_project(self, name: ProjectName) -> None:
-        if self.name_exists(name):
-            raise ProjectListServiceError(
-                reason=f"プロジェクトを作成できません。プロジェクト名{name!s}はすでに存在します。"
-            )
 
     def list_project_stats(self) -> list[ProjectStat]:
         stats = []

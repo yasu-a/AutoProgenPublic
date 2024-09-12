@@ -21,7 +21,7 @@ class ProjectCoreIO:
         assert path.is_file(), path
         if not external_ok:
             assert path.is_relative_to(
-                self._project_path_provider.project_folder_fullpath()
+                self._project_path_provider.base_folder_fullpath()
             ), path
 
     def __check_folder_location(self, path: Path, *, external_ok=False):
@@ -29,7 +29,7 @@ class ProjectCoreIO:
         assert path.is_dir(), path
         if not external_ok:
             assert path.is_relative_to(
-                self._project_path_provider.project_folder_fullpath()
+                self._project_path_provider.base_folder_fullpath()
             ), path
 
     def __check_path_may_not_exist(self, path: Path, *, external_ok=False):
@@ -37,7 +37,7 @@ class ProjectCoreIO:
         assert path.is_absolute(), path
         if not external_ok:
             assert path.is_relative_to(
-                self._project_path_provider.project_folder_fullpath()
+                self._project_path_provider.base_folder_fullpath()
             ), path
 
     def rmtree_folder(self, path: Path) -> None:

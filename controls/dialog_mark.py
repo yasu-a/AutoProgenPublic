@@ -4,8 +4,8 @@ from PyQt5.QtWidgets import QDialog, QListWidget, QWidget, QHBoxLayout, QLabel, 
     QListWidgetItem
 
 from app_logging import create_logger
-from application.dependency import get_mark_snapshot_service
-from domain.models.result_test import TestCaseTestResult, TestCaseTestResultSet
+from application.dependency.services import get_mark_snapshot_service
+from domain.models.result_test import TestCaseTestResult, TestCaseTestResultMapping
 from domain.models.values import StudentID, TestCaseID
 from dto.mark import StudentMarkSnapshot
 from fonts import font
@@ -219,13 +219,13 @@ class MarkResultTestCaseListWidget(QListWidget):
         pass
 
     @pyqtSlot()
-    def set_data(self, testcase_test_result_set: TestCaseTestResultSet):
-        for test_result in testcase_test_result_set:
+    def set_data(self, testcase_test_result_mapping: TestCaseTestResultMapping):
+        for testcase_id, test_result in testcase_test_result_mapping.items():
             # 項目のウィジェットを初期化
             item_widget = MarkResultTestCaseListItemWidget(self)
             item_widget.set_data(test_result)
             # リストに登録
-            self._w_item_mapping[test_result.testcase_id] = item_widget
+            self._w_item_mapping[testcase_id] = item_widget
             # Qtのリスト項目を初期化
             list_item = QListWidgetItem()
             list_item.setSizeHint(item_widget.sizeHint())
@@ -314,16 +314,11 @@ class MarkDialog(QDialog):
         current_student_id: StudentID = self._w_student_list.get_selected_id()
         student_snapshot = self._project_mark_snapshot.student_snapshot_mapping[current_student_id]
         self._w_testcase_result_list.set_data(
-            testcase_test_result_set=student_snapshot.test_result.testcase_result_set,
+            testcase_test_result_mapping=student_snapshot.test_result.testcase_result_mapping,
         )
         self._w_testcase_result_list.set_selected_id(
             testcase_id_to_select=testcase_id,
         )
 
     def closeEvent(self, evt: QCloseEvent):
-        # config = self._w_testcase_edit.get_data()
-        # get_testcase_edit_service().set_config(
-        #     testcase_id=self._testcase_id,
-        #     config=config,
-        # )
         pass

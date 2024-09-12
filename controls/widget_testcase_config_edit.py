@@ -5,7 +5,7 @@ from controls.widget_testacase_execute_options import TestCaseExecuteConfigOptio
 from controls.widget_testcase_input_file_mapping import TestCaseInputFileMappingEditWidget
 from controls.widget_testcase_output_file_mapping import TestCaseExpectedOutputFileMappingEditWidget
 from controls.widget_testcase_test_config_options import TestCaseTestConfigOptionsEditWidget
-from domain.models.testcase import TestCaseConfig, TestCaseExecuteConfig, TestConfig
+from domain.models.testcase import TestCaseConfig, TestCaseExecuteConfig, TestCaseTestConfig
 
 
 class TestCaseConfigEditWidget(QTabWidget):
@@ -56,7 +56,7 @@ class TestCaseConfigEditWidget(QTabWidget):
                 input_files=self._w_input_files_edit.get_data(),
                 options=self._w_execute_config_options_edit.get_data(),
             ),
-            test_config=TestConfig(
+            test_config=TestCaseTestConfig(
                 expected_output_files=self._w_expected_output_files_edit.get_data(),
                 options=self._w_test_config_options_edit.get_data(),
             ),

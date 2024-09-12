@@ -5,7 +5,7 @@ from domain.models.result_execute import ExecuteResult
 from domain.models.result_test import TestResult
 from domain.models.stages import StudentProgressStage
 from domain.models.student_master import Student
-from domain.models.testcase import TestConfig
+from domain.models.testcase import TestCaseTestConfig
 from domain.models.values import StudentID, TestCaseID
 
 
@@ -20,8 +20,10 @@ class StudentMarkSnapshot:
     test_result: TestResult
 
     def __post_init__(self):
-        # 結果の整合性チェック
+        # 結果データの整合性をチェック
         if self.execute_result is not None:
+            assert self.detailed_reason is None
+        if self.test_result is not None:
             assert self.detailed_reason is None
 
     @property
@@ -38,7 +40,7 @@ class StudentMarkSnapshot:
 class ProjectMarkSnapshot:
     # プロジェクト全体の採点に必要なデータのスナップショット
     student_snapshot_mapping: dict[StudentID, StudentMarkSnapshot]
-    testcase_test_config_mapping: dict[TestCaseID, TestConfig]
+    testcase_test_config_mapping: dict[TestCaseID, TestCaseTestConfig]
 
     def _list_student_ids(self) -> list[StudentID]:
         return list(self.student_snapshot_mapping.keys())

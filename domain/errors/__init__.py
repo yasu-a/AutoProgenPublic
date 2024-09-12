@@ -1,4 +1,4 @@
-from domain.models.testcase import TestCaseExecuteConfig
+from domain.models.testcase import TestCaseExecuteConfig, TestCaseTestConfig
 
 
 class ProjectIOError(RuntimeError):
@@ -31,6 +31,12 @@ class ExecuteServiceError(RuntimeError):
     def __init__(self, *, reason: str, execute_config: TestCaseExecuteConfig):
         self.reason = reason
         self.execute_config = execute_config
+
+
+class TestServiceError(RuntimeError):
+    def __init__(self, *, reason: str, test_config: TestCaseTestConfig):
+        self.reason = reason
+        self.test_config = test_config
 
 
 class ProjectCreateServiceError(RuntimeError):

@@ -4,34 +4,42 @@ from typing import TextIO
 
 from app_logging import create_logger
 from domain.models.result_execute import OutputFileMapping, OutputFile
-from domain.models.testcase import TestCaseConfig, TestCaseExecuteConfig, TestConfig
+from domain.models.testcase import TestCaseConfig, TestCaseExecuteConfig, TestCaseTestConfig
 from domain.models.values import TestCaseID, StudentID, FileID
 from dto.testcase_execute_config_mapping import TestCaseExecuteConfigMapping
+from dto.testcase_test_config_mapping import TestCaseTestConfigMapping
 from files.project_core import ProjectCoreIO
-from files.project_path_provider import ProjectPathProvider
+from files.project_path_provider import ProjectPathProvider, TestCasePathProvider, \
+    StudentCompilePathProvider, StudentTestCaseExecutePathProvider
 
 
 class TestCaseIO:
     _logger = create_logger()
 
-    def __init__(
+    def __init__(  # TODO: 不自然な依存関係 compile execute
             self,
             *,
             project_path_provider: ProjectPathProvider,
+            testcase_path_provider: TestCasePathProvider,
+            student_compile_path_provider: StudentCompilePathProvider,
+            student_testcase_execute_path_provider: StudentTestCaseExecutePathProvider,
             project_core_io: ProjectCoreIO,
     ):
         self._project_path_provider = project_path_provider
+        self._testcase_path_provider = testcase_path_provider
+        self._student_compile_path_provider = student_compile_path_provider
+        self._student_testcase_execute_path_provider = student_testcase_execute_path_provider
         self._project_core_io = project_core_io
 
     def open_in_explorer(self) -> None:
         testcase_folder_fullpath \
-            = self._project_path_provider.testcase_folder_fullpath()
+            = self._testcase_path_provider.base_folder_fullpath()
         testcase_folder_fullpath.mkdir(parents=True, exist_ok=True)
         os.startfile(testcase_folder_fullpath)
 
     def list_ids(self) -> list[TestCaseID]:
         testcase_folder_fullpath \
-            = self._project_path_provider.testcase_folder_fullpath()
+            = self._testcase_path_provider.base_folder_fullpath()
         testcase_folder_fullpath.mkdir(parents=True, exist_ok=True)
         id_lst = []
         for path in testcase_folder_fullpath.iterdir():
@@ -40,7 +48,7 @@ class TestCaseIO:
         return id_lst
 
     def read_config(self, testcase_id: TestCaseID) -> TestCaseConfig:
-        json_fullpath = self._project_path_provider.testcase_config_json_fullpath(
+        json_fullpath = self._testcase_path_provider.config_json_fullpath(
             testcase_id=testcase_id,
         )
         json_body = self._project_core_io.read_json(json_fullpath=json_fullpath)
@@ -54,83 +62,89 @@ class TestCaseIO:
             testcase_execute_config_hash_mapping[testcase_id] = testcase_execute_config
         return TestCaseExecuteConfigMapping(testcase_execute_config_hash_mapping)
 
-    def read_testcase_test_config_mapping(self) -> dict[TestCaseID, TestConfig]:
-        mapping = {}
+    def read_testcase_test_config_mapping(self) -> TestCaseTestConfigMapping:
+        mapping: dict[TestCaseID, TestCaseTestConfig] = {}
         for testcase_id in self.list_ids():
             config = self.read_config(testcase_id)
             mapping[testcase_id] = config.test_config
-        return mapping
+        return TestCaseTestConfigMapping(mapping)
 
     def create_config(self, testcase_id: TestCaseID) -> None:
         config = TestCaseConfig.create_default()
         self.write_config(testcase_id=testcase_id, config=config)
 
     def delete_config(self, testcase_id: TestCaseID) -> None:
-        json_fullpath = self._project_path_provider.testcase_config_json_fullpath(
+        json_fullpath = self._testcase_path_provider.config_json_fullpath(
             testcase_id=testcase_id,
         )
         self._project_core_io.unlink(path=json_fullpath)
 
     def write_config(self, testcase_id: TestCaseID, config: TestCaseConfig) -> None:
-        json_fullpath = self._project_path_provider.testcase_config_json_fullpath(
+        json_fullpath = self._testcase_path_provider.config_json_fullpath(
             testcase_id=testcase_id,
         )
         self._project_core_io.write_json(json_fullpath=json_fullpath, body=config.to_json())
 
-    def clone_student_executable_to_test_folder(
+    def clone_student_executable_to_execute_folder(
             self,
             student_id: StudentID,
             testcase_id: TestCaseID,
     ) -> None:
         """
-        生徒の実行ファイルをテスト用のフォルダにコピーする
+        生徒の実行ファイルを実行用のフォルダにコピーする
 
         :param student_id: 生徒ID
         :param testcase_id: テストケースID
         """
 
         # 生徒の実行ファイルのフルパス
-        student_executable_fullpath = self._project_path_provider.student_executable_fullpath(
-            student_id=student_id,
+        student_compile_executable_fullpath = (
+            self._student_compile_path_provider.executable_fullpath(
+                student_id=student_id,
+            )
         )
-        # 生徒のテストフォルダの実行ファイルのフルパス
-        student_test_executable_fullpath = self._project_path_provider.student_test_executable_fullpath(
-            student_id=student_id,
-            testcase_id=testcase_id,
+        # 生徒の実行フォルダの実行ファイルのフルパス
+        student_execute_executable_fullpath = (
+            self._student_testcase_execute_path_provider.student_execute_executable_fullpath(
+                student_id=student_id,
+                testcase_id=testcase_id,
+            )
         )
-        # テストフォルダがない場合は生成する
-        student_test_executable_fullpath.parent.mkdir(parents=True, exist_ok=True)
+        # 実行フォルダがない場合は生成する
+        student_execute_executable_fullpath.parent.mkdir(parents=True, exist_ok=True)
         # コピーする
         self._project_core_io.copy_file_into_folder(
-            src_file_fullpath=student_executable_fullpath,
-            dst_folder_fullpath=student_test_executable_fullpath.parent,
-            dst_file_name=student_test_executable_fullpath.name,
+            src_file_fullpath=student_compile_executable_fullpath,
+            dst_folder_fullpath=student_execute_executable_fullpath.parent,
+            dst_file_name=student_execute_executable_fullpath.name,
         )
 
-    def create_input_files_to_test_folder(
+    def create_input_files_to_execute_folder(
             self,
             student_id: StudentID,
             testcase_id: TestCaseID,
     ) -> None:
         """
-        テストケースの入力ファイルを生徒のテスト用フォルダに生成する
+        テストケースの入力ファイルを生徒の実行用フォルダに生成する
 
         :param student_id: 生徒ID
         :param testcase_id: テストケースID
         """
 
-        # 生徒のテストフォルダのフルパス
-        student_test_folder_fullpath = self._project_path_provider.student_test_folder_fullpath(
-            student_id=student_id,
-            testcase_id=testcase_id,
+        # 生徒の実行フォルダのフルパス
+        student_execute_folder_fullpath = (
+            self._student_testcase_execute_path_provider.base_folder_fullpath(
+                student_id=student_id,
+                testcase_id=testcase_id,
+            )
         )
-        # テストフォルダがない場合は生成する
-        student_test_folder_fullpath.mkdir(parents=True, exist_ok=True)
+        # 実行フォルダがない場合は生成する
+        student_execute_folder_fullpath.mkdir(parents=True, exist_ok=True)
         # テストケースの入力ファイルを生成する
         config = self.read_config(testcase_id=testcase_id)
         for file_id, input_file in config.execute_config.input_files.items():
             self._project_core_io.touch(
-                file_fullpath=student_test_folder_fullpath / file_id.deployment_relative_path,
+                file_fullpath=student_execute_folder_fullpath / file_id.deployment_relative_path,
                 content_bytes=input_file.content_bytes,
             )
 
@@ -138,7 +152,7 @@ class TestCaseIO:
             self,
             student_id: StudentID,
             testcase_id: TestCaseID,
-    ) -> TextIO:
+    ) -> TextIO | None:
         """
         標準入力を開いてファイルポインタを返す
 
@@ -148,12 +162,17 @@ class TestCaseIO:
         """
 
         # 標準入力のパス
-        stdin_fullpath = self._project_path_provider.student_test_stdin_fullpath(
-            student_id=student_id,
-            testcase_id=testcase_id,
+        stdin_fullpath = (
+            self._student_testcase_execute_path_provider.student_execute_stdin_fullpath(
+                student_id=student_id,
+                testcase_id=testcase_id,
+            )
         )
         # ファイルを開いて返す
-        return stdin_fullpath.open(mode="r", encoding="utf-8")
+        if stdin_fullpath.exists():
+            return stdin_fullpath.open(mode="r", encoding="utf-8")
+        else:
+            return None
 
     def get_executable_fullpath_if_exists(
             self,
@@ -168,10 +187,12 @@ class TestCaseIO:
         :return: 実行可能ファイルのパス，存在しなければNone
         """
 
-        # 生徒のテストフォルダのフルパス
-        executable_fullpath = self._project_path_provider.student_test_executable_fullpath(
-            student_id=student_id,
-            testcase_id=testcase_id,
+        # 生徒の実行フォルダのフルパス
+        executable_fullpath = (
+            self._student_testcase_execute_path_provider.student_execute_executable_fullpath(
+                student_id=student_id,
+                testcase_id=testcase_id,
+            )
         )
         # 存在しなければNoneを返す
         if not executable_fullpath.exists():
@@ -179,33 +200,35 @@ class TestCaseIO:
         # 存在する場合は実行可能ファイルのパスを返す
         return executable_fullpath
 
-    def list_file_relative_paths_in_test_folder(
+    def list_file_relative_paths_in_execute_folder(
             self,
             student_id: StudentID,
             testcase_id: TestCaseID,
     ) -> list[Path]:
         """
-        テストフォルダの中身の相対パスをリストで返す
+        実行フォルダの中身の相対パスをリストで返す
 
         :param student_id: 生徒ID
         :param testcase_id: テストケースID
-        :return: テストフォルダの中身の相対パスのリスト
+        :return: 実行フォルダの中身の相対パスのリスト
         """
 
-        # 生徒のテストフォルダのフルパス
-        test_folder_fullpath = self._project_path_provider.student_test_folder_fullpath(
-            student_id=student_id,
-            testcase_id=testcase_id,
+        # 生徒の実行フォルダのフルパス
+        execute_folder_fullpath = (
+            self._student_testcase_execute_path_provider.base_folder_fullpath(
+                student_id=student_id,
+                testcase_id=testcase_id,
+            )
         )
-        # テストフォルダが存在しない場合は空リストを返す
-        if not test_folder_fullpath.exists():
+        # 実行フォルダが存在しない場合は空リストを返す
+        if not execute_folder_fullpath.exists():
             return []
-        # テストフォルダの中身の相対パスをリストで返す
+        # 実行フォルダの中身の相対パスをリストで返す
         relative_path_lst = []
-        for path in test_folder_fullpath.iterdir():
+        for path in execute_folder_fullpath.iterdir():
             if not path.is_file():  # 現実装では一階層目のファイルしか見ない
                 continue
-            relative_path_lst.append(path.relative_to(test_folder_fullpath))
+            relative_path_lst.append(path.relative_to(execute_folder_fullpath))
         return relative_path_lst
 
     def list_file_relative_paths_difference_in_test_folder(
@@ -215,28 +238,31 @@ class TestCaseIO:
             file_relative_paths_base: list[Path],
     ) -> list[Path]:
         """
-        テストフォルダの中身と基準リストとの差分の相対パスをリストで返す
+        実行フォルダの中身と基準リストとの差分の相対パスをリストで返す
 
         :param student_id: 生徒ID
         :param testcase_id: テストケースID
         :param file_relative_paths_base: 基準となるパスリスト
-        :return: テストフォルダのファイルのうち基準リストに含まれていないファイルの相対パスのリスト
+        :return: 実行フォルダのファイルのうち基準リストに含まれていないファイルの相対パスのリスト
         """
 
-        # 生徒のテストフォルダのフルパス
-        test_folder_fullpath = self._project_path_provider.student_test_folder_fullpath(
-            student_id=student_id,
-            testcase_id=testcase_id,
+        # 生徒の実行フォルダのフルパス
+        execute_folder_fullpath = (
+            self._student_testcase_execute_path_provider.base_folder_fullpath(
+                student_id=student_id,
+                testcase_id=testcase_id,
+            )
+
         )
-        # テストフォルダが存在しない場合は空リストを返す
-        if not test_folder_fullpath.exists():
+        # 実行フォルダが存在しない場合は空リストを返す
+        if not execute_folder_fullpath.exists():
             return []
-        # テストフォルダの中身の相対パスをリストで返す
+        # 実行フォルダの中身の相対パスをリストで返す
         relative_path_lst = []
-        for path in test_folder_fullpath.iterdir():
+        for path in execute_folder_fullpath.iterdir():
             if not path.is_file():  # 現実装では一階層目のファイルしか見ない
                 continue
-            relative_path = path.relative_to(test_folder_fullpath)
+            relative_path = path.relative_to(execute_folder_fullpath)
             if relative_path in file_relative_paths_base:
                 continue  # 基準リストに含まれる
             relative_path_lst.append(relative_path)
@@ -249,7 +275,7 @@ class TestCaseIO:
             file_relative_paths: list[Path],
     ) -> dict[Path, bytes]:
         """
-        テストフォルダの中身の指定された相対パスに対応するファイルの内容を読み出してディクショナリで返す
+        実行フォルダの中身の指定された相対パスに対応するファイルの内容を読み出してディクショナリで返す
 
         :param student_id: 生徒ID
         :param testcase_id: テストケースID
@@ -257,18 +283,20 @@ class TestCaseIO:
         :return: 読み出したファイルの内容のディクショナリ
         """
 
-        # 生徒のテストフォルダのフルパス
-        test_folder_fullpath = self._project_path_provider.student_test_folder_fullpath(
-            student_id=student_id,
-            testcase_id=testcase_id,
+        # 生徒の実行フォルダのフルパス
+        execute_folder_fullpath = (
+            self._student_testcase_execute_path_provider.base_folder_fullpath(
+                student_id=student_id,
+                testcase_id=testcase_id,
+            )
         )
-        # テストフォルダが存在しない場合は空ディクショナリを返す
-        if not test_folder_fullpath.exists():
+        # 実行フォルダが存在しない場合は空ディクショナリを返す
+        if not execute_folder_fullpath.exists():
             return {}
         # ファイルの内容を読み出す
         relative_path_to_content_mapping = {}
         for file_relative_path in file_relative_paths:
-            file_fullpath = test_folder_fullpath / file_relative_path
+            file_fullpath = execute_folder_fullpath / file_relative_path
             content_bytes = self._project_core_io.read_file_content_bytes(
                 file_fullpath=file_fullpath,
             )
@@ -281,15 +309,19 @@ class TestCaseIO:
             testcase_id: TestCaseID,
             file_relative_path: Path,
     ) -> bool:
-        test_folder_fullpath = self._project_path_provider.student_test_folder_fullpath(
-            student_id=student_id,
-            testcase_id=testcase_id,
+        execute_folder_fullpath = (
+            self._student_testcase_execute_path_provider.base_folder_fullpath(
+                student_id=student_id,
+                testcase_id=testcase_id,
+            )
         )
-        stdout_fullpath = self._project_path_provider.student_test_stdout_fullpath(
-            student_id=student_id,
-            testcase_id=testcase_id,
+        stdout_fullpath = (
+            self._student_testcase_execute_path_provider.student_execute_stdout_fullpath(
+                student_id=student_id,
+                testcase_id=testcase_id,
+            )
         )
-        return test_folder_fullpath / file_relative_path == stdout_fullpath
+        return execute_folder_fullpath / file_relative_path == stdout_fullpath
 
     def read_relative_file_paths_in_test_folder_as_output_files(
             self,
@@ -299,7 +331,7 @@ class TestCaseIO:
             file_relative_paths: list[Path],
     ) -> OutputFileMapping:
         """
-        テストフォルダの中身の指定された相対パスに対応するファイルの内容を読み出して、
+        実行フォルダの中身の指定された相対パスに対応するファイルの内容を読み出して、
         TestCaseExecuteResultOutputFilesオブジェクトに格納して返す
 
         :param student_id: 生徒ID
@@ -344,15 +376,17 @@ class TestCaseIO:
         :param stdout_text: stdoutのテキスト
         """
 
-        # 生徒のテストフォルダの標準出力のフルパス
-        stdout_fullpath = self._project_path_provider.student_test_stdout_fullpath(
-            student_id=student_id,
-            testcase_id=testcase_id,
+        # 生徒の実行フォルダの標準出力のフルパス
+        stdout_fullpath = (
+            self._student_testcase_execute_path_provider.student_execute_stdout_fullpath(
+                student_id=student_id,
+                testcase_id=testcase_id,
+            )
         )
-        # 生徒のテストフォルダがない場合は生成する
+        # 生徒の実行フォルダがない場合は生成する
         stdout_fullpath.parent.mkdir(parents=True, exist_ok=True)
         # stdoutのテキストをファイルに書き出す
-        with stdout_fullpath.open(mode="w", encoding="utf-8") as f:
+        with stdout_fullpath.open(mode="w", encoding="utf-8", newline="\n") as f:
             f.write(stdout_text)
 
 # class TestCaseConfigError(ValueError):

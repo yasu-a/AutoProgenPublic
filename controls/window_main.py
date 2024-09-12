@@ -3,7 +3,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
-from application.dependency import get_task_manager, get_project_service
+from application.dependency.services import get_project_service
+from application.dependency.tasks import get_task_manager
 from controls.dialog_global_settings import GlobalSettingsEditDialog
 from controls.dialog_mark import MarkDialog
 from controls.dialog_testcase_list_edit import TestCaseListEditDialog

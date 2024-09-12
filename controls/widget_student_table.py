@@ -6,7 +6,7 @@ from PyQt5.QtGui import QColor, QFont
 from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
-from application.dependency import get_project_service
+from application.dependency.services import get_project_service
 from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
 from domain.models.stages import StudentProgressStage, AbstractStudentProgress
 from domain.models.values import StudentID
@@ -19,10 +19,21 @@ class StudentTableColumns:
     COL_STAGE_BUILD = 2
     COL_STAGE_COMPILE = 3
     COL_STAGE_EXECUTE = 4
-    COL_ERROR = 5
-    COL_TESTCASE_RESULT = 6
-    COL_MARK_RESULT = 7
-    HEADER = "学籍番号", "名前", "実行環境構築", "コンパイル", "実行", "エラー", "テスト結果", "採点結果"
+    COL_STAGE_TEST = 5
+    COL_ERROR = 6
+    COL_TESTCASE_RESULT = 7
+    COL_MARK_RESULT = 8
+    HEADER = (
+        "学籍番号",
+        "名前",
+        "実行環境構築",
+        "コンパイル",
+        "実行",
+        "テスト",
+        "エラー",
+        "テスト結果",
+        "採点結果",
+    )
 
 
 QtRoleType = int
@@ -125,6 +136,16 @@ class StudentTableModelDataProvider:
             return self._get_display_role_of_student_stage(
                 student_id=student_id,
                 stage=StudentProgressStage.EXECUTE,
+            )
+
+    @data_provider(
+        column=StudentTableColumns.COL_STAGE_TEST,
+    )
+    def get_display_role_of_stage_test(self, student_id: StudentID, role: QtRoleType):
+        if role == Qt.DisplayRole:
+            return self._get_display_role_of_student_stage(
+                student_id=student_id,
+                stage=StudentProgressStage.TEST,
             )
 
     @data_provider(

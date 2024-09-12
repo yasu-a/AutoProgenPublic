@@ -1,5 +1,5 @@
-from application.dependency import get_project_service, get_build_service, get_compile_service, \
-    get_execute_service
+from application.dependency.services import get_build_service, get_compile_service, \
+    get_execute_service, get_project_service, get_test_service
 from domain.models.stages import StudentProgressStage
 from tasks.tasks import AbstractStudentTask
 
@@ -18,6 +18,10 @@ class RunStagesStudentTask(AbstractStudentTask):
             self._logger.info(f"Dispatching stage: {stage!r}")
             service = get_execute_service()
             service.execute_and_save_result(student_id=self._student_id)
+        elif stage == StudentProgressStage.TEST:
+            self._logger.info(f"Dispatching stage: {stage!r}")
+            service = get_test_service()
+            service.test_and_save_result(student_id=self._student_id)
         else:
             self._logger.info(f"Not implemented stage: {stage!r}")
 

@@ -41,10 +41,10 @@ class TestCaseTestConfigOptionsEditWidget(QWidget):
         self._le_allowable_edit_distance.setMaximum(10)
         layout_content.addWidget(self._le_allowable_edit_distance, 2, 1)
 
-        layout_content.addWidget(QLabel("空白を無視する", self), 3, 0)
-
-        self._cb_ignore_whitespace = QCheckBox(self)
-        layout_content.addWidget(self._cb_ignore_whitespace, 3, 1)
+        # layout_content.addWidget(QLabel("空白を無視する", self), 3, 0)
+        #
+        # self._cb_ignore_whitespace = QCheckBox(self)
+        # layout_content.addWidget(self._cb_ignore_whitespace, 3, 1)
 
         layout_root.addStretch(1)
 
@@ -56,7 +56,7 @@ class TestCaseTestConfigOptionsEditWidget(QWidget):
         self._cb_ordered_matching.setChecked(options.ordered_matching)
         self._le_float_tolerance.setText(f"{options.float_tolerance:.6E}")
         self._le_allowable_edit_distance.setValue(options.allowable_edit_distance)
-        self._cb_ignore_whitespace.setChecked(options.ignore_whitespace)
+        # self._cb_ignore_whitespace.setChecked(options.ignore_whitespace)
 
     @pyqtSlot()
     def get_data(self) -> TestConfigOptions:
@@ -64,6 +64,6 @@ class TestCaseTestConfigOptionsEditWidget(QWidget):
             ordered_matching=self._cb_ordered_matching.isChecked(),
             float_tolerance=float(self._le_float_tolerance.text()),
             allowable_edit_distance=self._le_allowable_edit_distance.value(),
-            ignore_whitespace=self._cb_ignore_whitespace.isChecked(),
+            # ignore_whitespace=self._cb_ignore_whitespace.isChecked(),
         )
         return options

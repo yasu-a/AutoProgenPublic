@@ -5,8 +5,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import QIntValidator, QRegExpValidator
 from PyQt5.QtWidgets import *
 
-from application.debug import is_debug
-from application.dependency import get_project_list_service
+from application.dependency.services import get_project_list_service
+from application.state.debug import is_debug
 from domain.models.values import TargetID, ProjectName
 from dto.new_project_config import NewProjectConfig
 from icons import icon

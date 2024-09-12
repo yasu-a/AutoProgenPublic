@@ -1,285 +1,258 @@
-# import re
-# import subprocess
-#
-# # from models.student import Student
-# from domain.models.testcase import TestCase, TestCaseResultState
-#
-#
-# class TesterError(ValueError):
-#     def __init__(self, result_state: TestCaseResultState):
-#         self.result_state = result_state
-#
-#
-# class ExecutableRunnerTimeoutError(ValueError):
-#     pass
-#
-#
-# class ExecutableRunner:
-#     def __init__(self, *, executable_fullpath: str, timeout: float, input_string: str | None):
-#         self.__executable_fullpath = executable_fullpath
-#         self.__timeout = timeout
-#         self.__input_string = input_string
-#         # self.__encoding = "utf-8"
-#
-#     def run(self) -> list[str]:
-#         with subprocess.Popen(
-#                 args=[self.__executable_fullpath],
-#                 stdout=subprocess.PIPE,
-#                 stderr=subprocess.STDOUT,
-#                 stdin=subprocess.PIPE,
-#                 universal_newlines=True,
-#         ) as p:
-#             input_string = self.__input_string if self.__input_string else None
-#             try:
-#                 stdout_text, stderr_text = p.communicate(
-#                     input=input_string,
-#                     timeout=self.__timeout,
-#                 )
-#             except subprocess.TimeoutExpired:
-#                 p.terminate()
-#                 raise ExecutableRunnerTimeoutError()
-#             else:
-#                 assert stderr_text is None, stderr_text
-#                 output_lines: list[str] = stdout_text.split("\n")
-#                 return output_lines
-#         #     if self.__input_string:
-#         #         # p.stdin.write(self.__input_string.encode(self.__encoding))
-#         #         p.stdin.write(self.__input_string)
-#         #     try:
-#         #         p.wait(timeout=self.__timeout)
-#         #     except subprocess.TimeoutExpired:
-#         #         raise ExecutableRunnerTimeoutError()
-#         #     # output_lines: list[bytes] = p.stdout.readlines()
-#         #     output_lines: list[str] = "".join(p.stdout.readlines()).split("\n")
-#         #     p.kill()
-#         # # output_lines_decoded = [
-#         # #     line.decode(self.__encoding)
-#         # #     for line in output_lines
-#         # # ]
-#         # # return output_lines_decoded
-#         # return output_lines
-#
-#
-# # https://stackoverflow.com/questions/2460177/edit-distance-in-python
-# def levenshtein_distance(s1, s2):
-#     if len(s1) > len(s2):
-#         s1, s2 = s2, s1
-#
-#     distances = range(len(s1) + 1)
-#     for i2, c2 in enumerate(s2):
-#         distances_ = [i2 + 1]
-#         for i1, c1 in enumerate(s1):
-#             if c1 == c2:
-#                 distances_.append(distances[i1])
-#             else:
-#                 distances_.append(1 + min((distances[i1], distances[i1 + 1], distances_[-1])))
-#         distances = distances_
-#     return distances[-1]
-#
-#
-# class TestCaseOutputComparator:
-#     def __init__(self, testcase: TestCase):
-#         self.__testcase = testcase
-#         self.__config = testcase.config
-#
-#     @classmethod
-#     def process_spaces_start_of_line(cls, lines: list[str]) -> list[str]:
-#         return [
-#             line.lstrip()
-#             for line in lines
-#         ]
-#
-#     @classmethod
-#     def process_spaces_end_of_line(cls, lines: list[str]) -> list[str]:
-#         return [
-#             line.rstrip()
-#             for line in lines
-#         ]
-#
-#     @classmethod
-#     def process_multiple_spaces_between_words(cls, lines: list[str]) -> list[str]:
-#         return [
-#             re.sub(r"\b\s+\b", " ", line)
-#             for line in lines
-#         ]
-#
-#     @classmethod
-#     def process_empty_lines(cls, lines: list[str]) -> list[str]:
-#         return [
-#             line
-#             for line in lines
-#             if line.strip()
-#         ]
-#
-#     @classmethod
-#     def process_letter_case_difference(cls, lines: list[str]) -> list[str]:
-#         return [
-#             line.lower()
-#             for line in lines
-#         ]
-#
-#     @classmethod
-#     def compare_lines_with_levenshtein_distance(
-#             cls, lines_left: list[str], lines_right: list[str], max_distance: int
-#     ):
-#         if len(lines_left) != len(lines_right):
-#             return False
-#         for lines_left, line_right in zip(lines_left, lines_right):
-#             if levenshtein_distance(lines_left, line_right) > max_distance:
-#                 return False
-#         return True
-#
-#     def process_lines_with_testcase_config(self, lines: list[str]) -> list[str]:
-#         if self.__config.allow_spaces_start_of_line:
-#             lines = self.process_spaces_start_of_line(lines)
-#         if self.__config.allow_spaces_end_of_line:
-#             lines = self.process_spaces_end_of_line(lines)
-#         if self.__config.allow_multiple_spaces_between_words:
-#             lines = self.process_multiple_spaces_between_words(lines)
-#         if self.__config.allow_empty_lines:
-#             lines = self.process_empty_lines(lines)
-#         if self.__config.allow_letter_case_difference:
-#             lines = self.process_letter_case_difference(lines)
-#         return lines
-#
-#     def compare_lines_with_testcase_config(self, lines_left: list[str], lines_right: list[str]) \
-#             -> bool:
-#         return self.compare_lines_with_levenshtein_distance(
-#             lines_left=lines_left,
-#             lines_right=lines_right,
-#             max_distance=self.__config.allowable_line_levenshtein_distance,
-#         )
-#
-#     def compare_with(self, actual_output_lines: list[str]) -> bool:
-#         actual_output_lines = self.process_lines_with_testcase_config(
-#             actual_output_lines
-#         )
-#         expected_output_lines = self.process_lines_with_testcase_config(
-#             self.__testcase.expected_output_lines
-#         )
-#         return self.compare_lines_with_testcase_config(
-#             lines_left=actual_output_lines,
-#             lines_right=expected_output_lines,
-#         )
-#
-# #
-# # class StudentEnvironmentTester:
-# #     def __init__(self, env_io: "EnvironmentIO", testcase_io: "TestCaseIO"):
-# #         self.__env_io = env_io
-# #         self.__testcase_io = testcase_io
-# #
-# #     def run_executable_of_student(self, student: Student, target_index: int, testcase: TestCase) \
-# #             -> list[str]:
-# #         entry_source = student.env_meta.get_env_entry_by_label_and_number(
-# #             label=EnvEntryLabel.SOURCE_MAIN,
-# #             number=target_index,
-# #         )
-# #         if entry_source is None:  # ソースがない（未提出？）
-# #             raise TesterError(
-# #                 result_state=TestCaseResultState.NO_BUILD_FOUND,
-# #             )
-# #
-# #         executable_fullpath = self.__env_io.get_student_env_executable_fullpath(
-# #             student_id=student.meta.student_id,
-# #             item_name=entry_source.path,
-# #         )
-# #         if executable_fullpath is None:  # ソースはあるけど実行ファイルがない（コンパイル失敗？）
-# #             raise TesterError(
-# #                 result_state=TestCaseResultState.NO_BUILD_FOUND,
-# #             )
-# #
-# #         runner = ExecutableRunner(
-# #             executable_fullpath=executable_fullpath,
-# #             timeout=testcase.config.timeout,
-# #             input_string=testcase.expected_input,
-# #         )
-# #
-# #         try:
-# #             output_lines = runner.run()
-# #         except ExecutableRunnerTimeoutError:
-# #             raise TesterError(
-# #                 result_state=TestCaseResultState.EXECUTION_TIMEOUT,
-# #             )
-# #         return output_lines
-# #
-# #     def run_testcase_on_student(self, student: Student, target_index: int, testcase: TestCase) \
-# #             -> TestCaseResult:
-# #         try:
-# #             actual_output_lines = self.run_executable_of_student(student, target_index, testcase)
-# #         except TesterError as e:
-# #             result = TestCaseResult(
-# #                 testcase=copy.deepcopy(testcase),
-# #                 actual_output_lines=None,
-# #                 result_state=e.result_state,
-# #             )
-# #         else:
-# #             passed = TestCaseOutputComparator(testcase=testcase).compare_with(
-# #                 actual_output_lines=actual_output_lines,
-# #             )
-# #             result = TestCaseResult(
-# #                 testcase=copy.deepcopy(testcase),
-# #                 actual_output_lines=actual_output_lines,
-# #                 result_state=(
-# #                     TestCaseResultState.OK
-# #                     if passed
-# #                     else TestCaseResultState.WRONG_ANSWER
-# #                 ),
-# #             )
-# #         return result
-# #
-# #     def run_test_session_on_student(self, student: Student, target_index: int) \
-# #             -> TestSessionResult:
-# #         try:
-# #             test_session: TestSession \
-# #                 = self.__testcase_io.validate_and_get_test_session(target_index)
-# #             # if test_session.is_effectively_empty():
-# #             #     raise TestCaseConfigError(
-# #             #         fetal=True,
-# #             #         reason=f"設問 {target_index:02} には有効なテストケースが１つも定義されていません",
-# #             #         target_index=target_index,
-# #             #         testcase_index=None,
-# #             #     )
-# #             if test_session.has_no_testcases():
-# #                 raise TestCaseConfigError(
-# #                     fetal=True,
-# #                     reason=f"設問 {target_index:02} にテストケースが定義されていません。不要な場合はテストケースの設定で設問を消去してください。",
-# #                     target_index=target_index,
-# #                     testcase_index=None,
-# #                 )
-# #         except TestCaseConfigError as e:
-# #             return TestSessionResult(
-# #                 testcase_results=None,
-# #                 reason=e.reason,
-# #             )
-# #
-# #         testcase_results = []
-# #         for testcase in test_session.testcases:
-# #             testcase_result = self.run_testcase_on_student(
-# #                 student=student,
-# #                 target_index=target_index,
-# #                 testcase=testcase,
-# #             )
-# #             testcase_results.append(testcase_result)
-# #         return TestSessionResult(
-# #             testcase_results=testcase_results,
-# #             reason=None,
-# #         )
-# #
-# #     def run_all_tests_on_student(self, student: Student,
-# #                                  target_indexes: list[int]) -> dict[int, TestSessionResult]:
-# #         target_test_session_mapping: dict[int, TestSessionResult] \
-# #             = {}  # target_index -> TestSessionResult
-# #         for target_index in target_indexes:
-# #             target_test_session_mapping[target_index] \
-# #                 = self.run_test_session_on_student(student, target_index)
-# #         return target_test_session_mapping
+import re
+from typing import Iterable, NamedTuple
 
-# class AutoTestService:
-#     # 採点時に利用する自動テストを行う
-#     # テストはステージ化できない。テストはBUILDの成功・失敗に関わらず採点時に実行される。
-#
-#     def __init__(self):
-#         pass
-#
-#     def test_and_get_result(self, project_mark_snapshot: ProjectMarkSnapshot) -> TestResult:
-#
+from Levenshtein import distance as edit_distance
+from scipy.sparse.csgraph import maximum_bipartite_matching
+
+from domain.errors import TestServiceError
+from domain.models.result_test import OutputFileTestResult, NonmatchedToken, MatchedToken, \
+    TestCaseTestResult, OutputFileTestResultMapping, TestResult, TestCaseTestResultMapping
+from domain.models.testcase import TestConfigOptions, ExpectedOutputFile, \
+    AbstractExpectedToken, TextExpectedToken, FloatExpectedToken, TestCaseTestConfig
+from domain.models.values import StudentID, TestCaseID, FileID
+from files.progress import ProgressIO
+from files.project import ProjectIO
+from files.testcase import TestCaseIO
+
+
+class _Token(NamedTuple):
+    text: str
+    begin: int
+    end: int  # end: exclusive
+
+
+def _tokenize(string: str) -> list[_Token]:
+    def iter_token_begin_and_end() -> Iterable[tuple[int, int]]:
+        begin = 0
+        for m in re.finditer(r"\s+", string):
+            end = m.start()
+            yield begin, end
+            begin = m.end()
+        yield begin, len(string)
+
+    def tokenize():
+        tokens = []
+        for begin, end in iter_token_begin_and_end():
+            token = _Token(string[begin:end], begin, end)
+            tokens.append(token)
+        return tokens
+
+    return tokenize()
+
+
+def _is_matched(
+        token: _Token,
+        expected_token: AbstractExpectedToken,
+        allowable_edit_distance: int,
+        float_tolerance: float,
+) -> bool:
+    # TODO: 何らかのクラスのポリモーフィズムを使え
+    if isinstance(expected_token, TextExpectedToken):
+        if allowable_edit_distance == 0:
+            return token.text == expected_token.value
+        else:
+            return edit_distance(token.text, expected_token.value) <= allowable_edit_distance
+    elif isinstance(expected_token, FloatExpectedToken):
+        try:
+            token_float = float(token.text)
+        except ValueError:
+            return False
+        return abs(token_float - expected_token.value) < float_tolerance
+    else:
+        assert False, expected_token
+
+
+def _get_token_lcs(match_table: list) \
+        -> tuple[list[int], list[int]]:  # list of matched token/expected_token indexes
+    # longest common subsequence for list of token
+    # https://qiita.com/tetsuro731/items/bc9fb99683337ae7dc2e
+    n_tokens = len(match_table)
+    n_expected_tokens = len(match_table[0])
+
+    dp = [[0] * (n_expected_tokens + 1) for _ in range(n_tokens + 1)]
+
+    for i in range(n_tokens):
+        for j in range(n_expected_tokens):
+            if match_table[i][j]:
+                dp[i + 1][j + 1] = dp[i][j] + 1
+            else:
+                dp[i + 1][j + 1] = max(dp[i + 1][j], dp[i][j + 1])
+
+    matched_token_index_lst = []
+    matched_expected_token_index_lst = []
+    i = n_tokens - 1
+    j = n_expected_tokens - 1
+
+    while i >= 0 and j >= 0:
+        if match_table[i][j]:
+            matched_token_index_lst.append(i)
+            matched_expected_token_index_lst.append(j)
+            i -= 1
+            j -= 1
+        elif dp[i + 1][j + 1] == dp[i][j + 1]:
+            i -= 1
+        elif dp[i + 1][j + 1] == dp[i + 1][j]:
+            j -= 1
+
+    return (
+        list(reversed(matched_token_index_lst)),
+        list(reversed(matched_expected_token_index_lst)),
+    )
+
+
+class TestService:
+    def __init__(self, *, project_io: ProjectIO, progress_io: ProgressIO, testcase_io: TestCaseIO):
+        self._project_io = project_io
+        self._progress_io = progress_io
+        self._testcase_io = testcase_io
+
+    @classmethod
+    def _test_output_file_content_and_get_token_matches(
+            cls,
+            *,
+            content_string: str,
+            test_config_options: TestConfigOptions,
+            expected_output_file: ExpectedOutputFile,
+    ) -> tuple[list[MatchedToken], list[NonmatchedToken]]:
+        token_lst: list[_Token] = _tokenize(content_string)
+
+        # トークンを比較してマッチテーブルを作成
+        match_table = []  # [index of token, index of expected_token]
+        for token in token_lst:
+            match_table.append([])
+            for expected_token in expected_output_file.expected_tokens:
+                is_matched = _is_matched(
+                    token=token,
+                    expected_token=expected_token,
+                    allowable_edit_distance=test_config_options.allowable_edit_distance,
+                    float_tolerance=test_config_options.float_tolerance,
+                )
+                match_table[-1].append(is_matched)
+
+        if test_config_options.ordered_matching:
+            token_indexes, expected_token_indexes = _get_token_lcs(match_table)
+        else:
+            token_indexes = list(range(len(token_lst)))
+            expected_token_indexes = list(
+                maximum_bipartite_matching(match_table, perm_type='column')  # 2部グラフの最大マッチング問題
+            )
+            assert len(token_indexes) == len(expected_token_indexes)
+
+            # マッチしないインデックスは-1になるので対応するインデックスとともにpopする
+            for i in reversed(range(len(token_indexes))):
+                if expected_token_indexes[i] == -1:
+                    token_indexes.pop(i)
+                    expected_token_indexes.pop(i)
+
+        matched_tokens = [
+            MatchedToken(
+                match_begin=token_lst[i_token].begin,
+                match_end=token_lst[i_token].end,
+                expected_token_index=i_expected_token,
+            )
+            for i_token, i_expected_token in zip(
+                token_indexes,
+                expected_token_indexes,
+            )
+        ]
+        nonmatched_tokens = [
+            NonmatchedToken(
+                expected_token_index=i_expected_token,
+            )
+            for i_expected_token in range(len(expected_output_file.expected_tokens))
+            if i_expected_token not in expected_token_indexes
+        ]
+
+        return matched_tokens, nonmatched_tokens
+
+    def _test_output_files_and_get_results(self, student_id: StudentID, testcase_id: TestCaseID) \
+            -> tuple[TestCaseTestConfig, OutputFileTestResultMapping]:  # 使用したテスト構成と結果を返す
+        # 実行結果を取得する
+        with self._progress_io.with_student(student_id) as student_progress_io:
+            execute_result = student_progress_io.read_execute_result()
+
+        # テストケースの構成を読んで必要なフィールドを取り出す
+        testcase_config = self._testcase_io.read_config(
+            testcase_id=testcase_id,
+        )
+        test_config = testcase_config.test_config
+        test_config_options = test_config.options
+        expected_output_files = test_config.expected_output_files
+        expected_output_file_ids = expected_output_files.keys()
+
+        # それぞれの出力ファイルについてテストを実行する
+        testcase_execute_result = execute_result.testcase_result_mapping[testcase_id]
+        output_file_id_test_result_mapping: dict[FileID, OutputFileTestResult] = {}
+        for expected_output_file_id in expected_output_file_ids:
+            # 実行結果の出力ファイルを取得
+            output_file = testcase_execute_result.output_files.get(expected_output_file_id)
+            # 実行結果に出力がファイルが見つからなかったらエラー
+            if output_file is None:
+                raise TestServiceError(
+                    reason=f"出力ファイル{expected_output_file_id!s}が実行結果に見つかりません",
+                    test_config=test_config,
+                )
+            # 出力ファイルの内容を文字列に変換できなかったらエラー
+            if output_file.content_string is None:
+                raise TestServiceError(
+                    reason=f"出力ファイル{output_file.file_id!s}の文字コードが不明です",
+                    test_config=test_config,
+                )
+            # テストケースと照合
+            matched_tokens, nonmatched_tokens = (
+                self._test_output_file_content_and_get_token_matches(
+                    content_string=output_file.content_string,
+                    test_config_options=test_config_options,
+                    expected_output_file=expected_output_files[expected_output_file_id],
+                )
+            )
+            # 照合結果を記録
+            output_file_id_test_result_mapping[expected_output_file_id] = OutputFileTestResult(
+                file_id=expected_output_file_id,
+                matched_tokens=matched_tokens,
+                nonmatched_tokens=nonmatched_tokens,
+            )
+
+        return test_config, OutputFileTestResultMapping(output_file_id_test_result_mapping)
+
+    def test_and_save_result(self, student_id: StudentID) -> None:
+        testcase_test_result_mapping: dict[TestCaseID, TestCaseTestResult] = {}
+        testcase_id_lst = self._testcase_io.list_ids()
+        if not testcase_id_lst:
+            result = TestResult.error(
+                reason="実行可能なテストケースがありません",
+            )
+        else:
+            for testcase_id in testcase_id_lst:
+                try:
+                    test_config, output_files = self._test_output_files_and_get_results(
+                        student_id=student_id,
+                        testcase_id=testcase_id,
+                    )
+                except TestServiceError as e:
+                    testcase_test_result_mapping[testcase_id] = TestCaseTestResult.error(
+                        testcase_id=testcase_id,
+                        test_config_hash=hash(e.test_config),
+                        reason=e.reason,
+                    )
+                else:
+                    testcase_test_result_mapping[testcase_id] = TestCaseTestResult.success(
+                        testcase_id=testcase_id,
+                        test_config_hash=hash(test_config),
+                        output_file_test_results=output_files,
+                    )
+
+            # FIXME: 常に成功する
+            #        --------------------------------------------------------------------
+            #        ExecuteStageが失敗すると次のステージに進めないため常に成功するようになっている
+            #        ステージを生徒ID-ステージID-テストケースIDで細分化する
+            result = TestResult.success(
+                testcase_result_mapping=TestCaseTestResultMapping(
+                    testcase_test_result_mapping,
+                )
+            )
+
+        with self._progress_io.with_student(student_id) as student_progress_io:
+            student_progress_io.write_test_result(
+                result=result,
+            )

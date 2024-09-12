@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from application.debug import is_debug
+from application.state.debug import is_debug
 
 
 @dataclass

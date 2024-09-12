@@ -17,7 +17,7 @@ from domain.models.student_master import StudentMaster, Student
 from domain.models.values import TargetID, ProjectName, StudentID
 from files.progress import ProgressIO
 from files.project import ProjectIO
-from files.project_path_provider import ProjectPathProvider
+from files.project_path_provider import ProjectPathProvider, StudentReportPathProvider
 from files.report_archive import ManabaReportArchiveIO
 from files.testcase import TestCaseIO
 
@@ -185,15 +185,17 @@ class _StudentMasterExcelReader:
         return df
 
 
-class ProjectConstructionService:
+class ProjectCreateService:  # TODO: サービスがI/Oに依存している
     def __init__(
             self,
             *,
             project_path_provider: ProjectPathProvider,
+            student_report_path_provider: StudentReportPathProvider,
             project_io: ProjectIO,
             manaba_report_archive_io: ManabaReportArchiveIO,
     ):
         self._project_path_provider = project_path_provider
+        self._student_report_path_provider = student_report_path_provider
         self._project_io = project_io
         self._manaba_report_archive_io = manaba_report_archive_io
 
@@ -220,9 +222,16 @@ class ProjectConstructionService:
                         name=row["name"],
                         name_en=row["name_en"],
                         email_address=row["email_address"],
-                        submitted_at=dateutil.parser.parse(
-                            row["submitted_at"]) if has_submission else None,
-                        num_submissions=int(row["num_submissions"]) if has_submission else 0,
+                        submitted_at=(
+                            dateutil.parser.parse(row["submitted_at"])
+                            if has_submission
+                            else None
+                        ),
+                        num_submissions=(
+                            int(row["num_submissions"])
+                            if has_submission
+                            else 0
+                        ),
                         submission_folder_name=row["submission_folder_name"],
                     )
                     student_master.append(student)
@@ -257,7 +266,7 @@ class ProjectConstructionService:
                     student_submission_folder_name=student_submission_folder_name,
                 )
                 submission_extraction_folder_fullpath \
-                    = self._project_path_provider.student_submission_folder_fullpath(student_id)
+                    = self._student_report_path_provider.submission_folder_fullpath(student_id)
                 submission_extraction_folder_fullpath.mkdir(parents=True, exist_ok=False)
                 for content_relative_path, fp in it:
                     dst_fullpath = submission_extraction_folder_fullpath / content_relative_path
@@ -321,26 +330,26 @@ class ProjectService:  # TODO: ProgressServiceを分離する
             stage: StudentProgressStage
     ) -> StudentProgressWithFinishedStage | None:
         with self._progress_io.with_student(student_id) as student_progress_io:
-            return student_progress_io.get_student_progress_of_stage_if_finished(
+            return student_progress_io.get_progress_of_stage_if_finished(
                 stage=stage,
             )
 
     def get_student_progress(self, student_id: StudentID) -> AbstractStudentProgress:
         with self._progress_io.with_student(student_id) as student_progress_io:
-            return student_progress_io.get_student_progress()
+            return student_progress_io.get_progress()
 
     def determine_student_next_stage_with_result(
             self,
             student_id: StudentID,
     ) -> StudentProgressStage | None:
         with self._progress_io.with_student(student_id) as student_progress_io:
-            return student_progress_io.determine_student_next_stage_with_result()
+            return student_progress_io.determine_next_stage_with_result()
 
     def clear_student_to_start_stage(self, student_id: StudentID,
                                      stage: StudentProgressStage) -> None:
         with self._progress_io.with_student(student_id) as student_progress_io:
-            student_progress_io.clear_student_to_start_stage(
-                stage=stage,
+            student_progress_io.clear_to_start_stage(
+                stage_to_be_started=stage,
             )
 
     def clear_all_stages_of_student(self, student_id: StudentID) -> None:
@@ -351,4 +360,4 @@ class ProjectService:  # TODO: ProgressServiceを分離する
 
     def get_student_mtime(self, student_id: StudentID) -> datetime | None:
         with self._progress_io.with_student(student_id) as student_progress_io:
-            return student_progress_io.get_student_mtime()
+            return student_progress_io.get_mtime()

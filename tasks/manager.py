@@ -74,18 +74,26 @@ class TaskStack(QObject):
 
     def _timer_timeout(self):
         with self._lock():
+            # 終了したタスクをプールから削除
             tasks_to_be_deleted = []
             for task in self._iter_tasks():
                 if task.isFinished():
                     tasks_to_be_deleted.append(task)
             for task in tasks_to_be_deleted:
                 self._pop_task(task)
-            if self._get_running_task_count() < self._max_workers:
-                for task in self._iter_tasks():
-                    if not task.isRunning():
-                        # self._logger.debug(f"Task {task} started")
-                        task.start()
-                        break
+
+            # プールを満たすまでタスクをスタートする
+            n_tasks_to_start = self._max_workers - self._get_running_task_count()
+            if n_tasks_to_start <= 0:
+                return
+            started_task_count = 0
+            for task in self._iter_tasks():
+                if n_tasks_to_start <= started_task_count:
+                    break
+                if not task.isRunning():
+                    # self._logger.debug(f"Task {task} started")
+                    task.start()
+                    started_task_count += 1
 
     def get_task_count(self, *, task_cls: type = None) -> int:
         with self._lock():

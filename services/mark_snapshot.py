@@ -1,6 +1,7 @@
+import copy
+
 from domain.models.result_execute import ExecuteResult
-from domain.models.result_test import TestSummary, TestCaseTestResult, TestCaseTestResultSet, \
-    TestResult
+from domain.models.result_test import TestResult
 from domain.models.stages import StudentProgressStage
 from domain.models.values import StudentID
 from dto.mark import StudentMarkSnapshot, ProjectMarkSnapshot
@@ -24,36 +25,44 @@ class MarkSnapshotService:
         self._testcase_io = testcase_io
 
     def take_student_snapshot(self, student_id: StudentID) -> StudentMarkSnapshot:
+        # スナップショットに必要な情報を取得
         with self._progress_io.with_student(student_id) as student_progress_io:
-            progress = student_progress_io.get_student_progress()
+            # ステージの進捗を読み出す
+            progress = student_progress_io.get_progress()
+            # 失敗の理由を取得
             detailed_reason = progress.get_detailed_reason()
+            # マークデータを取得
             mark = student_progress_io.read_mark_data_or_create_default_if_absent()
-            progress_of_execute = student_progress_io.get_student_progress_of_stage_if_finished(
+            # 実行結果を取得
+            progress_of_execute = student_progress_io.get_progress_of_stage_if_finished(
                 stage=StudentProgressStage.EXECUTE,
             )
             if progress_of_execute is None:
                 execute_result = None
             else:
-                execute_result = progress_of_execute.get_result()
+                execute_result = copy.deepcopy(progress_of_execute.get_result())
                 assert isinstance(execute_result, ExecuteResult), execute_result
-            next_stage = student_progress_io.determine_student_next_stage_with_result()
+            # テスト結果を取得
+            progress_of_test = student_progress_io.get_progress_of_stage_if_finished(
+                stage=StudentProgressStage.TEST,
+            )
+            if progress_of_test is None:
+                test_result = None
+            else:
+                test_result = copy.deepcopy(progress_of_test.get_result())
+                assert isinstance(test_result, TestResult), test_result
+            # 次のステージを取得
+            # TODO: 何に使っているかを調べてその情報でスナップショットを生成する
+            next_stage = student_progress_io.determine_next_stage_with_result()
+
+        # スナップショットを生成
         return StudentMarkSnapshot(
             student=self._project_io.students[student_id],
             detailed_reason=detailed_reason,
             next_stage=next_stage,
             mark=mark,
-            execute_result=execute_result,
-            test_result=TestResult(  # TODO: 実装する
-                reason=None,
-                testcase_result_set=TestCaseTestResultSet({
-                    TestCaseTestResult(
-                        testcase_id=testcase_id,
-                        test_config=self._testcase_io.read_config(testcase_id).test_config,
-                        summary=TestSummary.UNTESTED,
-                    )
-                    for testcase_id in self._testcase_io.list_ids()
-                })
-            ),
+            execute_result=copy.deepcopy(execute_result),
+            test_result=copy.deepcopy(test_result),
         )
 
     def take_project_snapshot(self) -> ProjectMarkSnapshot:

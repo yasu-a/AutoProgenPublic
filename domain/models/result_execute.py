@@ -84,7 +84,7 @@ class TestCaseExecuteResult:
             self,
             *,
             testcase_id: TestCaseID,
-            execute_config_hash: int | None,  # None if failed
+            execute_config_hash: int,
             output_files: OutputFileMapping,
             reason: str | None = None,
     ):
@@ -115,11 +115,12 @@ class TestCaseExecuteResult:
             cls,
             *,
             testcase_id: TestCaseID,
+            execute_config_hash: int,
             reason: str,
     ) -> "TestCaseExecuteResult":
         return cls(
             testcase_id=testcase_id,
-            execute_config_hash=None,
+            execute_config_hash=execute_config_hash,
             output_files=OutputFileMapping(),
             reason=reason,
         )
@@ -144,7 +145,7 @@ class TestCaseExecuteResult:
         return self._testcase_id
 
     @property
-    def execute_config_hash(self) -> int | None:
+    def execute_config_hash(self) -> int:
         return self._execute_config_hash
 
     @property
@@ -193,13 +194,13 @@ class ExecuteResult(AbstractResult):
         return cls(reason=reason, testcase_result_mapping=TestCaseExecuteResultMapping())
 
     @classmethod
-    def success(cls, testcase_result_set: TestCaseExecuteResultMapping) -> "ExecuteResult":
-        return cls(reason=None, testcase_result_mapping=testcase_result_set)
+    def success(cls, testcase_result_mapping: TestCaseExecuteResultMapping) -> "ExecuteResult":
+        return cls(reason=None, testcase_result_mapping=testcase_result_mapping)
 
     def to_json(self) -> dict:
         return dict(
             reason=self.reason,
-            testcase_result_set=self.testcase_result_mapping.to_json(),
+            testcase_result_mapping=self.testcase_result_mapping.to_json(),
         )
 
     @classmethod
@@ -207,15 +208,14 @@ class ExecuteResult(AbstractResult):
         return cls(
             reason=body["reason"],
             testcase_result_mapping=TestCaseExecuteResultMapping.from_json(
-                body["testcase_result_set"]),
+                body["testcase_result_mapping"]),
         )
 
     def get_testcase_execute_config_mapping(self) -> TestCaseExecuteConfigHashMapping:
         testcase_execute_config_hash_mapping = {}
         for testcase_id, testcase_result in self.testcase_result_mapping.items():
-            execute_config_hash = testcase_result.execute_config_hash
-            if execute_config_hash is not None:
-                testcase_execute_config_hash_mapping[testcase_id] = execute_config_hash
+            testcase_execute_config_hash_mapping[testcase_id] \
+                = testcase_result.execute_config_hash
         return TestCaseExecuteConfigHashMapping(testcase_execute_config_hash_mapping)
 
     def has_same_hash_of_testcase_execute_config(

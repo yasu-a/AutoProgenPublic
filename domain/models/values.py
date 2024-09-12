@@ -143,7 +143,7 @@ class TestCaseID:
         assert isinstance(other, type(self))
         return self.__value < other.__value
 
-    def to_json(self):
+    def to_json(self) -> str:
         return str(self)
 
     @classmethod

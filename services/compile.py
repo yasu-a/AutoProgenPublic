@@ -70,6 +70,6 @@ class CompileService:
             result = CompileResult.success(output)
 
         with self._progress_io.with_student(student_id) as student_progress_io:
-            student_progress_io.write_student_compile_result(
+            student_progress_io.write_compile_result(
                 result=result,
             )

@@ -34,7 +34,7 @@ class InputFile:
             content=jsonable_to_bytes(body["content_bytes"]),
         )
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self._file_id, self._content))
 
     @property
@@ -81,7 +81,7 @@ class InputFileMapping(dict[FileID, InputFile]):
         obj.__validate()
         return obj
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(tuple(sorted(self.items(), key=lambda x: x[0])))
 
     @property
@@ -136,7 +136,7 @@ class TestCaseExecuteConfig:
             options=ExecuteConfigOptions.from_json(body["options"]),
         )
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self._input_files, self._options))
 
     @property
@@ -159,6 +159,9 @@ class AbstractExpectedToken(ABC):
     @classmethod
     @abstractmethod
     def _from_json(cls, body: dict):
+        raise NotImplementedError()
+
+    def __hash__(self) -> int:
         raise NotImplementedError()
 
     def to_json(self) -> dict:
@@ -196,6 +199,9 @@ class TextExpectedToken(AbstractExpectedToken):
             value=body["value"],
         )
 
+    def __hash__(self) -> int:
+        return hash(self._value)
+
     @property
     def value(self) -> str:
         return self._value
@@ -221,6 +227,9 @@ class FloatExpectedToken(AbstractExpectedToken):
             value=body["value"],
         )
 
+    def __hash__(self) -> int:
+        return hash(self._value)
+
     @property
     def value(self) -> float:
         return self._value
@@ -228,6 +237,9 @@ class FloatExpectedToken(AbstractExpectedToken):
     @classmethod
     def create_default(cls) -> "FloatExpectedToken":
         return FloatExpectedToken(value=0.0)
+
+    def is_matched(self, token: str):
+        raise NotImplementedError()
 
 
 class ExpectedTokenList(list[AbstractExpectedToken]):
@@ -243,6 +255,9 @@ class ExpectedTokenList(list[AbstractExpectedToken]):
             AbstractExpectedToken.from_json(token_body)
             for token_body in body
         ])
+
+    def __hash__(self) -> int:
+        return hash(tuple(self))
 
     def is_empty(self) -> bool:
         return len(self) == 0
@@ -270,6 +285,9 @@ class ExpectedOutputFile:
             file_id=FileID.from_json(body["file_id"]),
             expected_tokens=ExpectedTokenList.from_json(body["expected_tokens"]),
         )
+
+    def __hash__(self) -> int:
+        return hash((self._file_id, self._expected_tokens))
 
     @property
     def file_id(self) -> FileID:
@@ -308,20 +326,24 @@ class ExpectedOutputFileMapping(dict[FileID, ExpectedOutputFile]):
         obj.__validate_mapping_key_and_item_id()
         return obj
 
+    def __hash__(self) -> int:
+        return hash(tuple(sorted(self.items(), key=lambda x: x[0])))
+
 
 @dataclass(frozen=True)
 class TestConfigOptions:
     ordered_matching: bool
     float_tolerance: float
     allowable_edit_distance: int
-    ignore_whitespace: bool
+
+    # ignore_whitespace: bool
 
     def to_json(self):
         return dict(
             ordered_matching=self.ordered_matching,
             float_tolerance=self.float_tolerance,
             allowable_edit_distance=self.allowable_edit_distance,
-            ignore_whitespace=self.ignore_whitespace,
+            # ignore_whitespace=self.ignore_whitespace,
         )
 
     @classmethod
@@ -330,11 +352,11 @@ class TestConfigOptions:
             ordered_matching=body["ordered_matching"],
             float_tolerance=body["float_tolerance"],
             allowable_edit_distance=body["allowable_edit_distance"],
-            ignore_whitespace=body["ignore_whitespace"],
+            # ignore_whitespace=body["ignore_whitespace"],
         )
 
 
-class TestConfig:
+class TestCaseTestConfig:
     def __init__(
             self,
             *,
@@ -367,6 +389,9 @@ class TestConfig:
             options=TestConfigOptions.from_json(body['options']),
         )
 
+    def __hash__(self) -> int:
+        return hash((self._expected_output_files, self._options))
+
 
 # TestCaseConfig
 
@@ -375,7 +400,7 @@ class TestCaseConfig:
             self,
             *,
             execute_config: TestCaseExecuteConfig,
-            test_config: TestConfig,
+            test_config: TestCaseTestConfig,
     ):
         self._execute_config = execute_config
         self._test_config = test_config
@@ -384,7 +409,7 @@ class TestCaseConfig:
     def from_json(cls, body):
         return cls(
             execute_config=TestCaseExecuteConfig.from_json(body["execute_config"]),
-            test_config=TestConfig.from_json(body["test_config"]),
+            test_config=TestCaseTestConfig.from_json(body["test_config"]),
         )
 
     def to_json(self):
@@ -410,13 +435,13 @@ class TestCaseConfig:
                     timeout=5.0,
                 ),
             ),
-            test_config=TestConfig(
+            test_config=TestCaseTestConfig(
                 expected_output_files=ExpectedOutputFileMapping(),
                 options=TestConfigOptions(
                     ordered_matching=True,
                     float_tolerance=1.0e-6,
                     allowable_edit_distance=0,
-                    ignore_whitespace=False,
+                    # ignore_whitespace=False,
                 ),
             ),
         )

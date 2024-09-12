@@ -1,9 +1,9 @@
 from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
-from application.current_project import set_current_project_name
-from application.debug import set_debug
-from application.dependency import get_project_construction_service
+from application.dependency.services import get_project_create_service
+from application.state.current_project import set_current_project_name
+from application.state.debug import set_debug
 from controls.dialog_welcome import WelcomeDialog
 from controls.window_main import MainWindow
 from domain.errors import ProjectCreateServiceError
@@ -46,7 +46,7 @@ if __name__ == '__main__':
             new_project_config: NewProjectConfig = result
             set_current_project_name(new_project_config.project_name)
             try:
-                get_project_construction_service(
+                get_project_create_service(
                     manaba_report_archive_fullpath=new_project_config.manaba_report_archive_fullpath,
                 ).create_project(
                     target_id=new_project_config.target_id,

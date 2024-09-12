@@ -11,6 +11,7 @@ class StudentProgressStage(IntEnum):
     BUILD = 1
     COMPILE = 2
     EXECUTE = 3
+    TEST = 4
 
     def get_next_stage(self) -> "StudentProgressStage | None":
         try:

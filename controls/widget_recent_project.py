@@ -1,7 +1,7 @@
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from application.dependency import get_project_list_service
+from application.dependency.services import get_project_list_service
 from domain.models.values import ProjectName
 
 

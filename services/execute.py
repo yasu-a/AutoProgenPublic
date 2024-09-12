@@ -23,7 +23,7 @@ class ExecutableRunner:
             *,
             executable_fullpath: str,
             timeout: float,
-            input_fp: TextIO,
+            input_fp: TextIO | None,
     ):
         self._executable_fullpath = executable_fullpath
         self._timeout = timeout
@@ -64,11 +64,11 @@ class ExecuteService:
         self._progress_io = progress_io
 
     def _construct_test_folder_from_testcase(self, student_id: StudentID, testcase_id: TestCaseID):
-        self._testcase_io.clone_student_executable_to_test_folder(
+        self._testcase_io.clone_student_executable_to_execute_folder(
             student_id=student_id,
             testcase_id=testcase_id,
         )
-        self._testcase_io.create_input_files_to_test_folder(
+        self._testcase_io.create_input_files_to_execute_folder(
             student_id=student_id,
             testcase_id=testcase_id,
         )
@@ -91,20 +91,20 @@ class ExecuteService:
         Raises:
         ExecuteServiceError: 実行中にエラーが発生した場合
         """
-        # テストフォルダのファイル構成を構築
+        # 実行フォルダのファイル構成を構築
         self._construct_test_folder_from_testcase(
             student_id=student_id,
             testcase_id=testcase_id,
         )
         # 実行構成を読み取る
-        testcase_execute_config = self._testcase_io.read_config(testcase_id).execute_config
+        execute_config = self._testcase_io.read_config(testcase_id).execute_config
         # 実行可能なファイルのフルパスを取得
         executable_fullpath = self._testcase_io.get_executable_fullpath_if_exists(
             student_id=student_id,
             testcase_id=testcase_id,
         )
-        # テストフォルダのファイル構成を記憶
-        file_relative_path_lst_base = self._testcase_io.list_file_relative_paths_in_test_folder(
+        # 実行フォルダのファイル構成を記憶
+        file_relative_path_lst_base = self._testcase_io.list_file_relative_paths_in_execute_folder(
             student_id=student_id,
             testcase_id=testcase_id,
         )
@@ -112,45 +112,57 @@ class ExecuteService:
         if executable_fullpath is None:
             raise ExecuteServiceError(
                 reason="実行ファイルが存在しません",
-                execute_config=testcase_execute_config,
+                execute_config=execute_config,
             )
-        # 入力ファイルを読み取り、実行可能なプロセスを開始する
-        with self._testcase_io.get_stdin_fp(student_id, testcase_id) as stdin_fp:
-            try:
+
+        # 標準入力ファイルを読み取り、実行ファイルを実行する子プロセスを開始する
+        try:
+            stdin_fp = self._testcase_io.get_stdin_fp(student_id, testcase_id)
+            if stdin_fp is None:  # 標準入力ファイルが存在しない場合は標準入力を渡さない
                 runner = ExecutableRunner(
                     executable_fullpath=str(executable_fullpath),
-                    timeout=testcase_execute_config.options.timeout,
-                    input_fp=stdin_fp,
+                    timeout=execute_config.options.timeout,
+                    input_fp=None,
                 )
                 stdout_text = runner.run()
-            except ExecutableRunnerTimeoutError:
-                raise ExecuteServiceError(
-                    reason="実行がタイムアウトしました",
-                    execute_config=testcase_execute_config,
-                )
-            else:
-                # 標準出力を書きだす
-                self._testcase_io.dump_stdout(
+            else:  # 標準入力ファイルが存在する場合はコンテキストを管理して渡す
+                with self._testcase_io.get_stdin_fp(student_id, testcase_id) as stdin_fp:
+                    runner = ExecutableRunner(
+                        executable_fullpath=str(executable_fullpath),
+                        timeout=execute_config.options.timeout,
+                        input_fp=stdin_fp,
+                    )
+                    stdout_text = runner.run()
+        except ExecutableRunnerTimeoutError:
+            raise ExecuteServiceError(
+                reason="実行がタイムアウトしました",
+                execute_config=execute_config,
+            )
+        else:
+            # 標準出力は改行コードがCR+LFになることがあるのでLFに統一する
+            stdout_text = stdout_text.replace("\r\n", "\n")
+            # 標準出力を書きだす
+            self._testcase_io.dump_stdout(
+                student_id=student_id,
+                testcase_id=testcase_id,
+                stdout_text=stdout_text,
+            )
+            # 書きだした標準出力を含む出力ファイルを読み取る
+            file_relative_path_lst_diff = (
+                self._testcase_io.list_file_relative_paths_difference_in_test_folder(
                     student_id=student_id,
                     testcase_id=testcase_id,
-                    stdout_text=stdout_text,
+                    file_relative_paths_base=file_relative_path_lst_base,
                 )
-                # 書きだした標準出力を含む出力ファイルを読み取る
-                file_relative_path_lst_diff = (
-                    self._testcase_io.list_file_relative_paths_difference_in_test_folder(
-                        student_id=student_id,
-                        testcase_id=testcase_id,
-                        file_relative_paths_base=file_relative_path_lst_base,
-                    )
+            )
+            output_files = (
+                self._testcase_io.read_relative_file_paths_in_test_folder_as_output_files(
+                    student_id=student_id,
+                    testcase_id=testcase_id,
+                    file_relative_paths=file_relative_path_lst_diff,
                 )
-                output_files = (
-                    self._testcase_io.read_relative_file_paths_in_test_folder_as_output_files(
-                        student_id=student_id,
-                        testcase_id=testcase_id,
-                        file_relative_paths=file_relative_path_lst_diff,
-                    )
-                )
-                return testcase_execute_config, output_files
+            )
+            return execute_config, output_files
 
     def execute_and_save_result(self, student_id: StudentID) -> None:
         testcase_execute_result_mapping: dict[TestCaseID, TestCaseExecuteResult] = {}
@@ -162,28 +174,34 @@ class ExecuteService:
         else:
             for testcase_id in testcase_id_lst:
                 try:
-                    testcase_execute_config, output_files = self._execute_and_get_output(
+                    execute_config, output_files = self._execute_and_get_output(
                         student_id=student_id,
                         testcase_id=testcase_id,
                     )
                 except ExecuteServiceError as e:
                     testcase_execute_result_mapping[testcase_id] = TestCaseExecuteResult.error(
                         testcase_id=testcase_id,
+                        execute_config_hash=hash(e.execute_config),
                         reason=e.reason,
                     )
                 else:
                     testcase_execute_result_mapping[testcase_id] = TestCaseExecuteResult.success(
                         testcase_id=testcase_id,
-                        execute_config_hash=hash(testcase_execute_config),
+                        execute_config_hash=hash(execute_config),
                         output_files=output_files,
                     )
+
+            # FIXME: 常に成功する
+            #        --------------------------------------------------------------------
+            #        ExecuteStageが失敗すると次のステージに進めないため常に成功するようになっている
+            #        ステージを生徒ID-ステージID-テストケースIDで細分化する
             result = ExecuteResult.success(
-                testcase_result_set=TestCaseExecuteResultMapping(
+                testcase_result_mapping=TestCaseExecuteResultMapping(
                     testcase_execute_result_mapping,
                 ),
             )
 
         with self._progress_io.with_student(student_id) as student_progress_io:
-            student_progress_io.write_student_execute_result(
+            student_progress_io.write_execute_result(
                 result=result,
             )
