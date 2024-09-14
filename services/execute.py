@@ -196,7 +196,7 @@ class ExecuteService:
             #        ExecuteStageが失敗すると次のステージに進めないため常に成功するようになっている
             #        ステージを生徒ID-ステージID-テストケースIDで細分化する
             result = ExecuteResult.success(
-                testcase_result_mapping=TestCaseExecuteResultMapping(
+                testcase_results=TestCaseExecuteResultMapping(
                     testcase_execute_result_mapping,
                 ),
             )

@@ -1,7 +1,7 @@
 from PyQt5.QtCore import QObject, pyqtSlot
 from PyQt5.QtWidgets import QTabWidget, QVBoxLayout
 
-from controls.widget_testacase_execute_options import TestCaseExecuteConfigOptionsEditWidget
+from controls.widget_testcase_execute_options import TestCaseExecuteConfigOptionsEditWidget
 from controls.widget_testcase_input_file_mapping import TestCaseInputFileMappingEditWidget
 from controls.widget_testcase_output_file_mapping import TestCaseExpectedOutputFileMappingEditWidget
 from controls.widget_testcase_test_config_options import TestCaseTestConfigOptionsEditWidget

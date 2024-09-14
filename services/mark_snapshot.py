@@ -1,10 +1,9 @@
-import copy
-
-from domain.models.result_execute import ExecuteResult
-from domain.models.result_test import TestResult
 from domain.models.stages import StudentProgressStage
 from domain.models.values import StudentID
-from dto.mark import StudentMarkSnapshot, ProjectMarkSnapshot
+from dto.mark import ProjectMarkSnapshot, StudentMarkSnapshotStagesUnfinished, \
+    StudentMarkSnapshotReady, StudentMarkSnapshotRerunRequired, AbstractStudentMarkSnapshot, \
+    StudentMarkSnapshotStageFinishedWithError, StudentMarkSnapshotMapping, TestCaseConfigMapping, \
+    TestCaseExecuteAndTestResultPair, TestCaseExecuteAndTestResultPairMapping
 from files.progress import ProgressIO
 from files.project import ProjectIO
 from files.testcase import TestCaseIO
@@ -24,57 +23,67 @@ class MarkSnapshotService:
         self._progress_io = progress_io
         self._testcase_io = testcase_io
 
-    def take_student_snapshot(self, student_id: StudentID) -> StudentMarkSnapshot:
+    def take_student_snapshot(self, student_id: StudentID) -> AbstractStudentMarkSnapshot:
         # スナップショットに必要な情報を取得
         with self._progress_io.with_student(student_id) as student_progress_io:
-            # ステージの進捗を読み出す
-            progress = student_progress_io.get_progress()
-            # 失敗の理由を取得
-            detailed_reason = progress.get_detailed_reason()
             # マークデータを取得
             mark = student_progress_io.read_mark_data_or_create_default_if_absent()
-            # 実行結果を取得
-            progress_of_execute = student_progress_io.get_progress_of_stage_if_finished(
-                stage=StudentProgressStage.EXECUTE,
-            )
-            if progress_of_execute is None:
-                execute_result = None
-            else:
-                execute_result = copy.deepcopy(progress_of_execute.get_result())
-                assert isinstance(execute_result, ExecuteResult), execute_result
-            # テスト結果を取得
-            progress_of_test = student_progress_io.get_progress_of_stage_if_finished(
-                stage=StudentProgressStage.TEST,
-            )
-            if progress_of_test is None:
-                test_result = None
-            else:
-                test_result = copy.deepcopy(progress_of_test.get_result())
-                assert isinstance(test_result, TestResult), test_result
-            # 次のステージを取得
-            # TODO: 何に使っているかを調べてその情報でスナップショットを生成する
-            next_stage = student_progress_io.determine_next_stage_with_result()
 
-        # スナップショットを生成
-        return StudentMarkSnapshot(
-            student=self._project_io.students[student_id],
-            detailed_reason=detailed_reason,
-            next_stage=next_stage,
-            mark=mark,
-            execute_result=copy.deepcopy(execute_result),
-            test_result=copy.deepcopy(test_result),
-        )
+            # 進捗から生成するスナップショットを分岐
+            progress_of_last_stage = student_progress_io.get_progress_of_stage_if_finished(
+                stage=StudentProgressStage.get_last_stage()
+            )
+            if progress_of_last_stage is not None and progress_of_last_stage.is_success():
+                # ↑ 最後のステージの進捗が存在する and それが成功しているとき
+                expected_next_stage = student_progress_io.determine_next_stage_with_result()
+                if expected_next_stage is None:  # 次のステージが存在しない（再実行の必要がないとき）
+                    testcase_execute_results = student_progress_io.read_execute_result().testcase_results
+                    testcase_test_results = student_progress_io.read_test_result().testcase_results
+                    assert set(testcase_execute_results.keys()) == set(testcase_test_results), \
+                        (set(testcase_execute_results.keys()), set(testcase_test_results.keys()))
+                    return StudentMarkSnapshotReady(
+                        student=self._project_io.students[student_id],
+                        mark=mark,
+                        execute_and_test_results=TestCaseExecuteAndTestResultPairMapping(
+                            {
+                                testcase_id: TestCaseExecuteAndTestResultPair(
+                                    testcase_id=testcase_id,
+                                    execute_result=testcase_execute_results[testcase_id],
+                                    test_result=testcase_test_results[testcase_id],
+                                ) for testcase_id in testcase_execute_results.keys()
+                            },
+                        )
+                    )
+                else:  # 再実行の必要があるとき
+                    # FIXME: 成功したときしか再実行の判定をしていないので、BUILDエラー時にレポートフォルダを
+                    #        編集しても「再実行の必要がある」ではなく「エラー」と表示される
+                    return StudentMarkSnapshotRerunRequired(  # TODO: なぜ再実行の必要があるか理由をつける
+                        student=self._project_io.students[student_id],
+                        mark=mark,
+                    )
+            else:  # すべてのステージが完了していないとき
+                progress = student_progress_io.get_progress()
+                detailed_reason = progress.get_detailed_reason()
+                if detailed_reason is None:
+                    return StudentMarkSnapshotStagesUnfinished(
+                        student=self._project_io.students[student_id],
+                        mark=mark,
+                    )
+                else:
+                    return StudentMarkSnapshotStageFinishedWithError(
+                        student=self._project_io.students[student_id],
+                        mark=mark,
+                        detailed_reason=detailed_reason,
+                    )
 
     def take_project_snapshot(self) -> ProjectMarkSnapshot:
-        student_snapshot_mapping = {}
-        for student in self._project_io.students:
-            student_id = student.student_id
-            snapshot = self.take_student_snapshot(student_id)
-            student_snapshot_mapping[student_id] = snapshot
-
-        testcase_test_config_mapping = self._testcase_io.read_testcase_test_config_mapping()
-
         return ProjectMarkSnapshot(
-            student_snapshot_mapping=student_snapshot_mapping,
-            testcase_test_config_mapping=testcase_test_config_mapping,
+            student_snapshots=StudentMarkSnapshotMapping({
+                student.student_id: self.take_student_snapshot(student.student_id)
+                for student in self._project_io.students
+            }),
+            testcases=TestCaseConfigMapping({
+                testcase_id: self._testcase_io.read_config(testcase_id)
+                for testcase_id in self._testcase_io.list_ids()
+            }),
         )

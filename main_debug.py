@@ -31,10 +31,19 @@ logger = create_logger()
 if __name__ == '__main__':
     set_debug(True)
 
+
+    class CustomStyle(QProxyStyle):
+        # noinspection PyMethodOverriding
+        def styleHint(self, hint, option, widget, return_data):
+            if hint == QStyle.SH_ToolTip_WakeUpDelay:
+                return 0  # ツールチップの表示遅延を0にする
+            return super().styleHint(hint, option, widget, return_data)
+
+
     app = QApplication(sys.argv)
     # noinspection PyArgumentList
     app.setFont(font())
-    app.setStyle('Fusion')
+    app.setStyle(CustomStyle("Fusion"))
 
     welcome = WelcomeDialog()
     if welcome.exec_() == QDialog.Accepted:

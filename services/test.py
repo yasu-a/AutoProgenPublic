@@ -181,7 +181,7 @@ class TestService:
         expected_output_file_ids = expected_output_files.keys()
 
         # それぞれの出力ファイルについてテストを実行する
-        testcase_execute_result = execute_result.testcase_result_mapping[testcase_id]
+        testcase_execute_result = execute_result.testcase_results[testcase_id]
         output_file_id_test_result_mapping: dict[FileID, OutputFileTestResult] = {}
         for expected_output_file_id in expected_output_file_ids:
             # 実行結果の出力ファイルを取得
@@ -189,13 +189,13 @@ class TestService:
             # 実行結果に出力がファイルが見つからなかったらエラー
             if output_file is None:
                 raise TestServiceError(
-                    reason=f"出力ファイル{expected_output_file_id!s}が実行結果に見つかりません",
+                    reason=f"出力ファイル{expected_output_file_id.deployment_relative_path!s}が実行結果に見つかりません",
                     test_config=test_config,
                 )
             # 出力ファイルの内容を文字列に変換できなかったらエラー
             if output_file.content_string is None:
                 raise TestServiceError(
-                    reason=f"出力ファイル{output_file.file_id!s}の文字コードが不明です",
+                    reason=f"出力ファイル{output_file.file_id.deployment_relative_path!s}の文字コードが不明です",
                     test_config=test_config,
                 )
             # テストケースと照合
@@ -216,7 +216,7 @@ class TestService:
         return test_config, OutputFileTestResultMapping(output_file_id_test_result_mapping)
 
     def test_and_save_result(self, student_id: StudentID) -> None:
-        testcase_test_result_mapping: dict[TestCaseID, TestCaseTestResult] = {}
+        testcase_test_results: dict[TestCaseID, TestCaseTestResult] = {}
         testcase_id_lst = self._testcase_io.list_ids()
         if not testcase_id_lst:
             result = TestResult.error(
@@ -230,13 +230,13 @@ class TestService:
                         testcase_id=testcase_id,
                     )
                 except TestServiceError as e:
-                    testcase_test_result_mapping[testcase_id] = TestCaseTestResult.error(
+                    testcase_test_results[testcase_id] = TestCaseTestResult.error(
                         testcase_id=testcase_id,
                         test_config_hash=hash(e.test_config),
                         reason=e.reason,
                     )
                 else:
-                    testcase_test_result_mapping[testcase_id] = TestCaseTestResult.success(
+                    testcase_test_results[testcase_id] = TestCaseTestResult.success(
                         testcase_id=testcase_id,
                         test_config_hash=hash(test_config),
                         output_file_test_results=output_files,
@@ -247,8 +247,8 @@ class TestService:
             #        ExecuteStageが失敗すると次のステージに進めないため常に成功するようになっている
             #        ステージを生徒ID-ステージID-テストケースIDで細分化する
             result = TestResult.success(
-                testcase_result_mapping=TestCaseTestResultMapping(
-                    testcase_test_result_mapping,
+                testcase_results=TestCaseTestResultMapping(
+                    testcase_test_results,
                 )
             )
 

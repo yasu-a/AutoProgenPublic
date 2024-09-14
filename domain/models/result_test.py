@@ -109,17 +109,6 @@ class TestSummary(Enum):
     ACCEPTED = "正解です"
     UNTESTABLE = "テストできません"
 
-    @classmethod
-    def get_abbreviations(cls, value: "TestSummary"):
-        return _test_indicator_abbreviations[value]
-
-
-_test_indicator_abbreviations = {
-    TestSummary.WRONG_ANSWER: "WA",
-    TestSummary.ACCEPTED: "AC",
-    TestSummary.UNTESTABLE: "E",
-}
-
 
 class TestCaseTestResult:
     def __init__(
@@ -236,33 +225,33 @@ class TestCaseTestResultMapping(dict[TestCaseID, TestCaseTestResult]):
 
 @dataclass(slots=True)
 class TestResult(AbstractResult):
-    testcase_result_mapping: TestCaseTestResultMapping
+    testcase_results: TestCaseTestResultMapping
 
     @classmethod
     def error(cls, reason: str) -> "TestResult":
-        return cls(reason=reason, testcase_result_mapping=TestCaseTestResultMapping())
+        return cls(reason=reason, testcase_results=TestCaseTestResultMapping())
 
     @classmethod
-    def success(cls, testcase_result_mapping: TestCaseTestResultMapping) -> "TestResult":
-        return cls(reason=None, testcase_result_mapping=testcase_result_mapping)
+    def success(cls, testcase_results: TestCaseTestResultMapping) -> "TestResult":
+        return cls(reason=None, testcase_results=testcase_results)
 
     def to_json(self) -> dict:
         return dict(
             reason=self.reason,
-            testcase_result_mapping=self.testcase_result_mapping.to_json(),
+            testcase_results=self.testcase_results.to_json(),
         )
 
     @classmethod
     def from_json(cls, body: dict) -> "TestResult":
         return cls(
             reason=body["reason"],
-            testcase_result_mapping=TestCaseTestResultMapping.from_json(
-                body["testcase_result_mapping"]),
+            testcase_results=TestCaseTestResultMapping.from_json(
+                body["testcase_results"]),
         )
 
     def get_testcase_test_config_mapping(self) -> TestCaseTestConfigHashMapping:
         testcase_test_config_hash_mapping = {}
-        for testcase_id, testcase_result in self.testcase_result_mapping.items():
+        for testcase_id, testcase_result in self.testcase_results.items():
             testcase_test_config_hash_mapping[testcase_id] \
                 = testcase_result.test_config_hash
         return TestCaseTestConfigHashMapping(testcase_test_config_hash_mapping)

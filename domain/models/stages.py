@@ -28,6 +28,10 @@ class StudentProgressStage(IntEnum):
     def get_first_stage(cls) -> "StudentProgressStage":
         return cls.list_stages()[0]
 
+    @classmethod
+    def get_last_stage(cls):
+        return cls.list_stages()[-1]
+
     # def __contains__(self, other) -> bool:
     #     if not isinstance(other, StudentProgressStage):
     #         return NotImplemented
@@ -41,6 +45,8 @@ _ResultType = TypeVar("_ResultType", bound=AbstractResult)
 
 @dataclass
 class AbstractStudentProgress(ABC):
+    # ステージとその結果を管理するクラス
+
     @abstractmethod
     def get_expected_next_stage(
             self) -> StudentProgressStage | None:  # None if all stages finished
@@ -55,11 +61,11 @@ class AbstractStudentProgress(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_main_reason(self) -> bool | None:  # None if no stages finished or no error occurred
+    def get_main_reason(self) -> str | None:  # None if no stages finished or no error occurred
         raise NotImplementedError()
 
     @abstractmethod
-    def get_detailed_reason(self) -> bool | None:
+    def get_detailed_reason(self) -> str | None:
         raise NotImplementedError()
 
     def __repr__(self) -> str:
@@ -87,10 +93,10 @@ class StudentProgressWithFinishedStage(AbstractStudentProgress, Generic[_ResultT
     def is_success(self) -> bool | None:
         return self._result.is_success()
 
-    def get_main_reason(self) -> bool | None:
+    def get_main_reason(self) -> str | None:
         return self._result.reason
 
-    def get_detailed_reason(self) -> bool | None:
+    def get_detailed_reason(self) -> str | None:
         return self._result.detailed_reason
 
     def get_result(self) -> _ResultType:
@@ -107,8 +113,8 @@ class StudentProgressUnstarted(AbstractStudentProgress):
     def is_success(self) -> bool | None:
         return None
 
-    def get_main_reason(self) -> bool | None:
+    def get_main_reason(self) -> str | None:
         return None
 
-    def get_detailed_reason(self) -> bool | None:
+    def get_detailed_reason(self) -> str | None:
         return None

@@ -187,33 +187,33 @@ class TestCaseExecuteResultMapping(dict[TestCaseID, TestCaseExecuteResult]):
 
 @dataclass(slots=True)
 class ExecuteResult(AbstractResult):
-    testcase_result_mapping: TestCaseExecuteResultMapping
+    testcase_results: TestCaseExecuteResultMapping
 
     @classmethod
     def error(cls, reason: str) -> "ExecuteResult":
-        return cls(reason=reason, testcase_result_mapping=TestCaseExecuteResultMapping())
+        return cls(reason=reason, testcase_results=TestCaseExecuteResultMapping())
 
     @classmethod
-    def success(cls, testcase_result_mapping: TestCaseExecuteResultMapping) -> "ExecuteResult":
-        return cls(reason=None, testcase_result_mapping=testcase_result_mapping)
+    def success(cls, testcase_results: TestCaseExecuteResultMapping) -> "ExecuteResult":
+        return cls(reason=None, testcase_results=testcase_results)
 
     def to_json(self) -> dict:
         return dict(
             reason=self.reason,
-            testcase_result_mapping=self.testcase_result_mapping.to_json(),
+            testcase_results=self.testcase_results.to_json(),
         )
 
     @classmethod
     def from_json(cls, body: dict) -> "ExecuteResult":
         return cls(
             reason=body["reason"],
-            testcase_result_mapping=TestCaseExecuteResultMapping.from_json(
-                body["testcase_result_mapping"]),
+            testcase_results=TestCaseExecuteResultMapping.from_json(
+                body["testcase_results"]),
         )
 
     def get_testcase_execute_config_mapping(self) -> TestCaseExecuteConfigHashMapping:
         testcase_execute_config_hash_mapping = {}
-        for testcase_id, testcase_result in self.testcase_result_mapping.items():
+        for testcase_id, testcase_result in self.testcase_results.items():
             testcase_execute_config_hash_mapping[testcase_id] \
                 = testcase_result.execute_config_hash
         return TestCaseExecuteConfigHashMapping(testcase_execute_config_hash_mapping)

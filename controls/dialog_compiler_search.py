@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QDialog, QVBoxLayout, QWidget, QLabel, QMessageBox, 
 
 from app_logging import create_logger
 from application.dependency.services import get_compiler_location_search_service
+from fonts import font
 
 
 class _CompilerSearchWorker(QThread):
@@ -59,6 +60,7 @@ class _CompilerSearchWidget(QWidget):
         layout.addWidget(QLabel("検索中・・・ "))
 
         self._l_progress = QLabel(self)
+        self._l_progress.setFont(font(monospace=True, small=True))
         layout.addWidget(self._l_progress)
 
     def _init_signals(self):
@@ -117,7 +119,7 @@ class CompilerSearchDialog(QDialog):
     def _init_ui(self):
         self.setWindowTitle("開発者ツールの自動検索")
         self.setModal(True)
-        self.setFixedSize(900, 100)
+        self.setFixedSize(1300, 100)
 
         layout = QVBoxLayout()
         self.setLayout(layout)
