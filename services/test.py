@@ -5,10 +5,12 @@ from Levenshtein import distance as edit_distance
 from scipy.sparse.csgraph import maximum_bipartite_matching
 
 from domain.errors import TestServiceError
+from domain.models.expected_ouput_file import ExpectedOutputFile
+from domain.models.expected_token import AbstractExpectedToken, TextExpectedToken, \
+    FloatExpectedToken
 from domain.models.result_test import OutputFileTestResult, NonmatchedToken, MatchedToken, \
     TestCaseTestResult, OutputFileTestResultMapping, TestResult, TestCaseTestResultMapping
-from domain.models.testcase import TestConfigOptions, ExpectedOutputFile, \
-    AbstractExpectedToken, TextExpectedToken, FloatExpectedToken, TestCaseTestConfig
+from domain.models.test_config_options import TestConfigOptions
 from domain.models.values import StudentID, TestCaseID, FileID
 from files.progress import ProgressIO
 from files.project import ProjectIO
@@ -166,7 +168,7 @@ class TestService:
         return matched_tokens, nonmatched_tokens
 
     def _test_output_files_and_get_results(self, student_id: StudentID, testcase_id: TestCaseID) \
-            -> tuple[TestCaseTestConfig, OutputFileTestResultMapping]:  # 使用したテスト構成と結果を返す
+            -> OutputFileTestResultMapping:
         # 実行結果を取得する
         with self._progress_io.with_student(student_id) as student_progress_io:
             execute_result = student_progress_io.read_execute_result()
@@ -190,13 +192,11 @@ class TestService:
             if output_file is None:
                 raise TestServiceError(
                     reason=f"出力ファイル{expected_output_file_id.deployment_relative_path!s}が実行結果に見つかりません",
-                    test_config=test_config,
                 )
             # 出力ファイルの内容を文字列に変換できなかったらエラー
             if output_file.content_string is None:
                 raise TestServiceError(
                     reason=f"出力ファイル{output_file.file_id.deployment_relative_path!s}の文字コードが不明です",
-                    test_config=test_config,
                 )
             # テストケースと照合
             matched_tokens, nonmatched_tokens = (
@@ -213,7 +213,7 @@ class TestService:
                 nonmatched_tokens=nonmatched_tokens,
             )
 
-        return test_config, OutputFileTestResultMapping(output_file_id_test_result_mapping)
+        return OutputFileTestResultMapping(output_file_id_test_result_mapping)
 
     def test_and_save_result(self, student_id: StudentID) -> None:
         testcase_test_results: dict[TestCaseID, TestCaseTestResult] = {}
@@ -225,20 +225,24 @@ class TestService:
         else:
             for testcase_id in testcase_id_lst:
                 try:
-                    test_config, output_files = self._test_output_files_and_get_results(
+                    output_files = self._test_output_files_and_get_results(
                         student_id=student_id,
                         testcase_id=testcase_id,
                     )
                 except TestServiceError as e:
                     testcase_test_results[testcase_id] = TestCaseTestResult.error(
                         testcase_id=testcase_id,
-                        test_config_hash=hash(e.test_config),
+                        test_config_mtime=(
+                            self._testcase_io.get_test_config_mtime(testcase_id)  # TODO: UoWの導入
+                        ),
                         reason=e.reason,
                     )
                 else:
                     testcase_test_results[testcase_id] = TestCaseTestResult.success(
                         testcase_id=testcase_id,
-                        test_config_hash=hash(test_config),
+                        test_config_mtime=(
+                            self._testcase_io.get_test_config_mtime(testcase_id)  # TODO: UoWの導入
+                        ),
                         output_file_test_results=output_files,
                     )
 

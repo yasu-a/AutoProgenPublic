@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QTabWidget, QMessageBox, QInpu
 from app_logging import create_logger
 from controls.widget_button_box import ButtonBox
 from controls.widget_plain_text_edit import PlainTextEdit
-from domain.models.testcase import InputFileMapping, InputFile
+from domain.models.input_file import InputFile, InputFileMapping
 from domain.models.values import FileID, SpecialFileType
 
 

@@ -1,7 +1,6 @@
 import functools
 import re
 import shutil
-from datetime import datetime
 from pathlib import Path
 
 import dateutil.parser
@@ -11,8 +10,6 @@ import pandas as pd
 from app_logging import create_logger
 from domain.errors import ManabaReportArchiveIOError, ProjectCreateServiceError
 from domain.models.project_config import ProjectConfig
-from domain.models.stages import AbstractStudentProgress, StudentProgressWithFinishedStage, \
-    StudentProgressStage
 from domain.models.student_master import StudentMaster, Student
 from domain.models.values import TargetID, ProjectName, StudentID
 from files.progress import ProgressIO
@@ -323,41 +320,3 @@ class ProjectService:  # TODO: ProgressServiceを分離する
 
     def get_student_meta(self, student_id: StudentID) -> Student:
         return self._project_io.students[student_id]
-
-    def get_student_progress_of_stage_if_finished(
-            self,
-            student_id: StudentID,
-            stage: StudentProgressStage
-    ) -> StudentProgressWithFinishedStage | None:
-        with self._progress_io.with_student(student_id) as student_progress_io:
-            return student_progress_io.get_progress_of_stage_if_finished(
-                stage=stage,
-            )
-
-    def get_student_progress(self, student_id: StudentID) -> AbstractStudentProgress:
-        with self._progress_io.with_student(student_id) as student_progress_io:
-            return student_progress_io.get_progress()
-
-    def determine_student_next_stage_with_result(
-            self,
-            student_id: StudentID,
-    ) -> StudentProgressStage | None:
-        with self._progress_io.with_student(student_id) as student_progress_io:
-            return student_progress_io.determine_next_stage_with_result()
-
-    def clear_student_to_start_stage(self, student_id: StudentID,
-                                     stage: StudentProgressStage) -> None:
-        with self._progress_io.with_student(student_id) as student_progress_io:
-            student_progress_io.clear_to_start_stage(
-                stage_to_be_started=stage,
-            )
-
-    def clear_all_stages_of_student(self, student_id: StudentID) -> None:
-        self.clear_student_to_start_stage(
-            student_id=student_id,
-            stage=StudentProgressStage.get_first_stage(),
-        )
-
-    def get_student_mtime(self, student_id: StudentID) -> datetime | None:
-        with self._progress_io.with_student(student_id) as student_progress_io:
-            return student_progress_io.get_mtime()

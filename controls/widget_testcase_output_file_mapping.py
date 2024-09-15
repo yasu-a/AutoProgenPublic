@@ -12,9 +12,10 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtWidgets import QTabWidget
 
 from controls.widget_button_box import ButtonBox
-from domain.models.testcase import InputFileMapping, ExpectedTokenList, \
-    AbstractExpectedToken, FloatExpectedToken, TextExpectedToken, ExpectedOutputFile, \
-    ExpectedOutputFileMapping
+from domain.models.expected_ouput_file import ExpectedOutputFile, ExpectedOutputFileMapping
+from domain.models.expected_token import AbstractExpectedToken, TextExpectedToken, \
+    FloatExpectedToken, ExpectedTokenList
+from domain.models.input_file import InputFileMapping
 from domain.models.values import FileID, SpecialFileType
 from icons import icon
 
@@ -65,9 +66,9 @@ class ExpectedOutputFileTokenListItemControlButtons(ButtonBox):
 
     def _init_ui(self):
         super()._init_ui()
-        self.add_button("", "move-up", icon=icon("up"))
-        self.add_button("", "move-down", icon=icon("down"))
-        self.add_button("", "remove", icon=icon("delete"))
+        self.add_button("", "move-up", icon=icon("up"), tab_focus=False)
+        self.add_button("", "move-down", icon=icon("down"), tab_focus=False)
+        self.add_button("", "remove", icon=icon("delete"), tab_focus=False)
         self.setFixedWidth(self.sizeHint().width())
 
     def _init_signals(self):

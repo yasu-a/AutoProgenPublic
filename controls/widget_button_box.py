@@ -35,13 +35,15 @@ class ButtonBox(QWidget):
     def set_margins(self, margin: int):
         self.layout().setContentsMargins(margin, margin, margin, margin)
 
-    def add_button(self, title: str, name: str, icon: QIcon = None):
+    def add_button(self, title: str, name: str, icon: QIcon = None, tab_focus=True):
         b = QPushButton(self)
         b.setText(title)
         if icon is not None:
             b.setIcon(icon)
         b.setObjectName(name)
         b.clicked.connect(self.__on_b_clicked)  # type: ignore
+        if not tab_focus:
+            b.setFocusPolicy(Qt.ClickFocus)
         self._button_layout.addWidget(b)
 
     def _iter_buttons(self) -> Iterable[QPushButton]:

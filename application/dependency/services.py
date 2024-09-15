@@ -11,12 +11,13 @@ from services.compile import CompileService
 from services.compile_test import CompileTestService
 from services.compiler_search import CompilerLocationSequentialSearchService
 from services.execute import ExecuteService
-from services.mark_snapshot import MarkSnapshotService
+from services.progress import ProgressService
 from services.project import ProjectService, ProjectCreateService
 from services.project_list import ProjectListService
 from services.settings import GlobalSettingsEditService
+from services.snapshot import SnapshotService
 from services.test import TestService
-from services.testcase_edit import TestCaseEditService
+from services.testcase import TestCaseService
 
 
 def get_project_list_service() -> ProjectListService:
@@ -77,8 +78,8 @@ def get_compile_service() -> CompileService:
 
 
 @functools.cache
-def get_testcase_edit_service() -> TestCaseEditService:
-    return TestCaseEditService(
+def get_testcase_service() -> TestCaseService:
+    return TestCaseService(
         testcase_io=get_testcase_io(),
     )
 
@@ -86,6 +87,15 @@ def get_testcase_edit_service() -> TestCaseEditService:
 @functools.cache
 def get_execute_service() -> ExecuteService:
     return ExecuteService(
+        project_io=get_project_io(),
+        testcase_io=get_testcase_io(),
+        progress_io=get_progress_io(),
+    )
+
+
+@functools.cache
+def get_progress_service() -> ProgressService:
+    return ProgressService(
         project_io=get_project_io(),
         testcase_io=get_testcase_io(),
         progress_io=get_progress_io(),
@@ -116,8 +126,8 @@ def get_compile_test_service() -> CompileTestService:
 
 
 @functools.cache
-def get_mark_snapshot_service() -> MarkSnapshotService:
-    return MarkSnapshotService(
+def get_mark_snapshot_service() -> SnapshotService:
+    return SnapshotService(
         project_io=get_project_io(),
         testcase_io=get_testcase_io(),
         progress_io=get_progress_io(),

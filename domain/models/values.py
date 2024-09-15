@@ -22,7 +22,7 @@ class ProjectName:
     def __str__(self) -> str:
         return self.__value
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.__value)
 
     def __eq__(self, other):
@@ -59,7 +59,7 @@ class StudentID:
     def __str__(self) -> str:
         return self.__value
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.__value)
 
     def __eq__(self, other):
@@ -99,7 +99,7 @@ class TargetID:
     def __str__(self) -> str:
         return str(int(self))
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.__value)
 
     def __eq__(self, other):
@@ -129,7 +129,7 @@ class TestCaseID:
     def __str__(self) -> str:
         return self.__value
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.__value)
 
     def __eq__(self, other):
@@ -226,7 +226,7 @@ class FileID:
                 and self._value == other._value
         )
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self._is_special, self._value))
 
     def __repr__(self):

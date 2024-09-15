@@ -6,9 +6,10 @@ from PyQt5.QtGui import QColor, QFont
 from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
-from application.dependency.services import get_project_service
+from application.dependency.services import get_project_service, get_progress_service
 from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
-from domain.models.stages import StudentProgressStage, AbstractStudentProgress
+from domain.models.progress import AbstractStudentProgress
+from domain.models.stages import StudentProgressStage
 from domain.models.values import StudentID
 from fonts import font
 
@@ -51,6 +52,7 @@ class StudentTableModelDataProvider:
     def __init__(self, student_ids: list[StudentID]):
         self._student_ids = student_ids
         self._project_service = get_project_service()
+        self._progress_service = get_progress_service()
         self._logger = create_logger(name=f"{type(self).__name__}")
 
     @classmethod
@@ -90,14 +92,14 @@ class StudentTableModelDataProvider:
             return self._project_service.get_student_meta(student_id).name
 
     def _get_student_progress(self, student_id: StudentID) -> AbstractStudentProgress:
-        return self._project_service.get_student_progress(student_id)
+        return self._progress_service.get_student_progress(student_id)
 
     def _get_display_role_of_student_stage(
             self,
             student_id: StudentID,
             stage: StudentProgressStage,
     ):
-        result = self._project_service.get_student_progress_of_stage_if_finished(
+        result = self._progress_service.get_student_progress_of_stage_if_finished(
             student_id=student_id,
             stage=stage,
         )
@@ -257,9 +259,11 @@ class _StudentObserver(QObject):
     def __init__(self, parent: QObject):
         super().__init__(parent)
 
-        self._service = get_project_service()
+        self._project_service = get_project_service()
+        self._progress_service = get_progress_service()
+
         self._student_id_iter = iter(
-            self.__student_id_cyclic_iterator(self._service.get_student_ids())
+            self.__student_id_cyclic_iterator(self._project_service.get_student_ids())
         )
 
         self._timer = QTimer(self)
@@ -274,7 +278,7 @@ class _StudentObserver(QObject):
     def _on_timer_timeout(self):
         student_id = next(self._student_id_iter)
         prev_mtime = self._student_id_mtime_mapping.get(student_id)
-        current_mtime = self._service.get_student_mtime(student_id)
+        current_mtime = self._progress_service.get_student_mtime(student_id)
         if prev_mtime != current_mtime:
             if prev_mtime is not None:  # 初めて巡回したときは更新を行わない
                 # noinspection PyUnresolvedReferences

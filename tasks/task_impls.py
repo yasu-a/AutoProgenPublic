@@ -1,5 +1,5 @@
 from application.dependency.services import get_build_service, get_compile_service, \
-    get_execute_service, get_project_service, get_test_service
+    get_execute_service, get_test_service, get_progress_service
 from domain.models.stages import StudentProgressStage
 from tasks.tasks import AbstractStudentTask
 
@@ -27,7 +27,7 @@ class RunStagesStudentTask(AbstractStudentTask):
 
     def run(self):
         self._logger.info(f"Task started [{self.student_id}]")
-        project_service = get_project_service()
+        project_service = get_progress_service()
         while True:
             # 現在の状況から次のステージを取得する
             next_stage = project_service.determine_student_next_stage_with_result(
@@ -55,6 +55,5 @@ class RunStagesStudentTask(AbstractStudentTask):
 class CleanAllStagesStudentTask(AbstractStudentTask):
     def run(self) -> None:
         self._logger.info(f"Task started [{self.student_id}]")
-        project_service = get_project_service()
-        project_service.clear_all_stages_of_student(student_id=self._student_id)
+        get_progress_service().clear_all_stages_of_student(student_id=self._student_id)
         self._logger.info("Task finished: student data cleaned")

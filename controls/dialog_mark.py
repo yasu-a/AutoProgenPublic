@@ -11,8 +11,8 @@ from domain.models.result_test import TestCaseTestResult, TestCaseTestResultMapp
     OutputFileTestResult
 from domain.models.student_master import Student
 from domain.models.values import StudentID, TestCaseID
-from dto.mark import AbstractStudentMarkSnapshot, StudentMarkSnapshotMapping, \
-    TestCaseExecuteAndTestResultPair, OutputFileAndTestResultPair
+from dto.result_pair import OutputFileAndTestResultPair, TestCaseExecuteAndTestResultPair
+from dto.snapshot import AbstractStudentSnapshot, StudentMarkSnapshotMapping
 from fonts import font
 
 
@@ -228,7 +228,7 @@ class MarkStudentListItemWidget(QWidget):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self._student_mark_snapshot: AbstractStudentMarkSnapshot | None = None  # 初期値だけNone
+        self._student_mark_snapshot: AbstractStudentSnapshot | None = None  # 初期値だけNone
 
         self._init_ui()
         self._init_signals()
@@ -268,7 +268,7 @@ class MarkStudentListItemWidget(QWidget):
         pass
 
     @pyqtSlot()
-    def set_data(self, student_mark_snapshot: AbstractStudentMarkSnapshot):
+    def set_data(self, student_mark_snapshot: AbstractStudentSnapshot):
         assert student_mark_snapshot is not None
         self._student_mark_snapshot = student_mark_snapshot
 
@@ -294,7 +294,7 @@ class MarkStudentListItemWidget(QWidget):
         self._l_status.setToolTip(student_mark_snapshot.preparation_state_detailed_text)
         set_background_color(student_mark_snapshot.indicator_color)
 
-    def get_data(self) -> AbstractStudentMarkSnapshot:
+    def get_data(self) -> AbstractStudentSnapshot:
         return self._student_mark_snapshot
 
     @pyqtSlot(bool)

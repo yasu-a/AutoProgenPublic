@@ -37,8 +37,14 @@ class TestCasePathProvider:
     def base_folder_fullpath(self) -> Path:
         return self._project_path_provider.base_folder_fullpath() / "testcase"
 
-    def config_json_fullpath(self, testcase_id: TestCaseID) -> Path:
-        return self.base_folder_fullpath() / f"{testcase_id}.json"
+    def testcase_folder_fullpath(self, testcase_id: TestCaseID) -> Path:
+        return self.base_folder_fullpath() / str(testcase_id)
+
+    def execute_config_json_fullpath(self, testcase_id: TestCaseID) -> Path:
+        return self.testcase_folder_fullpath(testcase_id) / "execute_config.json"
+
+    def test_config_json_fullpath(self, testcase_id: TestCaseID) -> Path:
+        return self.testcase_folder_fullpath(testcase_id) / "test_config.json"
 
 
 class ReportPathProvider:

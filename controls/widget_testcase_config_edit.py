@@ -5,7 +5,9 @@ from controls.widget_testcase_execute_options import TestCaseExecuteConfigOption
 from controls.widget_testcase_input_file_mapping import TestCaseInputFileMappingEditWidget
 from controls.widget_testcase_output_file_mapping import TestCaseExpectedOutputFileMappingEditWidget
 from controls.widget_testcase_test_config_options import TestCaseTestConfigOptionsEditWidget
-from domain.models.testcase import TestCaseConfig, TestCaseExecuteConfig, TestCaseTestConfig
+from domain.models.execute_config import TestCaseExecuteConfig
+from domain.models.test_config import TestCaseTestConfig
+from domain.models.testcase_config import TestCaseConfig
 
 
 class TestCaseConfigEditWidget(QTabWidget):

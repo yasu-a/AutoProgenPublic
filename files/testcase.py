@@ -1,13 +1,14 @@
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import TextIO
 
 from app_logging import create_logger
-from domain.models.result_execute import OutputFileMapping, OutputFile
-from domain.models.testcase import TestCaseConfig, TestCaseExecuteConfig, TestCaseTestConfig
+from domain.models.execute_config import TestCaseExecuteConfig
+from domain.models.output_file import OutputFile, OutputFileMapping
+from domain.models.test_config import TestCaseTestConfig
+from domain.models.testcase_config import TestCaseConfig
 from domain.models.values import TestCaseID, StudentID, FileID
-from dto.testcase_execute_config_mapping import TestCaseExecuteConfigMapping
-from dto.testcase_test_config_mapping import TestCaseTestConfigMapping
 from files.project_core import ProjectCoreIO
 from files.project_path_provider import ProjectPathProvider, TestCasePathProvider, \
     StudentCompilePathProvider, StudentTestCaseExecutePathProvider
@@ -43,47 +44,84 @@ class TestCaseIO:
         testcase_folder_fullpath.mkdir(parents=True, exist_ok=True)
         id_lst = []
         for path in testcase_folder_fullpath.iterdir():
-            if path.is_file() and path.suffix == ".json":
+            if path.is_dir():
                 id_lst.append(TestCaseID(path.stem))
         return id_lst
 
-    def read_config(self, testcase_id: TestCaseID) -> TestCaseConfig:
-        json_fullpath = self._testcase_path_provider.config_json_fullpath(
+    def read_execute_config(self, testcase_id: TestCaseID) -> TestCaseExecuteConfig:
+        json_fullpath = self._testcase_path_provider.execute_config_json_fullpath(
             testcase_id=testcase_id,
         )
         json_body = self._project_core_io.read_json(json_fullpath=json_fullpath)
-        return TestCaseConfig.from_json(json_body)
+        return TestCaseExecuteConfig.from_json(json_body)
 
-    def read_testcase_execute_config_mapping(self) -> TestCaseExecuteConfigMapping:
-        testcase_execute_config_hash_mapping: dict[TestCaseID, TestCaseExecuteConfig] = {}
-        for testcase_id in self.list_ids():
-            config = self.read_config(testcase_id)
-            testcase_execute_config = config.execute_config
-            testcase_execute_config_hash_mapping[testcase_id] = testcase_execute_config
-        return TestCaseExecuteConfigMapping(testcase_execute_config_hash_mapping)
+    def read_test_config(self, testcase_id: TestCaseID) -> TestCaseTestConfig:
+        json_fullpath = self._testcase_path_provider.test_config_json_fullpath(
+            testcase_id=testcase_id,
+        )
+        json_body = self._project_core_io.read_json(json_fullpath=json_fullpath)
+        return TestCaseTestConfig.from_json(json_body)
 
-    def read_testcase_test_config_mapping(self) -> TestCaseTestConfigMapping:
-        mapping: dict[TestCaseID, TestCaseTestConfig] = {}
-        for testcase_id in self.list_ids():
-            config = self.read_config(testcase_id)
-            mapping[testcase_id] = config.test_config
-        return TestCaseTestConfigMapping(mapping)
+    def read_config(self, testcase_id: TestCaseID) -> TestCaseConfig:
+        execute_config = self.read_execute_config(testcase_id)
+        test_config = self.read_test_config(testcase_id)
+        return TestCaseConfig(
+            execute_config=execute_config,
+            test_config=test_config,
+        )
 
-    def create_config(self, testcase_id: TestCaseID) -> None:
-        config = TestCaseConfig.create_default()
-        self.write_config(testcase_id=testcase_id, config=config)
+    def get_execute_config_mtime(self, testcase_id: TestCaseID) -> datetime:
+        json_fullpath = self._testcase_path_provider.execute_config_json_fullpath(
+            testcase_id=testcase_id,
+        )
+        return datetime.fromtimestamp(json_fullpath.stat().st_mtime)
+
+    def get_test_config_mtime(self, testcase_id: TestCaseID) -> datetime:
+        json_fullpath = self._testcase_path_provider.test_config_json_fullpath(
+            testcase_id=testcase_id,
+        )
+        return datetime.fromtimestamp(json_fullpath.stat().st_mtime)
 
     def delete_config(self, testcase_id: TestCaseID) -> None:
-        json_fullpath = self._testcase_path_provider.config_json_fullpath(
+        testcase_folder_fullpath \
+            = self._testcase_path_provider.testcase_folder_fullpath(testcase_id)
+        self._project_core_io.rmtree_folder(testcase_folder_fullpath)
+
+    def write_execute_config(
+            self,
+            testcase_id: TestCaseID,
+            execute_config: TestCaseExecuteConfig,
+    ) -> None:
+        json_fullpath = self._testcase_path_provider.execute_config_json_fullpath(
             testcase_id=testcase_id,
         )
-        self._project_core_io.unlink(path=json_fullpath)
+        self._project_core_io.write_json(
+            json_fullpath=json_fullpath,
+            body=execute_config.to_json(),
+        )
+
+    def write_test_config(
+            self,
+            testcase_id: TestCaseID,
+            test_config: TestCaseTestConfig,
+    ) -> None:
+        json_fullpath = self._testcase_path_provider.test_config_json_fullpath(
+            testcase_id=testcase_id,
+        )
+        self._project_core_io.write_json(
+            json_fullpath=json_fullpath,
+            body=test_config.to_json(),
+        )
+
+    def create_config(self, testcase_id: TestCaseID, config: TestCaseConfig) -> None:
+        self.write_execute_config(testcase_id, config.execute_config)
+        self.write_test_config(testcase_id, config.test_config)
 
     def write_config(self, testcase_id: TestCaseID, config: TestCaseConfig) -> None:
-        json_fullpath = self._testcase_path_provider.config_json_fullpath(
-            testcase_id=testcase_id,
-        )
-        self._project_core_io.write_json(json_fullpath=json_fullpath, body=config.to_json())
+        if self.read_execute_config(testcase_id) != config.execute_config:
+            self.write_execute_config(testcase_id, config.execute_config)
+        if self.read_test_config(testcase_id) != config.test_config:
+            self.write_test_config(testcase_id, config.test_config)
 
     def clone_student_executable_to_execute_folder(
             self,

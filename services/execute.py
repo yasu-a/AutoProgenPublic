@@ -2,9 +2,9 @@ import subprocess
 from typing import TextIO
 
 from domain.errors import ExecuteServiceError
-from domain.models.result_execute import OutputFileMapping, TestCaseExecuteResult, \
+from domain.models.output_file import OutputFileMapping
+from domain.models.result_execute import TestCaseExecuteResult, \
     TestCaseExecuteResultMapping, ExecuteResult
-from domain.models.testcase import TestCaseExecuteConfig
 from domain.models.values import TestCaseID, StudentID
 from files.progress import ProgressIO
 from files.project import ProjectIO
@@ -74,7 +74,7 @@ class ExecuteService:
         )
 
     def _execute_and_get_output(self, student_id: StudentID, testcase_id: TestCaseID) \
-            -> tuple[TestCaseExecuteConfig, OutputFileMapping]:  # 使用した構成と出力を返す
+            -> OutputFileMapping:
         """
         与えられた生徒IDとテストケースIDに対して、実行可能な構成を読み取り、
         実行し、その結果の標準出力と出力ファイルを収集します。
@@ -84,9 +84,7 @@ class ExecuteService:
         testcase_id (TestCaseID): テストケースのID
 
         Returns:
-        tuple[ExecuteConfig, TestCaseExecuteResultOutputFiles]:
-            - ExecuteConfig: 実行に使用された構成
-            - TestCaseExecuteResultOutputFiles: 実行結果の出力ファイル
+            OutputFileMapping: 実行結果の出力ファイル
 
         Raises:
         ExecuteServiceError: 実行中にエラーが発生した場合
@@ -112,7 +110,6 @@ class ExecuteService:
         if executable_fullpath is None:
             raise ExecuteServiceError(
                 reason="実行ファイルが存在しません",
-                execute_config=execute_config,
             )
 
         # 標準入力ファイルを読み取り、実行ファイルを実行する子プロセスを開始する
@@ -136,7 +133,6 @@ class ExecuteService:
         except ExecutableRunnerTimeoutError:
             raise ExecuteServiceError(
                 reason="実行がタイムアウトしました",
-                execute_config=execute_config,
             )
         else:
             # 標準出力は改行コードがCR+LFになることがあるのでLFに統一する
@@ -162,7 +158,7 @@ class ExecuteService:
                     file_relative_paths=file_relative_path_lst_diff,
                 )
             )
-            return execute_config, output_files
+            return output_files
 
     def execute_and_save_result(self, student_id: StudentID) -> None:
         testcase_execute_result_mapping: dict[TestCaseID, TestCaseExecuteResult] = {}
@@ -174,20 +170,24 @@ class ExecuteService:
         else:
             for testcase_id in testcase_id_lst:
                 try:
-                    execute_config, output_files = self._execute_and_get_output(
+                    output_files = self._execute_and_get_output(
                         student_id=student_id,
                         testcase_id=testcase_id,
                     )
                 except ExecuteServiceError as e:
                     testcase_execute_result_mapping[testcase_id] = TestCaseExecuteResult.error(
                         testcase_id=testcase_id,
-                        execute_config_hash=hash(e.execute_config),
+                        execute_config_mtime=(
+                            self._testcase_io.get_execute_config_mtime(testcase_id)  # TODO: UoWの導入
+                        ),
                         reason=e.reason,
                     )
                 else:
                     testcase_execute_result_mapping[testcase_id] = TestCaseExecuteResult.success(
                         testcase_id=testcase_id,
-                        execute_config_hash=hash(execute_config),
+                        execute_config_mtime=(
+                            self._testcase_io.get_execute_config_mtime(testcase_id)  # TODO: UoWの導入
+                        ),
                         output_files=output_files,
                     )
 

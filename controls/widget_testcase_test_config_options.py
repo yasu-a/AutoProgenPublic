@@ -3,7 +3,7 @@ from PyQt5.QtGui import QDoubleValidator
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QLabel, QCheckBox, QLineEdit, \
     QSpinBox
 
-from domain.models.testcase import TestConfigOptions
+from domain.models.test_config_options import TestConfigOptions
 
 
 class TestCaseTestConfigOptionsEditWidget(QWidget):

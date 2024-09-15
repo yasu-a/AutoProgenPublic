@@ -1,12 +1,18 @@
 import itertools
 
-from domain.models.testcase import TestCaseConfig
+from domain.models.execute_config import TestCaseExecuteConfig
+from domain.models.execute_config_options import ExecuteConfigOptions
+from domain.models.expected_ouput_file import ExpectedOutputFileMapping
+from domain.models.input_file import InputFileMapping
+from domain.models.test_config import TestCaseTestConfig
+from domain.models.test_config_options import TestConfigOptions
+from domain.models.testcase_config import TestCaseConfig
 from domain.models.values import TestCaseID
 from dto.testcase_summary import TestCaseEditTestCaseSummary
 from files.testcase import TestCaseIO
 
 
-class TestCaseEditService:
+class TestCaseService:
     def __init__(
             self,
             testcase_io: TestCaseIO,
@@ -39,8 +45,25 @@ class TestCaseEditService:
             if new_testcase_id not in testcase_id_set:
                 return new_testcase_id
 
-    def create(self, testcase_id: TestCaseID) -> None:
-        self._testcase_io.create_config(testcase_id)
+    def create(self, testcase_id: TestCaseID) -> None:  # TODO: use-case に分離
+        config = TestCaseConfig(
+            execute_config=TestCaseExecuteConfig(
+                input_files=InputFileMapping(),
+                options=ExecuteConfigOptions(
+                    timeout=5.0,
+                ),
+            ),
+            test_config=TestCaseTestConfig(
+                expected_output_files=ExpectedOutputFileMapping(),
+                options=TestConfigOptions(
+                    ordered_matching=True,
+                    float_tolerance=1.0e-6,
+                    allowable_edit_distance=0,
+                    # ignore_whitespace=False,
+                ),
+            ),
+        )
+        self._testcase_io.create_config(testcase_id, config)
 
     def delete(self, testcase_id: TestCaseID) -> None:
         self._testcase_io.delete_config(testcase_id)

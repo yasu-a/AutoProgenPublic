@@ -5,12 +5,13 @@ from PyQt5.QtCore import QMutex
 
 from app_logging import create_logger
 from domain.models.mark import Mark
+from domain.models.progress import StudentProgressWithFinishedStage, \
+    AbstractStudentProgress, StudentProgressUnstarted
 from domain.models.result_build import BuildResult
 from domain.models.result_compile import CompileResult
 from domain.models.result_execute import ExecuteResult
 from domain.models.result_test import TestResult
-from domain.models.stages import StudentProgressStage, StudentProgressWithFinishedStage, \
-    AbstractStudentProgress, StudentProgressUnstarted
+from domain.models.stages import StudentProgressStage
 from domain.models.values import StudentID
 from files.project import ProjectIO
 from files.project_core import ProjectCoreIO
@@ -279,7 +280,7 @@ class ProgressIOWithContext:
             return self.is_test_finished()
         assert False, stage
 
-    def get_stage_result(self, stage: StudentProgressStage) \
+    def get_progress_of_stage(self, stage: StudentProgressStage) \
             -> StudentProgressWithFinishedStage:
         # 生徒の指定されたステージの結果を読み出してProgressとして返す
         if stage == StudentProgressStage.BUILD:
@@ -316,11 +317,11 @@ class ProgressIOWithContext:
         )
         if not is_finished:
             return None
-        return self.get_stage_result(
+        return self.get_progress_of_stage(
             stage=stage,
         )
 
-    def get_progress(self) -> AbstractStudentProgress:
+    def get_current_progress(self) -> AbstractStudentProgress:
         # 生徒の現時点で終了したところまでのProgressを返す
         stages = StudentProgressStage.list_stages()
 
@@ -336,54 +337,10 @@ class ProgressIOWithContext:
         if consecutive_finish_count == 0:
             return StudentProgressUnstarted()
         else:
-            return self.get_stage_result(
+            return self.get_progress_of_stage(
                 stage=stages[consecutive_finish_count - 1],
             )
 
-    def determine_next_stage_with_result(self) -> StudentProgressStage | None:
-        progress = self.get_progress()
-        expected_next_stage = progress.get_expected_next_stage()  # None if all stages are finished
-
-        # すべてのステージが終了したか次のステージにBUILD以降が予期されているとき
-        if expected_next_stage is None or expected_next_stage > StudentProgressStage.BUILD:
-            # レポートフォルダのハッシュをとって変更が検出されたときはステージをBUILDに巻き戻す
-            result = self.read_build_result()
-            h = self._project_io.calculate_student_submission_folder_hash(
-                student_id=self._student_id,
-            )
-            if not result.has_same_hash(h):
-                self._logger.info(f"Changes are detected in submission folder: {self._student_id}")
-                return StudentProgressStage.BUILD
-
-        # コンパイルが失敗している場合はステージをBUILDに巻き戻す
-        # TODO: COMPILEとBUILDのデータフォルダを分離する
-        #       COMPILEステージはBUILDとフォルダを共有するためBUILDまで巻き戻す
-        if not progress.is_success() \
-                and progress.get_finished_stage() == StudentProgressStage.COMPILE:
-            self._logger.info(f"Revert to build stage due to compile failure: {self._student_id}")
-            return StudentProgressStage.BUILD
-
-        # すべてのステージが終了したか次のステージにEXECUTE以降が予期されているときs
-        if expected_next_stage is None or expected_next_stage > StudentProgressStage.EXECUTE:
-            # 実行構成が変更されたときはステージをEXECUTEに巻き戻す
-            result = self.read_execute_result()
-            if not result.has_same_hash_of_testcase_execute_config(
-                    self._testcase_io.read_testcase_execute_config_mapping(),
-            ):
-                self._logger.info(f"Changes are detected in execute config: {self._student_id}")
-                return StudentProgressStage.EXECUTE
-
-        # すべてのステージが終了したか次のステージにTEST以降が予期されているとき
-        if expected_next_stage is None or expected_next_stage > StudentProgressStage.TEST:
-            # テスト構成が変更されたときはステージをTESTに巻き戻す
-            result = self.read_test_result()
-            if not result.has_same_hash_of_testcase_test_config(
-                    self._testcase_io.read_testcase_test_config_mapping(),
-            ):
-                self._logger.info(f"Changes are detected in test config: {self._student_id}")
-                return StudentProgressStage.TEST
-
-        return expected_next_stage
 
 
 class ProgressIO:

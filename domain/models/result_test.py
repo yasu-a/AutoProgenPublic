@@ -1,10 +1,9 @@
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 
 from domain.models.result_base import AbstractResult
 from domain.models.values import TestCaseID, FileID
-from dto.testcase_test_config_mapping import TestCaseTestConfigHashMapping, \
-    TestCaseTestConfigMapping
 
 
 @dataclass(slots=True)
@@ -115,19 +114,19 @@ class TestCaseTestResult:
             self,
             *,
             testcase_id: TestCaseID,
-            test_config_hash: int,
+            test_config_mtime: datetime,
             output_file_test_results: OutputFileTestResultMapping,
             reason: str | None = None,
     ):
         self._testcase_id = testcase_id
-        self._test_config_hash = test_config_hash
+        self._test_config_mtime = test_config_mtime
         self._output_file_test_results = output_file_test_results
         self._reason = reason
 
     def to_json(self) -> dict:
         return dict(
             testcase_id=self._testcase_id.to_json(),
-            test_config_hash=self._test_config_hash,
+            test_config_mtime=self._test_config_mtime,
             output_file_test_results=self._output_file_test_results.to_json(),
             reason=self._reason,
         )
@@ -136,7 +135,7 @@ class TestCaseTestResult:
     def from_json(cls, body: dict):
         return cls(
             testcase_id=TestCaseID.from_json(body["testcase_id"]),
-            test_config_hash=body.get("test_config_hash"),
+            test_config_mtime=body.get("test_config_mtime"),
             output_file_test_results=OutputFileTestResultMapping.from_json(
                 body["output_file_test_results"],
             ),
@@ -148,12 +147,12 @@ class TestCaseTestResult:
             cls,
             *,
             testcase_id: TestCaseID,
-            test_config_hash: int,
+            test_config_mtime: datetime,
             reason: str,
     ) -> "TestCaseTestResult":
         return cls(
             testcase_id=testcase_id,
-            test_config_hash=test_config_hash,
+            test_config_mtime=test_config_mtime,
             output_file_test_results=OutputFileTestResultMapping(),
             reason=reason,
         )
@@ -163,12 +162,12 @@ class TestCaseTestResult:
             cls,
             *,
             testcase_id: TestCaseID,
-            test_config_hash: int,
+            test_config_mtime: datetime,
             output_file_test_results: OutputFileTestResultMapping,
     ) -> "TestCaseTestResult":
         return cls(
             testcase_id=testcase_id,
-            test_config_hash=test_config_hash,
+            test_config_mtime=test_config_mtime,
             output_file_test_results=output_file_test_results,
             reason=None,
         )
@@ -178,8 +177,8 @@ class TestCaseTestResult:
         return self._testcase_id
 
     @property
-    def test_config_hash(self) -> int:
-        return self._test_config_hash
+    def test_config_mtime(self) -> datetime:
+        return self._test_config_mtime
 
     @property
     def output_file_test_results(self) -> OutputFileTestResultMapping:
@@ -248,18 +247,3 @@ class TestResult(AbstractResult):
             testcase_results=TestCaseTestResultMapping.from_json(
                 body["testcase_results"]),
         )
-
-    def get_testcase_test_config_mapping(self) -> TestCaseTestConfigHashMapping:
-        testcase_test_config_hash_mapping = {}
-        for testcase_id, testcase_result in self.testcase_results.items():
-            testcase_test_config_hash_mapping[testcase_id] \
-                = testcase_result.test_config_hash
-        return TestCaseTestConfigHashMapping(testcase_test_config_hash_mapping)
-
-    def has_same_hash_of_testcase_test_config(
-            self,
-            testcase_test_config_mapping: TestCaseTestConfigMapping,
-    ) -> bool:
-        this_hash = self.get_testcase_test_config_mapping().calculate_hash()
-        other_hash = testcase_test_config_mapping.calculate_hash()
-        return this_hash == other_hash

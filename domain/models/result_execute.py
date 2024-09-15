@@ -1,82 +1,9 @@
 from dataclasses import dataclass
+from datetime import datetime
 
+from domain.models.output_file import OutputFileMapping
 from domain.models.result_base import AbstractResult
-from domain.models.values import TestCaseID, FileID
-from dto.testcase_execute_config_mapping import TestCaseExecuteConfigMapping, \
-    TestCaseExecuteConfigHashMapping
-from utils.json_util import bytes_to_jsonable, jsonable_to_bytes
-
-
-# noinspection DuplicatedCode
-class OutputFile:
-    def __init__(
-            self,
-            *,
-            file_id: FileID,
-            content: bytes | str,
-    ):
-        self._file_id = file_id
-        if isinstance(content, str):
-            self._content = bytes(content, encoding="utf-8")
-        else:
-            self._content = content
-
-    def to_json(self) -> dict:
-        return dict(
-            file_id=self._file_id.to_json(),
-            content_bytes=bytes_to_jsonable(self._content),
-        )
-
-    @classmethod
-    def from_json(cls, body: dict):
-        return cls(
-            file_id=FileID.from_json(body["file_id"]),
-            content=jsonable_to_bytes(body["content_bytes"]),
-        )
-
-    @property
-    def file_id(self) -> FileID:
-        return self._file_id
-
-    @property
-    def content_bytes(self) -> bytes:
-        return self._content
-
-    @property
-    def content_string(self) -> str | None:  # None if encoding unsupported
-        try:
-            return self._content.decode("utf-8")
-        except UnicodeDecodeError:
-            return None
-
-
-# noinspection DuplicatedCode
-class OutputFileMapping(dict[FileID, OutputFile]):
-    # TODO: frozendictを導入してこのクラスのインスタンスを持つクラスをすべてdataclass(frozen=True)にする
-
-    def __validate(self):
-        # キーとしてのFileIDと値の中のFileIDは一致する
-        for file_id, output_file in self.items():
-            assert file_id == output_file.file_id, (file_id, output_file)
-            # 特殊ファイルは標準出力しかありえない
-            if file_id.is_special:
-                assert file_id in [FileID.STDOUT], file_id
-
-    def to_json(self) -> dict[str, dict]:
-        self.__validate()
-        return {
-            file_id.to_json(): output_file.to_json()
-            for file_id, output_file in self.items()
-        }
-
-    @classmethod
-    def from_json(cls, body: dict):
-        obj = cls({
-            FileID.from_json(file_id_str): OutputFile.from_json(output_file_body)
-            for file_id_str, output_file_body in body.items()
-        })
-        obj.__validate()
-        return obj
+from domain.models.values import TestCaseID
 
 
 class TestCaseExecuteResult:
@@ -84,19 +11,19 @@ class TestCaseExecuteResult:
             self,
             *,
             testcase_id: TestCaseID,
-            execute_config_hash: int,
+            execute_config_mtime: datetime,
             output_files: OutputFileMapping,
             reason: str | None = None,
     ):
         self._testcase_id = testcase_id
-        self._execute_config_hash = execute_config_hash
+        self._execute_config_mtime = execute_config_mtime
         self._output_files = output_files
         self._reason = reason
 
     def to_json(self) -> dict:
         return dict(
             testcase_id=self._testcase_id.to_json(),
-            execute_config_hash=self._execute_config_hash,
+            execute_config_mtime=self._execute_config_mtime.isoformat(),
             output_files=self._output_files.to_json(),
             reason=self._reason,
         )
@@ -105,7 +32,7 @@ class TestCaseExecuteResult:
     def from_json(cls, body: dict):
         return cls(
             testcase_id=TestCaseID.from_json(body["testcase_id"]),
-            execute_config_hash=body.get("execute_config_hash"),
+            execute_config_mtime=datetime.fromisoformat(body.get("execute_config_mtime")),
             output_files=OutputFileMapping.from_json(body["output_files"]),
             reason=body.get("reason"),
         )
@@ -115,12 +42,12 @@ class TestCaseExecuteResult:
             cls,
             *,
             testcase_id: TestCaseID,
-            execute_config_hash: int,
+            execute_config_mtime: datetime,
             reason: str,
     ) -> "TestCaseExecuteResult":
         return cls(
             testcase_id=testcase_id,
-            execute_config_hash=execute_config_hash,
+            execute_config_mtime=execute_config_mtime,
             output_files=OutputFileMapping(),
             reason=reason,
         )
@@ -130,12 +57,12 @@ class TestCaseExecuteResult:
             cls,
             *,
             testcase_id: TestCaseID,
-            execute_config_hash: int,
+            execute_config_mtime: datetime,
             output_files: OutputFileMapping,
     ) -> "TestCaseExecuteResult":
         return cls(
             testcase_id=testcase_id,
-            execute_config_hash=execute_config_hash,
+            execute_config_mtime=execute_config_mtime,
             output_files=output_files,
             reason=None,
         )
@@ -145,8 +72,8 @@ class TestCaseExecuteResult:
         return self._testcase_id
 
     @property
-    def execute_config_hash(self) -> int:
-        return self._execute_config_hash
+    def execute_config_mtime(self) -> datetime:
+        return self._execute_config_mtime
 
     @property
     def output_files(self) -> OutputFileMapping:
@@ -210,18 +137,3 @@ class ExecuteResult(AbstractResult):
             testcase_results=TestCaseExecuteResultMapping.from_json(
                 body["testcase_results"]),
         )
-
-    def get_testcase_execute_config_mapping(self) -> TestCaseExecuteConfigHashMapping:
-        testcase_execute_config_hash_mapping = {}
-        for testcase_id, testcase_result in self.testcase_results.items():
-            testcase_execute_config_hash_mapping[testcase_id] \
-                = testcase_result.execute_config_hash
-        return TestCaseExecuteConfigHashMapping(testcase_execute_config_hash_mapping)
-
-    def has_same_hash_of_testcase_execute_config(
-            self,
-            testcase_execute_config_mapping: TestCaseExecuteConfigMapping,
-    ) -> bool:
-        this_hash = self.get_testcase_execute_config_mapping().calculate_hash()
-        other_hash = testcase_execute_config_mapping.calculate_hash()
-        return this_hash == other_hash

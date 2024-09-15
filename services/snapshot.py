@@ -1,15 +1,32 @@
+from dataclasses import dataclass
+
+from domain.models.mark import Mark
+from domain.models.progress import StudentProgressWithFinishedStage
+from domain.models.result_execute import ExecuteResult
+from domain.models.result_test import TestResult
 from domain.models.stages import StudentProgressStage
 from domain.models.values import StudentID
-from dto.mark import ProjectMarkSnapshot, StudentMarkSnapshotStagesUnfinished, \
-    StudentMarkSnapshotReady, StudentMarkSnapshotRerunRequired, AbstractStudentMarkSnapshot, \
-    StudentMarkSnapshotStageFinishedWithError, StudentMarkSnapshotMapping, TestCaseConfigMapping, \
-    TestCaseExecuteAndTestResultPair, TestCaseExecuteAndTestResultPairMapping
+from dto.result_pair import TestCaseExecuteAndTestResultPair, \
+    TestCaseExecuteAndTestResultPairMapping
+from dto.snapshot import ProjectSnapshot, StudentSnapshotStagesUnfinished, \
+    StudentSnapshotReady, StudentSnapshotRerunRequired, AbstractStudentSnapshot, \
+    StudentSnapshotStageFinishedWithError, StudentMarkSnapshotMapping
+from dto.testcase_config import TestCaseConfigMapping
 from files.progress import ProgressIO
 from files.project import ProjectIO
 from files.testcase import TestCaseIO
 
 
-class MarkSnapshotService:
+@dataclass(slots=True)
+class StudentSnapshotFields:
+    student_id: StudentID
+    mark: Mark
+    progress_of_last_stage: StudentProgressWithFinishedStage | None
+    execute_result: ExecuteResult | None
+    test_result: TestResult | None
+
+
+class SnapshotService:
     # 採点に必要なデータのスナップショットを作成する
 
     def __init__(
@@ -23,7 +40,7 @@ class MarkSnapshotService:
         self._progress_io = progress_io
         self._testcase_io = testcase_io
 
-    def take_student_snapshot(self, student_id: StudentID) -> AbstractStudentMarkSnapshot:
+    def take_student_snapshot(self, student_id: StudentID) -> AbstractStudentSnapshot:
         # スナップショットに必要な情報を取得
         with self._progress_io.with_student(student_id) as student_progress_io:
             # マークデータを取得
@@ -41,7 +58,7 @@ class MarkSnapshotService:
                     testcase_test_results = student_progress_io.read_test_result().testcase_results
                     assert set(testcase_execute_results.keys()) == set(testcase_test_results), \
                         (set(testcase_execute_results.keys()), set(testcase_test_results.keys()))
-                    return StudentMarkSnapshotReady(
+                    return StudentSnapshotReady(
                         student=self._project_io.students[student_id],
                         mark=mark,
                         execute_and_test_results=TestCaseExecuteAndTestResultPairMapping(
@@ -57,27 +74,27 @@ class MarkSnapshotService:
                 else:  # 再実行の必要があるとき
                     # FIXME: 成功したときしか再実行の判定をしていないので、BUILDエラー時にレポートフォルダを
                     #        編集しても「再実行の必要がある」ではなく「エラー」と表示される
-                    return StudentMarkSnapshotRerunRequired(  # TODO: なぜ再実行の必要があるか理由をつける
+                    return StudentSnapshotRerunRequired(  # TODO: なぜ再実行の必要があるか理由をつける
                         student=self._project_io.students[student_id],
                         mark=mark,
                     )
             else:  # すべてのステージが完了していないとき
-                progress = student_progress_io.get_progress()
+                progress = student_progress_io.get_current_progress()
                 detailed_reason = progress.get_detailed_reason()
                 if detailed_reason is None:
-                    return StudentMarkSnapshotStagesUnfinished(
+                    return StudentSnapshotStagesUnfinished(
                         student=self._project_io.students[student_id],
                         mark=mark,
                     )
                 else:
-                    return StudentMarkSnapshotStageFinishedWithError(
+                    return StudentSnapshotStageFinishedWithError(
                         student=self._project_io.students[student_id],
                         mark=mark,
                         detailed_reason=detailed_reason,
                     )
 
-    def take_project_snapshot(self) -> ProjectMarkSnapshot:
-        return ProjectMarkSnapshot(
+    def take_project_snapshot(self) -> ProjectSnapshot:
+        return ProjectSnapshot(
             student_snapshots=StudentMarkSnapshotMapping({
                 student.student_id: self.take_student_snapshot(student.student_id)
                 for student in self._project_io.students

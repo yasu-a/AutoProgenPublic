@@ -1,7 +1,7 @@
 from PyQt5.QtCore import QObject, pyqtSlot
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QLabel, QDoubleSpinBox
 
-from domain.models.testcase import ExecuteConfigOptions
+from domain.models.execute_config_options import ExecuteConfigOptions
 
 
 class TestCaseExecuteConfigOptionsEditWidget(QWidget):

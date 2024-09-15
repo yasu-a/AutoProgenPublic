@@ -1,7 +1,7 @@
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from application.dependency.services import get_testcase_edit_service
+from application.dependency.services import get_testcase_service
 from controls.dialog_testcase_config_edit import TestCaseConfigEditDialog
 from controls.widget_button_box import ButtonBox
 from domain.models.values import TestCaseID
@@ -43,9 +43,9 @@ class TestCaseListWidget(QListWidget):
     @pyqtSlot()
     def update_data(self):
         self.clear()
-        self._current_testcase_id_lst = get_testcase_edit_service().list_testcase_ids()
+        self._current_testcase_id_lst = get_testcase_service().list_testcase_ids()
         for testcase_id in self._current_testcase_id_lst:
-            summary = get_testcase_edit_service().get_summary(testcase_id)
+            summary = get_testcase_service().get_summary(testcase_id)
             self.addItem(summary.name)
 
 
@@ -82,7 +82,7 @@ class TestCaseListEditWidget(QWidget):
             self,  # type: ignore
             "新しいテストケース",
             "新しいテストケースの名前を入力してください",
-            text=str(get_testcase_edit_service().create_new_testcase_id()),
+            text=str(get_testcase_service().create_new_testcase_id()),
         )
         if not ok:
             return
@@ -90,7 +90,7 @@ class TestCaseListEditWidget(QWidget):
         if not testcase_name:
             return
         new_testcase_id = TestCaseID(testcase_name)
-        get_testcase_edit_service().create(testcase_id=new_testcase_id)
+        get_testcase_service().create(testcase_id=new_testcase_id)
         self.testcase_modified.emit()
 
     @pyqtSlot(TestCaseID)
@@ -104,7 +104,7 @@ class TestCaseListEditWidget(QWidget):
         )
         if res != QMessageBox.Yes:
             return
-        get_testcase_edit_service().delete(testcase_id=testcase_id)
+        get_testcase_service().delete(testcase_id=testcase_id)
         self.testcase_modified.emit()
 
     @pyqtSlot(TestCaseID)

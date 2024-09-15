@@ -1,61 +1,15 @@
 from dataclasses import dataclass
 
 from domain.models.mark import Mark
-from domain.models.result_execute import TestCaseExecuteResultMapping, TestCaseExecuteResult, \
-    OutputFile
-from domain.models.result_test import TestCaseTestResultMapping, TestCaseTestResult, \
-    OutputFileTestResult
+from domain.models.result_execute import TestCaseExecuteResultMapping
+from domain.models.result_test import TestCaseTestResultMapping
 from domain.models.student_master import Student
-from domain.models.testcase import TestCaseConfig
-from domain.models.values import StudentID, TestCaseID, FileID
+from domain.models.values import StudentID, TestCaseID
+from dto.result_pair import TestCaseExecuteAndTestResultPairMapping
+from dto.testcase_config import TestCaseConfigMapping
 
 
-@dataclass(slots=True)
-class OutputFileAndTestResultPair:
-    file_id: FileID
-    output_file: OutputFile
-    test_result: OutputFileTestResult
-
-
-@dataclass(slots=True)
-class TestCaseExecuteAndTestResultPair:
-    testcase_id: TestCaseID
-    execute_result: TestCaseExecuteResult
-    test_result: TestCaseTestResult
-
-    def __post_init__(self):
-        # TODO: データレベルで整合性を保証する
-
-        # テストケースIDの整合性を確認
-        assert self.execute_result.testcase_id == self.test_result.testcase_id, \
-            (self.execute_result.testcase_id, self.test_result.testcase_id)
-        assert self.test_result.testcase_id == self.test_result.testcase_id, \
-            (self.test_result.testcase_id, self.test_result.testcase_id)
-        # ファイルIDの整合性を確認
-        assert (
-                set(self.execute_result.output_files.keys())
-                == set(self.test_result.output_file_test_results.keys())
-        ), (
-            set(self.execute_result.output_files.keys()),
-            set(self.test_result.output_file_test_results),
-        )
-
-    def list_file_ids(self) -> list[FileID]:
-        return sorted(self.execute_result.output_files.keys())
-
-    def get_output_file_and_test_result_pair(self, file_id: FileID) -> OutputFileAndTestResultPair:
-        output_file = self.execute_result.output_files.get(file_id)
-        test_result_pair = self.test_result.output_file_test_results.get(file_id)
-        if output_file is None or test_result_pair is None:
-            raise KeyError(file_id)
-        return OutputFileAndTestResultPair(file_id, output_file, test_result_pair)
-
-
-class TestCaseExecuteAndTestResultPairMapping(dict[TestCaseID, TestCaseExecuteAndTestResultPair]):
-    pass
-
-
-class AbstractStudentMarkSnapshot:
+class AbstractStudentSnapshot:
     def __init__(
             self,
             student: Student,
@@ -117,7 +71,7 @@ class AbstractStudentMarkSnapshot:
         })
 
 
-class StudentMarkSnapshotReady(AbstractStudentMarkSnapshot):
+class StudentSnapshotReady(AbstractStudentSnapshot):
     # 採点可能
 
     def __init__(
@@ -151,7 +105,7 @@ class StudentMarkSnapshotReady(AbstractStudentMarkSnapshot):
         return self._execute_and_test_results
 
 
-class StudentMarkSnapshotRerunRequired(AbstractStudentMarkSnapshot):
+class StudentSnapshotRerunRequired(AbstractStudentSnapshot):
     # 再実行が必要
 
     def __init__(
@@ -183,7 +137,7 @@ class StudentMarkSnapshotRerunRequired(AbstractStudentMarkSnapshot):
         return None
 
 
-class StudentMarkSnapshotStagesUnfinished(AbstractStudentMarkSnapshot):
+class StudentSnapshotStagesUnfinished(AbstractStudentSnapshot):
     # 処理が未完了
 
     def __init__(
@@ -215,7 +169,7 @@ class StudentMarkSnapshotStagesUnfinished(AbstractStudentMarkSnapshot):
         return None
 
 
-class StudentMarkSnapshotStageFinishedWithError(AbstractStudentMarkSnapshot):
+class StudentSnapshotStageFinishedWithError(AbstractStudentSnapshot):
     # 処理が完了したがエラーが発生
 
     def __init__(
@@ -249,16 +203,12 @@ class StudentMarkSnapshotStageFinishedWithError(AbstractStudentMarkSnapshot):
         return None
 
 
-class StudentMarkSnapshotMapping(dict[StudentID, AbstractStudentMarkSnapshot]):
-    pass
-
-
-class TestCaseConfigMapping(dict[TestCaseID, TestCaseConfig]):
+class StudentMarkSnapshotMapping(dict[StudentID, AbstractStudentSnapshot]):
     pass
 
 
 @dataclass(slots=True)
-class ProjectMarkSnapshot:
+class ProjectSnapshot:
     # プロジェクト全体の採点に必要なデータのスナップショット
     student_snapshots: StudentMarkSnapshotMapping
     testcases: TestCaseConfigMapping

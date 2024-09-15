@@ -1,0 +1,164 @@
+from datetime import datetime
+
+from domain.models.progress import StudentProgressWithFinishedStage, AbstractStudentProgress
+from domain.models.result_execute import ExecuteResult
+from domain.models.result_test import TestResult
+from domain.models.stages import StudentProgressStage
+from domain.models.values import StudentID
+from files.progress import ProgressIO, ProgressIOWithContext
+from files.project import ProjectIO
+from files.testcase import TestCaseIO
+
+
+class ProgressService:  # TODO: StudentProgressService?
+    def __init__(self, project_io: ProjectIO, testcase_io: TestCaseIO, progress_io: ProgressIO):
+        self._project_io = project_io
+        self._testcase_io = testcase_io
+        self._progress_io = progress_io
+
+    def is_execute_config_changed(self, student_id: StudentID) -> bool:
+        # テストケースIDが全て一致するかどうか
+        testcase_ids_config = self._testcase_io.list_ids()
+        with self._progress_io.with_student(student_id) as student_progress_io:
+            execute_result = \
+                student_progress_io.get_progress_of_stage(StudentProgressStage.EXECUTE).get_result()
+            assert isinstance(execute_result, ExecuteResult), execute_result
+        testcase_ids_result = execute_result.testcase_results.keys()
+        if set(testcase_ids_config) != set(testcase_ids_result):
+            return True
+
+        # テストケースの中身が一致するかどうか
+        testcase_ids = testcase_ids_config
+        for testcase_id in testcase_ids:
+            mtime_config = self._testcase_io.get_execute_config_mtime(testcase_id)
+            mtime_result = execute_result.testcase_results[testcase_id].execute_config_mtime
+            if mtime_config != mtime_result:
+                return True
+
+        return False
+
+    def is_test_config_changed(self, student_id: StudentID) -> bool:
+        # テストケースIDが全て一致するかどうか
+        testcase_ids_config = self._testcase_io.list_ids()
+        with self._progress_io.with_student(student_id) as student_progress_io:
+            test_result = student_progress_io.read_test_result()
+            assert isinstance(test_result, TestResult), test_result
+        testcase_ids_test_config = test_result.testcase_results.keys()
+        if set(testcase_ids_config) != set(testcase_ids_test_config):
+            return True
+
+        # テスト構成が一致するかどうか
+        testcase_ids = testcase_ids_config
+        for testcase_id in testcase_ids:
+            mtime_config = self._testcase_io.read_execute_config(testcase_id)
+            mtime_result = test_result.testcase_results[testcase_id].test_config_mtime
+            if mtime_config != mtime_result:
+                return True
+
+        return False
+
+    def determine_next_stage_with_result_and_get_reason(
+            self,
+            student_progress_io: ProgressIOWithContext,  # TODO: [!] 変な引数 コンテキストの導入
+    ) -> tuple[StudentProgressStage | None, str | None]:
+        # noinspection PyProtectedMember
+        student_id = student_progress_io._student_id  # TODO: [!] student_idはどこからとるべき？引数で受け取る？セッションを管理して依存注入？
+
+        progress = student_progress_io.get_current_progress()
+        expected_next_stage = progress.get_expected_next_stage()
+
+        # すべてのステージが終了したか次のステージにBUILD以降が予期されているとき
+        if expected_next_stage is None or expected_next_stage > StudentProgressStage.BUILD:
+            # レポートフォルダのハッシュをとって変更が検出されたときはステージをBUILDに巻き戻す
+            result = student_progress_io.read_build_result()
+            h = self._project_io.calculate_student_submission_folder_hash(
+                student_id=student_id,
+            )
+            if not result.has_same_hash(h):
+                return StudentProgressStage.BUILD, "提出フォルダに変更が検出された"
+
+        # コンパイルが失敗している場合はステージをBUILDに巻き戻す
+        # TODO: COMPILEとBUILDのデータフォルダを分離する
+        #       COMPILEステージはBUILDとフォルダを共有するためBUILDまで巻き戻す必要がある
+        if not progress.is_success() \
+                and progress.get_finished_stage() == StudentProgressStage.COMPILE:
+            return StudentProgressStage.BUILD, "コンパイルに失敗した"
+
+        # すべてのステージが終了したか次のステージにEXECUTE以降が予期されているとき
+        if expected_next_stage is None or expected_next_stage > StudentProgressStage.EXECUTE:
+            # 実行構成が変更されたときはステージをEXECUTEに巻き戻す
+            # FIXME: すでに生徒のセッションを張っているのでis_execute_config_changed()のなかでデッドロック
+            # FIXME: すでに生徒のセッションを張っているのでis_execute_config_changed()のなかでデッドロック
+            # FIXME: すでに生徒のセッションを張っているのでis_execute_config_changed()のなかでデッドロック
+            # FIXME: すでに生徒のセッションを張っているのでis_execute_config_changed()のなかでデッドロック
+            # FIXME: すでに生徒のセッションを張っているのでis_execute_config_changed()のなかでデッドロック
+            # FIXME: すでに生徒のセッションを張っているのでis_execute_config_changed()のなかでデッドロック
+            # FIXME: すでに生徒のセッションを張っているのでis_execute_config_changed()のなかでデッドロック
+            # FIXME: すでに生徒のセッションを張っているのでis_execute_config_changed()のなかでデッドロック
+            # FIXME: すでに生徒のセッションを張っているのでis_execute_config_changed()のなかでデッドロック
+            # FIXME: すでに生徒のセッションを張っているのでis_execute_config_changed()のなかでデッドロック
+            if self.is_execute_config_changed(
+                    student_id=student_id,
+            ):
+                return StudentProgressStage.EXECUTE, "実行構成が変更された"
+
+        # すべてのステージが終了したか次のステージにTEST以降が予期されているとき
+        if expected_next_stage is None or expected_next_stage > StudentProgressStage.TEST:
+            # テスト構成が変更されたときはステージをTESTに巻き戻す
+            if self.is_test_config_changed(
+                    student_id=student_id,
+            ):
+                return StudentProgressStage.TEST, "テスト構成が変更された"
+
+        return (
+            expected_next_stage,  # すべてのステージが終了していたらNone
+            None,  # 巻き戻っていないのでNone
+        )
+
+    def determine_next_stage_with_result(
+            self,
+            student_progress_io: ProgressIOWithContext,  # TODO: [!] 変な引数 コンテキストの��入
+    ) -> StudentProgressStage | None:
+        expected_next_stage, _ \
+            = self.determine_next_stage_with_result_and_get_reason(student_progress_io)
+        return expected_next_stage
+
+    def determine_student_next_stage_with_result(
+            self,
+            student_id: StudentID,  # TODO: 本当はdetermine_next_stage_with_resultでstudent_idを受け取りたい
+    ) -> StudentProgressStage | None:
+        with self._progress_io.with_student(student_id) as student_progress_io:
+            return self.determine_next_stage_with_result(student_progress_io)
+
+    def get_student_progress_of_stage_if_finished(
+            self,
+            student_id: StudentID,
+            stage: StudentProgressStage
+    ) -> StudentProgressWithFinishedStage | None:
+        with self._progress_io.with_student(student_id) as student_progress_io:
+            return student_progress_io.get_progress_of_stage_if_finished(
+                stage=stage,
+            )
+
+    def get_student_progress(self, student_id: StudentID) -> AbstractStudentProgress:
+        with self._progress_io.with_student(student_id) as student_progress_io:
+            return student_progress_io.get_current_progress()
+
+    def clear_student_to_start_stage(
+            self, student_id: StudentID,
+            stage: StudentProgressStage,
+    ) -> None:
+        with self._progress_io.with_student(student_id) as student_progress_io:
+            student_progress_io.clear_to_start_stage(
+                stage_to_be_started=stage,
+            )
+
+    def clear_all_stages_of_student(self, student_id: StudentID) -> None:
+        self.clear_student_to_start_stage(
+            student_id=student_id,
+            stage=StudentProgressStage.get_first_stage(),
+        )
+
+    def get_student_mtime(self, student_id: StudentID) -> datetime | None:
+        with self._progress_io.with_student(student_id) as student_progress_io:
+            return student_progress_io.get_mtime()
