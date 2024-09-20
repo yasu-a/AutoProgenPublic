@@ -7,7 +7,10 @@ __all__ = (
     "ProjectName",
     "SpecialFileType",
     "FileID",
+    "IOSessionID",
 )
+
+import uuid
 
 from enum import Enum
 
@@ -249,3 +252,9 @@ class FileID:
 
 FileID.STDIN = FileID(SpecialFileType.STDIN)
 FileID.STDOUT = FileID(SpecialFileType.STDOUT)
+
+
+class IOSessionID(uuid.UUID):
+    def __init__(self, value):
+        assert isinstance(value, uuid.UUID), value
+        super().__init__(bytes=value.bytes)

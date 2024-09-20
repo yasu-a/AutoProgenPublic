@@ -3,27 +3,36 @@ from pathlib import Path
 
 from app_logging import create_logger
 from domain.errors import CompileTestServiceError, CompileToolIOError
-from files.build_test import BuildTestIO
+from domain.models.values import IOSessionID
 from files.compile_tool import CompileToolIO
-from files.settings import GlobalSettingsIO
+from files.global_settings import GlobalSettingsRepository
+from files.test_run import TestRunRepository
+from files.test_run_source import TestRunSourceRepository
 
 
-class CompileTestService:
+class TestRunService:
     _logger = create_logger()
 
     def __init__(
             self,
             *,
-            global_settings_io: GlobalSettingsIO,
-            build_test_io: BuildTestIO,
+            global_settings_io: GlobalSettingsRepository,
+            test_run_repo: TestRunRepository,
             compile_tool_io: CompileToolIO,
+            test_run_source_repo: TestRunSourceRepository,
     ):
         self._global_settings_io = global_settings_io
-        self._build_test_io = build_test_io
+        self._test_session_repo = test_run_repo
         self._compile_tool_io = compile_tool_io
+        self._test_run_source_repo = test_run_source_repo
 
-    def _compile_and_get_output(self, session_id: uuid.UUID, compiler_tool_fullpath: Path) -> str:
-        self._logger.info(f"Compiler: {compiler_tool_fullpath!s}")
+    def create(self) -> IOSessionID:
+        test_run_id = IOSessionID(uuid.uuid4())
+        self._test_session_repo.create(test_run_id)
+        return test_run_id
+
+    def compile(self, test_run_id: IOSessionID, compiler_tool_fullpath: Path) -> str:
+        self._logger.info(f"Compiler: {compiler_tool_fullpath}")
 
         # コンパイラの存在を確認
         if not compiler_tool_fullpath.exists():
@@ -32,7 +41,16 @@ class CompileTestService:
                 output=None,
             )
 
-        compile_target_fullpath = self._build_test_io.get_compile_target_fullpath(session_id)
+        # コンパイルするソースファイルを配置
+        compile_target_content = self._test_run_source_repo.get()
+        compile_target_name = "test.c"
+        compile_target_fullpath = self._test_session_repo.set_file(
+            test_run_id=test_run_id,
+            filename=compile_target_name,
+            content=compile_target_content,
+        )
+
+        # コンパイルを実行
         if not compile_target_fullpath.exists():
             raise CompileTestServiceError(
                 reason=f"コンパイル対象が見つかりません。",
@@ -42,7 +60,7 @@ class CompileTestService:
         try:
             output = self._compile_tool_io.run_and_get_output(
                 compiler_tool_fullpath=compiler_tool_fullpath,
-                timeout=self._global_settings_io.get_compiler_timeout(),
+                timeout=self._global_settings_io.get().compile_timeout,
                 cwd_fullpath=compile_target_fullpath.parent,
                 target_relative_path=compile_target_fullpath.relative_to(
                     compile_target_fullpath.parent
@@ -56,26 +74,7 @@ class CompileTestService:
             )
 
         self._logger.info(f"Success:\n{output}")
-        return output
+        return output  # returns output
 
-    def compile_and_get_output(self, compiler_tool_fullpath: Path) -> str:
-        # raises CompileTestServiceError
-
-        # テストセッションを作成
-        session_id = self._build_test_io.create_session()
-
-        # ビルド
-        self._build_test_io.build(session_id)
-
-        try:
-            output = self._compile_and_get_output(
-                session_id=session_id,
-                compiler_tool_fullpath=compiler_tool_fullpath,
-            )
-        except CompileTestServiceError:
-            raise
-        finally:
-            # テストセッションを閉じる
-            self._build_test_io.close_session(session_id)
-
-        return output
+    def delete(self, test_run_id: IOSessionID) -> None:
+        self._test_session_repo.delete(test_run_id)

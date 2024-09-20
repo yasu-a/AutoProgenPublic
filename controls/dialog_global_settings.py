@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
 from application.dependency.services import get_global_settings_edit_service, \
-    get_compiler_location_search_service, get_compile_test_service
+    get_compiler_location_search_service, get_test_run_service
 from controls.dialog_compiler_search import CompilerSearchDialog
 from domain.errors import CompileTestServiceError
 from domain.models.settings import GlobalSettings
@@ -88,7 +88,7 @@ class CompilerToolPathEditWidget(QWidget):
 
     @pyqtSlot()
     def _b_test_clicked(self):
-        service = get_compile_test_service()
+        service = get_test_run_service()
         try:
             service.compile_and_get_output(
                 compiler_tool_fullpath=Path(self._le_path.text()),
@@ -221,13 +221,13 @@ class GlobalSettingsEditWidget(QWidget):
 
     def set_value(self, settings: GlobalSettings) -> None:
         self._w_compiler_tool_path.set_value(settings.compiler_tool_fullpath)
-        self._w_compiler_timeout.set_value(int(settings.compiler_timeout))
+        self._w_compiler_timeout.set_value(int(settings.compile_timeout))
         self._w_max_workers.set_value(settings.max_workers)
 
     def get_value(self) -> GlobalSettings:
         return GlobalSettings(
             compiler_tool_fullpath=self._w_compiler_tool_path.get_value(),
-            compiler_timeout=float(self._w_compiler_timeout.get_value()),
+            compile_timeout=float(self._w_compiler_timeout.get_value()),
             max_workers=self._w_max_workers.get_value(),
         )
 

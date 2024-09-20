@@ -3,7 +3,7 @@ import sys
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from domain.models.result_test import TestSummary
+from domain.models.student_stage_result import TestSummary
 from fonts import font
 
 

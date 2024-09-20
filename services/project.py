@@ -12,10 +12,9 @@ from domain.errors import ManabaReportArchiveIOError, ProjectCreateServiceError
 from domain.models.project_config import ProjectConfig
 from domain.models.student_master import StudentMaster, Student
 from domain.models.values import TargetID, ProjectName, StudentID
-from files.progress import ProgressIO
 from files.project import ProjectIO
-from files.project_path_provider import ProjectPathProvider, StudentReportPathProvider
 from files.report_archive import ManabaReportArchiveIO
+from files.student_master import StudentMasterRepository
 from files.testcase import TestCaseIO
 
 
@@ -186,14 +185,14 @@ class ProjectCreateService:  # TODO: サービスがI/Oに依存している
     def __init__(
             self,
             *,
-            project_path_provider: ProjectPathProvider,
-            student_report_path_provider: StudentReportPathProvider,
             project_io: ProjectIO,
+            student_master_repo: StudentMasterRepository,
             manaba_report_archive_io: ManabaReportArchiveIO,
     ):
         self._project_path_provider = project_path_provider
         self._student_report_path_provider = student_report_path_provider
         self._project_io = project_io
+        self._student_master_repo = student_master_repo
         self._manaba_report_archive_io = manaba_report_archive_io
 
     def create_project(
@@ -237,12 +236,12 @@ class ProjectCreateService:  # TODO: サービスがI/Oに依存している
                 reason=f"マスターデータの構成中にエラーが発生しました。\n{e.reason}",
             )
         else:
-            self._project_io.write_student_master(student_master)
+            self._student_master_repo.put_all(student_master)
         finally:
             wb.close()
 
         # read student master file and create mapping from student_id to submission folder name
-        student_master = self._project_io.read_student_master()
+        student_master = self._student_master_repo.list()
         student_id_to_submission_folder_name_mapping: dict[StudentID, str] = {}
         for student in student_master:
             if student.submission_folder_name is not None:
@@ -298,10 +297,12 @@ class ProjectService:  # TODO: ProgressServiceを分離する
             project_io: ProjectIO,
             testcase_io: TestCaseIO,
             progress_io: ProgressIO,
+            student_master_repo: StudentMasterRepository,
     ):
         self._project_io = project_io
         self._testcase_io = testcase_io
         self._progress_io = progress_io
+        self._student_master_repo = student_master_repo
 
     def get_project_name(self) -> ProjectName:
         return self._project_io.get_project_name()
@@ -310,7 +311,7 @@ class ProjectService:  # TODO: ProgressServiceを分離する
         return self._project_io.get_target_id()
 
     def get_student_ids(self) -> list[StudentID]:
-        return [student.student_id for student in self._project_io.students]
+        return [student.student_id for student in self._student_master_repo.list()]
 
     def has_student_submission_folder(self, student_id: StudentID) -> bool:
         return self._project_io.has_student_submission_folder(student_id)
@@ -318,5 +319,5 @@ class ProjectService:  # TODO: ProgressServiceを分離する
     def show_student_submission_folder_in_explorer(self, student_id: StudentID) -> None:
         self._project_io.show_student_submission_folder_in_explorer(student_id)
 
-    def get_student_meta(self, student_id: StudentID) -> Student:
-        return self._project_io.students[student_id]
+    def get_student(self, student_id: StudentID) -> Student:
+        return self._student_master_repo.get(student_id)

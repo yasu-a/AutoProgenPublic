@@ -1,32 +1,36 @@
 import re
 
 from domain.errors import ProjectIOError, BuildServiceError
-from domain.models.result_build import BuildResult
 from domain.models.values import StudentID
-from files.progress import ProgressIO
-from files.project import ProjectIO
+from files.student_dynamic import StudentDynamicRepository
+from files.student_master import StudentMasterRepository
+from files.student_stage_result import BuildStudentStageResultRepository
 
 
-class BuildService:  # environment builder
+class StudentBuildService:  # environment builder
     def __init__(
             self,
             *,
-            project_io: ProjectIO,
-            progress_io: ProgressIO,
+            student_dynamic_repo: StudentDynamicRepository,
+            build_result_repo: BuildStudentStageResultRepository,
+            student_master_repo: StudentMasterRepository,
     ):
-        self._project_io = project_io
-        self._progress_io = progress_io
+        self._student_dynamic_repo = student_dynamic_repo
+        self._build_result_repo = build_result_repo
+        self._student_master_repo = student_master_repo
 
     def _build(self, student_id: StudentID) -> None:
-        if not self._project_io.students[student_id].is_submitted:
+        if not self._student_master_repo.get(student_id).is_submitted:
             raise BuildServiceError(
                 reason=f"未提出の学生です。"
             )
 
         try:
-            source_file_relative_path_lst = self._project_io.iter_student_source_file_relative_path_in_submission_folder(
-                student_id=student_id,
-                target_id=self._project_io.get_target_id(),
+            source_file_relative_path_lst = (
+                self._project_io.iter_student_source_file_relative_path_in_submission_folder(
+                    student_id=student_id,
+                    target_id=self._project_io.get_target_id(),
+                )
             )
         except ProjectIOError as e:
             raise BuildServiceError(
@@ -72,9 +76,9 @@ class BuildService:  # environment builder
                 student_id=student_id,
             )
         except BuildServiceError as e:
-            result = BuildResult.error(e)
+            result = BuildStudentStageResult.error(e)
         else:
-            result = BuildResult.success(
+            result = BuildStudentStageResult.success(
                 submission_folder_hash=self._project_io.calculate_student_submission_folder_hash(
                     student_id=student_id,
                 )

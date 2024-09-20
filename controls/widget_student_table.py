@@ -89,7 +89,7 @@ class StudentTableModelDataProvider:
     )
     def get_display_role_of_name(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            return self._project_service.get_student_meta(student_id).name
+            return self._project_service.get_student(student_id).name
 
     def _get_student_progress(self, student_id: StudentID) -> AbstractStudentProgress:
         return self._progress_service.get_student_progress(student_id)

@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 
 from domain.models.mark import Mark
-from domain.models.result_execute import TestCaseExecuteResultMapping
-from domain.models.result_test import TestCaseTestResultMapping
 from domain.models.student_master import Student
+from domain.models.student_stage_result import TestCaseExecuteResultMapping, \
+    TestCaseTestResultMapping
 from domain.models.values import StudentID, TestCaseID
 from dto.result_pair import TestCaseExecuteAndTestResultPairMapping
 from dto.testcase_config import TestCaseConfigMapping

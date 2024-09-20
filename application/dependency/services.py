@@ -6,9 +6,8 @@ from application.dependency.files import get_project_io_without_dependency, get_
     get_compile_tool_io, get_build_test_io
 from application.dependency.path_provider import get_project_path_provider, \
     get_student_report_path_provider, get_project_list_folder_fullpath
-from services.build import BuildService
 from services.compile import CompileService
-from services.compile_test import CompileTestService
+from services.compile_test import TestRunService
 from services.compiler_search import CompilerLocationSequentialSearchService
 from services.execute import ExecuteService
 from services.progress import ProgressService
@@ -16,6 +15,7 @@ from services.project import ProjectService, ProjectCreateService
 from services.project_list import ProjectListService
 from services.settings import GlobalSettingsEditService
 from services.snapshot import SnapshotService
+from services.student_build import StudentBuildService
 from services.test import TestService
 from services.testcase import TestCaseService
 
@@ -60,8 +60,8 @@ def get_project_create_service(
 
 
 @functools.cache
-def get_build_service() -> BuildService:
-    return BuildService(
+def get_build_service() -> StudentBuildService:
+    return StudentBuildService(
         project_io=get_project_io(),
         progress_io=get_progress_io(),
     )
@@ -70,7 +70,7 @@ def get_build_service() -> BuildService:
 @functools.cache
 def get_compile_service() -> CompileService:
     return CompileService(
-        global_settings_io=get_global_settings_io(),
+        global_settings_repo=get_global_settings_io(),
         project_io=get_project_io(),
         compile_tool_io=get_compile_tool_io(),
         progress_io=get_progress_io(),
@@ -117,10 +117,10 @@ def get_compiler_location_search_service() -> CompilerLocationSequentialSearchSe
 
 
 @functools.cache
-def get_compile_test_service() -> CompileTestService:
-    return CompileTestService(
+def get_test_run_service() -> TestRunService:
+    return TestRunService(
         global_settings_io=get_global_settings_io(),
-        build_test_io=get_build_test_io(),
+        test_run_repo=get_build_test_io(),
         compile_tool_io=get_compile_tool_io(),
     )
 

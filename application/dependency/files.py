@@ -8,13 +8,13 @@ from application.dependency.path_provider import get_project_path_provider_witho
     get_student_test_path_provider, get_student_report_path_provider, \
     get_student_progress_path_provider, get_student_mark_path_provider, \
     get_test_session_path_provider
-from files.build_test import BuildTestIO
 from files.compile_tool import CompileToolIO
-from files.progress import ProgressIO
+from files.core.project import ProjectCoreIO
+from files.global_settings import GlobalSettingsRepository
 from files.project import ProjectIOWithoutDependency, ProjectIO
-from files.project_core import ProjectCoreIO
 from files.report_archive import ManabaReportArchiveIO
-from files.settings import GlobalSettingsIO
+from files.student_stage_result import ProgressIO
+from files.test_run import TestRunRepository
 from files.testcase import TestCaseIO
 
 
@@ -36,8 +36,8 @@ def get_manaba_report_archive_io(manaba_report_archive_fullpath: Path) -> Manaba
 
 
 @functools.cache
-def get_global_settings_io() -> GlobalSettingsIO:
-    return GlobalSettingsIO(
+def get_global_settings_io() -> GlobalSettingsRepository:
+    return GlobalSettingsRepository(
         global_path_provider=get_global_path_provider(),
     )
 
@@ -95,9 +95,9 @@ def get_compile_tool_io() -> CompileToolIO:
 
 
 @functools.cache
-def get_build_test_io() -> BuildTestIO:
-    return BuildTestIO(
+def get_build_test_io() -> TestRunRepository:
+    return TestRunRepository(
         global_path_provider=get_global_path_provider(),
-        test_session_path_provider=get_test_session_path_provider(),
+        test_run_path_provider=get_test_session_path_provider(),
         project_core_io=get_project_core_io(),
     )

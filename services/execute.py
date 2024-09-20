@@ -3,11 +3,11 @@ from typing import TextIO
 
 from domain.errors import ExecuteServiceError
 from domain.models.output_file import OutputFileMapping
-from domain.models.result_execute import TestCaseExecuteResult, \
-    TestCaseExecuteResultMapping, ExecuteResult
+from domain.models.student_stage_result import TestCaseExecuteResult, TestCaseExecuteResultMapping, \
+    ExecuteStudentStageResult
 from domain.models.values import TestCaseID, StudentID
-from files.progress import ProgressIO
 from files.project import ProjectIO
+from files.student_stage_result import ProgressIO
 from files.testcase import TestCaseIO
 
 
@@ -164,7 +164,7 @@ class ExecuteService:
         testcase_execute_result_mapping: dict[TestCaseID, TestCaseExecuteResult] = {}
         testcase_id_lst = self._testcase_io.list_ids()
         if not testcase_id_lst:
-            result = ExecuteResult.error(
+            result = ExecuteStudentStageResult.error(
                 reason="実行可能なテストケースがありません",
             )
         else:
@@ -195,7 +195,7 @@ class ExecuteService:
             #        --------------------------------------------------------------------
             #        ExecuteStageが失敗すると次のステージに進めないため常に成功するようになっている
             #        ステージを生徒ID-ステージID-テストケースIDで細分化する
-            result = ExecuteResult.success(
+            result = ExecuteStudentStageResult.success(
                 testcase_results=TestCaseExecuteResultMapping(
                     testcase_execute_result_mapping,
                 ),

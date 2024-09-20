@@ -1,14 +1,13 @@
 import json
 from contextlib import contextmanager
-from pathlib import Path
 
 from PyQt5.QtCore import QMutex
 
 from domain.models.settings import GlobalSettings
-from files.global_path_provider import GlobalPathProvider
+from files.path_providers.global_ import GlobalPathProvider
 
 
-class GlobalSettingsIO:
+class GlobalSettingsRepository:
     def __init__(self, global_path_provider: GlobalPathProvider):
         self._global_path_provider = global_path_provider
 
@@ -45,22 +44,10 @@ class GlobalSettingsIO:
                 ensure_ascii=False,
             )
 
-    def get_compiler_tool_fullpath(self) -> Path | None:
+    def put(self, model: GlobalSettings) -> None:
         with self._lock():
-            return self._get_model_unlocked().compiler_tool_fullpath
+            self._set_model_unlocked(model)
 
-    def get_compiler_timeout(self) -> float:
-        with self._lock():
-            return self._get_model_unlocked().compiler_timeout
-
-    def get_max_workers(self) -> int:
-        with self._lock():
-            return self._get_model_unlocked().max_workers
-
-    def get_settings(self) -> GlobalSettings:
+    def get(self) -> GlobalSettings:
         with self._lock():
             return self._get_model_unlocked()
-
-    def set_settings(self, settings: GlobalSettings):
-        with self._lock():
-            self._set_model_unlocked(settings)

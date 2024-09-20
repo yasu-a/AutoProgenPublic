@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
 from domain.models.output_file import OutputFile
-from domain.models.result_execute import TestCaseExecuteResult
-from domain.models.result_test import OutputFileTestResult, TestCaseTestResult
+from domain.models.student_stage_result import TestCaseExecuteResult, OutputFileTestResult, \
+    TestCaseTestResult
 from domain.models.values import FileID, TestCaseID
 
 

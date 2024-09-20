@@ -7,12 +7,8 @@ from pathlib import Path
 from app_logging import create_logger
 from domain.errors import ProjectIOError
 from domain.models.project_config import ProjectConfig
-from domain.models.student_master import StudentMaster
 from domain.models.values import ProjectName, TargetID, StudentID
-from files.project_core import ProjectCoreIO
-from files.project_path_provider import ProjectPathProvider, ProjectPathProviderWithoutDependency, \
-    StudentReportPathProvider, StudentBuildPathProvider, StudentCompilePathProvider, \
-    StudentExecutePathProvider, StudentTestPathProvider
+from files.core.project import ProjectCoreIO
 
 
 class ProjectIOWithoutDependency:
@@ -76,28 +72,6 @@ class ProjectIO:  # TODO: BuildIO, CompileIO, ExecuteIOを分離する
         )
         assert body is not None, project_config_json_fullpath
         return ProjectConfig.from_json(body)
-
-    def write_student_master(self, student_master: StudentMaster):
-        # 生徒マスターを永続化する
-        student_master_json_fullpath = self._project_path_provider.student_master_json_fullpath()
-        self._project_core_io.write_json(
-            json_fullpath=student_master_json_fullpath,
-            body=student_master.to_json(),
-        )
-
-    def read_student_master(self) -> StudentMaster:
-        # 生徒マスターを読み込む
-        student_master_json_fullpath = self._project_path_provider.student_master_json_fullpath()
-        body = self._project_core_io.read_json(
-            json_fullpath=student_master_json_fullpath,
-        )
-        assert body is not None, student_master_json_fullpath
-        return StudentMaster.from_json(body)
-
-    @functools.cached_property
-    def students(self) -> StudentMaster:
-        # 生徒マスタを読み込む
-        return self.read_student_master()
 
     def get_project_name(self) -> ProjectName:
         # プロジェクト名を取得する

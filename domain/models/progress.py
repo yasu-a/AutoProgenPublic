@@ -2,10 +2,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TypeVar, Generic
 
-from domain.models.result_base import AbstractResult
 from domain.models.stages import StudentProgressStage
+from domain.models.student_stage_result import AbstractStudentStageResult
 
-_ResultType = TypeVar("_ResultType", bound=AbstractResult)
+_ResultType = TypeVar("_ResultType", bound=AbstractStudentStageResult)
 
 
 @dataclass

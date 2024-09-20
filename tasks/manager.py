@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import qApp
 
 from app_logging import create_logger
 from domain.models.values import StudentID
-from files.settings import GlobalSettingsIO
+from files.global_settings import GlobalSettingsRepository
 from tasks.tasks import AbstractStudentTask, AbstractTask
 
 
@@ -112,12 +112,12 @@ class TaskStack(QObject):
 
 
 class TaskManager(QObject):
-    def __init__(self, global_settings_io: GlobalSettingsIO):
+    def __init__(self, global_settings_repo: GlobalSettingsRepository):
         super().__init__(qApp)
 
         self._task_stack = TaskStack(
             parent=self,
-            max_workers=global_settings_io.get_max_workers(),
+            max_workers=global_settings_repo.get().max_workers,
         )
 
     def enqueue_student_task(self, student_task: AbstractStudentTask) -> None:

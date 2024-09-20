@@ -1,13 +1,13 @@
 from datetime import datetime
 
 from domain.models.progress import StudentProgressWithFinishedStage, AbstractStudentProgress
-from domain.models.result_execute import ExecuteResult
-from domain.models.result_test import TestResult
 from domain.models.stages import StudentProgressStage
+from domain.models.student_stage_result import ExecuteStudentStageResult, TestStudentStageResult
 from domain.models.values import StudentID
-from files.progress import ProgressIO, ProgressIOWithContext
 from files.project import ProjectIO
+from files.student_stage_result import ProgressIO, StudentStageResultRepository
 from files.testcase import TestCaseIO
+from transaction import transactional
 
 
 class ProgressService:  # TODO: StudentProgressService?
@@ -16,13 +16,14 @@ class ProgressService:  # TODO: StudentProgressService?
         self._testcase_io = testcase_io
         self._progress_io = progress_io
 
+    @transactional
     def is_execute_config_changed(self, student_id: StudentID) -> bool:
         # テストケースIDが全て一致するかどうか
         testcase_ids_config = self._testcase_io.list_ids()
         with self._progress_io.with_student(student_id) as student_progress_io:
             execute_result = \
                 student_progress_io.get_progress_of_stage(StudentProgressStage.EXECUTE).get_result()
-            assert isinstance(execute_result, ExecuteResult), execute_result
+            assert isinstance(execute_result, ExecuteStudentStageResult), execute_result
         testcase_ids_result = execute_result.testcase_results.keys()
         if set(testcase_ids_config) != set(testcase_ids_result):
             return True
@@ -42,7 +43,7 @@ class ProgressService:  # TODO: StudentProgressService?
         testcase_ids_config = self._testcase_io.list_ids()
         with self._progress_io.with_student(student_id) as student_progress_io:
             test_result = student_progress_io.read_test_result()
-            assert isinstance(test_result, TestResult), test_result
+            assert isinstance(test_result, TestStudentStageResult), test_result
         testcase_ids_test_config = test_result.testcase_results.keys()
         if set(testcase_ids_config) != set(testcase_ids_test_config):
             return True
@@ -57,9 +58,10 @@ class ProgressService:  # TODO: StudentProgressService?
 
         return False
 
+    @transactional
     def determine_next_stage_with_result_and_get_reason(
             self,
-            student_progress_io: ProgressIOWithContext,  # TODO: [!] 変な引数 コンテキストの導入
+            student_progress_io: StudentStageResultRepository,  # TODO: [!] 変な引数 コンテキストの導入
     ) -> tuple[StudentProgressStage | None, str | None]:
         # noinspection PyProtectedMember
         student_id = student_progress_io._student_id  # TODO: [!] student_idはどこからとるべき？引数で受け取る？セッションを管理して依存注入？
@@ -74,7 +76,7 @@ class ProgressService:  # TODO: StudentProgressService?
             h = self._project_io.calculate_student_submission_folder_hash(
                 student_id=student_id,
             )
-            if not result.has_same_hash(h):
+            if not result.has_submission_folder_hash_of(h):
                 return StudentProgressStage.BUILD, "提出フォルダに変更が検出された"
 
         # コンパイルが失敗している場合はステージをBUILDに巻き戻す
@@ -117,7 +119,7 @@ class ProgressService:  # TODO: StudentProgressService?
 
     def determine_next_stage_with_result(
             self,
-            student_progress_io: ProgressIOWithContext,  # TODO: [!] 変な引数 コンテキストの��入
+            student_progress_io: StudentStageResultRepository,  # TODO: [!] 変な引数 コンテキストの��入
     ) -> StudentProgressStage | None:
         expected_next_stage, _ \
             = self.determine_next_stage_with_result_and_get_reason(student_progress_io)

@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Optional
 
 from app_logging import create_logger
-from files.project_path_provider import ProjectPathProvider
 
 
 class ProjectCoreIO:
@@ -140,6 +139,12 @@ class ProjectCoreIO:
         self.__check_file_location(file_fullpath)
         with file_fullpath.open(mode="rb") as f:
             return f.read()
+
+    def write_file_content_bytes(self, *, file_fullpath: Path, content_bytes: bytes) -> None:
+        # プロジェクト内のバイナリファイルを書きこむ
+        self.__check_file_location(file_fullpath)
+        with file_fullpath.open(mode="wb") as f:
+            f.write(content_bytes)
 
     def calculate_folder_hash(self, *, folder_fullpath: Path) -> int:
         self.__check_folder_location(folder_fullpath)

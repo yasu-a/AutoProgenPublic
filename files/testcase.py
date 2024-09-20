@@ -3,15 +3,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import TextIO
 
+from files.project_path_provider import ProjectPathProvider, TestCaseConfigPathProvider, \
+    StudentCompilePathProvider, StudentTestCaseExecutePathProvider
+
 from app_logging import create_logger
 from domain.models.execute_config import TestCaseExecuteConfig
 from domain.models.output_file import OutputFile, OutputFileMapping
 from domain.models.test_config import TestCaseTestConfig
 from domain.models.testcase_config import TestCaseConfig
 from domain.models.values import TestCaseID, StudentID, FileID
-from files.project_core import ProjectCoreIO
-from files.project_path_provider import ProjectPathProvider, TestCasePathProvider, \
-    StudentCompilePathProvider, StudentTestCaseExecutePathProvider
+from files.core.project import ProjectCoreIO
 
 
 class TestCaseIO:
@@ -21,7 +22,7 @@ class TestCaseIO:
             self,
             *,
             project_path_provider: ProjectPathProvider,
-            testcase_path_provider: TestCasePathProvider,
+            testcase_path_provider: TestCaseConfigPathProvider,
             student_compile_path_provider: StudentCompilePathProvider,
             student_testcase_execute_path_provider: StudentTestCaseExecutePathProvider,
             project_core_io: ProjectCoreIO,
@@ -84,7 +85,7 @@ class TestCaseIO:
 
     def delete_config(self, testcase_id: TestCaseID) -> None:
         testcase_folder_fullpath \
-            = self._testcase_path_provider.testcase_folder_fullpath(testcase_id)
+            = self._testcase_path_provider.base_folder_fullpath(testcase_id)
         self._project_core_io.rmtree_folder(testcase_folder_fullpath)
 
     def write_execute_config(
@@ -143,7 +144,7 @@ class TestCaseIO:
         )
         # 生徒の実行フォルダの実行ファイルのフルパス
         student_execute_executable_fullpath = (
-            self._student_testcase_execute_path_provider.student_execute_executable_fullpath(
+            self._student_testcase_execute_path_provider.executable_fullpath(
                 student_id=student_id,
                 testcase_id=testcase_id,
             )
@@ -201,7 +202,7 @@ class TestCaseIO:
 
         # 標準入力のパス
         stdin_fullpath = (
-            self._student_testcase_execute_path_provider.student_execute_stdin_fullpath(
+            self._student_testcase_execute_path_provider.stdin_fullpath(
                 student_id=student_id,
                 testcase_id=testcase_id,
             )
@@ -227,7 +228,7 @@ class TestCaseIO:
 
         # 生徒の実行フォルダのフルパス
         executable_fullpath = (
-            self._student_testcase_execute_path_provider.student_execute_executable_fullpath(
+            self._student_testcase_execute_path_provider.executable_fullpath(
                 student_id=student_id,
                 testcase_id=testcase_id,
             )
@@ -354,7 +355,7 @@ class TestCaseIO:
             )
         )
         stdout_fullpath = (
-            self._student_testcase_execute_path_provider.student_execute_stdout_fullpath(
+            self._student_testcase_execute_path_provider.stdout_fullpath(
                 student_id=student_id,
                 testcase_id=testcase_id,
             )
@@ -416,7 +417,7 @@ class TestCaseIO:
 
         # 生徒の実行フォルダの標準出力のフルパス
         stdout_fullpath = (
-            self._student_testcase_execute_path_provider.student_execute_stdout_fullpath(
+            self._student_testcase_execute_path_provider.stdout_fullpath(
                 student_id=student_id,
                 testcase_id=testcase_id,
             )

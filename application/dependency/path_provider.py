@@ -1,14 +1,17 @@
 import functools
+import sys
 from pathlib import Path
 
-from application.state.current_project import get_current_project_name
-from files.global_path_provider import GlobalPathProvider
 from files.project_path_provider import ProjectPathProviderWithoutDependency, ProjectPathProvider, \
-    TestCasePathProvider, ReportPathProvider, StudentReportPathProvider, BuildPathProvider, \
+    TestCaseConfigPathProvider, ReportSubmissionPathProvider, StudentReportPathProvider, \
+    BuildPathProvider, \
     StudentBuildPathProvider, CompilePathProvider, StudentCompilePathProvider, ExecutePathProvider, \
     StudentExecutePathProvider, StudentTestCaseExecutePathProvider, TestPathProvider, \
     StudentTestPathProvider, StudentTestCaseTestPathProvider, StudentProgressPathProvider, \
     MarkPathProvider, StudentMarkPathProvider, TestSessionPathProvider
+
+from application.state.current_project import get_current_project_name
+from files.path_providers.global_ import GlobalPathProvider
 
 
 def get_project_list_folder_fullpath() -> Path:
@@ -32,7 +35,7 @@ def get_project_path_provider_without_dependency(project_list_folder_fullpath: P
 
 def get_global_path_provider() -> GlobalPathProvider:
     return GlobalPathProvider(
-        global_settings_folder_fullpath=Path(".").resolve(),
+        global_settings_folder_fullpath=Path(sys.argv[0]).resolve().parent,
     )
 
 
@@ -44,15 +47,15 @@ def get_project_path_provider() -> ProjectPathProvider:
 
 
 @functools.cache
-def get_testcase_path_provider() -> TestCasePathProvider:
-    return TestCasePathProvider(
+def get_testcase_path_provider() -> TestCaseConfigPathProvider:
+    return TestCaseConfigPathProvider(
         project_path_provider=get_project_path_provider(),
     )
 
 
 @functools.cache
-def get_report_path_provider() -> ReportPathProvider:
-    return ReportPathProvider(
+def get_report_path_provider() -> ReportSubmissionPathProvider:
+    return ReportSubmissionPathProvider(
         project_path_provider=get_project_path_provider(),
     )
 

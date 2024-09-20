@@ -8,12 +8,13 @@ from domain.errors import TestServiceError
 from domain.models.expected_ouput_file import ExpectedOutputFile
 from domain.models.expected_token import AbstractExpectedToken, TextExpectedToken, \
     FloatExpectedToken
-from domain.models.result_test import OutputFileTestResult, NonmatchedToken, MatchedToken, \
-    TestCaseTestResult, OutputFileTestResultMapping, TestResult, TestCaseTestResultMapping
+from domain.models.student_stage_result import MatchedToken, NonmatchedToken, OutputFileTestResult, \
+    OutputFileTestResultMapping, TestCaseTestResult, TestCaseTestResultMapping, \
+    TestStudentStageResult
 from domain.models.test_config_options import TestConfigOptions
 from domain.models.values import StudentID, TestCaseID, FileID
-from files.progress import ProgressIO
 from files.project import ProjectIO
+from files.student_stage_result import ProgressIO
 from files.testcase import TestCaseIO
 
 
@@ -219,7 +220,7 @@ class TestService:
         testcase_test_results: dict[TestCaseID, TestCaseTestResult] = {}
         testcase_id_lst = self._testcase_io.list_ids()
         if not testcase_id_lst:
-            result = TestResult.error(
+            result = TestStudentStageResult.error(
                 reason="実行可能なテストケースがありません",
             )
         else:
@@ -250,7 +251,7 @@ class TestService:
             #        --------------------------------------------------------------------
             #        ExecuteStageが失敗すると次のステージに進めないため常に成功するようになっている
             #        ステージを生徒ID-ステージID-テストケースIDで細分化する
-            result = TestResult.success(
+            result = TestStudentStageResult.success(
                 testcase_results=TestCaseTestResultMapping(
                     testcase_test_results,
                 )
