@@ -12,8 +12,8 @@ from dto.snapshot import ProjectSnapshot, StudentSnapshotStagesUnfinished, \
     StudentSnapshotStageFinishedWithError, StudentMarkSnapshotMapping
 from dto.testcase_config import TestCaseConfigMapping
 from files.project import ProjectIO
-from files.student_master import StudentMasterRepository
-from files.student_stage_result import ProgressIO
+from files.repositories.student import StudentRepository
+from files.repositories.student_stage_result import ProgressIO
 from files.testcase import TestCaseIO
 
 
@@ -35,12 +35,12 @@ class SnapshotService:
             project_io: ProjectIO,
             progress_io: ProgressIO,
             testcase_io: TestCaseIO,
-            student_master_repo: StudentMasterRepository,
+            student_repo: StudentRepository,
     ):
         self._project_io = project_io
         self._progress_io = progress_io
         self._testcase_io = testcase_io
-        self._student_master_repo = student_master_repo
+        self._student_repo = student_repo
 
     def take_student_snapshot(self, student_id: StudentID) -> AbstractStudentSnapshot:
         # スナップショットに必要な情報を取得
@@ -61,7 +61,7 @@ class SnapshotService:
                     assert set(testcase_execute_results.keys()) == set(testcase_test_results), \
                         (set(testcase_execute_results.keys()), set(testcase_test_results.keys()))
                     return StudentSnapshotReady(
-                        student=self._student_master_repo.get(student_id),
+                        student=self._student_repo.get(student_id),
                         mark=mark,
                         execute_and_test_results=TestCaseExecuteAndTestResultPairMapping(
                             {
@@ -77,7 +77,7 @@ class SnapshotService:
                     # FIXME: 成功したときしか再実行の判定をしていないので、BUILDエラー時にレポートフォルダを
                     #        編集しても「再実行の必要がある」ではなく「エラー」と表示される
                     return StudentSnapshotRerunRequired(  # TODO: なぜ再実行の必要があるか理由をつける
-                        student=self._student_master_repo.get(student_id),
+                        student=self._student_repo.get(student_id),
                         mark=mark,
                     )
             else:  # すべてのステージが完了していないとき
@@ -85,12 +85,12 @@ class SnapshotService:
                 detailed_reason = progress.get_detailed_reason()
                 if detailed_reason is None:
                     return StudentSnapshotStagesUnfinished(
-                        student=self._student_master_repo.get(student_id),
+                        student=self._student_repo.get(student_id),
                         mark=mark,
                     )
                 else:
                     return StudentSnapshotStageFinishedWithError(
-                        student=self._student_master_repo.get(student_id),
+                        student=self._student_repo.get(student_id),
                         mark=mark,
                         detailed_reason=detailed_reason,
                     )
@@ -99,7 +99,7 @@ class SnapshotService:
         return ProjectSnapshot(
             student_snapshots=StudentMarkSnapshotMapping({
                 student.student_id: self.take_student_snapshot(student.student_id)
-                for student in self._student_master_repo.list()
+                for student in self._student_repo.list()
             }),
             testcases=TestCaseConfigMapping({
                 testcase_id: self._testcase_io.read_config(testcase_id)

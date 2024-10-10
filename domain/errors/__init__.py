@@ -1,3 +1,15 @@
+class RepositoryError(RuntimeError):
+    pass
+
+
+class ServiceError(RuntimeError):
+    pass
+
+
+class UseCaseError(RuntimeError):
+    pass
+
+
 class ProjectIOError(RuntimeError):
     def __init__(self, reason: str):
         self.reason = reason
@@ -31,11 +43,6 @@ class ExecuteServiceError(RuntimeError):
 
 class TestServiceError(RuntimeError):
     def __init__(self, *, reason: str):
-        self.reason = reason
-
-
-class ProjectCreateServiceError(RuntimeError):
-    def __init__(self, reason: str):
         self.reason = reason
 
 

@@ -3,9 +3,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import TextIO
 
-from files.project_path_provider import ProjectPathProvider, TestCaseConfigPathProvider, \
-    StudentCompilePathProvider, StudentTestCaseExecutePathProvider
-
 from app_logging import create_logger
 from domain.models.execute_config import TestCaseExecuteConfig
 from domain.models.output_file import OutputFile, OutputFileMapping
@@ -13,6 +10,7 @@ from domain.models.test_config import TestCaseTestConfig
 from domain.models.testcase_config import TestCaseConfig
 from domain.models.values import TestCaseID, StudentID, FileID
 from files.core.project import ProjectCoreIO
+from files.path_providers.project import ProjectPathProvider, TestCaseConfigPathProvider
 
 
 class TestCaseIO:
@@ -23,14 +21,10 @@ class TestCaseIO:
             *,
             project_path_provider: ProjectPathProvider,
             testcase_path_provider: TestCaseConfigPathProvider,
-            student_compile_path_provider: StudentCompilePathProvider,
-            student_testcase_execute_path_provider: StudentTestCaseExecutePathProvider,
             project_core_io: ProjectCoreIO,
     ):
         self._project_path_provider = project_path_provider
         self._testcase_path_provider = testcase_path_provider
-        self._student_compile_path_provider = student_compile_path_provider
-        self._student_testcase_execute_path_provider = student_testcase_execute_path_provider
         self._project_core_io = project_core_io
 
     def open_in_explorer(self) -> None:

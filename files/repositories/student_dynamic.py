@@ -2,7 +2,7 @@ from pathlib import Path
 
 from domain.models.file_item import SourceFileItem, ExecutableFileItem, StudentDynamicFileItemType
 from domain.models.values import StudentID
-from files.core.project import ProjectCoreIO
+from files.core.current_project import CurrentProjectCoreIO
 from files.path_providers.project_dynamic import StudentDynamicPathProvider
 from transaction import transactional_with
 
@@ -12,10 +12,10 @@ class StudentDynamicRepository:
             self,
             *,
             student_dynamic_path_provider: StudentDynamicPathProvider,
-            project_core_io: ProjectCoreIO,
+            current_project_core_io: CurrentProjectCoreIO,
     ):
         self._student_dynamic_path_provider = student_dynamic_path_provider
-        self._project_core_io = project_core_io
+        self._current_project_core_io = current_project_core_io
 
     def __get_file_item_fullpath(
             self,
@@ -39,7 +39,7 @@ class StudentDynamicRepository:
             file_item_type=type(file_item),
         )
         file_fullpath.mkdir(parents=True, exist_ok=True)
-        self._project_core_io.write_file_content_bytes(
+        self._current_project_core_io.write_file_content_bytes(
             file_fullpath=file_fullpath,
             content_bytes=file_item.content_bytes,
         )
@@ -53,7 +53,7 @@ class StudentDynamicRepository:
         )
         if not file_fullpath.exists():
             raise FileNotFoundError()
-        content_bytes = self._project_core_io.read_file_content_bytes(
+        content_bytes = self._current_project_core_io.read_file_content_bytes(
             file_fullpath=file_fullpath,
         )
         if file_item_type is SourceFileItem:
@@ -94,4 +94,6 @@ class StudentDynamicRepository:
         )
         if not file_fullpath.exists():
             raise FileNotFoundError()
-        self._project_core_io.unlink(file_fullpath)
+        self._current_project_core_io.unlink(
+            path=file_fullpath,
+        )

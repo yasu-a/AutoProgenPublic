@@ -4,7 +4,7 @@ __all__ = (
     "StudentID",
     "TargetID",
     "TestCaseID",
-    "ProjectName",
+    "ProjectID",
     "SpecialFileType",
     "FileID",
     "IOSessionID",
@@ -17,9 +17,9 @@ from enum import Enum
 from pathlib import Path
 
 
-class ProjectName:
+class ProjectID:
     def __init__(self, value: str):
-        assert isinstance(value, str)
+        assert isinstance(value, str), value
         self.__value = value
 
     def __str__(self) -> str:

@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import *
 
 from controls.widget_new_project import NewProjectWidget
 from controls.widget_recent_project import RecentProjectWidget
-from domain.models.values import ProjectName
+from domain.models.values import ProjectID
 from dto.new_project_config import NewProjectConfig
 
 
@@ -11,7 +11,7 @@ class WelcomeDialog(QDialog):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self._result: ProjectName | NewProjectConfig | None = None
+        self._result: ProjectID | NewProjectConfig | None = None
 
         self._init_ui()
 
@@ -39,10 +39,10 @@ class WelcomeDialog(QDialog):
         self._result = new_project_config
         self.accept()
 
-    @pyqtSlot(ProjectName)
-    def _w_recent_projects_accepted(self, project_name: ProjectName):
-        self._result = project_name
+    @pyqtSlot(ProjectID)
+    def _w_recent_projects_accepted(self, project_id: ProjectID):
+        self._result = project_id
         self.accept()
 
-    def get_result(self) -> NewProjectConfig | ProjectName | None:
+    def get_data(self) -> NewProjectConfig | ProjectID | None:
         return self._result

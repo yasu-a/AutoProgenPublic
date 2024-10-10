@@ -14,7 +14,7 @@ from domain.models.student_stage_result import MatchedToken, NonmatchedToken, Ou
 from domain.models.test_config_options import TestConfigOptions
 from domain.models.values import StudentID, TestCaseID, FileID
 from files.project import ProjectIO
-from files.student_stage_result import ProgressIO
+from files.repositories.student_stage_result import ProgressIO
 from files.testcase import TestCaseIO
 
 

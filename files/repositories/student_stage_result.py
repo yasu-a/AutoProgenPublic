@@ -1,6 +1,6 @@
 from domain.models.student_stage_result import *
 from domain.models.values import StudentID, TestCaseID
-from files.core.project import ProjectCoreIO
+from files.core.current_project import CurrentProjectCoreIO
 from files.path_providers.project_dynamic import StudentStageResultPathProvider
 from transaction import transactional_with
 
@@ -10,10 +10,10 @@ class BuildStudentStageResultRepository:
             self,
             *,
             student_stage_result_path_provider: StudentStageResultPathProvider,
-            project_core_io: ProjectCoreIO,
+            current_project_core_io: CurrentProjectCoreIO,
     ):
         self._student_stage_result_path_provider = student_stage_result_path_provider
-        self._project_core_io = project_core_io
+        self._current_project_core_io = current_project_core_io
 
     @classmethod
     def __get_type_name_of_result_type(
@@ -47,7 +47,7 @@ class BuildStudentStageResultRepository:
         )
         json_fullpath.parent.mkdir(parents=True, exist_ok=True)
 
-        self._project_core_io.write_json(
+        self._current_project_core_io.write_json(
             json_fullpath=json_fullpath,
             body={
                 "__type__": self.__get_type_name_of_result_type(type(result)),
@@ -76,7 +76,7 @@ class BuildStudentStageResultRepository:
         if not json_fullpath.exists():
             raise ValueError(f"Build result for student {student_id} not found")
 
-        body = self._project_core_io.read_json(json_fullpath=json_fullpath)
+        body = self._current_project_core_io.read_json(json_fullpath=json_fullpath)
         type_name = body.pop("__type__")
         result_type = self.__get_result_type_from_type_name(type_name)
         return result_type.from_json(body)
@@ -92,7 +92,9 @@ class BuildStudentStageResultRepository:
         if not json_fullpath.exists():
             raise ValueError(f"Build result for student {student_id} not found")
 
-        self._project_core_io.unlink(json_fullpath)
+        self._current_project_core_io.unlink(
+            path=json_fullpath,
+        )
 
 
 class CompileStudentStageResultRepository:
@@ -100,10 +102,10 @@ class CompileStudentStageResultRepository:
             self,
             *,
             student_stage_result_path_provider: StudentStageResultPathProvider,
-            project_core_io: ProjectCoreIO,
+            current_project_core_io: CurrentProjectCoreIO,
     ):
         self._student_stage_result_path_provider = student_stage_result_path_provider
-        self._project_core_io = project_core_io
+        self._current_project_core_io = current_project_core_io
 
     @classmethod
     def __get_type_name_of_result_type(
@@ -137,7 +139,7 @@ class CompileStudentStageResultRepository:
         )
         json_fullpath.parent.mkdir(parents=True, exist_ok=True)
 
-        self._project_core_io.write_json(
+        self._current_project_core_io.write_json(
             json_fullpath=json_fullpath,
             body={
                 "__type__": self.__get_type_name_of_result_type(type(result)),
@@ -166,7 +168,7 @@ class CompileStudentStageResultRepository:
         if not json_fullpath.exists():
             raise ValueError(f"Compile result for student {student_id} not found")
 
-        body = self._project_core_io.read_json(json_fullpath=json_fullpath)
+        body = self._current_project_core_io.read_json(json_fullpath=json_fullpath)
         type_name = body.pop("__type__")
         result_type = self.__get_result_type_from_type_name(type_name)
         return result_type.from_json(body)
@@ -182,7 +184,9 @@ class CompileStudentStageResultRepository:
         if not json_fullpath.exists():
             raise ValueError(f"Compile result for student {student_id} not found")
 
-        self._project_core_io.unlink(json_fullpath)
+        self._current_project_core_io.unlink(
+            path=json_fullpath,
+        )
 
 
 class ExecuteStudentStageResultRepository:
@@ -190,10 +194,10 @@ class ExecuteStudentStageResultRepository:
             self,
             *,
             student_stage_result_path_provider: StudentStageResultPathProvider,
-            project_core_io: ProjectCoreIO,
+            current_project_core_io: CurrentProjectCoreIO,
     ):
         self._student_stage_result_path_provider = student_stage_result_path_provider
-        self._project_core_io = project_core_io
+        self._current_project_core_io = current_project_core_io
 
     @classmethod
     def __get_type_name_of_result_type(
@@ -231,7 +235,7 @@ class ExecuteStudentStageResultRepository:
         )
         json_fullpath.parent.mkdir(parents=True, exist_ok=True)
 
-        self._project_core_io.write_json(
+        self._current_project_core_io.write_json(
             json_fullpath=json_fullpath,
             body={
                 "__type__": self.__get_type_name_of_result_type(type(result)),
@@ -268,7 +272,7 @@ class ExecuteStudentStageResultRepository:
         if not json_fullpath.exists():
             raise ValueError(f"Execute result for student {student_id} not found")
 
-        body = self._project_core_io.read_json(json_fullpath=json_fullpath)
+        body = self._current_project_core_io.read_json(json_fullpath=json_fullpath)
         type_name = body.pop("__type__")
         result_type = self.__get_result_type_from_type_name(type_name)
         return result_type.from_json(body)
@@ -288,7 +292,9 @@ class ExecuteStudentStageResultRepository:
         if not json_fullpath.exists():
             raise ValueError(f"Execute result for student {student_id} not found")
 
-        self._project_core_io.unlink(json_fullpath)
+        self._current_project_core_io.unlink(
+            path=json_fullpath,
+        )
 
 
 class TestStudentStageResultRepository:
@@ -296,10 +302,10 @@ class TestStudentStageResultRepository:
             self,
             *,
             student_stage_result_path_provider: StudentStageResultPathProvider,
-            project_core_io: ProjectCoreIO,
+            current_project_core_io: CurrentProjectCoreIO,
     ):
         self._student_stage_result_path_provider = student_stage_result_path_provider
-        self._project_core_io = project_core_io
+        self._current_project_core_io = current_project_core_io
 
     @classmethod
     def __get_type_name_of_result_type(
@@ -337,7 +343,7 @@ class TestStudentStageResultRepository:
         )
         json_fullpath.parent.mkdir(parents=True, exist_ok=True)
 
-        self._project_core_io.write_json(
+        self._current_project_core_io.write_json(
             json_fullpath=json_fullpath,
             body={
                 "__type__": self.__get_type_name_of_result_type(type(result)),
@@ -374,7 +380,7 @@ class TestStudentStageResultRepository:
         if not json_fullpath.exists():
             raise ValueError(f"Test result for student {student_id} not found")
 
-        body = self._project_core_io.read_json(json_fullpath=json_fullpath)
+        body = self._current_project_core_io.read_json(json_fullpath=json_fullpath)
         type_name = body.pop("__type__")
         result_type = self.__get_result_type_from_type_name(type_name)
         return result_type.from_json(body)
@@ -394,7 +400,9 @@ class TestStudentStageResultRepository:
         if not json_fullpath.exists():
             raise ValueError(f"Test result for student {student_id} not found")
 
-        self._project_core_io.unlink(json_fullpath)
+        self._current_project_core_io.unlink(
+            path=json_fullpath,
+        )
 
 # class StudentStageResultRepository:
 #     def __init__(

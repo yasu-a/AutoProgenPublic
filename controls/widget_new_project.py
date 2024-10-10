@@ -5,9 +5,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import QIntValidator, QRegExpValidator
 from PyQt5.QtWidgets import *
 
-from application.dependency.services import get_project_list_service
+from application.dependency.usecases import get_project_name_exist_usecase
 from application.state.debug import is_debug
-from domain.models.values import TargetID, ProjectName
 from dto.new_project_config import NewProjectConfig
 from icons import icon
 
@@ -98,13 +97,13 @@ class ProjectNameLineEdit(QLineEdit):
             import random
             self.setText(f"proj-{random.randint(0, 10000)!s}")
 
-    def get_value(self) -> ProjectName:
-        return ProjectName(self.text())
+    def get_value(self) -> str:
+        return self.text()
 
     def validate_and_get_reason(self) -> str | None:
-        name = self.get_value()
+        project_name = self.get_value()
         # noinspection PyTypeChecker
-        if get_project_list_service().name_exists(name):
+        if get_project_name_exist_usecase().execute(project_name):
             return "プロジェクト名はすでに存在します"
         return None
 
@@ -123,12 +122,12 @@ class TargetNumberLineEdit(QLineEdit):
         if is_debug():
             self.setText("4")
 
-    def get_value(self) -> TargetID:
-        return TargetID(self.text())
+    def get_value(self) -> int:
+        return int(self.text())
 
     def validate_and_get_reason(self) -> str | None:
         try:
-            TargetID(self.text())
+            int(self.text())
         except ValueError:
             return "設問番号には数字を入力してください"
         else:
@@ -153,8 +152,8 @@ class NewProjectWidget(QGroupBox):
         layout.addWidget(QLabel("プロジェクト名", self), 0, 0)
 
         # noinspection PyTypeChecker
-        self._w_project_name = ProjectNameLineEdit(self)
-        layout.addWidget(self._w_project_name, 0, 1)
+        self._w_project_id = ProjectNameLineEdit(self)
+        layout.addWidget(self._w_project_id, 0, 1)
 
         layout.addWidget(QLabel("提出データ"), 1, 0)
 
@@ -179,7 +178,7 @@ class NewProjectWidget(QGroupBox):
     @pyqtSlot()
     def _b_create_clicked(self):
         validation_results = [
-            self._w_project_name.validate_and_get_reason(),
+            self._w_project_id.validate_and_get_reason(),
             self._w_project_zipfile_selector.validate_and_get_reason(),
             self._w_target_number_input.validate_and_get_reason(),
         ]
@@ -198,8 +197,8 @@ class NewProjectWidget(QGroupBox):
             return
         self.accepted.emit(
             NewProjectConfig(
-                project_name=self._w_project_name.get_value(),
+                project_name=self._w_project_id.get_value(),
                 manaba_report_archive_fullpath=self._w_project_zipfile_selector.get_value(),
-                target_id=self._w_target_number_input.get_value(),
+                target_number=self._w_target_number_input.get_value(),
             )
         )

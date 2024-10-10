@@ -4,10 +4,10 @@ from pathlib import Path
 from app_logging import create_logger
 from domain.errors import CompileTestServiceError, CompileToolIOError
 from domain.models.values import IOSessionID
-from files.compile_tool import CompileToolIO
-from files.global_settings import GlobalSettingsRepository
-from files.test_run import TestRunRepository
-from files.test_run_source import TestRunSourceRepository
+from files.external.compile_tool import CompileToolIO
+from files.repositories.global_settings import GlobalSettingsRepository
+from files.repositories.test_run import TestRunRepository
+from files.repositories.test_run_source import TestRunSourceRepository
 
 
 class TestRunService:

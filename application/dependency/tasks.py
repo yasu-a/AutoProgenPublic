@@ -1,6 +1,6 @@
 import functools
 
-from application.dependency.files import get_global_settings_io
+from application.dependency.repositories import get_global_settings_io
 from tasks.manager import TaskManager
 
 

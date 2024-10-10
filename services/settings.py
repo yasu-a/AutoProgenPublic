@@ -1,5 +1,5 @@
 from domain.models.settings import GlobalSettings
-from files.global_settings import GlobalSettingsRepository
+from files.repositories.global_settings import GlobalSettingsRepository
 
 
 class GlobalSettingsEditService:

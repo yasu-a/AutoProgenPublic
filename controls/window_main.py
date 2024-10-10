@@ -35,7 +35,7 @@ class MainWindow(QMainWindow):
         # noinspection PyUnresolvedReferences
         self.setWindowTitle(
             f"Auto Progen "
-            f"{project_service.get_project_name()!s} "
+            f"{project_service.get_project_id()!s} "
             f"設問{project_service.get_target_id()!s}"
         )
         # noinspection PyUnresolvedReferences

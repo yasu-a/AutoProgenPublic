@@ -2,9 +2,9 @@ from app_logging import create_logger
 from domain.errors import ProjectIOError, CompileServiceError, CompileToolIOError
 from domain.models.student_stage_result import CompileStudentStageResult
 from domain.models.values import StudentID
-from files.compile_tool import CompileToolIO
-from files.global_settings import GlobalSettingsRepository
+from files.external.compile_tool import CompileToolIO
 from files.project import ProjectIO
+from files.repositories.global_settings import GlobalSettingsRepository
 
 
 class CompileService:

@@ -1,16 +1,17 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from domain.models.values import ProjectName, TargetID
+from domain.models.values import ProjectID
 
 
 @dataclass
-class ProjectStat:
-    project_name: ProjectName
-    target_id: TargetID
+class RecentProjectSummary:
+    project_id: ProjectID
+    project_name: str
+    target_number: int
     mtime: datetime
 
     def __lt__(self, other):
-        if not isinstance(other, ProjectStat):
+        if not isinstance(other, RecentProjectSummary):
             return NotImplemented
         return self.mtime < other.mtime

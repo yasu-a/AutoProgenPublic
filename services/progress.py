@@ -5,7 +5,7 @@ from domain.models.stages import StudentProgressStage
 from domain.models.student_stage_result import ExecuteStudentStageResult, TestStudentStageResult
 from domain.models.values import StudentID
 from files.project import ProjectIO
-from files.student_stage_result import ProgressIO, StudentStageResultRepository
+from files.repositories.student_stage_result import ProgressIO, StudentStageResultRepository
 from files.testcase import TestCaseIO
 from transaction import transactional
 

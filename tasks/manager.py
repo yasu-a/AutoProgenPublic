@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import qApp
 
 from app_logging import create_logger
 from domain.models.values import StudentID
-from files.global_settings import GlobalSettingsRepository
+from files.repositories.global_settings import GlobalSettingsRepository
 from tasks.tasks import AbstractStudentTask, AbstractTask
 
 

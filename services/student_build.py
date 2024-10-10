@@ -2,9 +2,10 @@ import re
 
 from domain.errors import ProjectIOError, BuildServiceError
 from domain.models.values import StudentID
-from files.student_dynamic import StudentDynamicRepository
-from files.student_master import StudentMasterRepository
-from files.student_stage_result import BuildStudentStageResultRepository
+from files.repositories.current_project import CurrentProjectRepository
+from files.repositories.student import StudentRepository
+from files.repositories.student_dynamic import StudentDynamicRepository
+from files.repositories.student_stage_result import BuildStudentStageResultRepository
 
 
 class StudentBuildService:  # environment builder
@@ -13,14 +14,16 @@ class StudentBuildService:  # environment builder
             *,
             student_dynamic_repo: StudentDynamicRepository,
             build_result_repo: BuildStudentStageResultRepository,
-            student_master_repo: StudentMasterRepository,
+            student_repo: StudentRepository,
+            current_project_repo: CurrentProjectRepository,
     ):
         self._student_dynamic_repo = student_dynamic_repo
         self._build_result_repo = build_result_repo
-        self._student_master_repo = student_master_repo
+        self._student_repo = student_repo
+        self._current_project_repo = current_project_repo
 
     def _build(self, student_id: StudentID) -> None:
-        if not self._student_master_repo.get(student_id).is_submitted:
+        if not self._student_repo.get(student_id).is_submitted:
             raise BuildServiceError(
                 reason=f"未提出の学生です。"
             )
@@ -29,7 +32,7 @@ class StudentBuildService:  # environment builder
             source_file_relative_path_lst = (
                 self._project_io.iter_student_source_file_relative_path_in_submission_folder(
                     student_id=student_id,
-                    target_id=self._project_io.get_target_id(),
+                    target_id=self._current_project_repo.get().target_id,
                 )
             )
         except ProjectIOError as e:

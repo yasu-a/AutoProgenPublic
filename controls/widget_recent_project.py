@@ -1,8 +1,9 @@
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from application.dependency.services import get_project_list_service
-from domain.models.values import ProjectName
+from application.dependency.usecases import get_recent_project_list_usecase
+from domain.models.values import ProjectID
+from usecases.dto.recent_project_summary import RecentProjectSummary
 
 
 class RecentProjectListColumns:
@@ -16,19 +17,20 @@ class RecentProjectModel(QAbstractTableModel):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self._stats = get_project_list_service().list_project_stats()
+        self._project_summary_lst: list[RecentProjectSummary] \
+            = get_recent_project_list_usecase().execute()
 
     def data(self, index: QModelIndex, role=None):
         if role == Qt.DisplayRole:
             if index.column() == RecentProjectListColumns.COL_NAME:
-                return str(self._stats[index.row()].project_name)
+                return self._project_summary_lst[index.row()].project_name
             elif index.column() == RecentProjectListColumns.COL_TARGET_ID:
-                return int(self._stats[index.row()].target_id)
+                return self._project_summary_lst[index.row()].target_number
             elif index.column() == RecentProjectListColumns.COL_MTIME:
-                return str(self._stats[index.row()].mtime)
+                return str(self._project_summary_lst[index.row()].mtime)[:-7]
 
     def rowCount(self, parent=None, *args, **kwargs):
-        return len(self._stats)
+        return len(self._project_summary_lst)
 
     def columnCount(self, *args, **kwargs):
         return len(RecentProjectListColumns.HEADER)
@@ -40,13 +42,13 @@ class RecentProjectModel(QAbstractTableModel):
             elif orientation == Qt.Vertical:
                 return ""
 
-    def get_project_name(self, row: int) -> ProjectName:
-        return self._stats[row].project_name
+    def get_project_id(self, row: int) -> ProjectID:
+        return self._project_summary_lst[row].project_id
 
 
 class RecentProjectWidget(QGroupBox):
     # noinspection PyArgumentList
-    accepted = pyqtSignal(ProjectName)
+    accepted = pyqtSignal(ProjectID)
 
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
@@ -76,4 +78,4 @@ class RecentProjectWidget(QGroupBox):
         layout.addWidget(self._table_recent_projects)
 
     def _table_recent_projects_double_clicked(self, index: QModelIndex):
-        self.accepted.emit(self._model_recent_projects.get_project_name(index.row()))
+        self.accepted.emit(self._model_recent_projects.get_project_id(index.row()))

@@ -1,5 +1,4 @@
 import functools
-import json
 import os
 import re
 from pathlib import Path
@@ -7,25 +6,9 @@ from pathlib import Path
 from app_logging import create_logger
 from domain.errors import ProjectIOError
 from domain.models.project_config import ProjectConfig
-from domain.models.values import ProjectName, TargetID, StudentID
+from domain.models.values import TargetID, StudentID
 from files.core.project import ProjectCoreIO
-
-
-class ProjectIOWithoutDependency:
-    def __init__(
-            self,
-            *,
-            project_path_provider_without_dependency: ProjectPathProviderWithoutDependency,
-    ):
-        self._project_path_provider_without_dependency = project_path_provider_without_dependency
-
-    def read_config(self, name: ProjectName) -> ProjectConfig | None:
-        project_config_json_fullpath \
-            = self._project_path_provider_without_dependency.config_json_fullpath(name)
-        if not project_config_json_fullpath.exists():
-            return None
-        with project_config_json_fullpath.open(mode="r", encoding="utf-8") as f:
-            return ProjectConfig.from_json(json.load(f))
+from files.path_providers.project import ProjectPathProvider
 
 
 class ProjectIO:  # TODO: BuildIO, CompileIO, ExecuteIOを分離する
@@ -50,19 +33,6 @@ class ProjectIO:  # TODO: BuildIO, CompileIO, ExecuteIOを分離する
         self._student_report_path_provider = student_report_path_provider
         self._project_core_io = project_core_io
 
-    def create_project_folder(self) -> None:
-        # プロジェクトフォルダを作る
-        self._project_path_provider.base_folder_fullpath() \
-            .mkdir(parents=True, exist_ok=False)
-
-    def write_config(self, *, project_config: ProjectConfig):
-        # プロジェクトの構成を永続化する
-        project_config_json_fullpath = self._project_path_provider.config_json_fullpath()
-        self._project_core_io.write_json(
-            json_fullpath=project_config_json_fullpath,
-            body=project_config.to_json(),
-        )
-
     @functools.cache
     def read_config(self) -> ProjectConfig:
         # プロジェクトの構成を読み込む
@@ -72,14 +42,6 @@ class ProjectIO:  # TODO: BuildIO, CompileIO, ExecuteIOを分離する
         )
         assert body is not None, project_config_json_fullpath
         return ProjectConfig.from_json(body)
-
-    def get_project_name(self) -> ProjectName:
-        # プロジェクト名を取得する
-        return ProjectName(self._project_path_provider.base_folder_fullpath().stem)
-
-    def get_target_id(self) -> TargetID:
-        # プロジェクトの設問IDを取得する
-        return self.read_config().target_id
 
     def calculate_student_submission_folder_hash(self, student_id: StudentID) -> int:
         # 生徒の提出フォルダのハッシュを計算する
