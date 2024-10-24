@@ -5,16 +5,14 @@ from enum import Enum
 from typing import TypeVar
 
 from domain.models.output_file import OutputFileMapping
-from domain.models.stages import StudentProgressStage
-from domain.models.values import FileID
+from domain.models.stages import AbstractStage, BuildStage, CompileStage, ExecuteStage, TestStage
+from domain.models.values import FileID, StudentID
 
 
 @dataclass(slots=True)
 class AbstractStudentStageResult(ABC):  # 各ステージの結果の基底クラス
-    @property
-    @abstractmethod
-    def stage(self) -> StudentProgressStage:
-        raise NotImplementedError()
+    student_id: StudentID
+    stage: AbstractStage
 
     @property
     @abstractmethod
@@ -55,46 +53,51 @@ class AbstractFailureStudentStageResult(AbstractStudentStageResult, ABC):
 class BuildSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生徒ごと
     submission_folder_hash: int
 
-    @property
-    @abstractmethod
-    def stage(self) -> StudentProgressStage:
-        return StudentProgressStage.BUILD
+    def __post_init__(self):
+        assert isinstance(self.stage, BuildStage)
 
     def has_submission_folder_hash_of(self, h: int) -> bool:
         return self.submission_folder_hash == h
 
     def to_json(self):
         return {
+            "student_id": self.student_id.to_json(),
+            "stage": self.stage.to_json(),
             "submission_folder_hash": self.submission_folder_hash,
         }
 
     @classmethod
     def from_json(cls, body):
         return cls(
+            student_id=StudentID.from_json(body["student_id"]),
+            stage=AbstractStage.from_json(body["stage"]),
             submission_folder_hash=body["submission_folder_hash"],
         )
 
 
 @dataclass(slots=True)
 class BuildFailureStudentStageResult(AbstractFailureStudentStageResult):  # 生徒ごと
-    @property
-    def stage(self) -> StudentProgressStage:
-        return StudentProgressStage.BUILD
+    def __post_init__(self):
+        assert isinstance(self.stage, BuildStage)
 
     def to_json(self):
         return {
+            "student_id": self.student_id.to_json(),
+            "stage": self.stage.to_json(),
             "reason": self.reason,
         }
 
     @classmethod
     def from_json(cls, body):
         return cls(
+            student_id=StudentID.from_json(body["student_id"]),
+            stage=AbstractStage.from_json(body["stage"]),
             reason=body["reason"],
         )
 
 
-BuildStudentStageResultType = TypeVar(
-    "BuildStudentStageResultType",
+BuildStageResultType = TypeVar(
+    "BuildStageResultType",
     bound=BuildSuccessStudentStageResult | BuildFailureStudentStageResult,
 )
 
@@ -103,18 +106,21 @@ BuildStudentStageResultType = TypeVar(
 class CompileSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生徒ごと
     output: str
 
-    @property
-    def stage(self) -> StudentProgressStage:
-        return StudentProgressStage.COMPILE
+    def __post_init__(self):
+        assert isinstance(self.stage, CompileStage)
 
     def to_json(self):
         return {
+            "student_id": self.student_id.to_json(),
+            "stage": self.stage.to_json(),
             "output": self.output,
         }
 
     @classmethod
     def from_json(cls, body):
         return cls(
+            student_id=StudentID.from_json(body["student_id"]),
+            stage=AbstractStage.from_json(body["stage"]),
             output=body["output"],
         )
 
@@ -123,12 +129,13 @@ class CompileSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # �
 class CompileFailureStudentStageResult(AbstractFailureStudentStageResult):  # 生徒ごと
     output: str
 
-    @property
-    def stage(self) -> StudentProgressStage:
-        return StudentProgressStage.COMPILE
+    def __post_init__(self):
+        assert isinstance(self.stage, CompileStage)
 
     def to_json(self):
         return {
+            "student_id": self.student_id.to_json(),
+            "stage": self.stage.to_json(),
             "reason": self.reason,
             "output": self.output,
         }
@@ -136,13 +143,15 @@ class CompileFailureStudentStageResult(AbstractFailureStudentStageResult):  # �
     @classmethod
     def from_json(cls, body):
         return cls(
+            student_id=StudentID.from_json(body["student_id"]),
+            stage=AbstractStage.from_json(body["stage"]),
             reason=body["reason"],
             output=body["output"],
         )
 
 
-CompileStudentStageResultType = TypeVar(
-    "CompileStudentStageResultType",
+CompileStageResultType = TypeVar(
+    "CompileStageResultType",
     bound=CompileSuccessStudentStageResult | CompileFailureStudentStageResult,
 )
 
@@ -152,12 +161,13 @@ class ExecuteSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # �
     execute_config_mtime: datetime
     output_files: OutputFileMapping
 
-    @property
-    def stage(self) -> StudentProgressStage:
-        return StudentProgressStage.EXECUTE
+    def __post_init__(self):
+        assert isinstance(self.stage, ExecuteStage)
 
     def to_json(self):
         return {
+            "student_id": self.student_id.to_json(),
+            "stage": self.stage.to_json(),
             "execute_config_mtime": self.execute_config_mtime.isoformat(),
             "output_files": self.output_files.to_json(),
         }
@@ -165,6 +175,8 @@ class ExecuteSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # �
     @classmethod
     def from_json(cls, body):
         return cls(
+            student_id=StudentID.from_json(body["student_id"]),
+            stage=AbstractStage.from_json(body["stage"]),
             execute_config_mtime=datetime.fromisoformat(body["execute_config_mtime"]),
             output_files=OutputFileMapping.from_json(body["output_files"]),
         )
@@ -174,12 +186,13 @@ class ExecuteSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # �
 class ExecuteFailureStudentStageResult(AbstractFailureStudentStageResult):  # 生徒・テストケースごと
     execute_config_mtime: datetime
 
-    @property
-    def stage(self) -> StudentProgressStage:
-        return StudentProgressStage.EXECUTE
+    def __post_init__(self):
+        assert isinstance(self.stage, ExecuteStage)
 
     def to_json(self) -> dict:
         return {
+            "student_id": self.student_id.to_json(),
+            "stage": self.stage.to_json(),
             "execute_config_mtime": self.execute_config_mtime.isoformat(),
             "reason": self.reason,
         }
@@ -187,13 +200,15 @@ class ExecuteFailureStudentStageResult(AbstractFailureStudentStageResult):  # �
     @classmethod
     def from_json(cls, body: dict):
         return cls(
+            student_id=StudentID.from_json(body["student_id"]),
+            stage=AbstractStage.from_json(body["stage"]),
             execute_config_mtime=datetime.fromisoformat(body["execute_config_mtime"]),
             reason=body["reason"],
         )
 
 
-ExecuteStudentStageResultType = TypeVar(
-    "ExecuteStudentStageResultType",
+ExecuteStageResultType = TypeVar(
+    "ExecuteStageResultType",
     bound=ExecuteSuccessStudentStageResult | ExecuteFailureStudentStageResult,
 )
 
@@ -306,9 +321,8 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生�
     test_config_mtime: datetime
     output_file_test_results: OutputFileTestResultMapping
 
-    @property
-    def stage(self) -> StudentProgressStage:
-        return StudentProgressStage.TEST
+    def __post_init__(self):
+        assert isinstance(self.stage, TestStage)
 
     @property
     def summary(self) -> TestSummary:
@@ -322,6 +336,8 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生�
 
     def to_json(self) -> dict:
         return {
+            "student_id": self.student_id.to_json(),
+            "stage": self.stage.to_json(),
             "test_config_mtime": self.test_config_mtime.isoformat(),
             "output_file_test_results": self.output_file_test_results.to_json(),
         }
@@ -329,6 +345,8 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生�
     @classmethod
     def from_json(cls, body: dict) -> "TestSuccessStudentStageResult":
         return cls(
+            student_id=StudentID.from_json(body["student_id"]),
+            stage=AbstractStage.from_json(body["stage"]),
             test_config_mtime=datetime.fromisoformat(body["test_config_mtime"]),
             output_file_test_results=OutputFileTestResultMapping.from_json(
                 body["output_file_test_results"],
@@ -340,12 +358,13 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生�
 class TestFailureStudentStageResult(AbstractFailureStudentStageResult):  # 生徒・テストケースごと
     test_config_mtime: datetime
 
-    @property
-    def stage(self) -> StudentProgressStage:
-        return StudentProgressStage.TEST
+    def __post_init__(self):
+        assert isinstance(self.stage, TestStage)
 
     def to_json(self) -> dict:
         return {
+            "student_id": self.student_id.to_json(),
+            "stage": self.stage.to_json(),
             "test_config_mtime": self.test_config_mtime.isoformat(),
             "reason": self.reason,
         }
@@ -353,12 +372,14 @@ class TestFailureStudentStageResult(AbstractFailureStudentStageResult):  # 生�
     @classmethod
     def from_json(cls, body: dict) -> "TestFailureStudentStageResult":
         return cls(
+            student_id=StudentID.from_json(body["student_id"]),
+            stage=AbstractStage.from_json(body["stage"]),
             test_config_mtime=datetime.fromisoformat(body["test_config_mtime"]),
             reason=body["reason"],
         )
 
 
-TestStudentStageResultType = TypeVar(
-    "TestStudentStageResultType",
+TestStageResultType = TypeVar(
+    "TestStageResultType",
     bound=TestSuccessStudentStageResult | TestFailureStudentStageResult,
 )

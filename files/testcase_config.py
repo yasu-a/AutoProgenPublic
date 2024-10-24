@@ -1,4 +1,3 @@
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import TextIO
@@ -10,7 +9,8 @@ from domain.models.test_config import TestCaseTestConfig
 from domain.models.testcase_config import TestCaseConfig
 from domain.models.values import TestCaseID, StudentID, FileID
 from files.core.project import ProjectCoreIO
-from files.path_providers.project import ProjectPathProvider, TestCaseConfigPathProvider
+from files.path_providers.current_project import TestCaseConfigPathProvider
+from files.path_providers.project import ProjectPathProvider
 
 
 class TestCaseIO:
@@ -26,12 +26,6 @@ class TestCaseIO:
         self._project_path_provider = project_path_provider
         self._testcase_path_provider = testcase_path_provider
         self._project_core_io = project_core_io
-
-    def open_in_explorer(self) -> None:
-        testcase_folder_fullpath \
-            = self._testcase_path_provider.base_folder_fullpath()
-        testcase_folder_fullpath.mkdir(parents=True, exist_ok=True)
-        os.startfile(testcase_folder_fullpath)
 
     def list_ids(self) -> list[TestCaseID]:
         testcase_folder_fullpath \

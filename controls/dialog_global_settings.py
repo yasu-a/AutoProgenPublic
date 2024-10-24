@@ -5,8 +5,6 @@ from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
-from application.dependency.services import get_global_settings_edit_service, \
-    get_compiler_location_search_service, get_test_run_service
 from controls.dialog_compiler_search import CompilerSearchDialog
 from domain.errors import CompileTestServiceError
 from domain.models.settings import GlobalSettings

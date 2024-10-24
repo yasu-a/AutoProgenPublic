@@ -1,5 +1,5 @@
 from services.project_list import ProjectListService
-from usecases.dto.recent_project_summary import RecentProjectSummary
+from usecases.dto.project_summary import ProjectSummary
 
 
 class RecentProjectListUseCase:
@@ -10,14 +10,14 @@ class RecentProjectListUseCase:
     ):
         self._project_list_service = project_list_service
 
-    def execute(self) -> list[RecentProjectSummary]:
+    def execute(self) -> list[ProjectSummary]:
         projects = self._project_list_service.execute()
         return [
-            RecentProjectSummary(
+            ProjectSummary(
                 project_id=project.project_id,
                 project_name=str(project.project_id),
                 target_number=int(project.target_id),
-                mtime=project.open_at,
+                open_at=project.open_at,
             )
             for project in projects
         ]

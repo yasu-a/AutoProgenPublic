@@ -6,9 +6,9 @@ from application.state.current_project import set_current_project_id
 from application.state.debug import set_debug
 from controls.dialog_static_initialize import StaticInitializeProgressDialog
 from controls.dialog_welcome import WelcomeDialog
-# from controls.window_main import MainWindow
+from controls.dto.new_project_config import NewProjectConfig
+from controls.window_main import MainWindow
 from domain.models.values import ProjectID
-from dto.new_project_config import NewProjectConfig
 from fonts import font
 
 if __name__ == '__main__':
@@ -45,16 +45,18 @@ def create_app() -> QApplication:
     return app
 
 
-def launch_existing_project(project_id: ProjectID) -> None:
+def launch_existing_project(project_id: ProjectID) -> MainWindow:
     # 現在のプロジェクトを設定
     set_current_project_id(project_id)
-    # # メインウィンドウを開く
-    # window = MainWindow()
-    # # noinspection PyUnresolvedReferences
-    # window.show()
+    # メインウィンドウを開く
+    window = MainWindow()
+    # noinspection PyUnresolvedReferences
+    window.show()
+
+    return window
 
 
-def launch_new_project(new_project_config: NewProjectConfig) -> None:
+def launch_new_project(new_project_config: NewProjectConfig) -> MainWindow:
     # 新規にプロジェクトを生成
     project_id = get_project_create_usecase().execute(
         project_name=new_project_config.project_name,
@@ -66,10 +68,12 @@ def launch_new_project(new_project_config: NewProjectConfig) -> None:
     StaticInitializeProgressDialog(
         manaba_report_archive_fullpath=new_project_config.manaba_report_archive_fullpath,
     ).exec_()
-    # # メインウィンドウを開く
-    # window = MainWindow()
-    # # noinspection PyUnresolvedReferences
-    # window.show()
+    # メインウィンドウを開く
+    window = MainWindow()
+    # noinspection PyUnresolvedReferences
+    window.show()
+
+    return window
 
 
 def main():
@@ -86,19 +90,19 @@ def main():
         if isinstance(result, ProjectID):  # 既存のプロジェクトIDなら
             # 既存のプロジェクトを起動
             project_id: ProjectID = result
-            launch_existing_project(project_id)
+            window = launch_existing_project(project_id)
         elif isinstance(result, NewProjectConfig):  # 新規プロジェクトの構成なら
             # 新規プロジェクトを起動
             new_project_config: NewProjectConfig = result
-            launch_new_project(new_project_config)
+            window = launch_new_project(new_project_config)
         else:
             # それ以外はあり得ない
             assert False, result
+        # Qtのイベントループに入る
+        _ = window  # C++に解放されないようにインスタンスを保つ
+        sys.exit(app.exec_())
     else:  # 応答がキャンセルなら
-        # 何もしない
-        pass
-    # Qtのイベントループに入る
-    sys.exit(app.exec_())
+        pass  # 何もしない
 
 
 if __name__ == '__main__':

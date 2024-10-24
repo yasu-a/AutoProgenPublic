@@ -10,10 +10,10 @@ class CurrentProjectRepository:
             self,
             *,
             current_project_id: ProjectID,
-            project_repository: ProjectRepository,
+            project_repo: ProjectRepository,
     ):
         self._current_project_id = current_project_id
-        self._project_repo = project_repository
+        self._project_repo = project_repo
 
     def get(self) -> Project:
         return self._project_repo.get(self._current_project_id)

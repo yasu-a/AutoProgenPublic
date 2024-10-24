@@ -3,8 +3,8 @@ from pathlib import Path
 from app_logging import create_logger
 from domain.models.values import IOSessionID
 from files.core.current_project import CurrentProjectCoreIO
+from files.path_providers.current_project import IOSessionPathProvider
 from files.path_providers.global_ import GlobalPathProvider
-from files.path_providers.project_dynamic import IOSessionPathProvider
 
 
 class TestRunRepository:

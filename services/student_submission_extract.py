@@ -6,7 +6,7 @@ from domain.errors import ManabaReportArchiveIOError, ServiceError
 from domain.models.values import StudentID
 from files.core.current_project import CurrentProjectCoreIO
 from files.external.report_archive import ManabaReportArchiveIO
-from files.path_providers.project_static import ReportSubmissionPathProvider
+from files.path_providers.current_project import ReportSubmissionPathProvider
 from files.repositories.student import StudentRepository
 
 

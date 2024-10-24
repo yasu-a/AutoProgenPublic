@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import *
 
 from application.dependency.usecases import get_recent_project_list_usecase
 from domain.models.values import ProjectID
-from usecases.dto.recent_project_summary import RecentProjectSummary
+from usecases.dto.project_summary import ProjectSummary
 
 
 class RecentProjectListColumns:
@@ -17,7 +17,7 @@ class RecentProjectModel(QAbstractTableModel):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self._project_summary_lst: list[RecentProjectSummary] \
+        self._project_summary_lst: list[ProjectSummary] \
             = get_recent_project_list_usecase().execute()
 
     def data(self, index: QModelIndex, role=None):
@@ -27,7 +27,7 @@ class RecentProjectModel(QAbstractTableModel):
             elif index.column() == RecentProjectListColumns.COL_TARGET_ID:
                 return self._project_summary_lst[index.row()].target_number
             elif index.column() == RecentProjectListColumns.COL_MTIME:
-                return str(self._project_summary_lst[index.row()].mtime)[:-7]
+                return str(self._project_summary_lst[index.row()].open_at)[:-7]
 
     def rowCount(self, parent=None, *args, **kwargs):
         return len(self._project_summary_lst)

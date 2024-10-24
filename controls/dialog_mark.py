@@ -4,12 +4,10 @@ from PyQt5.QtWidgets import QDialog, QListWidget, QWidget, QHBoxLayout, QLabel, 
     QListWidgetItem, QVBoxLayout, QTabWidget, QPlainTextEdit
 
 from app_logging import create_logger
-from application.dependency.services import get_mark_snapshot_service
 from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
 from controls.widget_test_summary_indicator import TestCaseTestSummaryIndicatorWidget
 from domain.models.student_master import Student
-from domain.models.student_stage_result import OutputFileTestResult, TestCaseTestResult, \
-    TestCaseTestResultMapping
+from domain.models.student_stage_result import OutputFileTestResult
 from domain.models.values import StudentID, TestCaseID
 from dto.result_pair import OutputFileAndTestResultPair, TestCaseExecuteAndTestResultPair
 from dto.snapshot import AbstractStudentSnapshot, StudentMarkSnapshotMapping

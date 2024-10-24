@@ -1,7 +1,9 @@
-from application.dependency.path_provider import get_project_path_provider
+from application.dependency.path_provider import *
 from application.state.current_project import get_current_project_id
 from files.core.current_project import CurrentProjectCoreIO
 from files.core.project import ProjectCoreIO
+from files.external.student_folder_show_in_explorer import \
+    StudentFolderShowInExplorerIO
 
 
 def get_project_core_io():
@@ -14,4 +16,10 @@ def get_current_project_core_io():
     return CurrentProjectCoreIO(
         current_project_id=get_current_project_id(),
         project_core_io=get_project_core_io(),
+    )
+
+
+def get_student_folder_show_in_explorer_io():
+    return StudentFolderShowInExplorerIO(
+        report_submission_path_provider=get_report_submission_path_provider(),
     )

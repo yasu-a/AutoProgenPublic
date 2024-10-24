@@ -6,12 +6,14 @@ from fonts import font
 
 class ProgressIconWidget(QWidget):
     ICON_CHARS = (
-        "|     |",
-        "|>    |",
-        "|=>   |",
-        "|==>  |",
-        "|===> |",
-        "|====>|",
+        "o    ",
+        " o   ",
+        "  o  ",
+        "   o ",
+        "    o",
+        "   o ",
+        "  o  ",
+        " o   ",
     )
 
     def __init__(self, parent: QObject = None):

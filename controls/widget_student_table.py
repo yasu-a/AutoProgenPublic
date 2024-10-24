@@ -1,4 +1,5 @@
 from datetime import datetime
+from functools import cache
 from typing import Any, Callable, Iterable
 
 from PyQt5.QtCore import *
@@ -6,12 +7,17 @@ from PyQt5.QtGui import QColor, QFont
 from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
-from application.dependency.services import get_project_service, get_progress_service
+from application.dependency.services import get_student_progress_check_timestamp_query_service
+from application.dependency.usecases import get_student_id_list_usecase, \
+    get_student_submission_folder_show_usecase, get_student_table_get_student_id_cell_data_usecase, \
+    get_student_table_get_student_name_cell_data_usecase, \
+    get_student_table_get_student_stage_state_cell_data_use_case, \
+    get_student_table_get_student_error_cell_data_use_case
 from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
-from domain.models.progress import AbstractStudentProgress
-from domain.models.stages import StudentProgressStage
+from domain.models.stages import BuildStage, CompileStage, ExecuteStage, TestStage
 from domain.models.values import StudentID
 from fonts import font
+from usecases.dto.student_table_cell_data import StudentStageStateCellDataStageState
 
 
 class StudentTableColumns:
@@ -51,35 +57,46 @@ def data_provider(*, column: int):
 class StudentTableModelDataProvider:
     def __init__(self, student_ids: list[StudentID]):
         self._student_ids = student_ids
-        self._project_service = get_project_service()
-        self._progress_service = get_progress_service()
+        # self._progress_service = get_progress_service()  TODO: CHECK UNUSED METHODS AND REMOVE ME
         self._logger = create_logger(name=f"{type(self).__name__}")
 
     @classmethod
+    @cache
     def _font_link_text(cls) -> QFont:
         f = font(monospace=True)
-        f.setBold(True)
         f.setUnderline(True)
         return f
 
     @classmethod
+    @cache
+    def _font_dead_link_text(cls) -> QFont:
+        f = font(monospace=True)
+        return f
+
+    @classmethod
+    @cache
     def _foreground_link_text(cls) -> QColor:
         return QColor("blue")
 
     @classmethod
+    @cache
     def _foreground_dead_link_text(cls) -> QColor:
         return QColor("red").darker()
 
     @data_provider(
         column=StudentTableColumns.COL_STUDENT_ID,
     )
-    def get_display_role_of_student_id(self, student_id: StudentID, role: QtRoleType):
+    def get_data_of_student_id_cell(self, student_id: StudentID, role: QtRoleType):
+        cell_data = get_student_table_get_student_id_cell_data_usecase().execute(student_id)
         if role == Qt.DisplayRole:
-            return str(student_id)
+            return cell_data.student_number
         elif role == Qt.FontRole:
-            return self._font_link_text()
+            if cell_data.is_submission_folder_link_alive:
+                return self._font_link_text()
+            else:
+                return self._font_dead_link_text()
         elif role == Qt.ForegroundRole:
-            if self._project_service.has_student_submission_folder(student_id):
+            if cell_data.is_submission_folder_link_alive:
                 return self._foreground_link_text()
             else:
                 return self._foreground_dead_link_text()
@@ -87,81 +104,96 @@ class StudentTableModelDataProvider:
     @data_provider(
         column=StudentTableColumns.COL_NAME,
     )
-    def get_display_role_of_name(self, student_id: StudentID, role: QtRoleType):
+    def get_data_of_student_name_cell(self, student_id: StudentID, role: QtRoleType):
+        cell_data = get_student_table_get_student_name_cell_data_usecase().execute(student_id)
         if role == Qt.DisplayRole:
-            return self._project_service.get_student(student_id).name
+            return cell_data.student_name
 
-    def _get_student_progress(self, student_id: StudentID) -> AbstractStudentProgress:
-        return self._progress_service.get_student_progress(student_id)
-
-    def _get_display_role_of_student_stage(
-            self,
-            student_id: StudentID,
-            stage: StudentProgressStage,
-    ):
-        result = self._progress_service.get_student_progress_of_stage_if_finished(
-            student_id=student_id,
-            stage=stage,
-        )
-        if result is None:
-            return ""
-        elif result.is_success():
-            return "✔"
-        else:
-            return "エラー"
+    _STAGE_STATE_TEXT_MAPPING = {
+        StudentStageStateCellDataStageState.UNFINISHED: "  ",
+        StudentStageStateCellDataStageState.FINISHED_SUCCESS: "✔",
+        StudentStageStateCellDataStageState.FINISHED_FAILURE: "☠",
+    }
 
     @data_provider(
         column=StudentTableColumns.COL_STAGE_BUILD,
     )
-    def get_display_role_of_stage_build(self, student_id: StudentID, role: QtRoleType):
+    def get_data_of_stage_build_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            return self._get_display_role_of_student_stage(
+            cell_data = get_student_table_get_student_stage_state_cell_data_use_case().execute(
                 student_id=student_id,
-                stage=StudentProgressStage.BUILD,
+                stage_type=BuildStage,
+            )
+            return "/".join(
+                self._STAGE_STATE_TEXT_MAPPING[state]
+                for state in cell_data.states.values()
             )
 
     @data_provider(
         column=StudentTableColumns.COL_STAGE_COMPILE,
     )
-    def get_display_role_of_stage_compile(self, student_id: StudentID, role: QtRoleType):
+    def get_data_of_stage_compile_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            return self._get_display_role_of_student_stage(
+            cell_data = get_student_table_get_student_stage_state_cell_data_use_case().execute(
                 student_id=student_id,
-                stage=StudentProgressStage.COMPILE,
+                stage_type=CompileStage,
+            )
+            return "/".join(
+                self._STAGE_STATE_TEXT_MAPPING[state]
+                for state in cell_data.states.values()
             )
 
     @data_provider(
         column=StudentTableColumns.COL_STAGE_EXECUTE,
     )
-    def get_display_role_of_stage_execute(self, student_id: StudentID, role: QtRoleType):
+    def get_display_stage_execute_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            return self._get_display_role_of_student_stage(
+            cell_data = get_student_table_get_student_stage_state_cell_data_use_case().execute(
                 student_id=student_id,
-                stage=StudentProgressStage.EXECUTE,
+                stage_type=ExecuteStage,
+            )
+            return "/".join(
+                self._STAGE_STATE_TEXT_MAPPING[state]
+                for state in cell_data.states.values()
             )
 
     @data_provider(
         column=StudentTableColumns.COL_STAGE_TEST,
     )
-    def get_display_role_of_stage_test(self, student_id: StudentID, role: QtRoleType):
+    def get_display_stage_test_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            return self._get_display_role_of_student_stage(
+            cell_data = get_student_table_get_student_stage_state_cell_data_use_case().execute(
                 student_id=student_id,
-                stage=StudentProgressStage.TEST,
+                stage_type=TestStage,
+            )
+            return "/".join(
+                self._STAGE_STATE_TEXT_MAPPING[state]
+                for state in cell_data.states.values()
             )
 
     @data_provider(
         column=StudentTableColumns.COL_ERROR,
     )
     def get_display_role_of_error(self, student_id: StudentID, role: QtRoleType):
+        cell_data = get_student_table_get_student_error_cell_data_use_case().execute(
+            student_id=student_id,
+        )
         if role == Qt.DisplayRole:
-            return self._get_student_progress(
-                student_id=student_id,
-            ).get_main_reason()
+            if len(cell_data.text_entries) == 0:
+                return ""
+            elif len(cell_data.text_entries) == 1:
+                return cell_data.text_entries[0].summary_text
+            else:
+                return cell_data.text_entries[0].summary_text \
+                    + f" 他{len(cell_data.text_entries) - 1}件のエラー"
         elif role == Qt.ToolTipRole:
-            return self._get_student_progress(
-                student_id=student_id,
-            ).get_detailed_reason()
+            if len(cell_data.text_entries) == 0:
+                return ""
+            else:
+                return "\n".join(
+                    entry.summary_text
+                    for entry in cell_data.text_entries
+                )
 
     @data_provider(
         column=StudentTableColumns.COL_TESTCASE_RESULT,
@@ -201,8 +233,7 @@ class StudentTableModel(QAbstractTableModel):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        project_service = get_project_service()
-        self._student_ids: list[StudentID] = project_service.get_student_ids()
+        self._student_ids: list[StudentID] = get_student_id_list_usecase().execute()
 
         self._data_provider = StudentTableModelDataProvider(
             student_ids=self._student_ids,
@@ -243,7 +274,7 @@ class StudentTableModel(QAbstractTableModel):
             else:
                 return ""
 
-    def get_student_id_of_row(self, i_row: int):
+    def get_student_id_of_row(self, i_row: int) -> StudentID:
         return self._student_ids[i_row]
 
 
@@ -259,11 +290,8 @@ class _StudentObserver(QObject):
     def __init__(self, parent: QObject):
         super().__init__(parent)
 
-        self._project_service = get_project_service()
-        self._progress_service = get_progress_service()
-
         self._student_id_iter = iter(
-            self.__student_id_cyclic_iterator(self._project_service.get_student_ids())
+            self.__student_id_cyclic_iterator(get_student_id_list_usecase().execute())
         )
 
         self._timer = QTimer(self)
@@ -278,7 +306,7 @@ class _StudentObserver(QObject):
     def _on_timer_timeout(self):
         student_id = next(self._student_id_iter)
         prev_mtime = self._student_id_mtime_mapping.get(student_id)
-        current_mtime = self._progress_service.get_student_mtime(student_id)
+        current_mtime = get_student_progress_check_timestamp_query_service().execute(student_id)
         if prev_mtime != current_mtime:
             if prev_mtime is not None:  # 初めて巡回したときは更新を行わない
                 # noinspection PyUnresolvedReferences
@@ -330,8 +358,8 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
 
         i_row, i_col = self.currentIndex().row(), self.currentIndex().column()
         if i_col == StudentTableColumns.COL_STUDENT_ID:
-            get_project_service().show_student_submission_folder_in_explorer(
-                self._model.get_student_id_of_row(i_row)
+            get_student_submission_folder_show_usecase().execute(
+                student_id=self._model.get_student_id_of_row(i_row),
             )
 
         # if self.currentIndex().column() == StudentTableModel.COL_STUDENT_ID:

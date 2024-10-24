@@ -3,15 +3,29 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
-from application.dependency.services import get_project_service
 from application.dependency.tasks import get_task_manager
+from application.dependency.usecases import get_current_project_summary_get_usecase, \
+    get_student_id_list_usecase
 from controls.dialog_global_settings import GlobalSettingsEditDialog
-from controls.dialog_mark import MarkDialog
+# from controls.dialog_mark import MarkDialog
 from controls.dialog_testcase_list_edit import TestCaseListEditDialog
 from controls.widget_student_table import StudentTableWidget
 from controls.widget_toolbar import ToolBar
 from icons import icon
 from tasks.task_impls import RunStagesStudentTask, CleanAllStagesStudentTask
+from tasks.tasks import AbstractStudentTask
+
+
+def enqueue_student_tasks_if_not_run(parent, task_cls: type[AbstractStudentTask]):
+    if get_task_manager().get_student_task_count() > 0:
+        return
+    for student_id in get_student_id_list_usecase().execute():
+        get_task_manager().enqueue_student_task(
+            task_cls(
+                parent=parent,
+                student_id=student_id,
+            )
+        )
 
 
 class MainWindow(QMainWindow):
@@ -21,7 +35,7 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
 
         self._init_ui()
-        self.__init_signals()
+        self._init_signals()
 
         timer = QTimer(self)
         timer.setInterval(500)
@@ -30,13 +44,11 @@ class MainWindow(QMainWindow):
         self.__context_info_update_timer = timer
 
     def _init_ui(self):
-        project_service = get_project_service()
+        project_summary = get_current_project_summary_get_usecase().execute()
 
         # noinspection PyUnresolvedReferences
         self.setWindowTitle(
-            f"Auto Progen "
-            f"{project_service.get_project_id()!s} "
-            f"設問{project_service.get_target_id()!s}"
+            f"Auto Progen {project_summary.project_name} 設問{project_summary.target_number}"
         )
         # noinspection PyUnresolvedReferences
         self.setWindowIcon(icon("title"))
@@ -53,31 +65,21 @@ class MainWindow(QMainWindow):
         # noinspection PyUnresolvedReferences
         self.setCentralWidget(self._w_student_table)
 
-    def __init_signals(self):
-        self._tool_bar.triggered.connect(self.__task_bar_triggered)
+    def _init_signals(self):
+        self._tool_bar.triggered.connect(self.__tool_bar_triggered)
 
-    def __task_bar_triggered(self, name):
+    def __tool_bar_triggered(self, name):
         # TODO: 実行中はタスクバーのボタンを押せないようにする
         if name == "run":
-            if get_task_manager().get_student_task_count() > 0:
-                return
-            for student_id in get_project_service().get_student_ids():
-                get_task_manager().enqueue_student_task(
-                    RunStagesStudentTask(
-                        parent=self,
-                        student_id=student_id,
-                    )
-                )
+            enqueue_student_tasks_if_not_run(
+                parent=self,
+                task_cls=RunStagesStudentTask,
+            )
         elif name == "clear":
-            if get_task_manager().get_student_task_count() > 0:
-                return
-            for student_id in get_project_service().get_student_ids():
-                get_task_manager().enqueue_student_task(
-                    CleanAllStagesStudentTask(
-                        parent=self,
-                        student_id=student_id,
-                    )
-                )
+            enqueue_student_tasks_if_not_run(
+                parent=self,
+                task_cls=CleanAllStagesStudentTask,
+            )
         elif name == "settings":
             dialog = GlobalSettingsEditDialog()
             dialog.exec_()

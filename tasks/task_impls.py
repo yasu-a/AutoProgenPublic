@@ -1,24 +1,22 @@
-from application.dependency.services import get_build_service, get_compile_service, \
-    get_execute_service, get_test_service, get_progress_service
-from domain.models.stages import StudentProgressStage
+from domain.models.stages import AbstractStage
 from tasks.tasks import AbstractStudentTask
 
 
 class RunStagesStudentTask(AbstractStudentTask):
-    def _dispatch_stage(self, stage: StudentProgressStage):
-        if stage == StudentProgressStage.BUILD:
+    def _dispatch_stage(self, stage: AbstractStage):
+        if stage == AbstractStage.BUILD:
             self._logger.info(f"Dispatching stage: {stage!r}")
             service = get_build_service()
             service.build_and_save_result(student_id=self._student_id)
-        elif stage == StudentProgressStage.COMPILE:
+        elif stage == AbstractStage.COMPILE:
             self._logger.info(f"Dispatching stage: {stage!r}")
             service = get_compile_service()
             service.compile_and_save_result(student_id=self._student_id)
-        elif stage == StudentProgressStage.EXECUTE:
+        elif stage == AbstractStage.EXECUTE:
             self._logger.info(f"Dispatching stage: {stage!r}")
             service = get_execute_service()
             service.execute_and_save_result(student_id=self._student_id)
-        elif stage == StudentProgressStage.TEST:
+        elif stage == AbstractStage.TEST:
             self._logger.info(f"Dispatching stage: {stage!r}")
             service = get_test_service()
             service.test_and_save_result(student_id=self._student_id)

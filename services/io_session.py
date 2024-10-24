@@ -2,7 +2,7 @@ from domain.models.file_item import IOSessionFileItem, FullQualifiedIOSessionFil
     FullQualifiedIOSessionFileItem
 from domain.models.values import IOSessionID
 from files.core.project import ProjectCoreIO
-from files.path_providers.project_dynamic import IOSessionPathProvider
+from files.path_providers.current_project import IOSessionPathProvider
 
 
 class IOSessionRepository:

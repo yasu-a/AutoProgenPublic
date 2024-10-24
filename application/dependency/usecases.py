@@ -1,8 +1,14 @@
 from application.dependency.services import *
+from usecases.current_project_summary_get import CurrentProjectSummaryGetUseCase
 from usecases.project_create import ProjectCreateUseCase
-from usecases.project_get import ProjectNameExistUseCase
+from usecases.project_name_exist import ProjectNameExistUseCase
 from usecases.project_static_initialize import ProjectStaticInitializeUseCase
 from usecases.recent_project_list import RecentProjectListUseCase
+from usecases.student_id_list_usecase import StudentIDListUseCase
+from usecases.student_submission_folder_show import StudentSubmissionFolderShowUseCase
+from usecases.student_table_get_cell_data import StudentTableGetStudentIDCellDataUseCase, \
+    StudentTableGetStudentNameCellDataUseCase, StudentTableGetStudentStageStateCellDataUseCase, \
+    StudentTableGetStudentErrorCellDataUseCase
 
 
 def get_recent_project_list_usecase():
@@ -31,4 +37,48 @@ def get_project_static_initialize_usecase(manaba_report_archive_fullpath: Path):
 def get_project_name_exist_usecase():
     return ProjectNameExistUseCase(
         project_list_service=get_project_list_service(),
+    )
+
+
+def get_current_project_summary_get_usecase():
+    return CurrentProjectSummaryGetUseCase(
+        current_project_get_service=get_current_project_get_service(),
+    )
+
+
+def get_student_id_list_usecase():
+    return StudentIDListUseCase(
+        student_list_service=get_student_list_service(),
+    )
+
+
+def get_student_submission_folder_show_usecase():
+    return StudentSubmissionFolderShowUseCase(
+        student_submission_folder_show_service=get_student_submission_folder_show_service(),
+    )
+
+
+def get_student_table_get_student_id_cell_data_usecase():
+    return StudentTableGetStudentIDCellDataUseCase(
+        student_submission_exist_service=get_student_submission_exist_service(),
+    )
+
+
+def get_student_table_get_student_name_cell_data_usecase():
+    return StudentTableGetStudentNameCellDataUseCase(
+        student_get_service=get_student_get_service(),
+    )
+
+
+def get_student_table_get_student_stage_state_cell_data_use_case():
+    return StudentTableGetStudentStageStateCellDataUseCase(
+        stage_path_list_service=get_stage_path_list_service(),
+        student_stage_path_result_get_service=get_student_stage_path_result_get_service(),
+    )
+
+
+def get_student_table_get_student_error_cell_data_use_case():
+    return StudentTableGetStudentErrorCellDataUseCase(
+        stage_path_list_service=get_stage_path_list_service(),
+        student_stage_path_result_get_service=get_student_stage_path_result_get_service(),
     )

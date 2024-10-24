@@ -8,7 +8,7 @@ from domain.models.student_stage_result import TestCaseExecuteResult, TestCaseEx
 from domain.models.values import TestCaseID, StudentID
 from files.project import ProjectIO
 from files.repositories.student_stage_result import ProgressIO
-from files.testcase import TestCaseIO
+from files.testcase_config import TestCaseIO
 
 
 # TODO: ExecutableRunner should be a repository

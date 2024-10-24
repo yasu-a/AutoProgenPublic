@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
 from domain.models.mark import Mark
-from domain.models.progress import StudentProgressWithFinishedStage
-from domain.models.stages import StudentProgressStage
+from domain.models.stages import AbstractStage
+from domain.models.student_stage_path_result import StudentStagePathProgressWithFinishedStage
 from domain.models.student_stage_result import ExecuteStudentStageResult, TestStudentStageResult
 from domain.models.values import StudentID
 from dto.result_pair import TestCaseExecuteAndTestResultPair, \
@@ -14,14 +14,14 @@ from dto.testcase_config import TestCaseConfigMapping
 from files.project import ProjectIO
 from files.repositories.student import StudentRepository
 from files.repositories.student_stage_result import ProgressIO
-from files.testcase import TestCaseIO
+from files.testcase_config import TestCaseIO
 
 
 @dataclass(slots=True)
 class StudentSnapshotFields:
     student_id: StudentID
     mark: Mark
-    progress_of_last_stage: StudentProgressWithFinishedStage | None
+    progress_of_last_stage: StudentStagePathProgressWithFinishedStage | None
     execute_result: ExecuteStudentStageResult | None
     test_result: TestStudentStageResult | None
 
@@ -50,8 +50,9 @@ class SnapshotService:
 
             # 進捗から生成するスナップショットを分岐
             progress_of_last_stage = student_progress_io.get_progress_of_stage_if_finished(
-                stage=StudentProgressStage.get_last_stage()
-            )
+                ## => StudentProgressGetIfFinishedService
+                stage=AbstractStage.get_last_stage()
+            )  ## => StudentProgressGetIfFinished
             if progress_of_last_stage is not None and progress_of_last_stage.is_success():
                 # ↑ 最後のステージの進捗が存在する and それが成功しているとき
                 expected_next_stage = student_progress_io.determine_next_stage_with_result()
@@ -81,7 +82,7 @@ class SnapshotService:
                         mark=mark,
                     )
             else:  # すべてのステージが完了していないとき
-                progress = student_progress_io.get_current_progress()
+                progress = student_progress_io.get_current_progress()  ## => StudentProgressGetCurrentService
                 detailed_reason = progress.get_detailed_reason()
                 if detailed_reason is None:
                     return StudentSnapshotStagesUnfinished(

@@ -1,5 +1,4 @@
 import functools
-import os
 import re
 from pathlib import Path
 
@@ -50,19 +49,6 @@ class ProjectIO:  # TODO: BuildIO, CompileIO, ExecuteIOを分離する
         return self._project_core_io.calculate_folder_hash(
             folder_fullpath=submission_folder_fullpath,
         )
-
-    def has_student_submission_folder(self, student_id: StudentID) -> bool:
-        # 生徒の提出フォルダが存在するかどうか確認する
-        submission_folder_fullpath \
-            = self._student_report_path_provider.submission_folder_fullpath(student_id)
-        return submission_folder_fullpath.exists()
-
-    def show_student_submission_folder_in_explorer(self, student_id: StudentID) -> None:
-        # 生徒の提出フォルダをエクスプローラで開く
-        submission_folder_fullpath \
-            = self._student_report_path_provider.submission_folder_fullpath(student_id)
-        if submission_folder_fullpath.exists():
-            os.startfile(submission_folder_fullpath)
 
     def iter_student_source_file_relative_path_in_submission_folder(
             self,

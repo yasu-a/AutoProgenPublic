@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import *
 
 from application.dependency.usecases import get_project_name_exist_usecase
 from application.state.debug import is_debug
-from dto.new_project_config import NewProjectConfig
+from controls.dto.new_project_config import NewProjectConfig
 from icons import icon
 
 

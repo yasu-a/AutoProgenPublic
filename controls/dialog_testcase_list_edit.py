@@ -1,7 +1,6 @@
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from application.dependency.services import get_testcase_service
 from controls.dialog_testcase_config_edit import TestCaseConfigEditDialog
 from controls.widget_button_box import ButtonBox
 from domain.models.values import TestCaseID

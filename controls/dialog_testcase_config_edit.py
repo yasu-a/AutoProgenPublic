@@ -3,7 +3,6 @@ from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import QVBoxLayout, QDialog
 
 from app_logging import create_logger
-from application.dependency.services import get_testcase_service
 from controls.widget_testcase_config_edit import TestCaseConfigEditWidget
 from domain.models.values import TestCaseID
 

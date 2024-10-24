@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot, Qt
 from PyQt5.QtGui import QShowEvent
 from PyQt5.QtWidgets import QDialog, QLabel, QHBoxLayout
 
@@ -49,7 +49,9 @@ class StaticInitializeProgressDialog(QDialog):
     def _init_ui(self):
         self.setWindowTitle("プロジェクトの初期化")
         self.setModal(True)
-        self.resize(700, 20)
+        self.resize(700, 40)
+        self.setWindowFlag(Qt.WindowCloseButtonHint, False)
+        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
 
         layout = QHBoxLayout()
         self.setLayout(layout)

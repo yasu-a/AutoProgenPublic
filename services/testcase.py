@@ -9,7 +9,23 @@ from domain.models.test_config_options import TestConfigOptions
 from domain.models.testcase_config import TestCaseConfig
 from domain.models.values import TestCaseID
 from dto.testcase_summary import TestCaseEditTestCaseSummary
-from files.testcase import TestCaseIO
+from files.repositories.testcase_config import TestCaseConfigRepository
+from files.testcase_config import TestCaseIO
+
+
+class TestCaseListIDSubService:
+    def __init__(
+            self,
+            *,
+            testcase_config_repo: TestCaseConfigRepository,
+    ):
+        self.testcase_config_repo = testcase_config_repo
+
+    def execute(self) -> list[TestCaseID]:
+        return [
+            testcase_config.testcase_id
+            for testcase_config in self.testcase_config_repo.list()
+        ]
 
 
 class TestCaseService:

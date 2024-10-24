@@ -15,7 +15,7 @@ from domain.models.test_config_options import TestConfigOptions
 from domain.models.values import StudentID, TestCaseID, FileID
 from files.project import ProjectIO
 from files.repositories.student_stage_result import ProgressIO
-from files.testcase import TestCaseIO
+from files.testcase_config import TestCaseIO
 
 
 class _Token(NamedTuple):

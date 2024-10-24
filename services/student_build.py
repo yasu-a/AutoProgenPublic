@@ -5,7 +5,7 @@ from domain.models.values import StudentID
 from files.repositories.current_project import CurrentProjectRepository
 from files.repositories.student import StudentRepository
 from files.repositories.student_dynamic import StudentDynamicRepository
-from files.repositories.student_stage_result import BuildStudentStageResultRepository
+from files.repositories.student_stage_result import StudentStageResultRepository
 
 
 class StudentBuildService:  # environment builder
@@ -13,12 +13,12 @@ class StudentBuildService:  # environment builder
             self,
             *,
             student_dynamic_repo: StudentDynamicRepository,
-            build_result_repo: BuildStudentStageResultRepository,
+            student_stage_result_repo: StudentStageResultRepository,
             student_repo: StudentRepository,
             current_project_repo: CurrentProjectRepository,
     ):
         self._student_dynamic_repo = student_dynamic_repo
-        self._build_result_repo = build_result_repo
+        self._student_stage_result_repo = student_stage_result_repo
         self._student_repo = student_repo
         self._current_project_repo = current_project_repo
 

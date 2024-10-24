@@ -5,7 +5,6 @@ from PyQt5.QtGui import QCloseEvent, QShowEvent
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QWidget, QLabel, QMessageBox, QInputDialog
 
 from app_logging import create_logger
-from application.dependency.services import get_compiler_location_search_service
 from fonts import font
 
 
