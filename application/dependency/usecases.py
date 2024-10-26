@@ -1,5 +1,8 @@
 from application.dependency.services import *
+from usecases.compile_test import CompileTestUseCase
+from usecases.compiler_search import CompilerSearchUseCase
 from usecases.current_project_summary_get import CurrentProjectSummaryGetUseCase
+from usecases.global_config import GlobalConfigGetUseCase, GlobalConfigPutUseCase
 from usecases.project_create import ProjectCreateUseCase
 from usecases.project_name_exist import ProjectNameExistUseCase
 from usecases.project_static_initialize import ProjectStaticInitializeUseCase
@@ -9,6 +12,18 @@ from usecases.student_submission_folder_show import StudentSubmissionFolderShowU
 from usecases.student_table_get_cell_data import StudentTableGetStudentIDCellDataUseCase, \
     StudentTableGetStudentNameCellDataUseCase, StudentTableGetStudentStageStateCellDataUseCase, \
     StudentTableGetStudentErrorCellDataUseCase
+
+
+def get_global_config_get_usecase():
+    return GlobalConfigGetUseCase(
+        global_config_get_service=get_global_config_get_service(),
+    )
+
+
+def get_global_config_put_usecase():
+    return GlobalConfigPutUseCase(
+        global_config_put_service=get_global_config_put_service(),
+    )
 
 
 def get_recent_project_list_usecase():
@@ -81,4 +96,17 @@ def get_student_table_get_student_error_cell_data_use_case():
     return StudentTableGetStudentErrorCellDataUseCase(
         stage_path_list_service=get_stage_path_list_service(),
         student_stage_path_result_get_service=get_student_stage_path_result_get_service(),
+    )
+
+
+def get_compiler_search_usecase():
+    return CompilerSearchUseCase()
+
+
+def get_compile_test_usecase():
+    return CompileTestUseCase(
+        storage_create_service=get_storage_create_service(),
+        storage_load_test_source_service=get_storage_load_test_source_service(),
+        storage_run_compiler_service=get_storage_run_compiler_service(),
+        storage_delete_service=get_storage_delete_service(),
     )

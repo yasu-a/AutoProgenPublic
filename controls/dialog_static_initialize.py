@@ -20,12 +20,12 @@ class _StaticInitializeWorker(QThread):
             manaba_report_archive_fullpath=manaba_report_archive_fullpath,
         )
 
-    def _usecase_callback(self, progres_title: str) -> None:
+    def __usecase_callback(self, progres_title: str) -> None:
         # noinspection PyUnresolvedReferences
         self.progress_updated.emit(progres_title)
 
     def run(self):
-        self._project_static_initialize_usecase.execute(self._usecase_callback)
+        self._project_static_initialize_usecase.execute(self.__usecase_callback)
         # noinspection PyUnresolvedReferences
         self.progress_finished.emit()
 

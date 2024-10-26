@@ -8,6 +8,8 @@ from transaction import transactional_with
 
 
 class StudentDynamicRepository:
+    # ステージの進行とともに生成される生徒のデータの読み書き
+
     def __init__(
             self,
             *,

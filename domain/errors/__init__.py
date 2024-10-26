@@ -30,7 +30,7 @@ class BuildServiceError(RuntimeError):
         self.reason = reason
 
 
-class CompileServiceError(RuntimeError):
+class StorageRunCompilerServiceError(RuntimeError):
     def __init__(self, *, reason: str, output: str | None):
         self.reason = reason
         self.output = output

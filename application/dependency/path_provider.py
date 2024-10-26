@@ -4,7 +4,7 @@ from pathlib import Path
 from application.state.current_project import get_current_project_id
 from files.path_providers.current_project import DynamicPathProvider, StudentDynamicPathProvider, \
     StudentStageResultPathProvider, ProjectStaticPathProvider, ReportSubmissionPathProvider, \
-    TestCaseConfigPathProvider, StudentMarkPathProvider, IOSessionPathProvider
+    TestCaseConfigPathProvider, StudentMarkPathProvider, StoragePathProvider
 from files.path_providers.global_ import GlobalPathProvider
 from files.path_providers.project import ProjectListPathProvider, ProjectPathProvider
 
@@ -48,8 +48,8 @@ def get_dynamic_path_provider():
     )
 
 
-def get_io_session_path_provider():
-    return IOSessionPathProvider(
+def get_storage_path_provider():
+    return StoragePathProvider(
         dynamic_path_provider=get_dynamic_path_provider(),
     )
 

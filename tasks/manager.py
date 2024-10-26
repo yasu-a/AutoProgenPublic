@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import qApp
 
 from app_logging import create_logger
 from domain.models.values import StudentID
-from files.repositories.global_settings import GlobalSettingsRepository
+from files.repositories.global_config import GlobalConfigRepository
 from tasks.tasks import AbstractStudentTask, AbstractTask
 
 
@@ -112,7 +112,7 @@ class TaskStack(QObject):
 
 
 class TaskManager(QObject):
-    def __init__(self, global_settings_repo: GlobalSettingsRepository):
+    def __init__(self, global_settings_repo: GlobalConfigRepository):
         super().__init__(qApp)
 
         self._task_stack = TaskStack(

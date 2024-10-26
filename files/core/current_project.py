@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Iterable
 
 from domain.models.values import ProjectID
 from files.core.project import ProjectCoreIO
@@ -155,4 +155,16 @@ class CurrentProjectCoreIO:
         return self._project_core_io.calculate_folder_hash(
             project_id=self._current_project_id,
             folder_fullpath=folder_fullpath,
+        )
+
+    def walk_files(
+            self,
+            *,
+            folder_fullpath: Path,
+            return_absolute: bool,
+    ) -> Iterable[Path]:
+        yield from self._project_core_io.walk_files(
+            project_id=self._current_project_id,
+            folder_fullpath=folder_fullpath,
+            return_absolute=return_absolute,
         )

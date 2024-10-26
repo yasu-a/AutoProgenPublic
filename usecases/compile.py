@@ -1,10 +1,10 @@
 from app_logging import create_logger
-from domain.errors import ProjectIOError, CompileServiceError, CompileToolIOError
+from domain.errors import ProjectIOError, StorageRunCompilerServiceError, CompileToolIOError
 from domain.models.student_stage_result import CompileStudentStageResult
 from domain.models.values import StudentID
 from files.external.compile_tool import CompileToolIO
 from files.project import ProjectIO
-from files.repositories.global_settings import GlobalSettingsRepository
+from files.repositories.global_config import GlobalConfigRepository
 
 
 class CompileService:
@@ -13,7 +13,7 @@ class CompileService:
     def __init__(
             self,
             *,
-            global_settings_repo: GlobalSettingsRepository,
+            global_settings_repo: GlobalConfigRepository,
             project_io: ProjectIO,
             progress_io: ProgressIO,
             compile_tool_io: CompileToolIO,
@@ -26,7 +26,7 @@ class CompileService:
     def _compile_and_get_output(self, student_id: StudentID) -> str:
         compiler_tool_fullpath = self._global_settings_repo.get().compiler_tool_fullpath
         if compiler_tool_fullpath is None:
-            raise CompileServiceError(
+            raise StorageRunCompilerServiceError(
                 reason="コンパイラが設定されていません",
                 output=None,
             )
@@ -36,7 +36,7 @@ class CompileService:
                 student_id=student_id,
             )
         except ProjectIOError as e:
-            raise CompileServiceError(
+            raise StorageRunCompilerServiceError(
                 reason=f"コンパイル対象を取得できません。\n{e.reason}",
                 output=None,
             )
@@ -51,7 +51,7 @@ class CompileService:
                 ),
             )
         except CompileToolIOError as e:
-            raise CompileServiceError(
+            raise StorageRunCompilerServiceError(
                 reason=f"コンパイルに失敗しました。\n{e.reason}",
                 output=e.output,
             )
@@ -63,7 +63,7 @@ class CompileService:
             output = self._compile_and_get_output(
                 student_id=student_id,
             )
-        except CompileServiceError as e:
+        except StorageRunCompilerServiceError as e:
             result = CompileStudentStageResult.error(e)
         else:
             result = CompileStudentStageResult.success(output)

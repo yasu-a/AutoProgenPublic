@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TypeVar
 
 
@@ -61,30 +60,30 @@ StudentDynamicFileItemType = TypeVar(
     "StudentDynamicFileItemType",
     bound=SourceFileItem | ExecutableFileItem,
 )
-
-
-@dataclass(frozen=True)
-class IOSessionFileItem:
-    path: Path
-    content_bytes: bytes
-
-    def __post_init__(self):
-        if self.path.is_absolute():
-            raise ValueError("\"path\" of IOSessionFileItem must be relative")
-
-
-@dataclass(frozen=True)
-class FullQualifiedIOSessionFileItem(IOSessionFileItem):
-    fullpath: Path
-
-    def __post_init__(self):
-        if not self.path.is_absolute():
-            raise ValueError("\"fullpath\" of FullQualifiedIOSessionFileItem must be absolute")
-
-
-class IOSessionFileItemList(list[IOSessionFileItem]):
-    pass
-
-
-class FullQualifiedIOSessionFileItemList(list[FullQualifiedIOSessionFileItem]):
-    pass
+#
+#
+# @dataclass(frozen=True)
+# class IOSessionFileItem:
+#     path: Path
+#     content_bytes: bytes
+#
+#     def __post_init__(self):
+#         if self.path.is_absolute():
+#             raise ValueError("\"path\" of IOSessionFileItem must be relative")
+#
+#
+# @dataclass(frozen=True)
+# class FullQualifiedIOSessionFileItem(IOSessionFileItem):
+#     fullpath: Path
+#
+#     def __post_init__(self):
+#         if not self.path.is_absolute():
+#             raise ValueError("\"fullpath\" of FullQualifiedIOSessionFileItem must be absolute")
+#
+#
+# class IOSessionFileItemList(list[IOSessionFileItem]):
+#     pass
+#
+#
+# class FullQualifiedIOSessionFileItemList(list[FullQualifiedIOSessionFileItem]):
+#     pass

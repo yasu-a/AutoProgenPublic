@@ -4,7 +4,7 @@ import json
 import os
 import shutil
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional, Any, Iterable
 
 from app_logging import create_logger
 from domain.models.values import ProjectID
@@ -302,3 +302,22 @@ class ProjectCoreIO:
         hash_src = b"".join(sub_hash_entries)
         return int.from_bytes(hashlib.md5(hash_src).digest(), byteorder="big")
 
+    def walk_files(
+            self,
+            *,
+            project_id: ProjectID,
+            folder_fullpath: Path,
+            return_absolute: bool,
+    ) -> Iterable[Path]:
+        self.__check_folder_location(
+            project_id=project_id,
+            path=folder_fullpath,
+        )
+
+        for root, dirs, files in os.walk(str(folder_fullpath)):
+            for filename in files:
+                file_fullpath = Path(root) / filename
+                if return_absolute:
+                    yield file_fullpath
+                else:
+                    yield file_fullpath.relative_to(folder_fullpath)

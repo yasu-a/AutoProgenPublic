@@ -1,11 +1,15 @@
-from application.dependency.io import get_manaba_report_archive_io
+from application.dependency.io import *
 from application.dependency.repositories import *
 from services.current_project_get import CurrentProjectGetService
+from services.global_config import GlobalConfigGetService, GlobalConfigPutService
 from services.project_create import ProjectCreateService
 from services.project_list import ProjectListService
 from services.stage import StageListRootSubService, StageListChildSubService, \
     StageGetParentSubService
 from services.stage_path import StagePathListService
+from services.storage import StorageLoadTestSourceService, \
+    StorageCreateService, StorageDeleteService
+from services.storage_run_compiler import StorageRunCompilerService
 from services.student_get import StudentGetService
 from services.student_list import StudentListService
 from services.student_master_create import StudentMasterCreateService
@@ -16,6 +20,18 @@ from services.student_submission_extract import StudentSubmissionExtractService
 from services.student_submission_folder_show import \
     StudentSubmissionFolderShowService
 from services.testcase import TestCaseListIDSubService
+
+
+def get_global_config_get_service():
+    return GlobalConfigGetService(
+        global_config_repo=get_global_config_repository(),
+    )
+
+
+def get_global_config_put_service():
+    return GlobalConfigPutService(
+        global_config_repo=get_global_config_repository(),
+    )
 
 
 def get_project_list_service():
@@ -117,4 +133,32 @@ def get_student_progress_check_timestamp_query_service():
     return StudentProgressCheckTimestampQueryService(
         student_stage_result_path_provider=get_student_stage_result_path_provider(),
         testcase_config_repo=get_testcase_config_repository(),
+    )
+
+
+def get_storage_create_service():
+    return StorageCreateService(
+        storage_repo=get_storage_repository(),
+    )
+
+
+def get_storage_delete_service():
+    return StorageDeleteService(
+        storage_repo=get_storage_repository(),
+    )
+
+
+def get_storage_load_test_source_service():
+    return StorageLoadTestSourceService(
+        test_source_repo=get_test_source_repository(),
+        storage_repo=get_storage_repository(),
+    )
+
+
+def get_storage_run_compiler_service():
+    return StorageRunCompilerService(
+        compile_tool_io=get_compile_tool_io(),
+        global_config_repo=get_global_config_repository(),
+        student_dynamic_repo=get_student_dynamic_repository(),
+        storage_repo=get_storage_repository(),
     )

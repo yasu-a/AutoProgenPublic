@@ -5,14 +5,18 @@ from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
+from application.dependency.usecases import get_global_config_get_usecase, \
+    get_global_config_put_usecase, get_compile_test_usecase
 from controls.dialog_compiler_search import CompilerSearchDialog
-from domain.errors import CompileTestServiceError
-from domain.models.settings import GlobalSettings
+from domain.models.settings import GlobalConfig
+from files.external.compiler_location import is_compiler_location
 from icons import icon
 
 
 class CompilerToolPathEditWidget(QWidget):
-    _logger = create_logger()
+    compile_test_requested = pyqtSignal(Path, name="compile_test_requested")
+
+    # Pathはテストしたいコンパイルツールのパス
 
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
@@ -42,11 +46,11 @@ class CompilerToolPathEditWidget(QWidget):
 
     def _init_signals(self):
         # noinspection PyUnresolvedReferences
-        self._b_open.clicked.connect(self._b_open_clicked)
+        self._b_open.clicked.connect(self.__b_open_clicked)
         # noinspection PyUnresolvedReferences
-        self._b_search.clicked.connect(self._b_search_clicked)
+        self._b_search.clicked.connect(self.__b_search_clicked)
         # noinspection PyUnresolvedReferences
-        self._b_test.clicked.connect(self._b_test_clicked)
+        self._b_test.clicked.connect(self.__b_test_clicked)
 
     def set_value(self, path: Path | None) -> None:
         self._le_path.setText(str(path) if path else "")
@@ -57,13 +61,13 @@ class CompilerToolPathEditWidget(QWidget):
     def validate_and_get_reason(self) -> str | None:
         path = self._le_path.text()
         path = Path(path)
-        if not get_compiler_location_search_service().is_compiler_location(path):
+        if not is_compiler_location(path):
             return "VsDevCmd.batへのパスを指定して下さい。通常はVisual Studioのインストールフォルダ内にあります。"
         else:
             return None
 
     @pyqtSlot()
-    def _b_open_clicked(self):
+    def __b_open_clicked(self):
         filepath, _ = QFileDialog.getOpenFileName(
             self,  # type: ignore
             "VsDevCmd.batを開く",
@@ -78,32 +82,15 @@ class CompilerToolPathEditWidget(QWidget):
         self._le_path.setText(str(filepath))
 
     @pyqtSlot()
-    def _b_search_clicked(self):
+    def __b_search_clicked(self):
         dialog_auto_find = CompilerSearchDialog(self)
         dialog_auto_find.exec_()
         if dialog_auto_find.get_value() is not None:
             self._le_path.setText(str(dialog_auto_find.get_value()))
 
     @pyqtSlot()
-    def _b_test_clicked(self):
-        service = get_test_run_service()
-        try:
-            service.compile_and_get_output(
-                compiler_tool_fullpath=Path(self._le_path.text()),
-            )
-        except CompileTestServiceError as e:
-            self._logger.exception("Failed to test compiler")
-            QMessageBox.critical(
-                self,  # type: ignore
-                "コンパイルテスト",
-                f"{e.reason}\n\n{e.output or ''}",
-            )
-        else:
-            QMessageBox.information(
-                self,  # type: ignore
-                "コンパイルテスト",
-                "コンパイルが終了しました。コンパイラは正しく動作しています。",
-            )
+    def __b_test_clicked(self):
+        self.compile_test_requested.emit(Path(self._le_path.text()))
 
 
 class CompilerTimeoutWidget(QWidget):
@@ -177,6 +164,8 @@ class MaxWorkersWidget(QWidget):
 
 
 class GlobalSettingsEditWidget(QWidget):
+    _logger = create_logger()
+
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
@@ -217,13 +206,38 @@ class GlobalSettingsEditWidget(QWidget):
 
         layout_root.addStretch(1)
 
-    def set_value(self, settings: GlobalSettings) -> None:
+    def _init_signals(self):
+        self._w_compiler_tool_path.compile_test_requested.connect(
+            self.__w_compiler_tool_path_compile_test_requested,
+        )
+
+    @pyqtSlot(Path)
+    def __w_compiler_tool_path_compile_test_requested(self, compiler_tool_fullpath: Path):
+        result = get_compile_test_usecase().execute(
+            compiler_tool_fullpath=Path(compiler_tool_fullpath),
+        )
+        if result.is_success:
+            QMessageBox.information(
+                self,  # type: ignore
+                "コンパイルテスト",
+                f"コンパイルが終了しました。コンパイラは正しく動作しています。\n"
+                f"\n"
+                f"{result.output}",
+            )
+        else:
+            QMessageBox.critical(
+                self,  # type: ignore
+                "コンパイルテスト",
+                f"{result.output}",
+            )
+
+    def set_value(self, settings: GlobalConfig) -> None:
         self._w_compiler_tool_path.set_value(settings.compiler_tool_fullpath)
         self._w_compiler_timeout.set_value(int(settings.compile_timeout))
         self._w_max_workers.set_value(settings.max_workers)
 
-    def get_value(self) -> GlobalSettings:
-        return GlobalSettings(
+    def get_value(self) -> GlobalConfig:
+        return GlobalConfig(
             compiler_tool_fullpath=self._w_compiler_tool_path.get_value(),
             compile_timeout=float(self._w_compiler_timeout.get_value()),
             max_workers=self._w_max_workers.get_value(),
@@ -241,9 +255,6 @@ class GlobalSettingsEditWidget(QWidget):
             return None
         else:
             return "\n".join(filter(None, validation_results))
-
-    def _init_signals(self):
-        pass
 
 
 class GlobalSettingsEditDialog(QDialog):
@@ -263,7 +274,7 @@ class GlobalSettingsEditDialog(QDialog):
         self.setLayout(layout)
 
         self._w_settings_edit = GlobalSettingsEditWidget(self)  # type: ignore
-        self._w_settings_edit.set_value(get_global_settings_edit_service().get_settings())
+        self._w_settings_edit.set_value(get_global_config_get_usecase().execute())
         layout.addWidget(self._w_settings_edit)
 
     def _init_signals(self):
@@ -273,7 +284,7 @@ class GlobalSettingsEditDialog(QDialog):
     def closeEvent(self, evt: QCloseEvent):
         reason = self._w_settings_edit.validate_and_get_reason()
         if reason is None:
-            get_global_settings_edit_service().set_settings(self._w_settings_edit.get_value())
+            get_global_config_put_usecase().execute(self._w_settings_edit.get_value())
         else:
             # ユーザーにエラーを示して変更を破棄して閉じるか閉じずに編集するかを聞く
             res = QMessageBox.warning(

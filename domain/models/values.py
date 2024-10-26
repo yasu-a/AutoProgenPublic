@@ -7,7 +7,7 @@ __all__ = (
     "ProjectID",
     "SpecialFileType",
     "FileID",
-    "IOSessionID",
+    "StorageID",
 )
 
 import uuid
@@ -254,7 +254,7 @@ FileID.STDIN = FileID(SpecialFileType.STDIN)
 FileID.STDOUT = FileID(SpecialFileType.STDOUT)
 
 
-class IOSessionID(uuid.UUID):
+class StorageID(uuid.UUID):
     def __init__(self, value):
         assert isinstance(value, uuid.UUID), value
         super().__init__(bytes=value.bytes)

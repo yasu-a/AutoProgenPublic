@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from domain.models.stages import AbstractStage
-from domain.models.values import TestCaseID, StudentID, ProjectID, IOSessionID
+from domain.models.values import TestCaseID, StudentID, ProjectID, StorageID
 from files.path_providers.project import ProjectPathProvider
 
 
@@ -74,8 +74,8 @@ class DynamicPathProvider:
         return self.base_folder_fullpath() / "students"
 
 
-# コンパイル・実行関連で使うファイル操作を行うためのセッション
-class IOSessionPathProvider:
+# コンパイル・実行関連で使うファイル操作を行うためのストレージ領域
+class StoragePathProvider:
     def __init__(
             self,
             *,
@@ -83,7 +83,7 @@ class IOSessionPathProvider:
     ):
         self._dynamic_path_provider = dynamic_path_provider
 
-    def base_folder_fullpath(self, io_session_id: IOSessionID):
+    def base_folder_fullpath(self, io_session_id: StorageID):
         return self._dynamic_path_provider.io_session_fullpath() / str(io_session_id)
 
 

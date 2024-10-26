@@ -5,13 +5,13 @@ from application.state.debug import is_debug
 
 
 @dataclass
-class GlobalSettings:
+class GlobalConfig:
     compiler_tool_fullpath: Path | None
     compile_timeout: float
     max_workers: int
 
     @classmethod
-    def create_default(cls) -> "GlobalSettings":
+    def create_default(cls) -> "GlobalConfig":
         return cls(
             compiler_tool_fullpath=Path(
                 r"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat",

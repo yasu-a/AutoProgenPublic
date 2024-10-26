@@ -5,10 +5,10 @@ from contextlib import contextmanager
 
 from PyQt5.QtCore import QMutex
 
-from domain.models.values import StudentID, TestCaseID
+from domain.models.values import StudentID, TestCaseID, StorageID
 from transaction.common import TransactionID
 
-ResourceID = StudentID | TestCaseID
+ResourceID = StudentID | TestCaseID | StorageID
 
 
 def _check_resource_id_type(resource_id_type: type[ResourceID]) -> None:
