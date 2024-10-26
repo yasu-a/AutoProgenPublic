@@ -1,74 +1,141 @@
-from app_logging import create_logger
-from domain.errors import ProjectIOError, StorageRunCompilerServiceError, CompileToolIOError
-from domain.models.student_stage_result import CompileStudentStageResult
+from pathlib import Path
+
+from domain.errors import StorageRunCompilerServiceError
+from domain.models.student_stage_result import CompileFailureStudentStageResult, \
+    CompileSuccessStudentStageResult
 from domain.models.values import StudentID
-from files.external.compile_tool import CompileToolIO
-from files.project import ProjectIO
-from files.repositories.global_config import GlobalConfigRepository
+from files.repositories.student_stage_result import StudentStageResultRepository
+from services.storage import StorageLoadTestSourceService, StorageCreateService, \
+    StorageDeleteService, StorageLoadStudentSourceService, StorageStoreStudentExecutableService
+from services.storage_run_compiler import StorageRunCompilerService
+from usecases.dto.compile_test import CompileTestResult
 
 
-class CompileService:
-    _logger = create_logger()
-
+class CompileTestUseCase:
     def __init__(
             self,
             *,
-            global_settings_repo: GlobalConfigRepository,
-            project_io: ProjectIO,
-            progress_io: ProgressIO,
-            compile_tool_io: CompileToolIO,
+            storage_create_service: StorageCreateService,
+            storage_load_test_source_service: StorageLoadTestSourceService,
+            storage_run_compiler_service: StorageRunCompilerService,
+            storage_delete_service: StorageDeleteService,
     ):
-        self._global_settings_repo = global_settings_repo
-        self._project_io = project_io
-        self._progress_io = progress_io
-        self._compile_tool_io = compile_tool_io
+        self._storage_create_service = storage_create_service
+        self._storage_load_test_source_service = storage_load_test_source_service
+        self._storage_run_compiler_service = storage_run_compiler_service
+        self._storage_delete_service = storage_delete_service
 
-    def _compile_and_get_output(self, student_id: StudentID) -> str:
-        compiler_tool_fullpath = self._global_settings_repo.get().compiler_tool_fullpath
-        if compiler_tool_fullpath is None:
-            raise StorageRunCompilerServiceError(
-                reason="コンパイラが設定されていません",
-                output=None,
-            )
+    __SOURCE_FILE_RELATIVE_PATH = Path("main.c")
 
+    def execute(self, compiler_tool_fullpath: Path = None) -> CompileTestResult:
+        # ストレージ領域の生成
+        storage_id = self._storage_create_service.execute()
+
+        # ストレージ領域にテスト用のソースコードをロード
+        self._storage_load_test_source_service.execute(
+            storage_id=storage_id,
+            file_relative_path=self.__SOURCE_FILE_RELATIVE_PATH,
+        )
+
+        # コンパイルの実行と結果の生成
         try:
-            compile_target_fullpath = self._project_io.get_student_compile_target_source_fullpath(
-                student_id=student_id,
-            )
-        except ProjectIOError as e:
-            raise StorageRunCompilerServiceError(
-                reason=f"コンパイル対象を取得できません。\n{e.reason}",
-                output=None,
-            )
-
-        try:
-            output = self._compile_tool_io.run_and_get_output(
+            service_result = self._storage_run_compiler_service.execute(
+                storage_id=storage_id,
+                source_file_relative_path=self.__SOURCE_FILE_RELATIVE_PATH,
                 compiler_tool_fullpath=compiler_tool_fullpath,
-                timeout=self._global_settings_repo.get().compile_timeout,
-                cwd_fullpath=compile_target_fullpath.parent,
-                target_relative_path=compile_target_fullpath.relative_to(
-                    compile_target_fullpath.parent
-                ),
-            )
-        except CompileToolIOError as e:
-            raise StorageRunCompilerServiceError(
-                reason=f"コンパイルに失敗しました。\n{e.reason}",
-                output=e.output,
-            )
-
-        return output
-
-    def compile_and_save_result(self, student_id: StudentID):
-        try:
-            output = self._compile_and_get_output(
-                student_id=student_id,
             )
         except StorageRunCompilerServiceError as e:
-            result = CompileStudentStageResult.error(e)
-        else:
-            result = CompileStudentStageResult.success(output)
-
-        with self._progress_io.with_student(student_id) as student_progress_io:
-            student_progress_io.write_compile_result(
-                result=result,
+            result = CompileTestResult(
+                is_success=False,
+                output=(
+                    f"コンパイルテストに失敗しました\n"
+                    f"\n"
+                    f"{e.reason}\n"
+                    f"\n"
+                    f"＜出力＞\n"
+                    f"{e.output}"
+                ),
             )
+        else:
+            result = CompileTestResult(
+                is_success=True,
+                output=(
+                    f"コンパイルテストに成功しました。\n"
+                    f"\n"
+                    f"＜出力＞\n"
+                    f"{service_result.output}"
+                ),
+            )
+
+        # ストレージ領域の解放
+        self._storage_delete_service.execute(storage_id)
+
+        return result
+
+
+class StudentRunCompileStageUseCase:
+    def __init__(
+            self,
+            *,
+            storage_create_service: StorageCreateService,
+            storage_load_student_source_service: StorageLoadStudentSourceService,
+            storage_store_student_executable_service: StorageStoreStudentExecutableService,
+            storage_run_compiler_service: StorageRunCompilerService,
+            storage_delete_service: StorageDeleteService,
+            student_stage_result_repo: StudentStageResultRepository,
+    ):
+        self._storage_create_service = storage_create_service
+        self._storage_load_student_source_service = storage_load_student_source_service
+        self._storage_store_student_executable_service = storage_store_student_executable_service
+        self._storage_run_compiler_service = storage_run_compiler_service
+        self._storage_delete_service = storage_delete_service
+        self._student_stage_result_repo = student_stage_result_repo
+
+    __SOURCE_FILE_RELATIVE_PATH = Path("main.c")
+    __EXECUTABLE_FILE_RELATIVE_PATH = Path("main.exe")
+
+    def execute(self, student_id: StudentID) -> None:
+        # ストレージ領域の生成
+        storage_id = self._storage_create_service.execute()
+
+        # ストレージ領域に生徒のソースコードをロード
+        self._storage_load_student_source_service.execute(
+            student_id=student_id,
+            storage_id=storage_id,
+            file_relative_path=self.__SOURCE_FILE_RELATIVE_PATH,
+        )
+
+        # コンパイルの実行と結果の生成
+        try:
+            service_result = self._storage_run_compiler_service.execute(
+                storage_id=storage_id,
+                source_file_relative_path=self.__SOURCE_FILE_RELATIVE_PATH,
+            )
+        except StorageRunCompilerServiceError as e:
+            # 失敗したら異常終了の結果を書きこんで終了
+            self._student_stage_result_repo.put(
+                result=CompileFailureStudentStageResult.create_instance(
+                    student_id=student_id,
+                    reason=f"コンパイルに失敗しました。\n{e.reason}",
+                    output=e.output,
+                )
+            )
+            return
+
+        # 実行ファイルを動的データに記録
+        self._storage_store_student_executable_service.execute(
+            student_id=student_id,
+            storage_id=storage_id,
+            file_relative_path=self.__EXECUTABLE_FILE_RELATIVE_PATH,
+        )
+
+        # ストレージ領域の解放
+        self._storage_delete_service.execute(storage_id)
+
+        # 正常終了の結果を書きこんで終了
+        self._student_stage_result_repo.put(
+            result=CompileSuccessStudentStageResult.create_instance(
+                student_id=student_id,
+                output=service_result.output,
+            )
+        )

@@ -1,14 +1,20 @@
-import json
 from contextlib import contextmanager
 
 from PyQt5.QtCore import QMutex
 
 from domain.models.settings import GlobalConfig
+from files.core.global_ import GlobalCoreIO
 from files.path_providers.global_ import GlobalPathProvider
 
 
 class GlobalConfigRepository:
-    def __init__(self, global_path_provider: GlobalPathProvider):
+    def __init__(
+            self,
+            *,
+            global_core_io: GlobalCoreIO,
+            global_path_provider: GlobalPathProvider,
+    ):
+        self._global_core_io = global_core_io
         self._global_path_provider = global_path_provider
 
         self.__model: GlobalConfig | None = None
@@ -28,21 +34,21 @@ class GlobalConfigRepository:
             if not json_fullpath.exists():
                 self.__model = GlobalConfig.create_default()
             else:
-                with json_fullpath.open(mode="r", encoding="utf-8") as f:
-                    self.__model = GlobalConfig.from_json(json.load(f))
+                self.__model = GlobalConfig.from_json(
+                    self._global_core_io.read_json(
+                        json_fullpath=json_fullpath,
+                    )
+                )
         assert self.__model is not None
         return self.__model
 
-    def _set_model_unlocked(self, model: GlobalConfig):
+    def _set_model_unlocked(self, model: GlobalConfig) -> None:
         self.__model = model
         json_fullpath = self._global_path_provider.global_settings_json_fullpath()
-        with json_fullpath.open(mode="w", encoding="utf-8") as f:
-            json.dump(
-                self.__model.to_json(),
-                f,
-                indent=2,
-                ensure_ascii=False,
-            )
+        self._global_core_io.write_json(
+            json_fullpath=json_fullpath,
+            body=self.__model.to_json(),
+        )
 
     def put(self, model: GlobalConfig) -> None:
         with self._lock():

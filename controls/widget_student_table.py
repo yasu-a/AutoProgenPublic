@@ -11,8 +11,8 @@ from application.dependency.services import get_student_progress_check_timestamp
 from application.dependency.usecases import get_student_id_list_usecase, \
     get_student_submission_folder_show_usecase, get_student_table_get_student_id_cell_data_usecase, \
     get_student_table_get_student_name_cell_data_usecase, \
-    get_student_table_get_student_stage_state_cell_data_use_case, \
-    get_student_table_get_student_error_cell_data_use_case
+    get_student_table_get_student_stage_state_cell_data_usecase, \
+    get_student_table_get_student_error_cell_data_usecase
 from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
 from domain.models.stages import BuildStage, CompileStage, ExecuteStage, TestStage
 from domain.models.values import StudentID
@@ -87,15 +87,17 @@ class StudentTableModelDataProvider:
         column=StudentTableColumns.COL_STUDENT_ID,
     )
     def get_data_of_student_id_cell(self, student_id: StudentID, role: QtRoleType):
-        cell_data = get_student_table_get_student_id_cell_data_usecase().execute(student_id)
         if role == Qt.DisplayRole:
+            cell_data = get_student_table_get_student_id_cell_data_usecase().execute(student_id)
             return cell_data.student_number
         elif role == Qt.FontRole:
+            cell_data = get_student_table_get_student_id_cell_data_usecase().execute(student_id)
             if cell_data.is_submission_folder_link_alive:
                 return self._font_link_text()
             else:
                 return self._font_dead_link_text()
         elif role == Qt.ForegroundRole:
+            cell_data = get_student_table_get_student_id_cell_data_usecase().execute(student_id)
             if cell_data.is_submission_folder_link_alive:
                 return self._foreground_link_text()
             else:
@@ -105,12 +107,12 @@ class StudentTableModelDataProvider:
         column=StudentTableColumns.COL_NAME,
     )
     def get_data_of_student_name_cell(self, student_id: StudentID, role: QtRoleType):
-        cell_data = get_student_table_get_student_name_cell_data_usecase().execute(student_id)
         if role == Qt.DisplayRole:
+            cell_data = get_student_table_get_student_name_cell_data_usecase().execute(student_id)
             return cell_data.student_name
 
     _STAGE_STATE_TEXT_MAPPING = {
-        StudentStageStateCellDataStageState.UNFINISHED: "  ",
+        StudentStageStateCellDataStageState.UNFINISHED: "―",
         StudentStageStateCellDataStageState.FINISHED_SUCCESS: "✔",
         StudentStageStateCellDataStageState.FINISHED_FAILURE: "☠",
     }
@@ -120,39 +122,39 @@ class StudentTableModelDataProvider:
     )
     def get_data_of_stage_build_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            cell_data = get_student_table_get_student_stage_state_cell_data_use_case().execute(
+            cell_data = get_student_table_get_student_stage_state_cell_data_usecase().execute(
                 student_id=student_id,
                 stage_type=BuildStage,
             )
-            return "/".join(
-                self._STAGE_STATE_TEXT_MAPPING[state]
-                for state in cell_data.states.values()
-            )
+            for target_state, text in self._STAGE_STATE_TEXT_MAPPING.items():
+                if all(state == target_state for state in cell_data.states.values()):
+                    return text
+            return "？"
 
     @data_provider(
         column=StudentTableColumns.COL_STAGE_COMPILE,
     )
     def get_data_of_stage_compile_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            cell_data = get_student_table_get_student_stage_state_cell_data_use_case().execute(
+            cell_data = get_student_table_get_student_stage_state_cell_data_usecase().execute(
                 student_id=student_id,
                 stage_type=CompileStage,
             )
-            return "/".join(
-                self._STAGE_STATE_TEXT_MAPPING[state]
-                for state in cell_data.states.values()
-            )
+            for target_state, text in self._STAGE_STATE_TEXT_MAPPING.items():
+                if all(state == target_state for state in cell_data.states.values()):
+                    return text
+            return "？"
 
     @data_provider(
         column=StudentTableColumns.COL_STAGE_EXECUTE,
     )
     def get_display_stage_execute_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            cell_data = get_student_table_get_student_stage_state_cell_data_use_case().execute(
+            cell_data = get_student_table_get_student_stage_state_cell_data_usecase().execute(
                 student_id=student_id,
                 stage_type=ExecuteStage,
             )
-            return "/".join(
+            return " ".join(
                 self._STAGE_STATE_TEXT_MAPPING[state]
                 for state in cell_data.states.values()
             )
@@ -162,11 +164,11 @@ class StudentTableModelDataProvider:
     )
     def get_display_stage_test_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            cell_data = get_student_table_get_student_stage_state_cell_data_use_case().execute(
+            cell_data = get_student_table_get_student_stage_state_cell_data_usecase().execute(
                 student_id=student_id,
                 stage_type=TestStage,
             )
-            return "/".join(
+            return " ".join(
                 self._STAGE_STATE_TEXT_MAPPING[state]
                 for state in cell_data.states.values()
             )
@@ -175,7 +177,7 @@ class StudentTableModelDataProvider:
         column=StudentTableColumns.COL_ERROR,
     )
     def get_display_role_of_error(self, student_id: StudentID, role: QtRoleType):
-        cell_data = get_student_table_get_student_error_cell_data_use_case().execute(
+        cell_data = get_student_table_get_student_error_cell_data_usecase().execute(
             student_id=student_id,
         )
         if role == Qt.DisplayRole:

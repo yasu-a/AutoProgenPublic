@@ -4,7 +4,7 @@ from domain.models.values import StudentID
 from services.stage_path import StagePathListService
 from services.student_get import StudentGetService
 from services.student_stage_path_result import StudentStagePathResultGetService
-from services.student_submission_exist import StudentSubmissionExistService
+from services.student_submission import StudentSubmissionExistService
 from usecases.dto.student_table_cell_data import StudentIDCellData, StudentNameCellData, \
     StudentStageStateCellData, StudentStageStateCellDataStageState, StudentErrorCellData, \
     StudentErrorCellDataTextEntry
@@ -97,12 +97,15 @@ class StudentTableGetStudentErrorCellDataUseCase:
                 student_id=student_id,
                 stage_path=stage_path,
             )
-            text_entries.append(
-                StudentErrorCellDataTextEntry(
-                    summary_text=stage_path_result.get_main_reason() or "",
-                    detailed_text=stage_path_result.get_detailed_reason() or "",
+            summary_text = stage_path_result.get_main_reason() or ""
+            detailed_text = stage_path_result.get_detailed_reason() or ""
+            if summary_text or detailed_text:
+                text_entries.append(
+                    StudentErrorCellDataTextEntry(
+                        summary_text=summary_text,
+                        detailed_text=detailed_text,
+                    )
                 )
-            )
         return StudentErrorCellData(
             student_id=student_id,
             text_entries=text_entries,

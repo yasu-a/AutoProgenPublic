@@ -17,6 +17,7 @@ from files.repositories.testcase_config import TestCaseConfigRepository
 def get_global_config_repository():
     return GlobalConfigRepository(
         global_path_provider=get_global_path_provider(),
+        global_core_io=get_global_core_io(),
     )
 
 
@@ -50,6 +51,7 @@ def get_student_stage_result_repository():
     )
 
 
+@cache  # キャッシュを持つのでプロジェクト内ステートフル
 def get_testcase_config_repository():
     return TestCaseConfigRepository(
         testcase_config_path_provider=get_testcase_config_path_provider(),

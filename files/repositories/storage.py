@@ -1,7 +1,9 @@
+from datetime import datetime
 from pathlib import Path
 
-from domain.models.storage import Storage, StorageFileContentMapper, StorageFileItem, \
-    FileRelativePathListProducerType, FileContentMapperType, FileRelativePathExistsMapperType
+from domain.models.storage import Storage, StorageFileContentMapper, \
+    FileRelativePathListProducerType, FileContentMapperType, FileRelativePathExistsMapperType, \
+    FileRelativePathStatMapperType, StorageStat
 from domain.models.values import StorageID
 from files.core.current_project import CurrentProjectCoreIO
 from files.path_providers.current_project import StoragePathProvider
@@ -31,17 +33,14 @@ class StorageRepository:
 
     def __get_file_item_mapper(self, base_folder_fullpath: Path) \
             -> FileContentMapperType:
-        def file_item_mapper(file_relative_path: Path, ) -> StorageFileItem | None:
+        def file_item_mapper(file_relative_path: Path) -> bytes | None:
             file_fullpath = base_folder_fullpath / file_relative_path
-            if not file_relative_path.exists():
+            if not file_fullpath.exists():
                 return None
             content_bytes = self._current_project_core_io.read_file_content_bytes(
                 file_fullpath=file_fullpath,
             )
-            return StorageFileItem(
-                relative_path=file_relative_path,
-                content_bytes=content_bytes,
-            )
+            return content_bytes
 
         return file_item_mapper
 
@@ -55,6 +54,21 @@ class StorageRepository:
             return file_fullpath.exists()
 
         return file_relative_path_exists_mapper
+
+    # noinspection PyMethodMayBeStatic
+    def __get_file_relative_path_stat_mapper(self, base_folder_fullpath: Path) \
+            -> FileRelativePathStatMapperType:
+        def file_relative_path_stat_mapper(file_relative_path: Path) -> StorageStat | None:
+            file_fullpath = base_folder_fullpath / file_relative_path
+            if not file_fullpath.exists():
+                return None
+            stat = file_fullpath.stat()
+            return StorageStat(
+                size=stat.st_size,
+                mtime=datetime.fromtimestamp(stat.st_mtime),
+            )
+
+        return file_relative_path_stat_mapper
 
     @transactional_with("storge_id")
     def create(self, storage_id: StorageID) -> Storage:
@@ -76,7 +90,10 @@ class StorageRepository:
                 ),
                 file_relative_path_exists_mapper=self.__get_file_relative_path_exists_mapper(
                     base_folder_fullpath,
-                )
+                ),
+                file_relative_path_stat_mapper=self.__get_file_relative_path_stat_mapper(
+                    base_folder_fullpath
+                ),
             )
         )
         return storage
@@ -103,7 +120,10 @@ class StorageRepository:
                 ),
                 file_relative_path_exists_mapper=self.__get_file_relative_path_exists_mapper(
                     base_folder_fullpath,
-                )
+                ),
+                file_relative_path_stat_mapper=self.__get_file_relative_path_stat_mapper(
+                    base_folder_fullpath
+                ),
             )
         )
         return storage

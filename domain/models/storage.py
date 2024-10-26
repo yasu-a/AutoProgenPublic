@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Callable, Iterable, Literal
 
@@ -18,9 +19,19 @@ class _StorageFileItemCacheEntry:
     is_deleted: bool
 
 
-FileRelativePathListProducerType = Callable[[], list[Path]]
-FileContentMapperType = Callable[[Path], bytes | None]
+@dataclass(frozen=True)
+class StorageStat:
+    size: int
+    mtime: datetime
+
+
+FileRelativePathListProducerType = Callable[[], list[Path]]  # ^, Path: relative file path
+FileContentMapperType = Callable[[Path], bytes | None]  # ^
 FileRelativePathExistsMapperType = Callable[[Path], bool]
+FileRelativePathStatMapperType = Callable[[Path], StorageStat | None]  # ^
+
+
+# ^ returns None if file not found
 
 
 class StorageFileContentMapper:
@@ -30,16 +41,18 @@ class StorageFileContentMapper:
     def __init__(
             self,
             file_relative_path_list_producer: FileRelativePathListProducerType,
-            file_content_mapper: FileContentMapperType,  # Path: file relative path
+            file_content_mapper: FileContentMapperType,
             file_relative_path_exists_mapper: FileRelativePathExistsMapperType,
-            # file_item_producer returns None if file not found
+            file_relative_path_stat_mapper: FileRelativePathStatMapperType,
     ):
         self._file_relative_path_list_producer = file_relative_path_list_producer
-        self._file_content_mapper = file_content_mapper  # file_item_producer returns None if file not found
+        self._file_content_mapper = file_content_mapper
         self._file_relative_path_exists_mapper = file_relative_path_exists_mapper
+        self._file_relative_path_stat_mapper = file_relative_path_stat_mapper
 
-        self._cache: dict[Path, _StorageFileItemCacheEntry] = {}  # None if file is deleted
-        # Path: relative file path
+        self._cache: dict[Path, _StorageFileItemCacheEntry] = {}
+        # ^ None if file is deleted
+        # ^ Path: relative file path
 
     def __contains__(self, relative_file_path: Path) -> bool:
         if relative_file_path in self._cache:
@@ -88,6 +101,10 @@ class StorageFileContentMapper:
                     is_deleted=False,
                 )
                 return self._cache[relative_file_path].file_item.content_bytes
+
+    def stat(self, relative_file_path: Path) -> StorageStat | None:
+        # 実際にファイルが存在するディスク上（キャッシュをスキップ）のファイルのstatを取得する
+        return self._file_relative_path_stat_mapper(relative_file_path)
 
     def __setitem__(self, file_relative_path: Path, content_bytes: bytes) -> None:
         self._cache[file_relative_path] = _StorageFileItemCacheEntry(

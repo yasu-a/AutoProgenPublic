@@ -78,6 +78,7 @@ def launch_new_project(new_project_config: NewProjectConfig) -> MainWindow:
 
 def main():
     set_debug(True)
+    # app_logging.set_level(app_logging.INFO)
 
     # QApplicationを生成
     app = create_app()

@@ -1,7 +1,7 @@
 from typing import Callable
 
 from services.student_master_create import StudentMasterCreateService
-from services.student_submission_extract import StudentSubmissionExtractService
+from services.student_submission import StudentSubmissionExtractService
 
 
 class ProjectStaticInitializeUseCase:

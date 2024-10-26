@@ -3,6 +3,7 @@ import itertools
 import json
 import os
 import shutil
+from datetime import datetime
 from pathlib import Path
 from typing import Optional, Any, Iterable
 
@@ -190,6 +191,7 @@ class ProjectCoreIO:
             project_id=project_id,
             path=json_fullpath,
         )
+        self._logger.debug(f"write_json({project_id=}, {json_fullpath=})")
         json_fullpath.parent.mkdir(parents=True, exist_ok=True)
         with json_fullpath.open(mode="w", encoding="utf-8") as f:
             json.dump(
@@ -210,6 +212,7 @@ class ProjectCoreIO:
             project_id=project_id,
             path=json_fullpath,
         )
+        self._logger.debug(f"read_json({project_id=}, {json_fullpath=})")
         with json_fullpath.open(mode="r", encoding="utf-8") as f:
             return json.load(f)
 
@@ -225,6 +228,7 @@ class ProjectCoreIO:
             project_id=project_id,
             path=file_fullpath,
         )
+        self._logger.debug(f"touch({project_id=}, {file_fullpath=})")
         file_fullpath.parent.mkdir(parents=True, exist_ok=True)
         with file_fullpath.open(mode="wb") as f:
             f.write(content_bytes)
@@ -240,6 +244,7 @@ class ProjectCoreIO:
             project_id=project_id,
             path=file_fullpath,
         )
+        self._logger.debug(f"read_file_content_str({project_id=}, {file_fullpath=})")
         with file_fullpath.open(mode="r", encoding="utf-8") as f:
             return f.read()
 
@@ -254,6 +259,7 @@ class ProjectCoreIO:
             project_id=project_id,
             path=file_fullpath
         )
+        self._logger.debug(f"read_file_content_bytes({project_id=}, {file_fullpath=})")
         with file_fullpath.open(mode="rb") as f:
             return f.read()
 
@@ -269,11 +275,12 @@ class ProjectCoreIO:
             project_id=project_id,
             path=file_fullpath,
         )
+        self._logger.debug(f"write_file_content_bytes({project_id=}, {file_fullpath=})")
         assert isinstance(content_bytes, bytes), type(content_bytes)
         with file_fullpath.open(mode="wb") as f:
             f.write(content_bytes)
 
-    def calculate_folder_hash(
+    def calculate_folder_checksum(
             self,
             *,
             project_id: ProjectID,
@@ -321,3 +328,15 @@ class ProjectCoreIO:
                     yield file_fullpath
                 else:
                     yield file_fullpath.relative_to(folder_fullpath)
+
+    def get_file_mtime(
+            self,
+            *,
+            project_id: ProjectID,
+            file_fullpath: Path,
+    ) -> datetime:
+        self.__check_file_location(
+            project_id=project_id,
+            path=file_fullpath,
+        )
+        return datetime.fromtimestamp(file_fullpath.stat().st_mtime)

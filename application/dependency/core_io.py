@@ -26,5 +26,5 @@ def get_current_project_core_io():
 
 def get_student_folder_show_in_explorer_io():
     return StudentFolderShowInExplorerIO(
-        report_submission_path_provider=get_report_submission_path_provider(),
+        student_submission_path_provider=get_student_submission_path_provider(),
     )

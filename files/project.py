@@ -1,11 +1,10 @@
 import functools
-import re
 from pathlib import Path
 
 from app_logging import create_logger
 from domain.errors import ProjectIOError
 from domain.models.project_config import ProjectConfig
-from domain.models.values import TargetID, StudentID
+from domain.models.values import StudentID
 from files.core.project import ProjectCoreIO
 from files.path_providers.project import ProjectPathProvider
 
@@ -46,54 +45,9 @@ class ProjectIO:  # TODO: BuildIO, CompileIO, ExecuteIOを分離する
         # 生徒の提出フォルダのハッシュを計算する
         submission_folder_fullpath \
             = self._student_report_path_provider.submission_folder_fullpath(student_id)
-        return self._project_core_io.calculate_folder_hash(
+        return self._project_core_io.calculate_folder_checksum(
             folder_fullpath=submission_folder_fullpath,
         )
-
-    def iter_student_source_file_relative_path_in_submission_folder(
-            self,
-            *,
-            student_id: StudentID,
-            target_id: TargetID,
-    ) -> list[Path]:  # returns paths relative to student submission folder
-        # 生徒の提出フォルダのソースコードと思われるファイルパスをイテレートする
-        student_submission_folder_fullpath \
-            = self._student_report_path_provider.submission_folder_fullpath(student_id)
-
-        source_file_fullpath_lst = []
-        for fullpath in student_submission_folder_fullpath.rglob("*.c"):
-            relative_path = fullpath.relative_to(student_submission_folder_fullpath)
-            assert fullpath.is_absolute(), fullpath
-            assert not relative_path.is_absolute(), fullpath
-
-            # Visual Studio のプロジェクトをそのまま出してくると名前が".c"で終わるフォルダができるので除く
-            if fullpath.is_dir():
-                continue
-
-            # MacユーザのZIPファイルに生成される"__MACOSX"フォルダは除く
-            if "__MACOSX" in relative_path.parts[:-1]:
-                continue
-
-            # 設問番号の抽出
-            numbers_str = re.findall(r"(?<!\()\d+(?!\))", relative_path.stem)
-            if len(numbers_str) > 1:
-                raise ProjectIOError(
-                    reason=f"ファイル名{relative_path!s}から設問番号を判別できません。\n"
-                           f"ファイル名に設問番号とみられる数字が複数含まれています: {', '.join(numbers_str)}",
-                )
-            elif len(numbers_str) == 0:
-                raise ProjectIOError(
-                    reason=f"ファイル名{relative_path!s}から設問番号を判別できません。\n"
-                           f"ファイル名に設問番号とみられる数字が含まれていません。",
-                )
-            number = int(numbers_str[0])
-
-            # 該当する設問の場合は結果に追加
-            if TargetID(number) != target_id:
-                continue
-            source_file_fullpath_lst.append(relative_path)
-
-        return source_file_fullpath_lst
 
     def get_student_submission_file_content_bytes(self, student_id: StudentID,
                                                   relative_path: Path) -> bytes:

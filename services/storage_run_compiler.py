@@ -26,6 +26,7 @@ class StorageRunCompilerService:
 
     def execute(
             self,
+            *,
             storage_id: StorageID,
             source_file_relative_path: Path,
             compiler_tool_fullpath: Path = None,
@@ -43,7 +44,7 @@ class StorageRunCompilerService:
         storage = self._storage_repo.get(storage_id)
         if source_file_relative_path not in storage.files:
             raise StorageRunCompilerServiceError(
-                reason=f"コンパイル対象が存在しません",
+                reason="コンパイル対象が存在しません",
                 output=None,
             )
 

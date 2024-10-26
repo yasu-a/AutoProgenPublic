@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 from domain.models.stage_path import StagePath
 from domain.models.student_stage_path_result import StudentStagePathResult
 from files.repositories.student_stage_result import *
@@ -16,7 +18,7 @@ class StudentStagePathResultGetService:
 
     def execute(self, student_id: StudentID, stage_path: StagePath) \
             -> StudentStagePathResult | None:
-        stage_results: dict[AbstractStage, AbstractStudentStageResult | None] = {}
+        stage_results: OrderedDict[AbstractStage, AbstractStudentStageResult | None] = OrderedDict()
         for stage in stage_path:
             is_finished = self._student_stage_result_repo.exists(
                 student_id=student_id,

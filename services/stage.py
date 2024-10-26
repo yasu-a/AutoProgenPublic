@@ -1,5 +1,5 @@
 from domain.models.stages import AbstractStage, BuildStage, CompileStage, ExecuteStage, TestStage
-from services.testcase import TestCaseListIDSubService
+from services.testcase_config import TestCaseConfigListIDSubService
 
 
 class StageListRootSubService:
@@ -21,16 +21,16 @@ class StageListChildSubService:
     def __init__(
             self,
             *,
-            testcase_list_id_sub_service: TestCaseListIDSubService,
+            testcase_config_list_id_sub_service: TestCaseConfigListIDSubService,
     ):
-        self._testcase_list_id_sub_service = testcase_list_id_sub_service
+        self._testcase_config_list_id_sub_service = testcase_config_list_id_sub_service
 
     def execute(self, stage: AbstractStage) -> list[AbstractStage]:
         # returns None if the stage is the last stage
         if isinstance(stage, BuildStage):
             return [CompileStage()]
         elif isinstance(stage, CompileStage):
-            testcase_ids = self._testcase_list_id_sub_service.execute()
+            testcase_ids = self._testcase_config_list_id_sub_service.execute()
             return [ExecuteStage(testcase_id) for testcase_id in testcase_ids]
         elif isinstance(stage, ExecuteStage):
             return [TestStage(stage.testcase_id)]

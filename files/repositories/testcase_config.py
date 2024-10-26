@@ -1,4 +1,7 @@
+from contextlib import contextmanager
 from typing import Iterable
+
+from PyQt5.QtCore import QMutex
 
 from domain.models.execute_config import TestCaseExecuteConfig
 from domain.models.test_config import TestCaseTestConfig
@@ -18,6 +21,17 @@ class TestCaseConfigRepository:
     ):
         self._testcase_config_path_provider = testcase_config_path_provider
         self._current_project_core_io = current_project_core_io
+
+        self._lock = QMutex()
+        self._testcase_cache: dict[TestCaseID, TestCaseConfig] = {}
+
+    @contextmanager
+    def __lock(self):
+        self._lock.lock()
+        try:
+            yield
+        finally:
+            self._lock.unlock()
 
     def __ensure_testcase_folder_exists(self, testcase_id: TestCaseID) -> None:
         testcase_folder_fullpath = self._testcase_config_path_provider.testcase_folder_fullpath(
@@ -63,14 +77,18 @@ class TestCaseConfigRepository:
 
     @transactional_with(testcase_id=lambda args: args["testcase_config"].testcase_id)
     def put(self, testcase_config: TestCaseConfig):
-        self.__write_execute_config(
-            testcase_id=testcase_config.testcase_id,
-            execute_config=testcase_config.execute_config,
-        )
-        self.__write_test_config(
-            testcase_id=testcase_config.testcase_id,
-            test_config=testcase_config.test_config,
-        )
+        with self.__lock():
+            if testcase_config.testcase_id in self._testcase_cache:
+                del self._testcase_cache[testcase_config.testcase_id]
+
+            self.__write_execute_config(
+                testcase_id=testcase_config.testcase_id,
+                execute_config=testcase_config.execute_config,
+            )
+            self.__write_test_config(
+                testcase_id=testcase_config.testcase_id,
+                test_config=testcase_config.test_config,
+            )
 
     def __read_execute_config(self, testcase_id: TestCaseID) -> TestCaseExecuteConfig:
         json_fullpath = self._testcase_config_path_provider.execute_config_json_fullpath(
@@ -92,49 +110,62 @@ class TestCaseConfigRepository:
 
     @transactional_with("testcase_id")
     def exists(self, testcase_id: TestCaseID) -> bool:
-        return any(
-            str(testcase_id) in testcase_folder_name
-            for testcase_folder_name in self.__iter_testcase_folder_names()
-        )
+        with self.__lock():
+            return any(
+                str(testcase_id) in testcase_folder_name
+                for testcase_folder_name in self.__iter_testcase_folder_names()
+            )
 
     @transactional_with("testcase_id")
     def get(self, testcase_id: TestCaseID) -> TestCaseConfig:
-        execute_config = self.__read_execute_config(testcase_id=testcase_id)
-        test_config = self.__read_test_config(testcase_id=testcase_id)
-        return TestCaseConfig(
-            testcase_id=testcase_id,
-            execute_config=execute_config,
-            test_config=test_config,
-        )
+        with self.__lock():
+            if testcase_id not in self._testcase_cache:
+                execute_config = self.__read_execute_config(testcase_id=testcase_id)
+                test_config = self.__read_test_config(testcase_id=testcase_id)
+                self._testcase_cache[testcase_id] = TestCaseConfig(
+                    testcase_id=testcase_id,
+                    execute_config=execute_config,
+                    test_config=test_config,
+                )
+            return self._testcase_cache[testcase_id]
 
     @transactional
     def list(self) -> list[TestCaseConfig]:
         return [
             self.get(TestCaseID(folder_name))
-            for folder_name in self.__iter_testcase_folder_names()
+            for folder_name in sorted(self.__iter_testcase_folder_names())
         ]
 
-    def __delete_execute_config(self, testcase_id: TestCaseID) -> None:
-        json_fullpath = self._testcase_config_path_provider.execute_config_json_fullpath(
-            testcase_id=testcase_id,
-        )
-        if not json_fullpath.exists():
-            raise FileNotFoundError("Execute config file does not exist")
-        self._current_project_core_io.unlink(
-            path=json_fullpath,
-        )
-
-    def __delete_test_config(self, testcase_id: TestCaseID) -> None:
-        json_fullpath = self._testcase_config_path_provider.test_config_json_fullpath(
-            testcase_id=testcase_id,
-        )
-        if not json_fullpath.exists():
-            raise FileNotFoundError("Test config file does not exist")
-        self._current_project_core_io.unlink(
-            path=json_fullpath,
-        )
+    # def __delete_execute_config(self, testcase_id: TestCaseID) -> None:
+    #     json_fullpath = self._testcase_config_path_provider.execute_config_json_fullpath(
+    #         testcase_id=testcase_id,
+    #     )
+    #     if not json_fullpath.exists():
+    #         raise FileNotFoundError("Execute config file does not exist")
+    #     self._current_project_core_io.unlink(
+    #         path=json_fullpath,
+    #     )
+    #
+    # def __delete_test_config(self, testcase_id: TestCaseID) -> None:
+    #     json_fullpath = self._testcase_config_path_provider.test_config_json_fullpath(
+    #         testcase_id=testcase_id,
+    #     )
+    #     if not json_fullpath.exists():
+    #         raise FileNotFoundError("Test config file does not exist")
+    #     self._current_project_core_io.unlink(
+    #         path=json_fullpath,
+    #     )
 
     @transactional_with("testcase_id")
     def delete(self, testcase_id: TestCaseID) -> None:
-        self.__delete_execute_config(testcase_id=testcase_id)
-        self.__delete_test_config(testcase_id=testcase_id)
+        with self.__lock():
+            del self._testcase_cache[testcase_id]
+
+            base_folder_fullpath = self._testcase_config_path_provider.testcase_folder_fullpath(
+                testcase_id=testcase_id,
+            )
+            if not base_folder_fullpath.exists():
+                raise FileNotFoundError("Test case does not exist")
+            self._current_project_core_io.rmtree_folder(
+                path=base_folder_fullpath,
+            )

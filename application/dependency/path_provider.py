@@ -3,7 +3,7 @@ from pathlib import Path
 
 from application.state.current_project import get_current_project_id
 from files.path_providers.current_project import DynamicPathProvider, StudentDynamicPathProvider, \
-    StudentStageResultPathProvider, ProjectStaticPathProvider, ReportSubmissionPathProvider, \
+    StudentStageResultPathProvider, ProjectStaticPathProvider, StudentSubmissionPathProvider, \
     TestCaseConfigPathProvider, StudentMarkPathProvider, StoragePathProvider
 from files.path_providers.global_ import GlobalPathProvider
 from files.path_providers.project import ProjectListPathProvider, ProjectPathProvider
@@ -73,7 +73,7 @@ def get_project_static_path_provider():
     )
 
 
-def get_report_submission_path_provider():
-    return ReportSubmissionPathProvider(
+def get_student_submission_path_provider():
+    return StudentSubmissionPathProvider(
         project_static_path_provider=get_project_static_path_provider(),
     )

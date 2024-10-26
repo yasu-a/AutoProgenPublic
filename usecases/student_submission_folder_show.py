@@ -1,6 +1,5 @@
 from domain.models.values import StudentID
-from services.student_submission_folder_show import \
-    StudentSubmissionFolderShowService
+from services.student_submission import StudentSubmissionFolderShowService
 
 
 class StudentSubmissionFolderShowUseCase:

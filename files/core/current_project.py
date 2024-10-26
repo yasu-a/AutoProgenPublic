@@ -1,11 +1,15 @@
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional, Iterable
 
+from app_logging import create_logger
 from domain.models.values import ProjectID
 from files.core.project import ProjectCoreIO
 
 
 class CurrentProjectCoreIO:
+    _logger = create_logger()
+
     def __init__(
             self,
             *,
@@ -147,12 +151,12 @@ class CurrentProjectCoreIO:
             content_bytes=content_bytes,
         )
 
-    def calculate_folder_hash(
+    def calculate_folder_checksum(
             self,
             *,
             folder_fullpath: Path,
     ) -> int:
-        return self._project_core_io.calculate_folder_hash(
+        return self._project_core_io.calculate_folder_checksum(
             project_id=self._current_project_id,
             folder_fullpath=folder_fullpath,
         )
@@ -167,4 +171,14 @@ class CurrentProjectCoreIO:
             project_id=self._current_project_id,
             folder_fullpath=folder_fullpath,
             return_absolute=return_absolute,
+        )
+
+    def get_file_mtime(
+            self,
+            *,
+            file_fullpath: Path,
+    ) -> datetime:
+        return self._project_core_io.get_file_mtime(
+            project_id=self._current_project_id,
+            file_fullpath=file_fullpath,
         )

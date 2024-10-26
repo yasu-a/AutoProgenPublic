@@ -22,12 +22,23 @@ class StudentStageResultRepository:
     ) -> str:
         return result_type.__name__
 
+    RESULT_TYPES = (
+        BuildSuccessStudentStageResult,
+        BuildFailureStudentStageResult,
+        CompileSuccessStudentStageResult,
+        CompileFailureStudentStageResult,
+        ExecuteSuccessStudentStageResult,
+        ExecuteFailureStudentStageResult,
+        TestSuccessStudentStageResult,
+        TestFailureStudentStageResult,
+    )
+
     @classmethod
     def __get_result_type_from_type_name(
             cls,
             result_type_name: str,
     ) -> type[AbstractStudentStageResult]:
-        for sub_cls in AbstractStudentStageResult.__subclasses__():
+        for sub_cls in cls.RESULT_TYPES:
             if result_type_name == cls.__get_type_name_of_result_type(sub_cls):
                 return sub_cls
         assert False, result_type_name

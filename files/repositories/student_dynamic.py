@@ -40,7 +40,7 @@ class StudentDynamicRepository:
             student_id=student_id,
             file_item_type=type(file_item),
         )
-        file_fullpath.mkdir(parents=True, exist_ok=True)
+        file_fullpath.parent.mkdir(parents=True, exist_ok=True)
         self._current_project_core_io.write_file_content_bytes(
             file_fullpath=file_fullpath,
             content_bytes=file_item.content_bytes,
@@ -60,7 +60,8 @@ class StudentDynamicRepository:
         )
         if file_item_type is SourceFileItem:
             return SourceFileItem(
-                content_text=content_bytes.decode("utf-8"),
+                content_bytes=content_bytes,
+                encoding="utf-8",
             )
         elif file_item_type is ExecutableFileItem:
             return ExecutableFileItem(
@@ -68,6 +69,15 @@ class StudentDynamicRepository:
             )
         else:
             assert False, file_item_type
+
+    @transactional_with("student_id")
+    def exists(self, student_id: StudentID, file_item_type: type[StudentDynamicFileItemType]) \
+            -> bool:
+        file_fullpath = self.__get_file_item_fullpath(
+            student_id=student_id,
+            file_item_type=file_item_type,
+        )
+        return file_fullpath.exists()
 
     @transactional_with("student_id")
     def list(self, student_id: StudentID) -> list[StudentDynamicFileItemType]:

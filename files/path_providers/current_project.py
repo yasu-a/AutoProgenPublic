@@ -68,7 +68,7 @@ class DynamicPathProvider:
         )
 
     def io_session_fullpath(self) -> Path:
-        return self.base_folder_fullpath() / "sessions"
+        return self.base_folder_fullpath() / "storage"
 
     def student_folder_fullpath(self) -> Path:
         return self.base_folder_fullpath() / "students"
@@ -144,7 +144,7 @@ class ProjectStaticPathProvider:
         return self.base_folder_fullpath() / "reports"
 
 
-class ReportSubmissionPathProvider:
+class StudentSubmissionPathProvider:
     def __init__(self, *, project_static_path_provider: ProjectStaticPathProvider):
         self._project_static_path_provider = project_static_path_provider
 

@@ -36,6 +36,11 @@ class StorageRunCompilerServiceError(RuntimeError):
         self.output = output
 
 
+class StorageRunExecutableServiceError(RuntimeError):
+    def __init__(self, *, reason: str):
+        self.reason = reason
+
+
 class ExecuteServiceError(RuntimeError):
     def __init__(self, *, reason: str):
         self.reason = reason
