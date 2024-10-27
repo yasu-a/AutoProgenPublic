@@ -8,8 +8,8 @@ import pandas as pd
 from domain.errors import ManabaReportArchiveIOError, ServiceError
 from domain.models.student_master import StudentMaster, Student
 from domain.models.values import StudentID
-from files.external.report_archive import ManabaReportArchiveIO
-from files.repositories.student import StudentRepository
+from infra.external.report_archive import ManabaReportArchiveIO
+from infra.repositories.student import StudentRepository
 
 
 class _UnexpectedStudentMasterExcelError(RuntimeError):

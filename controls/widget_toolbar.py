@@ -22,6 +22,10 @@ class ToolBar(QToolBar):
         a.setObjectName("run")
         self.addAction(a)
 
+        a = QAction(icon("stop"), "中断", self)
+        a.setObjectName("stop")
+        self.addAction(a)
+
         a = QAction(icon("delete"), "クリア", self)
         a.setObjectName("clear")
         self.addAction(a)

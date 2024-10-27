@@ -1,5 +1,5 @@
 from domain.models.values import StorageID
-from files.repositories.storage import StorageRepository
+from infra.repositories.storage import StorageRepository
 from services.dto.storage_diff_snapshot import StorageDiffSnapshotFileEntry, StorageFileSnapshot
 
 

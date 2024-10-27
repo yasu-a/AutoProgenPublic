@@ -1,7 +1,7 @@
 import os
 
 from domain.models.values import StudentID
-from files.path_providers.current_project import StudentSubmissionPathProvider
+from infra.path_providers.current_project import StudentSubmissionPathProvider
 
 
 class StudentFolderShowInExplorerIO:

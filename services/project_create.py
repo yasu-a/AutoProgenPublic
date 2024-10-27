@@ -2,7 +2,7 @@ from datetime import datetime
 
 from domain.models.project import Project
 from domain.models.values import TargetID, ProjectID
-from files.repositories.project import ProjectRepository
+from infra.repositories.project import ProjectRepository
 
 
 class ProjectCreateService:

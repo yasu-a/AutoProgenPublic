@@ -4,7 +4,7 @@ from domain.errors import StorageRunExecutableServiceError
 from domain.models.student_stage_result import ExecuteFailureStudentStageResult, \
     ExecuteSuccessStudentStageResult
 from domain.models.values import StudentID, TestCaseID
-from files.repositories.student_stage_result import StudentStageResultRepository
+from infra.repositories.student_stage_result import StudentStageResultRepository
 from services.dto.storage_diff_snapshot import StorageDiff
 from services.output_files import OutputFilesCreateFromStorageDiffService
 from services.storage import StorageCreateService, StorageDeleteService, \
@@ -92,7 +92,7 @@ class StudentRunExecuteStageUseCase:
                 timeout=execute_options.timeout,
             )
         except StorageRunExecutableServiceError as e:
-            # 失敗したら異常終了の結果を書きこんで終了
+            # 失敗したら異常終了の結果を書きこむ
             self._student_stage_result_repo.put(
                 result=ExecuteFailureStudentStageResult.create_instance(
                     student_id=student_id,
@@ -102,40 +102,41 @@ class StudentRunExecuteStageUseCase:
             )
             return
         else:
+            # 標準出力を書きこむ
             self._storage_write_stdout_file_service.execute(
                 storage_id=storage_id,
                 stdout_text=service_result.stdout_text,
             )
 
-        # ストレージ領域の構成のスナップショットをとる
-        storage_snapshot_after_run = self._storage_take_snapshot_service.execute(
-            storage_id=storage_id,
-        )
-
-        # スナップショットから差分を生成して出力ファイルを特定
-        storage_diff = StorageDiff.from_snapshots(
-            old_snapshot=storage_snapshot_before_run,
-            new_snapshot=storage_snapshot_after_run,
-        )
-        output_files = self._output_files_create_from_storage_diff_service.execute(
-            storage_id=storage_id,
-            storage_diff=storage_diff,
-        )
-
-        # ストレージ領域を解放
-        self._storage_delete_service.execute(
-            storage_id=storage_id,
-        )
-
-        # 正常終了の結果を書きこんで終了
-        execute_config_mtime = self._testcase_config_get_execute_config_mtime_service.execute(
-            testcase_id=testcase_id,
-        )
-        self._student_stage_result_repo.put(
-            result=ExecuteSuccessStudentStageResult.create_instance(
-                student_id=student_id,
-                testcase_id=testcase_id,
-                execute_config_mtime=execute_config_mtime,
-                output_files=output_files,
+            # ストレージ領域の構成のスナップショットをとる
+            storage_snapshot_after_run = self._storage_take_snapshot_service.execute(
+                storage_id=storage_id,
             )
-        )
+
+            # スナップショットから差分を生成して出力ファイルを特定
+            storage_diff = StorageDiff.from_snapshots(
+                old_snapshot=storage_snapshot_before_run,
+                new_snapshot=storage_snapshot_after_run,
+            )
+            output_files = self._output_files_create_from_storage_diff_service.execute(
+                storage_id=storage_id,
+                storage_diff=storage_diff,
+            )
+
+            # 正常終了の結果を書きこむ
+            execute_config_mtime = self._testcase_config_get_execute_config_mtime_service.execute(
+                testcase_id=testcase_id,
+            )
+            self._student_stage_result_repo.put(
+                result=ExecuteSuccessStudentStageResult.create_instance(
+                    student_id=student_id,
+                    testcase_id=testcase_id,
+                    execute_config_mtime=execute_config_mtime,
+                    output_files=output_files,
+                )
+            )
+        finally:
+            # ストレージ領域を解放
+            self._storage_delete_service.execute(
+                storage_id=storage_id,
+            )

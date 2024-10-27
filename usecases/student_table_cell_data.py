@@ -1,7 +1,7 @@
 from domain.models.stage_path import StagePath
 from domain.models.stages import AbstractStage
 from domain.models.values import StudentID
-from services.stage_path import StagePathListService
+from services.stage_path import StagePathListSubService
 from services.student_get import StudentGetService
 from services.student_stage_path_result import StudentStagePathResultGetService
 from services.student_submission import StudentSubmissionExistService
@@ -48,16 +48,16 @@ class StudentTableGetStudentStageStateCellDataUseCase:
     def __init__(
             self,
             *,
-            stage_path_list_service: StagePathListService,
+            stage_path_list_sub_service: StagePathListSubService,
             student_stage_path_result_get_service: StudentStagePathResultGetService,
 
     ):
-        self._stage_path_list_service = stage_path_list_service
+        self._stage_path_list_sub_service = stage_path_list_sub_service
         self._student_stage_path_result_get_service = student_stage_path_result_get_service
 
     def execute(self, student_id: StudentID, stage_type: type[AbstractStage]) \
             -> StudentStageStateCellData:
-        stage_paths = self._stage_path_list_service.execute()
+        stage_paths = self._stage_path_list_sub_service.execute()
         states: dict[StagePath, StudentStageStateCellDataStageState] = {}
         for stage_path in stage_paths:
             stage_path_result = self._student_stage_path_result_get_service.execute(
@@ -83,14 +83,14 @@ class StudentTableGetStudentErrorCellDataUseCase:
     def __init__(
             self,
             *,
-            stage_path_list_service: StagePathListService,
+            stage_path_list_sub_service: StagePathListSubService,
             student_stage_path_result_get_service: StudentStagePathResultGetService,
     ):
-        self._stage_path_list_service = stage_path_list_service
+        self._stage_path_list_sub_service = stage_path_list_sub_service
         self._student_stage_path_result_get_service = student_stage_path_result_get_service
 
     def execute(self, student_id: StudentID) -> StudentErrorCellData:
-        stage_paths = self._stage_path_list_service.execute()
+        stage_paths = self._stage_path_list_sub_service.execute()
         text_entries = []
         for stage_path in stage_paths:
             stage_path_result = self._student_stage_path_result_get_service.execute(

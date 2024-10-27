@@ -2,8 +2,8 @@ from pathlib import Path
 
 from domain.errors import StorageRunExecutableServiceError
 from domain.models.values import StorageID, FileID
-from files.external.executable import ExecutableIOTimeoutError, ExecutableIO
-from files.repositories.storage import StorageRepository
+from infra.external.executable import ExecutableIOTimeoutError, ExecutableIO
+from infra.repositories.storage import StorageRepository
 from services.dto.storage_run_executable import StorageExecuteServiceResult
 
 
@@ -39,11 +39,11 @@ class StorageRunExecutableService:
             timeout=timeout,
         )
         # 標準入力にリダイレクトするファイルのパス
-        input_file_relative_path = FileID.STDIN.deployment_relative_path
-        if not input_file_relative_path.exists():
+        input_file_fullpath = storage.base_folder_fullpath / FileID.STDIN.deployment_relative_path
+        if not input_file_fullpath.exists():
             kwargs["input_file_fullpath"] = None
         else:
-            kwargs["input_file_fullpath"] = storage.base_folder_fullpath / input_file_relative_path
+            kwargs["input_file_fullpath"] = input_file_fullpath
 
         # 実行ファイルの実行
         try:

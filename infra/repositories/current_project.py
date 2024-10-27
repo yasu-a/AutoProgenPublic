@@ -1,7 +1,7 @@
 from domain.errors import ProjectIOError
 from domain.models.project import Project
 from domain.models.values import ProjectID
-from files.repositories.project import ProjectRepository
+from infra.repositories.project import ProjectRepository
 
 
 class CurrentProjectRepository:

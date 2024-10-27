@@ -1,5 +1,5 @@
 from domain.models.student_master import StudentMaster
-from files.repositories.student import StudentRepository
+from infra.repositories.student import StudentRepository
 
 
 class StudentListService:

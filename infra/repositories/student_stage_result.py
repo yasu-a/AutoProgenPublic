@@ -1,7 +1,7 @@
 from domain.models.student_stage_result import *
 from domain.models.values import StudentID
-from files.core.current_project import CurrentProjectCoreIO
-from files.path_providers.current_project import StudentStageResultPathProvider
+from infra.core.current_project import CurrentProjectCoreIO
+from infra.path_providers.current_project import StudentStageResultPathProvider
 from transaction import transactional_with
 
 

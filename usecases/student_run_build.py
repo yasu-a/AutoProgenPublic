@@ -1,7 +1,7 @@
 from domain.models.student_stage_result import BuildSuccessStudentStageResult, \
     BuildFailureStudentStageResult
 from domain.models.values import StudentID
-from files.repositories.student_stage_result import StudentStageResultRepository
+from infra.repositories.student_stage_result import StudentStageResultRepository
 from services.student_dynamic import StudentDynamicSetSourceContentService, \
     StudentDynamicClearService
 from services.student_submission import StudentSubmissionGetSourceContentService, \
@@ -41,28 +41,27 @@ class StudentRunBuildStageUseCase:
                 student_id=student_id,
             )
         except StudentSubmissionGetSourceFileServiceError as e:
-            # 失敗したら異常終了の結果を書きこんで終了
+            # 失敗したら異常終了の結果を書きこむ
             self._student_stage_result_repo.put(
                 result=BuildFailureStudentStageResult.create_instance(
                     student_id=student_id,
                     reason=e.reason,
                 )
             )
-            return
-
-        # ソースコードを動的データに配置
-        self._student_dynamic_set_source_content_service.execute(
-            student_id=student_id,
-            source_content_text=source_content_text,
-        )
-
-        # 正常終了の結果を書きこんで終了
-        submission_folder_checksum = self._student_submission_get_checksum_service.execute(
-            student_id=student_id,
-        )
-        self._student_stage_result_repo.put(
-            result=BuildSuccessStudentStageResult.create_instance(
+        else:
+            # ソースコードを動的データに配置
+            self._student_dynamic_set_source_content_service.execute(
                 student_id=student_id,
-                submission_folder_checksum=submission_folder_checksum,
+                source_content_text=source_content_text,
             )
-        )
+
+            # 正常終了の結果を書きこんで終了
+            submission_folder_checksum = self._student_submission_get_checksum_service.execute(
+                student_id=student_id,
+            )
+            self._student_stage_result_repo.put(
+                result=BuildSuccessStudentStageResult.create_instance(
+                    student_id=student_id,
+                    submission_folder_checksum=submission_folder_checksum,
+                )
+            )

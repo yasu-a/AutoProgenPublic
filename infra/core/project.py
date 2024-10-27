@@ -9,7 +9,7 @@ from typing import Optional, Any, Iterable
 
 from app_logging import create_logger
 from domain.models.values import ProjectID
-from files.path_providers.project import ProjectPathProvider
+from infra.path_providers.project import ProjectPathProvider
 
 
 class ProjectCoreIO:

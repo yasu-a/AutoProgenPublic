@@ -33,7 +33,7 @@ class StudentStageStateCellData:
     states: dict[StagePath, StudentStageStateCellDataStageState]
 
 
-@dataclass
+@dataclass(frozen=True)
 class StudentErrorCellDataTextEntry:
     summary_text: str
     detailed_text: str
@@ -43,3 +43,12 @@ class StudentErrorCellDataTextEntry:
 class StudentErrorCellData:
     student_id: StudentID
     text_entries: list[StudentErrorCellDataTextEntry]
+
+    def aggregate_text_entries(self) -> list[StudentErrorCellDataTextEntry]:
+        seen = set()
+        aggregated_text_entries = []
+        for text_entry in self.text_entries:
+            if text_entry.summary_text not in seen:
+                aggregated_text_entries.append(text_entry)
+                seen.add(text_entry.summary_text)
+        return aggregated_text_entries

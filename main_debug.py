@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import *
 
+import app_logging
 from app_logging import create_logger
 from application.dependency.usecases import get_project_create_usecase
 from application.state.current_project import set_current_project_id
@@ -78,7 +79,7 @@ def launch_new_project(new_project_config: NewProjectConfig) -> MainWindow:
 
 def main():
     set_debug(True)
-    # app_logging.set_level(app_logging.INFO)
+    app_logging.set_level(app_logging.INFO)
 
     # QApplicationを生成
     app = create_app()

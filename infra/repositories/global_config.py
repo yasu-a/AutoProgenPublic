@@ -3,8 +3,8 @@ from contextlib import contextmanager
 from PyQt5.QtCore import QMutex
 
 from domain.models.settings import GlobalConfig
-from files.core.global_ import GlobalCoreIO
-from files.path_providers.global_ import GlobalPathProvider
+from infra.core.global_ import GlobalCoreIO
+from infra.path_providers.global_ import GlobalPathProvider
 
 
 class GlobalConfigRepository:

@@ -8,9 +8,9 @@ from domain.models.output_file import OutputFile, OutputFileMapping
 from domain.models.test_config import TestCaseTestConfig
 from domain.models.testcase_config import TestCaseConfig
 from domain.models.values import TestCaseID, StudentID, FileID
-from files.core.project import ProjectCoreIO
-from files.path_providers.current_project import TestCaseConfigPathProvider
-from files.path_providers.project import ProjectPathProvider
+from infra.core.project import ProjectCoreIO
+from infra.path_providers.current_project import TestCaseConfigPathProvider
+from infra.path_providers.project import ProjectPathProvider
 
 
 class TestCaseIO:

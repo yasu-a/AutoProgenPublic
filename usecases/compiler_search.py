@@ -2,7 +2,7 @@ import collections
 from pathlib import Path
 from typing import Iterable, Callable
 
-from files.external.compiler_location import is_compiler_location
+from infra.external.compiler_location import is_compiler_location
 
 
 class CompilerSearchUseCase:

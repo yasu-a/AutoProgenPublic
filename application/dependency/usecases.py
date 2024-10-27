@@ -1,20 +1,25 @@
 from application.dependency.services import *
-from usecases.build import StudentRunBuildStageUseCase
-from usecases.compile import CompileTestUseCase, StudentRunCompileStageUseCase
 from usecases.compiler_search import CompilerSearchUseCase
 from usecases.current_project_summary_get import CurrentProjectSummaryGetUseCase
-from usecases.execute import StudentRunExecuteStageUseCase
 from usecases.global_config import GlobalConfigGetUseCase, GlobalConfigPutUseCase
 from usecases.project_create import ProjectCreateUseCase
 from usecases.project_name_exist import ProjectNameExistUseCase
 from usecases.project_static_initialize import ProjectStaticInitializeUseCase
 from usecases.recent_project_list import RecentProjectListUseCase
+from usecases.run_compile_test import RunCompileTestUseCase
 from usecases.student_id_list_usecase import StudentIDListUseCase
+from usecases.student_run_build import StudentRunBuildStageUseCase
+from usecases.student_run_compile import StudentRunCompileStageUseCase
+from usecases.student_run_execute import StudentRunExecuteStageUseCase
 from usecases.student_run_next_stage import StudentRunNextStageUseCase
+from usecases.student_run_test import StudentRunTestStageUseCase
+from usecases.student_stage_result_clear import StudentStageResultClearUseCase
+from usecases.student_stage_result_diff_snapshot import StudentStageResultTakeDiffSnapshotUseCase
 from usecases.student_submission_folder_show import StudentSubmissionFolderShowUseCase
 from usecases.student_table_cell_data import StudentTableGetStudentIDCellDataUseCase, \
     StudentTableGetStudentNameCellDataUseCase, StudentTableGetStudentStageStateCellDataUseCase, \
     StudentTableGetStudentErrorCellDataUseCase
+from usecases.testcase_config_get import TestCaseConfigGetUseCase, TestCaseConfigPutUseCase
 from usecases.testcase_list_edit import TestCaseListEditListSummaryUseCase, \
     TestCaseListEditCreateNewNameUseCase, TestCaseListEditCreateTestCaseUseCase
 
@@ -92,14 +97,14 @@ def get_student_table_get_student_name_cell_data_usecase():
 
 def get_student_table_get_student_stage_state_cell_data_usecase():
     return StudentTableGetStudentStageStateCellDataUseCase(
-        stage_path_list_service=get_stage_path_list_service(),
+        stage_path_list_sub_service=get_stage_path_list_sub_service(),
         student_stage_path_result_get_service=get_student_stage_path_result_get_service(),
     )
 
 
 def get_student_table_get_student_error_cell_data_usecase():
     return StudentTableGetStudentErrorCellDataUseCase(
-        stage_path_list_service=get_stage_path_list_service(),
+        stage_path_list_sub_service=get_stage_path_list_sub_service(),
         student_stage_path_result_get_service=get_student_stage_path_result_get_service(),
     )
 
@@ -108,8 +113,8 @@ def get_compiler_search_usecase():
     return CompilerSearchUseCase()
 
 
-def get_compile_test_usecase():
-    return CompileTestUseCase(
+def get_run_compile_test_usecase():
+    return RunCompileTestUseCase(
         storage_create_service=get_storage_create_service(),
         storage_load_test_source_service=get_storage_load_test_source_service(),
         storage_run_compiler_service=get_storage_run_compiler_service(),
@@ -130,15 +135,16 @@ def get_student_run_build_stage_usecase():
 def get_student_run_next_stage_usecase():
     return StudentRunNextStageUseCase(
         stage_list_child_sub_service=get_stage_list_child_sub_service(),
-        stage_path_list_service=get_stage_path_list_service(),
+        stage_path_list_sub_service=get_stage_path_list_sub_service(),
         student_stage_path_result_get_service=get_student_stage_path_result_get_service(),
         student_submission_get_checksum_service=get_student_submission_get_checksum_service(),
         testcase_config_get_execute_config_mtime_service=get_testcase_config_get_execute_config_mtime_service(),
         testcase_config_get_test_config_mtime_service=get_testcase_config_get_test_config_mtime_service(),
-        student_stage_rollback_service=get_student_stage_rollback_service(),
+        student_stage_result_rollback_service=get_student_stage_result_rollback_service(),
         student_run_build_stage_usecase=get_student_run_build_stage_usecase(),
         student_run_compile_stage_usecase=get_student_run_compile_stage_usecase(),
         student_run_execute_stage_usecase=get_student_run_execute_stage_usecase(),
+        student_run_test_stage_usecase=get_student_run_test_stage_usecase(),
     )
 
 
@@ -189,4 +195,41 @@ def get_student_run_execute_stage_usecase():
         testcase_config_get_execute_options_service=get_testcase_config_get_execute_options_service(),
         output_files_create_from_storage_diff_service=get_output_files_create_from_storage_diff_service(),
         storage_write_stdout_file_service=get_storage_write_stdout_file_service(),
+    )
+
+
+# StudentStageResultTakeDiffSnapshotUseCase
+def get_student_stage_result_take_diff_snapshot_usecase():
+    return StudentStageResultTakeDiffSnapshotUseCase(
+        student_stage_result_check_timestamp_query_service=get_student_stage_result_check_timestamp_query_service(),
+    )
+
+
+# StudentStageResultClearUseCase
+def get_student_stage_result_clear_usecase():
+    return StudentStageResultClearUseCase(
+        student_stage_result_clear_service=get_student_stage_result_clear_service(),
+    )
+
+
+# TestCaseConfigGetUseCase
+def get_testcase_config_get_usecase():
+    return TestCaseConfigGetUseCase(
+        testcase_config_get_service=get_testcase_config_get_service(),
+    )
+
+
+# TestCaseConfigPutUseCase
+def get_testcase_config_put_usecase():
+    return TestCaseConfigPutUseCase(
+        testcase_config_put_service=get_testcase_config_put_service(),
+    )
+
+
+# StudentRunTestUseCase
+def get_student_run_test_stage_usecase():
+    return StudentRunTestStageUseCase(
+        testcase_config_get_service=get_testcase_config_get_service(),
+        student_stage_result_repo=get_student_stage_result_repository(),
+        testcase_config_get_test_config_mtime_service=get_testcase_config_get_test_config_mtime_service(),
     )

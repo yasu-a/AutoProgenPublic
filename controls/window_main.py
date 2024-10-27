@@ -75,6 +75,8 @@ class MainWindow(QMainWindow):
                 parent=self,
                 task_cls=RunStagesStudentTask,
             )
+        elif name == "stop":
+            get_task_manager().terminate()
         elif name == "clear":
             enqueue_student_tasks_if_not_run(
                 parent=self,

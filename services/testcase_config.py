@@ -2,8 +2,9 @@ from datetime import datetime
 
 from domain.models.execute_config_options import ExecuteConfigOptions
 from domain.models.test_config_options import TestConfigOptions
+from domain.models.testcase_config import TestCaseConfig
 from domain.models.values import TestCaseID
-from files.repositories.testcase_config import TestCaseConfigRepository
+from infra.repositories.testcase_config import TestCaseConfigRepository
 
 
 class TestCaseConfigListIDSubService:
@@ -21,9 +22,34 @@ class TestCaseConfigListIDSubService:
         ]
 
 
-class TestCaseConfigGetExecuteOptionsService:
+class TestCaseConfigGetService:
     def __init__(
             self,
+            *,
+            testcase_config_repo: TestCaseConfigRepository,
+    ):
+        self._testcase_config_repo = testcase_config_repo
+
+    def execute(self, testcase_id: TestCaseID) -> TestCaseConfig:
+        return self._testcase_config_repo.get(testcase_id)
+
+
+class TestCaseConfigPutService:
+    def __init__(
+            self,
+            *,
+            testcase_config_repo: TestCaseConfigRepository,
+    ):
+        self._testcase_config_repo = testcase_config_repo
+
+    def execute(self, testcase_config: TestCaseConfig) -> None:
+        self._testcase_config_repo.put(testcase_config)
+
+
+class TestCaseConfigGetExecuteOptionsService:  # TODO remove this; use TestCaseConfigGetService
+    def __init__(
+            self,
+            *,
             testcase_config_repo: TestCaseConfigRepository,
     ):
         self._testcase_config_repo = testcase_config_repo
@@ -32,7 +58,7 @@ class TestCaseConfigGetExecuteOptionsService:
         return self._testcase_config_repo.get(testcase_id).execute_config.options
 
 
-class TestCaseConfigGetTestOptionsService:
+class TestCaseConfigGetTestOptionsService:  # TODO remove this; use TestCaseConfigGetService
     def __init__(
             self,
             testcase_config_repo: TestCaseConfigRepository,

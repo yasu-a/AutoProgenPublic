@@ -4,10 +4,10 @@ from pathlib import Path
 from domain.models.file_item import SourceFileItem, ExecutableFileItem
 from domain.models.input_file import InputFileMapping
 from domain.models.values import StorageID, StudentID, TestCaseID, FileID
-from files.repositories.storage import StorageRepository
-from files.repositories.student_dynamic import StudentDynamicRepository
-from files.repositories.test_source import TestSourceRepository
-from files.repositories.testcase_config import TestCaseConfigRepository
+from infra.repositories.storage import StorageRepository
+from infra.repositories.student_dynamic import StudentDynamicRepository
+from infra.repositories.test_source import TestSourceRepository
+from infra.repositories.testcase_config import TestCaseConfigRepository
 
 
 class StorageCreateService:

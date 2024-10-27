@@ -2,15 +2,15 @@ from functools import cache
 
 from application.dependency.core_io import *
 from application.dependency.path_provider import *
-from files.repositories.current_project import CurrentProjectRepository
-from files.repositories.global_config import GlobalConfigRepository
-from files.repositories.project import ProjectRepository
-from files.repositories.storage import StorageRepository
-from files.repositories.student import StudentRepository
-from files.repositories.student_dynamic import StudentDynamicRepository
-from files.repositories.student_stage_result import StudentStageResultRepository
-from files.repositories.test_source import TestSourceRepository
-from files.repositories.testcase_config import TestCaseConfigRepository
+from infra.repositories.current_project import CurrentProjectRepository
+from infra.repositories.global_config import GlobalConfigRepository
+from infra.repositories.project import ProjectRepository
+from infra.repositories.storage import StorageRepository
+from infra.repositories.student import StudentRepository
+from infra.repositories.student_dynamic import StudentDynamicRepository
+from infra.repositories.student_stage_result import StudentStageResultRepository
+from infra.repositories.test_source import TestSourceRepository
+from infra.repositories.testcase_config import TestCaseConfigRepository
 
 
 @cache  # キャッシュを持つのでプロジェクト内ステートフル

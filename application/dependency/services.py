@@ -7,7 +7,7 @@ from services.project_create import ProjectCreateService
 from services.project_list import ProjectListService
 from services.stage import StageListRootSubService, StageListChildSubService, \
     StageGetParentSubService
-from services.stage_path import StagePathListService
+from services.stage_path import StagePathListSubService
 from services.storage import StorageLoadTestSourceService, \
     StorageCreateService, StorageDeleteService, StorageLoadStudentSourceService, \
     StorageLoadStudentExecutableService, StorageStoreStudentExecutableService, \
@@ -20,9 +20,9 @@ from services.student_dynamic import StudentDynamicClearService, \
 from services.student_get import StudentGetService
 from services.student_list import StudentListService
 from services.student_master_create import StudentMasterCreateService
-from services.student_stage_path_result import StudentProgressCheckTimestampQueryService, \
-    StudentStagePathResultGetService
-from services.student_stage_rollback import StudentStageRollbackService
+from services.student_stage_path_result import StudentStagePathResultGetService
+from services.student_stage_result import StudentStageResultCheckTimestampQueryService, \
+    StudentStageResultRollbackService, StudentStageResultClearService
 from services.student_submission import StudentSubmissionExistService, \
     StudentSubmissionExtractService, StudentSubmissionFolderShowService, \
     StudentSubmissionGetChecksumService, StudentSubmissionListSourceRelativePathQueryService, \
@@ -30,7 +30,7 @@ from services.student_submission import StudentSubmissionExistService, \
 from services.testcase_config import TestCaseConfigListIDSubService, \
     TestCaseConfigGetExecuteConfigMtimeService, TestCaseConfigGetTestConfigMtimeService, \
     TestCaseConfigDeleteService, TestCaseConfigGetExecuteOptionsService, \
-    TestCaseConfigGetTestOptionsService
+    TestCaseConfigGetTestOptionsService, TestCaseConfigGetService, TestCaseConfigPutService
 
 
 def get_global_config_get_service():
@@ -127,8 +127,8 @@ def get_stage_get_parent_sub_service():
     return StageGetParentSubService()
 
 
-def get_stage_path_list_service():
-    return StagePathListService(
+def get_stage_path_list_sub_service():
+    return StagePathListSubService(
         stage_list_root_sub_service=get_stage_list_root_sub_service(),
         stage_list_child_sub_service=get_stage_list_child_sub_service(),
     )
@@ -140,10 +140,11 @@ def get_student_stage_path_result_get_service():
     )
 
 
-def get_student_progress_check_timestamp_query_service():
-    return StudentProgressCheckTimestampQueryService(
+def get_student_stage_result_check_timestamp_query_service():
+    return StudentStageResultCheckTimestampQueryService(
         student_stage_result_path_provider=get_student_stage_result_path_provider(),
         testcase_config_repo=get_testcase_config_repository(),
+        current_project_core_io=get_current_project_core_io(),
     )
 
 
@@ -246,9 +247,31 @@ def get_student_submission_get_source_content_service():
     )
 
 
-def get_student_stage_rollback_service():
-    return StudentStageRollbackService(
+def get_student_stage_result_rollback_service():
+    return StudentStageResultRollbackService(
         student_stage_result_repo=get_student_stage_result_repository(),
+    )
+
+
+# StudentStageResultClearService
+def get_student_stage_result_clear_service():
+    return StudentStageResultClearService(
+        stage_path_list_sub_service=get_stage_path_list_sub_service(),
+        student_stage_result_repo=get_student_stage_result_repository(),
+    )
+
+
+# TestCaseConfigGetService
+def get_testcase_config_get_service():
+    return TestCaseConfigGetService(
+        testcase_config_repo=get_testcase_config_repository(),
+    )
+
+
+# TestCaseConfigPutService
+def get_testcase_config_put_service():
+    return TestCaseConfigPutService(
+        testcase_config_repo=get_testcase_config_repository(),
     )
 
 

@@ -403,7 +403,7 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生�
     ):
         return cls(
             student_id=student_id,
-            stage=ExecuteStage(testcase_id=testcase_id),
+            stage=TestStage(testcase_id=testcase_id),
             test_config_mtime=test_config_mtime,
             output_file_test_results=output_file_test_results,
         )
@@ -441,7 +441,7 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生�
 @dataclass(slots=True)
 class TestFailureStudentStageResult(AbstractFailureStudentStageResult):  # 生徒・テストケースごと
     def __post_init__(self):
-        assert isinstance(self.stage, TestStage)
+        assert isinstance(self.stage, TestStage), self.stage
 
     @classmethod
     def create_instance(
@@ -453,7 +453,7 @@ class TestFailureStudentStageResult(AbstractFailureStudentStageResult):  # 生�
     ):
         return cls(
             student_id=student_id,
-            stage=ExecuteStage(testcase_id=testcase_id),
+            stage=TestStage(testcase_id=testcase_id),
             reason=reason,
         )
 

@@ -8,7 +8,7 @@ from domain.models.test_config import TestCaseTestConfig
 from domain.models.test_config_options import TestConfigOptions
 from domain.models.testcase_config import TestCaseConfig
 from domain.models.values import TestCaseID
-from files.repositories.testcase_config import TestCaseConfigRepository
+from infra.repositories.testcase_config import TestCaseConfigRepository
 from services.testcase_config import TestCaseConfigListIDSubService
 from usecases.dto.testcase_list_edit import TestCaseListEditTestCaseSummary
 

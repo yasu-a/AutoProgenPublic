@@ -1,4 +1,5 @@
-from datetime import datetime
+from collections import defaultdict
+from contextlib import contextmanager
 from functools import cache
 from typing import Any, Callable, Iterable
 
@@ -7,16 +8,18 @@ from PyQt5.QtGui import QColor, QFont
 from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
-from application.dependency.services import get_student_progress_check_timestamp_query_service
 from application.dependency.usecases import get_student_id_list_usecase, \
     get_student_submission_folder_show_usecase, get_student_table_get_student_id_cell_data_usecase, \
     get_student_table_get_student_name_cell_data_usecase, \
     get_student_table_get_student_stage_state_cell_data_usecase, \
-    get_student_table_get_student_error_cell_data_usecase
+    get_student_table_get_student_error_cell_data_usecase, \
+    get_student_stage_result_take_diff_snapshot_usecase
 from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
 from domain.models.stages import BuildStage, CompileStage, ExecuteStage, TestStage
 from domain.models.values import StudentID
 from fonts import font
+from usecases.dto.student_stage_result_diff_snapshot import StudentStageResultDiffSnapshot, \
+    StudentStageResultDiff
 from usecases.dto.student_table_cell_data import StudentStageStateCellDataStageState
 
 
@@ -33,7 +36,7 @@ class StudentTableColumns:
     HEADER = (
         "学籍番号",
         "名前",
-        "実行環境構築",
+        "ソースコード抽出",
         "コンパイル",
         "実行",
         "テスト",
@@ -54,11 +57,30 @@ def data_provider(*, column: int):
     return decorator
 
 
-class StudentTableModelDataProvider:
+class AbstractStudentTableModelDataProvider:
     def __init__(self, student_ids: list[StudentID]):
         self._student_ids = student_ids
-        # self._progress_service = get_progress_service()  TODO: CHECK UNUSED METHODS AND REMOVE ME
-        self._logger = create_logger(name=f"{type(self).__name__}")
+
+    def _find_cell_provider(self, column: int):
+        for name in dir(self):
+            obj = getattr(self, name)
+            if callable(obj) and hasattr(obj, "_cell_provider_column"):
+                provider = obj
+                provider_column = getattr(obj, "_cell_provider_column")
+                if provider_column == column:
+                    return provider
+        raise ValueError(f"Provider for {column=} not defined")
+
+    def get_data(self, row: int, column: int, role: QtRoleType):
+        provider = self._find_cell_provider(column)
+        if provider is not None:
+            return provider(student_id=self._student_ids[row], role=role)
+        else:
+            return None
+
+
+class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
+    _logger = create_logger()
 
     @classmethod
     @cache
@@ -114,7 +136,7 @@ class StudentTableModelDataProvider:
     _STAGE_STATE_TEXT_MAPPING = {
         StudentStageStateCellDataStageState.UNFINISHED: "―",
         StudentStageStateCellDataStageState.FINISHED_SUCCESS: "✔",
-        StudentStageStateCellDataStageState.FINISHED_FAILURE: "☠",
+        StudentStageStateCellDataStageState.FINISHED_FAILURE: "⚠",
     }
 
     @data_provider(
@@ -177,24 +199,29 @@ class StudentTableModelDataProvider:
         column=StudentTableColumns.COL_ERROR,
     )
     def get_display_role_of_error(self, student_id: StudentID, role: QtRoleType):
-        cell_data = get_student_table_get_student_error_cell_data_usecase().execute(
-            student_id=student_id,
-        )
         if role == Qt.DisplayRole:
-            if len(cell_data.text_entries) == 0:
+            cell_data = get_student_table_get_student_error_cell_data_usecase().execute(
+                student_id=student_id,
+            )
+            aggregated_text_entries = cell_data.aggregate_text_entries()
+            if len(aggregated_text_entries) == 0:
                 return ""
-            elif len(cell_data.text_entries) == 1:
-                return cell_data.text_entries[0].summary_text
+            elif len(aggregated_text_entries) == 1:
+                return aggregated_text_entries[0].summary_text
             else:
-                return cell_data.text_entries[0].summary_text \
-                    + f" 他{len(cell_data.text_entries) - 1}件のエラー"
+                return aggregated_text_entries[0].summary_text \
+                    + f"（他{len(aggregated_text_entries) - 1}件のエラー）"
         elif role == Qt.ToolTipRole:
-            if len(cell_data.text_entries) == 0:
+            cell_data = get_student_table_get_student_error_cell_data_usecase().execute(
+                student_id=student_id,
+            )
+            aggregated_text_entries = cell_data.aggregate_text_entries()
+            if len(aggregated_text_entries) == 0:
                 return ""
             else:
                 return "\n".join(
-                    entry.summary_text
-                    for entry in cell_data.text_entries
+                    f"◆ {entry.detailed_text}"
+                    for entry in aggregated_text_entries
                 )
 
     @data_provider(
@@ -213,33 +240,62 @@ class StudentTableModelDataProvider:
         _ = role
         return None
 
-    def _find_cell_provider(self, column: int):
-        for name in dir(self):
-            obj = getattr(self, name)
-            if callable(obj) and hasattr(obj, "_cell_provider_column"):
-                provider = obj
-                provider_column = getattr(obj, "_cell_provider_column")
-                if provider_column == column:
-                    return provider
-        raise ValueError(f"Provider for {column=} not defined")
+
+class CachedStudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
+    __CACHE_VALUE_UNSET = object()
+
+    def __init__(
+            self,
+            *,
+            student_ids: list[StudentID],
+            provider: AbstractStudentTableModelDataProvider,
+    ):
+        super().__init__(student_ids)
+        self._provider = provider
+
+        self._lock = QMutex()
+        self._cache: dict[int, dict[tuple[int, QtRoleType], Any]] \
+            = defaultdict(lambda: defaultdict(lambda: self.__CACHE_VALUE_UNSET))
+        # self._cache: row, (column, role) -> value
+
+    @contextmanager
+    def __lock(self):
+        self._lock.lock()
+        try:
+            yield
+        finally:
+            self._lock.unlock()
+
+    @classmethod
+    def from_provider(cls, provider: AbstractStudentTableModelDataProvider):
+        return cls(
+            student_ids=provider._student_ids,
+            provider=provider,
+        )
+
+    def invalidate_cache(self, row: int):
+        with self.__lock():
+            if row in self._cache:
+                del self._cache[row]
 
     def get_data(self, row: int, column: int, role: QtRoleType):
-        provider = self._find_cell_provider(column)
-        if provider is not None:
-            return provider(student_id=self._student_ids[row], role=role)
-        else:
-            return None
+        with self.__lock():
+            if self._cache[row][(column, role)] is self.__CACHE_VALUE_UNSET:
+                self._cache[row][(column, role)] = self._provider.get_data(row, column, role)
+            return self._cache[row][(column, role)]
 
 
 class StudentTableModel(QAbstractTableModel):
-    def __init__(self, parent: QObject = None):
+    def __init__(
+            self,
+            parent: QObject = None,
+            *,
+            data_provider: AbstractStudentTableModelDataProvider,
+    ):
         super().__init__(parent)
 
-        self._student_ids: list[StudentID] = get_student_id_list_usecase().execute()
-
-        self._data_provider = StudentTableModelDataProvider(
-            student_ids=self._student_ids,
-        )
+        self._student_ids: list[StudentID] = data_provider._student_ids
+        self._data_provider = data_provider
 
     def get_row_of_student(self, student_id: StudentID) -> int:
         return self._student_ids.index(student_id)
@@ -297,29 +353,37 @@ class _StudentObserver(QObject):
         )
 
         self._timer = QTimer(self)
-        self._timer.setInterval(5)
+        self._timer.setInterval(20)
         self._timer.timeout.connect(self._on_timer_timeout)  # type: ignore
         self._timer.start()
 
-        self._student_id_mtime_mapping: dict[StudentID, datetime | None] = {}
+        self._student_id_mtime_mapping: dict[StudentID, StudentStageResultDiffSnapshot] = {}
         self._current_student_index = 0
 
     @pyqtSlot()
     def _on_timer_timeout(self):
+        # 学籍番号の取得
         student_id = next(self._student_id_iter)
-        prev_mtime = self._student_id_mtime_mapping.get(student_id)
-        current_mtime = get_student_progress_check_timestamp_query_service().execute(student_id)
-        if prev_mtime != current_mtime:
-            if prev_mtime is not None:  # 初めて巡回したときは更新を行わない
+
+        # スナップショットを取得
+        new_snapshot = get_student_stage_result_take_diff_snapshot_usecase().execute(student_id)
+
+        # 初めて巡回したとき以外は更新を確認してシグナルを送出
+        if student_id in self._student_id_mtime_mapping:
+            old_snapshot = self._student_id_mtime_mapping.get(student_id)
+            diff = StudentStageResultDiff.from_snapshots(
+                old_snapshot=old_snapshot,
+                new_snapshot=new_snapshot,
+            )
+            if diff.updated:
                 # noinspection PyUnresolvedReferences
                 self.student_modified.emit(student_id)
-        self._student_id_mtime_mapping[student_id] = current_mtime
+
+        self._student_id_mtime_mapping[student_id] = new_snapshot
 
 
 class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
     _logger = create_logger()
-
-    # selection_changed = pyqtSignal(str)  # type: ignore  # student_id
 
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
@@ -329,7 +393,15 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
         # noinspection PyUnresolvedReferences
         self._student_observer.student_modified.connect(self._on_student_modification_observed)
 
-        self._model = StudentTableModel(self)  # type: ignore
+        self._model_data_provider = CachedStudentTableModelDataProvider.from_provider(
+            provider=StudentTableModelDataProvider(
+                student_ids=get_student_id_list_usecase().execute(),
+            ),
+        )
+        self._model = StudentTableModel(
+            self,
+            data_provider=self._model_data_provider,
+        )  # type: ignore
         self.setModel(self._model)
 
         self._init_ui()
@@ -380,6 +452,7 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
     def _on_student_modification_observed(self, student_id):
         i_row = self._model.get_row_of_student(student_id)
         self._logger.debug(f"Updating row {i_row} {student_id}")
+        self._model_data_provider.invalidate_cache(i_row)
         index_begin = self._model.createIndex(i_row, 0)
         index_end = self._model.createIndex(i_row, self._model.columnCount() - 1)
         self.dataChanged(index_begin, index_end)

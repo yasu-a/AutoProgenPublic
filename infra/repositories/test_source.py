@@ -1,5 +1,5 @@
-from files.core.global_ import GlobalCoreIO
-from files.path_providers.global_ import GlobalPathProvider
+from infra.core.global_ import GlobalCoreIO
+from infra.path_providers.global_ import GlobalPathProvider
 
 
 class TestSourceRepository:

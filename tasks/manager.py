@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import qApp
 
 from app_logging import create_logger
 from domain.models.values import StudentID
-from files.repositories.global_config import GlobalConfigRepository
+from infra.repositories.global_config import GlobalConfigRepository
 from tasks.tasks import AbstractStudentTask, AbstractTask
 
 
@@ -133,6 +133,7 @@ class TaskManager(QObject):
         return self._task_stack.get_running_task_count()
 
     def kill_all_tasks(self) -> None:
+        # FIXME: タスクにstop_producerを追加，すべてのタスク実装に反映して安全にプロセスを終了する仕組みを作る
         self._task_stack.kill_all()
 
     def terminate(self):

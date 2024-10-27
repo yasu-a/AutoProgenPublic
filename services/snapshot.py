@@ -11,10 +11,10 @@ from dto.snapshot import ProjectSnapshot, StudentSnapshotStagesUnfinished, \
     StudentSnapshotReady, StudentSnapshotRerunRequired, AbstractStudentSnapshot, \
     StudentSnapshotStageFinishedWithError, StudentMarkSnapshotMapping
 from dto.testcase_config import TestCaseConfigMapping
-from files.project import ProjectIO
-from files.repositories.student import StudentRepository
-from files.repositories.student_stage_result import ProgressIO
-from files.testcase_config import TestCaseIO
+from infra.project import ProjectIO
+from infra.repositories.student import StudentRepository
+from infra.repositories.student_stage_result import ProgressIO
+from infra.testcase_config import TestCaseIO
 
 
 @dataclass(slots=True)

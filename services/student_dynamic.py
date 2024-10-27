@@ -1,6 +1,6 @@
 from domain.models.file_item import SourceFileItem, ExecutableFileItem
 from domain.models.values import StudentID
-from files.repositories.student_dynamic import StudentDynamicRepository
+from infra.repositories.student_dynamic import StudentDynamicRepository
 from transaction import transactional_with
 
 

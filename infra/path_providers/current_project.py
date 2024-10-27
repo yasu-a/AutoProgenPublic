@@ -2,7 +2,7 @@ from pathlib import Path
 
 from domain.models.stages import AbstractStage
 from domain.models.values import TestCaseID, StudentID, ProjectID, StorageID
-from files.path_providers.project import ProjectPathProvider
+from infra.path_providers.project import ProjectPathProvider
 
 
 # テストケース

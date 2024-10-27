@@ -14,6 +14,8 @@ class TestCaseConfigEditWidget(QTabWidget):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
+        self._testcase_id = None
+
         self._init_ui()
         self._init_signals()
 
@@ -38,6 +40,7 @@ class TestCaseConfigEditWidget(QTabWidget):
 
     @pyqtSlot()
     def set_data(self, config: TestCaseConfig):
+        self._testcase_id = config.testcase_id
         self._w_input_files_edit.set_data(
             config.execute_config._input_files,
         )
@@ -53,7 +56,9 @@ class TestCaseConfigEditWidget(QTabWidget):
 
     @pyqtSlot()
     def get_data(self) -> TestCaseConfig:
+        assert self._testcase_id is not None
         config = TestCaseConfig(
+            testcase_id=self._testcase_id,
             execute_config=TestCaseExecuteConfig(
                 input_files=self._w_input_files_edit.get_data(),
                 options=self._w_execute_config_options_edit.get_data(),

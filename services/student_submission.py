@@ -5,12 +5,12 @@ from typing import Iterable
 
 from domain.errors import ServiceError, ManabaReportArchiveIOError
 from domain.models.values import StudentID, TargetID
-from files.core.current_project import CurrentProjectCoreIO
-from files.external.report_archive import ManabaReportArchiveIO
-from files.external.student_folder_show_in_explorer import StudentFolderShowInExplorerIO
-from files.path_providers.current_project import StudentSubmissionPathProvider
-from files.repositories.current_project import CurrentProjectRepository
-from files.repositories.student import StudentRepository
+from infra.core.current_project import CurrentProjectCoreIO
+from infra.external.report_archive import ManabaReportArchiveIO
+from infra.external.student_folder_show_in_explorer import StudentFolderShowInExplorerIO
+from infra.path_providers.current_project import StudentSubmissionPathProvider
+from infra.repositories.current_project import CurrentProjectRepository
+from infra.repositories.student import StudentRepository
 
 
 class StudentSubmissionExistService:
@@ -169,6 +169,10 @@ class StudentSubmissionListSourceRelativePathQueryService:
                 folder_fullpath=student_submission_folder_fullpath,
                 return_absolute=False,
         ):
+            # 拡張子が.c以外のファイルは除く
+            if file_relative_path.suffix != ".c":
+                continue
+
             # Visual Studio のプロジェクトをそのまま出してくると名前が".c"で終わるフォルダができるので除く
             if file_relative_path.is_dir():
                 continue

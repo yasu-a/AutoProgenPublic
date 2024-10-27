@@ -5,8 +5,8 @@ from app_logging import create_logger
 from domain.errors import ProjectIOError
 from domain.models.project_config import ProjectConfig
 from domain.models.values import StudentID
-from files.core.project import ProjectCoreIO
-from files.path_providers.project import ProjectPathProvider
+from infra.core.project import ProjectCoreIO
+from infra.path_providers.project import ProjectPathProvider
 
 
 class ProjectIO:  # TODO: BuildIO, CompileIO, ExecuteIOを分離する

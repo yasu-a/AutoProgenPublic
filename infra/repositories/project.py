@@ -1,8 +1,8 @@
 from domain.errors import ProjectIOError
 from domain.models.project import Project
 from domain.models.values import ProjectID
-from files.core.project import ProjectCoreIO
-from files.path_providers.project import ProjectListPathProvider, ProjectPathProvider
+from infra.core.project import ProjectCoreIO
+from infra.path_providers.project import ProjectListPathProvider, ProjectPathProvider
 
 
 class ProjectRepository:

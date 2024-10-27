@@ -5,7 +5,7 @@ from domain.models.stages import AbstractStage
 from services.stage import StageListRootSubService, StageListChildSubService
 
 
-class StagePathListService:
+class StagePathListSubService:
     # ステージツリーのルートノードからそれぞれの終端ノードに至るまでのパスのリストを取得する
 
     def __init__(

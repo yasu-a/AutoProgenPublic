@@ -4,7 +4,7 @@ from typing import Any, Optional, Iterable
 
 from app_logging import create_logger
 from domain.models.values import ProjectID
-from files.core.project import ProjectCoreIO
+from infra.core.project import ProjectCoreIO
 
 
 class CurrentProjectCoreIO:

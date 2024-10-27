@@ -1,6 +1,6 @@
 from app_logging import create_logger
 from domain.models.project import Project
-from files.repositories.project import ProjectRepository
+from infra.repositories.project import ProjectRepository
 
 
 class ProjectListService:

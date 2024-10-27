@@ -1,4 +1,5 @@
-from application.dependency.usecases import get_student_run_next_stage_usecase
+from application.dependency.usecases import get_student_run_next_stage_usecase, \
+    get_student_stage_result_clear_usecase
 from tasks.tasks import AbstractStudentTask
 
 
@@ -53,5 +54,5 @@ class RunStagesStudentTask(AbstractStudentTask):
 class CleanAllStagesStudentTask(AbstractStudentTask):
     def run(self) -> None:
         self._logger.info(f"Task started [{self.student_id}]")
-        get_progress_service().clear_all_stages_of_student(student_id=self._student_id)
+        get_student_stage_result_clear_usecase().execute(self.student_id)
         self._logger.info("Task finished: student data cleaned")

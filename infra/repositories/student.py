@@ -4,8 +4,8 @@ from PyQt5.QtCore import QMutex
 
 from domain.models.student_master import StudentMaster, Student
 from domain.models.values import StudentID
-from files.core.current_project import CurrentProjectCoreIO
-from files.path_providers.current_project import ProjectStaticPathProvider
+from infra.core.current_project import CurrentProjectCoreIO
+from infra.path_providers.current_project import ProjectStaticPathProvider
 
 
 class StudentRepository:

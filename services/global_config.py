@@ -1,5 +1,5 @@
 from domain.models.settings import GlobalConfig
-from files.repositories.global_config import GlobalConfigRepository
+from infra.repositories.global_config import GlobalConfigRepository
 
 
 class GlobalConfigGetService:

@@ -5,8 +5,8 @@ from domain.models.storage import Storage, StorageFileContentMapper, \
     FileRelativePathListProducerType, FileContentMapperType, FileRelativePathExistsMapperType, \
     FileRelativePathStatMapperType, StorageStat
 from domain.models.values import StorageID
-from files.core.current_project import CurrentProjectCoreIO
-from files.path_providers.current_project import StoragePathProvider
+from infra.core.current_project import CurrentProjectCoreIO
+from infra.path_providers.current_project import StoragePathProvider
 from transaction import transactional_with
 
 

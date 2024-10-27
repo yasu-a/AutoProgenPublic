@@ -6,11 +6,11 @@ from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
 from application.dependency.usecases import get_global_config_get_usecase, \
-    get_global_config_put_usecase, get_compile_test_usecase
+    get_global_config_put_usecase, get_run_compile_test_usecase
 from controls.dialog_compiler_search import CompilerSearchDialog
 from domain.models.settings import GlobalConfig
-from files.external.compiler_location import is_compiler_location
 from icons import icon
+from infra.external.compiler_location import is_compiler_location
 
 
 class CompilerToolPathEditWidget(QWidget):
@@ -213,7 +213,7 @@ class GlobalSettingsEditWidget(QWidget):
 
     @pyqtSlot(Path)
     def __w_compiler_tool_path_compile_test_requested(self, compiler_tool_fullpath: Path):
-        result = get_compile_test_usecase().execute(
+        result = get_run_compile_test_usecase().execute(
             compiler_tool_fullpath=Path(compiler_tool_fullpath),
         )
         if result.is_success:

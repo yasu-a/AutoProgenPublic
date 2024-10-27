@@ -1,12 +1,9 @@
-from datetime import datetime
-
 from domain.models.stages import AbstractStage
-from domain.models.student_stage_path_result import AbstractStudentStagePathResult
 from domain.models.student_stage_result import ExecuteStudentStageResult, TestStudentStageResult
 from domain.models.values import StudentID
-from files.project import ProjectIO
-from files.repositories.student_stage_result import ProgressIO, StudentStageResultRepository
-from files.testcase_config import TestCaseIO
+from infra.project import ProjectIO
+from infra.repositories.student_stage_result import ProgressIO, StudentStageResultRepository
+from infra.testcase_config import TestCaseIO
 from transaction import transactional
 
 
@@ -125,16 +122,6 @@ class ProgressService:  # TODO: StudentProgressService?
             = self.determine_next_stage_with_result_and_get_reason(student_progress_io)
         return expected_next_stage
 
-    def determine_student_next_stage_with_result(
-            self,
-            student_id: StudentID,  # TODO: 本当はdetermine_next_stage_with_resultでstudent_idを受け取りたい
-    ) -> AbstractStage | None:
-        with self._progress_io.with_student(student_id) as student_progress_io:
-            return self.determine_next_stage_with_result(student_progress_io)
-
-    def get_student_progress(self, student_id: StudentID) -> AbstractStudentStagePathResult:
-        with self._progress_io.with_student(student_id) as student_progress_io:
-            return student_progress_io.get_current_progress()  ## => StudentProgressGetCurrentService
 
     def clear_student_to_start_stage(
             self, student_id: StudentID,
@@ -151,6 +138,3 @@ class ProgressService:  # TODO: StudentProgressService?
             stage=AbstractStage.get_first_stage(),
         )
 
-    def get_student_mtime(self, student_id: StudentID) -> datetime | None:
-        with self._progress_io.with_student(student_id) as student_progress_io:
-            return student_progress_io.get_mtime()

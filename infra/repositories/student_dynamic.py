@@ -2,8 +2,8 @@ from pathlib import Path
 
 from domain.models.file_item import SourceFileItem, ExecutableFileItem, StudentDynamicFileItemType
 from domain.models.values import StudentID
-from files.core.current_project import CurrentProjectCoreIO
-from files.path_providers.current_project import StudentDynamicPathProvider
+from infra.core.current_project import CurrentProjectCoreIO
+from infra.path_providers.current_project import StudentDynamicPathProvider
 from transaction import transactional_with
 
 

@@ -1,5 +1,5 @@
 from domain.models.project import Project
-from files.repositories.current_project import CurrentProjectRepository
+from infra.repositories.current_project import CurrentProjectRepository
 
 
 class CurrentProjectGetService:
