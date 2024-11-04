@@ -5,13 +5,14 @@ from PyQt5.QtWidgets import *
 from app_logging import create_logger
 from application.dependency.tasks import get_task_manager
 from application.dependency.usecases import get_current_project_summary_get_usecase, \
-    get_student_list_id_usecase
+    get_student_list_id_usecase, get_student_submission_folder_show_usecase
 from controls.dialog_global_settings import GlobalSettingsEditDialog
 from controls.dialog_mark import MarkDialog
 from controls.dialog_testcase_list_edit import TestCaseListEditDialog
 from controls.res.icons import icon
 from controls.widget_student_table import StudentTableWidget
 from controls.widget_toolbar import ToolBar
+from domain.models.values import StudentID
 from tasks.task_impls import RunStagesStudentTask, CleanAllStagesStudentTask
 from tasks.tasks import AbstractStudentTask
 
@@ -67,6 +68,24 @@ class MainWindow(QMainWindow):
 
     def _init_signals(self):
         self._tool_bar.triggered.connect(self.__tool_bar_triggered)
+        self._w_student_table.student_id_cell_double_clicked.connect(
+            self.__w_student_table_student_id_cell_double_clicked
+        )
+        self._w_student_table.mark_result_cell_double_clicked.connect(
+            self.__w_student_table_mark_result_cell_double_clicked
+        )
+
+    @pyqtSlot(StudentID)
+    def __w_student_table_student_id_cell_double_clicked(self, student_id: StudentID):
+        get_student_submission_folder_show_usecase().execute(
+            student_id=student_id,
+        )
+
+    @pyqtSlot(StudentID)
+    def __w_student_table_mark_result_cell_double_clicked(self, student_id: StudentID):
+        dialog = MarkDialog(self)
+        dialog.set_data(dialog.states.create_state_by_student_id(student_id))
+        dialog.exec_()
 
     def __tool_bar_triggered(self, name):
         # TODO: 実行中はタスクバーのボタンを押せないようにする

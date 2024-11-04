@@ -18,7 +18,8 @@ from services.storage_run_executable import StorageRunExecutableService
 from services.student import StudentGetService, StudentListService
 from services.student_dynamic import StudentDynamicClearService, \
     StudentDynamicSetSourceContentService
-from services.student_mark import StudentMarkGetService, StudentMarkPutService
+from services.student_mark import StudentMarkGetService, StudentMarkPutService, \
+    StudentMarkCheckTimestampQueryService
 from services.student_master_create import StudentMasterCreateService
 from services.student_source_code import StudentSourceCodeGetQueryService
 from services.student_stage_path_result import StudentStagePathResultGetService, \
@@ -373,4 +374,12 @@ def get_student_mark_put_service():
 def get_student_source_code_get_query_service():
     return StudentSourceCodeGetQueryService(
         student_dynamic_repo=get_student_dynamic_repository(),
+    )
+
+
+# StudentMarkCheckTimestampQueryService
+def get_student_mark_check_timestamp_query_service():
+    return StudentMarkCheckTimestampQueryService(
+        student_mark_path_provider=get_student_mark_path_provider(),
+        current_project_core_io=get_current_project_core_io(),
     )

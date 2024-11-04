@@ -56,7 +56,7 @@ class StudentMarkViewDataGetTestResultUseCase:
                 )
         else:
             # 失敗しているとき
-            reason = stage_path_result.get_main_reason()
+            reason = stage_path_result.get_detailed_reason()
             if reason is None:
                 reason = "処理が未完了です"
             return StudentTestCaseTestResultUntestableViewData(
@@ -91,6 +91,7 @@ class StudentMarkViewDataGetMarkSummaryUseCase:
         stage_path_lst: list[StagePath] = self._stage_path_list_sub_service.execute()
 
         state: StudentMarkState = StudentMarkState.NO_TEST_FOUND
+        detailed_text = None
         for stage_path in stage_path_lst:
             test_stage = stage_path.get_stage_by_stage_type(TestStage)
             if test_stage is None:
@@ -114,13 +115,14 @@ class StudentMarkViewDataGetMarkSummaryUseCase:
                 # すべてのステージが成功しているとき
                 state = StudentMarkState.READY
                 continue
-            elif stage_path_result.is_success() is None:
-                # ステージが未実行のとき
-                state = StudentMarkState.STAGES_UNFINISHED
-                break
-            else:
+            elif stage_path_result.is_success() is False:
                 # ステージが失敗しているとき
                 state = StudentMarkState.STAGES_FAILED
+                detailed_text = stage_path_result.get_detailed_reason()
+                break
+            else:
+                # ステージが未実行のとき
+                state = StudentMarkState.STAGES_UNFINISHED
                 break
 
         return StudentMarkSummaryViewData(
@@ -128,4 +130,5 @@ class StudentMarkViewDataGetMarkSummaryUseCase:
             student=self._student_get_service.execute(student_id),
             mark=self._student_mark_get_service.execute(student_id),
             state=state,
+            detailed_text=detailed_text,
         )

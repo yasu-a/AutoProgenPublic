@@ -1,25 +1,130 @@
-from PyQt5.QtCore import QObject, pyqtSlot, Qt, pyqtSignal, QEvent
-from PyQt5.QtGui import QSyntaxHighlighter, QColor, QTextCharFormat, QKeyEvent
+from PyQt5.QtCore import QObject, pyqtSlot, Qt, pyqtSignal, QEvent, QRegExp
+from PyQt5.QtGui import QSyntaxHighlighter, QColor, QTextCharFormat, QKeyEvent, QRegExpValidator, \
+    QCloseEvent
 from PyQt5.QtWidgets import QDialog, QListWidget, QWidget, QHBoxLayout, QLabel, \
-    QListWidgetItem, QVBoxLayout, QTabWidget, QPlainTextEdit, QPushButton
+    QListWidgetItem, QVBoxLayout, QTabWidget, QPlainTextEdit, QPushButton, QLineEdit
 
 from app_logging import create_logger
 from application.dependency.usecases import get_student_list_id_usecase, \
     get_student_mark_view_data_get_test_result_usecase, \
     get_student_mark_view_data_get_mark_summary_usecase, get_student_source_code_get_usecase, \
-    get_testcase_config_list_id_usecase
+    get_testcase_config_list_id_usecase, get_student_mark_get_usecase, get_student_mark_put_usecase
 from controls.dto.dialog_mark import MarkDialogState
 from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
 from controls.res.fonts import font
 from controls.widget_source_text_edit import SourceTextEdit
 from controls.widget_test_summary_indicator import TestCaseTestSummaryIndicatorWidget
 from domain.models.output_file_test_result import OutputFileTestResult
+from domain.models.student_mark import StudentMark
 from domain.models.student_master import Student
 from domain.models.student_stage_result import TestResultOutputFileMapping
 from domain.models.test_result_output_file_entry import AbstractTestResultOutputFileEntry
 from domain.models.values import StudentID, TestCaseID, FileID, SpecialFileType
 from usecases.dto.student_mark_view_data import AbstractStudentTestCaseTestResultViewData, \
     StudentMarkSummaryViewData
+
+
+class MarkScoreEditWidget(QWidget):
+    key_pressed = pyqtSignal(QKeyEvent, name="key_pressed")
+
+    def __init__(self, parent: QObject = None):
+        super().__init__(parent)
+
+        self._student_id: StudentID | None = None
+        self._is_modified = False
+
+        self._init_ui()
+        self._init_signals()
+
+    def _init_ui(self):
+        layout = QHBoxLayout()
+        self.setLayout(layout)
+
+        self._le_score = QLineEdit(self)
+        self._le_score.setValidator(QRegExpValidator(QRegExp("[1-9][0-9]|[0-9]|")))
+        self._le_score.setFont(font(monospace=True, large=True, bold=True))
+        self._le_score.setPlaceholderText("--")
+        self._le_score.setFixedWidth(50)
+        self._le_score.setFixedHeight(50)
+        self._le_score.setEnabled(False)
+        self._le_score.installEventFilter(self)
+        layout.addWidget(self._le_score)
+
+        layout_right = QVBoxLayout()
+        layout.addLayout(layout_right)
+
+        self._b_unmark = QPushButton(self)
+        self._b_unmark.setText("×")
+        self._b_unmark.setFixedWidth(25)
+        self._b_unmark.setFixedHeight(25)
+        self._b_unmark.setEnabled(False)
+        self._b_unmark.setFocusPolicy(Qt.NoFocus)
+        layout_right.addWidget(self._b_unmark)
+
+        # noinspection PyArgumentList
+        l_unit = QLabel(self)
+        l_unit.setText("点")
+        layout_right.addWidget(l_unit)
+
+    def _init_signals(self):
+        # noinspection PyUnresolvedReferences
+        self._b_unmark.clicked.connect(self.__b_unmark_clicked)
+        # noinspection PyUnresolvedReferences
+        self._le_score.textChanged.connect(self.__le_score_text_changed)
+
+    def eventFilter(self, target: QObject, evt: QEvent):
+        if evt.type() == QEvent.KeyPress:
+            # noinspection PyUnresolvedReferences
+            self.key_pressed.emit(evt)
+            return False
+        return False
+
+    def set_data(self, student_mark: StudentMark | None) -> None:
+        if student_mark is None:
+            self._le_score.setEnabled(False)
+            self._b_unmark.setEnabled(False)
+            self._student_id = None
+        else:
+            if student_mark.is_marked:
+                self._le_score.setText(str(student_mark.score))
+            else:
+                self._le_score.setText("")
+            self._le_score.setEnabled(True)
+            self._b_unmark.setEnabled(True)
+            self._student_id = student_mark.student_id
+        self._is_modified = False
+
+    def set_unmarked(self) -> None:
+        if self._student_id is None:
+            return None
+        self._le_score.setText("")
+
+    def is_modified(self) -> bool:
+        return self._is_modified
+
+    def get_data(self) -> StudentMark | None:
+        if self._student_id is None:
+            return None
+        try:
+            score_int = int(self._le_score.text())
+        except ValueError:
+            return StudentMark(
+                student_id=self._student_id,
+                score=None,
+            )
+        else:
+            return StudentMark(
+                student_id=self._student_id,
+                score=score_int,
+            )
+
+    @pyqtSlot()
+    def __b_unmark_clicked(self):
+        self._le_score.setText("")
+
+    @pyqtSlot()
+    def __le_score_text_changed(self):
+        self._is_modified = True
 
 
 class StudentSourceCodeView(SourceTextEdit):
@@ -91,9 +196,15 @@ class TestCaseResultOutputFileViewWidget(QPlainTextEdit, HorizontalScrollWithShi
             self.setPlainText("\n".join(errors))
         elif errors and view:
             self.setEnabled(False)
+            if self._output_file_entry.actual.content_string is None:
+                content_text = "（不明な文字コード）"
+            elif self._output_file_entry.actual.content_string == "":
+                content_text = "（空）"
+            else:
+                content_text = self._output_file_entry.actual.content_string
             self.setPlainText(
                 "\n".join(
-                    errors) + "\n\n＜ストリームの内容＞\n" + self._output_file_entry.actual.content_string
+                    errors) + "\n\n＜ストリームの内容＞\n" + content_text
             )
         else:
             self.setEnabled(True)
@@ -126,9 +237,10 @@ class TestCaseValidTestResultViewWidget(QWidget):
 
     def _init_signals(self):
         # noinspection PyUnresolvedReferences
-        self._w_file_tab.tabBarClicked.connect(self.__w_file_tab_clicked)
+        self._w_file_tab.currentChanged.connect(self.__w_file_tab_current_changed)
 
     def set_data(self, test_result_output_files: TestResultOutputFileMapping) -> None:
+        self._w_file_tab.blockSignals(True)
         self._w_file_tab.clear()
         self._file_ids.clear()
         for file_id, output_file_entry in test_result_output_files.items():
@@ -148,6 +260,7 @@ class TestCaseValidTestResultViewWidget(QWidget):
                 title,
             )
             self._file_ids.append(file_id)
+        self._w_file_tab.blockSignals(False)
 
     def set_selected(self, file_id_to_select: FileID | None) -> None:
         if file_id_to_select is None:
@@ -157,10 +270,9 @@ class TestCaseValidTestResultViewWidget(QWidget):
         i = self._file_ids.index(file_id_to_select)
         self._w_file_tab.setCurrentIndex(i)
 
-    @pyqtSlot()
-    def __w_file_tab_clicked(self):
+    @pyqtSlot(int)
+    def __w_file_tab_current_changed(self, i):
         # noinspection PyUnresolvedReferences
-        i = self._w_file_tab.currentIndex()
         self.selected_file_id_changed.emit(self._file_ids[i])
 
 
@@ -372,8 +484,8 @@ class TestCaseTestResultListWidget(QListWidget):
                 self.addItem(list_item)
                 # 項目のウィジェットとQtのリスト項目を関連付ける
                 self.setItemWidget(list_item, item_widget)
-            # 幅を内容に合わせて調整
-            self.setFixedWidth(self.sizeHintForColumn(0) + 40)
+            # # 幅を内容に合わせて調整
+            # self.setFixedWidth(self.sizeHintForColumn(0) + 40)
 
     @pyqtSlot(TestCaseID)
     def set_selected_id(self, testcase_id_to_select: TestCaseID | None) -> None:
@@ -434,6 +546,7 @@ class StudentTitleViewWidget(QWidget):
         self._b_prev = QPushButton(self)
         self._b_prev.setText("<")
         self._b_prev.setFixedWidth(30)
+        self._b_prev.setFocusPolicy(Qt.NoFocus)
         layout.addWidget(self._b_prev)
 
         layout.addStretch(1)
@@ -453,6 +566,7 @@ class StudentTitleViewWidget(QWidget):
         self._b_next = QPushButton(self)
         self._b_next.setText(">")
         self._b_next.setFixedWidth(30)
+        self._b_next.setFocusPolicy(Qt.NoFocus)
         layout.addWidget(self._b_next)
 
     def _init_signals(self):
@@ -491,6 +605,7 @@ class TestCaseControlWidget(QWidget):
         self._b_prev = QPushButton(self)
         self._b_prev.setText("<")
         self._b_prev.setFixedWidth(30)
+        self._b_prev.setFocusPolicy(Qt.NoFocus)
         layout.addWidget(self._b_prev)
 
         layout.addStretch(1)
@@ -505,6 +620,7 @@ class TestCaseControlWidget(QWidget):
         self._b_next = QPushButton(self)
         self._b_next.setText(">")
         self._b_next.setFixedWidth(30)
+        self._b_next.setFocusPolicy(Qt.NoFocus)
         layout.addWidget(self._b_next)
 
     def _init_signals(self):
@@ -573,10 +689,32 @@ class MarkDialogStateCreator:
         return self._state.file_id
 
     def create_state_by_testcase_id(self, testcase_id: TestCaseID) -> MarkDialogState:
+        if self._state.student_id is None:
+            if self._student_ids:
+                new_student_id = self._student_ids[0]
+            else:
+                new_student_id = None
+        else:
+            new_student_id = self._state.student_id
         new_state = MarkDialogState(
-            student_id=self._state.student_id,
+            student_id=new_student_id,
             testcase_id=testcase_id,
             file_id=self.__create_file_id_field(testcase_id),
+        )
+        return new_state
+
+    def create_state_by_student_id(self, student_id: StudentID) -> MarkDialogState:
+        if self._state.testcase_id is None:
+            if self._testcase_ids:
+                new_testcase_id = self._testcase_ids[0]
+            else:
+                new_testcase_id = None
+        else:
+            new_testcase_id = self._state.testcase_id
+        new_state = MarkDialogState(
+            student_id=student_id,
+            testcase_id=new_testcase_id,
+            file_id=self.__create_file_id_field(new_testcase_id),
         )
         return new_state
 
@@ -685,8 +823,6 @@ class MarkDialog(QDialog):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self.installEventFilter(self)
-
         self._student_ids: list[StudentID] = get_student_list_id_usecase().execute()
         # ^ get_student_id_list_usecase
         self._testcase_ids: list[TestCaseID] = get_testcase_config_list_id_usecase().execute()
@@ -696,40 +832,61 @@ class MarkDialog(QDialog):
         self._init_signals()
 
     def _init_ui(self):
-        self.setWindowTitle(f"採点")
+        self.setWindowTitle("採点")
         self.setModal(True)
-        self.resize(1200, 700)
+        self.resize(500, 800)
+        self.installEventFilter(self)
 
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        if "top":
-            layout_top = QHBoxLayout()
-            layout.addLayout(layout_top)
+        if "middle":
+            layout_middle = QHBoxLayout()
+            layout.addLayout(layout_middle)
 
-            self._w_student_control_view = StudentTitleViewWidget(self)
-            layout_top.addWidget(self._w_student_control_view)
+            if "middle-left":
+                layout_middle_left = QVBoxLayout()
+                layout_middle.addLayout(layout_middle_left)
 
-            self._w_testcase_control = TestCaseControlWidget(self)
-            layout_top.addWidget(self._w_testcase_control)
+                self._w_student_control = StudentTitleViewWidget(self)
+                layout_middle_left.addWidget(self._w_student_control)
 
-            layout_top.addStretch(1)
+                if "middle-left-inner":
+                    layout_middle_left_inner = QHBoxLayout()
+                    layout_middle_left_inner.setContentsMargins(0, 0, 0, 0)
+                    layout_middle_left.addLayout(layout_middle_left_inner)
 
-        if "content":
-            layout_content = QHBoxLayout()
-            layout.addLayout(layout_content)
+                    self._w_source_code_view = StudentSourceCodeView(self)
+                    self._w_source_code_view.setFixedWidth(450)
+                    layout_middle_left_inner.addWidget(self._w_source_code_view)
 
-            self._w_source_code_view = StudentSourceCodeView(self)
-            self._w_source_code_view.setFixedWidth(450)
-            layout_content.addWidget(self._w_source_code_view)
+                    self._w_test_result_view_placeholder = TestCaseTestResultViewPlaceholderWidget(
+                        self)
+                    self._w_test_result_view_placeholder.setFixedWidth(450)
+                    layout_middle_left_inner.addWidget(self._w_test_result_view_placeholder)
 
-            self._w_test_result_view_placeholder = TestCaseTestResultViewPlaceholderWidget(self)
-            layout_content.addWidget(self._w_test_result_view_placeholder)
+            if "middle-right":
+                layout_middle_right = QVBoxLayout()
+                layout_middle.addLayout(layout_middle_right)
 
-            self._w_testcase_result_list = TestCaseTestResultListWidget(self)
-            self._w_testcase_result_list.setFixedWidth(400)
-            self._w_testcase_result_list.setFocusPolicy(Qt.NoFocus)
-            layout_content.addWidget(self._w_testcase_result_list)
+                self._w_testcase_control = TestCaseControlWidget(self)
+                layout_middle_right.addWidget(self._w_testcase_control)
+
+                self._w_testcase_result_list = TestCaseTestResultListWidget(self)
+                self._w_testcase_result_list.setFixedWidth(400)
+                self._w_testcase_result_list.setFocusPolicy(Qt.NoFocus)
+                layout_middle_right.addWidget(self._w_testcase_result_list)
+
+        if "bottom":
+            layout_bottom = QHBoxLayout()
+            layout.addLayout(layout_bottom)
+
+            layout_bottom.addStretch(1)
+
+            self._w_mark_score = MarkScoreEditWidget(self)
+            layout_bottom.addWidget(self._w_mark_score)
+
+            layout_bottom.addStretch(1)
 
     def _init_signals(self):
         # noinspection PyUnresolvedReferences
@@ -745,9 +902,19 @@ class MarkDialog(QDialog):
             self.__w_testcase_control_prev_testcase_triggered
         )
         # noinspection PyUnresolvedReferences
+        self._w_student_control.next_student_triggered.connect(
+            self.__w_student_control_next_student_triggered
+        )
+        # noinspection PyUnresolvedReferences
+        self._w_student_control.prev_student_triggered.connect(
+            self.__w_student_control_prev_student_triggered
+        )
+        # noinspection PyUnresolvedReferences
         self._w_test_result_view_placeholder.selected_file_id_changed.connect(
             self.__w_test_result_view_placeholder_selected_file_id_changed
         )
+        # noinspection PyUnresolvedReferences
+        self._w_mark_score.key_pressed.connect(self.__w_mark_score_key_pressed)
 
     @classmethod
     def __get_student_mark_summary_view_data(
@@ -771,6 +938,20 @@ class MarkDialog(QDialog):
     ) -> str | None:
         return get_student_source_code_get_usecase().execute(student_id)
 
+    @classmethod
+    def __get_student_mark(
+            cls,
+            student_id: StudentID,
+    ) -> StudentMark:
+        return get_student_mark_get_usecase().execute(student_id)
+
+    @classmethod
+    def __put_student_mark(
+            cls,
+            student_mark: StudentMark,
+    ) -> None:
+        get_student_mark_put_usecase().execute(student_mark)
+
     @property
     def states(self) -> MarkDialogStateCreator:
         return MarkDialogStateCreator(
@@ -782,9 +963,9 @@ class MarkDialog(QDialog):
     def __reflect_state(self):
         # self._w_student_title_view: StudentTitleViewWidget
         if self._state.student_id is None:
-            self._w_student_control_view.set_data(None)
+            self._w_student_control.set_data(None)
         else:
-            self._w_student_control_view.set_data(
+            self._w_student_control.set_data(
                 student=self.__get_student_mark_summary_view_data(self._state.student_id).student,
             )
 
@@ -820,18 +1001,24 @@ class MarkDialog(QDialog):
                 detailed_reason="テストケースが選択されていません",
             )
         else:
-            student_testcase_test_summary_view_data = self.__get_student_testcase_test_result_view_data(
-                student_id=self._state.student_id,
-                testcase_id=self._state.testcase_id,
-            )
-            if student_testcase_test_summary_view_data.is_success:
-                self._w_test_result_view_placeholder.set_data(
-                    test_result_output_files=student_testcase_test_summary_view_data.output_and_results,
+            summary_view_data = self.__get_student_mark_summary_view_data(self._state.student_id)
+            if summary_view_data.is_ready:
+                testcase_result_view_data = self.__get_student_testcase_test_result_view_data(
+                    student_id=self._state.student_id,
+                    testcase_id=self._state.testcase_id,
                 )
-                self._w_test_result_view_placeholder.set_selected(self._state.file_id)
+                if testcase_result_view_data.is_success:
+                    self._w_test_result_view_placeholder.set_data(
+                        test_result_output_files=testcase_result_view_data.output_and_results,
+                    )
+                    self._w_test_result_view_placeholder.set_selected(self._state.file_id)
+                else:
+                    self._w_test_result_view_placeholder.set_data(
+                        detailed_reason=testcase_result_view_data.detailed_reason,
+                    )
             else:
                 self._w_test_result_view_placeholder.set_data(
-                    detailed_reason=student_testcase_test_summary_view_data.detailed_reason,
+                    detailed_reason=summary_view_data.reason,
                 )
 
         # self._w_testcase_result_list: TestCaseTestResultListWidget(self)
@@ -849,9 +1036,25 @@ class MarkDialog(QDialog):
             )
             self._w_testcase_result_list.set_selected_id(self._state.testcase_id)
 
+        # self._w_mark_score: MarkScoreEditWidget
+        if self._state.student_id is None:
+            self._w_mark_score.set_data(None)
+        else:
+            self._w_mark_score.set_data(self.__get_student_mark(self._state.student_id))
+
+    def __save_data(self):
+        if not self._w_mark_score.is_modified():
+            return
+        student_mark = self._w_mark_score.get_data()
+        if student_mark is not None:
+            self._logger.info(f"student mark saved\n{student_mark}")
+            assert student_mark.student_id == self._state.student_id
+            self.__put_student_mark(student_mark)
+
     def set_data(self, state: MarkDialogState):
         if self._state == state:
             return
+        self.__save_data()
         self._state = state
         self.__reflect_state()
 
@@ -870,9 +1073,23 @@ class MarkDialog(QDialog):
         new_state = self.states.create_state_of_prev_testcase()
         self.set_data(new_state)
 
+    @pyqtSlot()
+    def __w_student_control_next_student_triggered(self):
+        new_state = self.states.create_state_of_next_student()
+        self.set_data(new_state)
+
+    @pyqtSlot()
+    def __w_student_control_prev_student_triggered(self):
+        new_state = self.states.create_state_of_prev_student()
+        self.set_data(new_state)
+
     @pyqtSlot(FileID)
     def __w_test_result_view_placeholder_selected_file_id_changed(self, file_id: FileID):
         self._state.file_id = file_id
+
+    @pyqtSlot(QKeyEvent)
+    def __w_mark_score_key_pressed(self, evt: QKeyEvent):
+        self.__on_key_press(evt)
 
     def __on_key_press(self, evt: QKeyEvent):
         key = evt.key()
@@ -889,6 +1106,8 @@ class MarkDialog(QDialog):
             new_state = self.states.create_state_of_prev_file()
         elif key == Qt.Key_C:
             new_state = self.states.create_state_of_next_file()
+        elif key == Qt.Key_Space:
+            self._w_mark_score.set_unmarked()
 
         if new_state is not None:
             self.set_data(new_state)
@@ -898,3 +1117,6 @@ class MarkDialog(QDialog):
             self.__on_key_press(evt)
             return True
         return False
+
+    def closeEvent(self, evt: QCloseEvent):
+        self.__save_data()

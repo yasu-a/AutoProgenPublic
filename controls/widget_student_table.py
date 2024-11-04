@@ -9,11 +9,11 @@ from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
 from application.dependency.usecases import get_student_list_id_usecase, \
-    get_student_submission_folder_show_usecase, get_student_table_get_student_id_cell_data_usecase, \
+    get_student_table_get_student_id_cell_data_usecase, \
     get_student_table_get_student_name_cell_data_usecase, \
     get_student_table_get_student_stage_state_cell_data_usecase, \
     get_student_table_get_student_error_cell_data_usecase, \
-    get_student_stage_result_take_diff_snapshot_usecase
+    get_student_dynamic_take_diff_snapshot_usecase, get_student_mark_get_usecase
 from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
 from controls.res.fonts import font
 from domain.models.stages import BuildStage, CompileStage, ExecuteStage, TestStage
@@ -31,8 +31,7 @@ class StudentTableColumns:
     COL_STAGE_EXECUTE = 4
     COL_STAGE_TEST = 5
     COL_ERROR = 6
-    COL_TESTCASE_RESULT = 7
-    COL_MARK_RESULT = 8
+    COL_MARK_RESULT = 7
     HEADER = (
         "学籍番号",
         "名前",
@@ -41,8 +40,7 @@ class StudentTableColumns:
         "実行",
         "テスト",
         "エラー",
-        "テスト結果",
-        "採点結果",
+        "採点",
     )
 
 
@@ -170,7 +168,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     @data_provider(
         column=StudentTableColumns.COL_STAGE_EXECUTE,
     )
-    def get_display_stage_execute_cell(self, student_id: StudentID, role: QtRoleType):
+    def get_data_of_stage_execute_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
             cell_data = get_student_table_get_student_stage_state_cell_data_usecase().execute(
                 student_id=student_id,
@@ -184,7 +182,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     @data_provider(
         column=StudentTableColumns.COL_STAGE_TEST,
     )
-    def get_display_stage_test_cell(self, student_id: StudentID, role: QtRoleType):
+    def get_data_of_stage_test_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
             cell_data = get_student_table_get_student_stage_state_cell_data_usecase().execute(
                 student_id=student_id,
@@ -198,7 +196,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     @data_provider(
         column=StudentTableColumns.COL_ERROR,
     )
-    def get_display_role_of_error(self, student_id: StudentID, role: QtRoleType):
+    def get_data_of_error_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
             cell_data = get_student_table_get_student_error_cell_data_usecase().execute(
                 student_id=student_id,
@@ -225,20 +223,21 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
                 )
 
     @data_provider(
-        column=StudentTableColumns.COL_TESTCASE_RESULT,
-    )
-    def get_display_role_of_testcase_result(self, student_id: StudentID, role: QtRoleType):
-        _ = student_id
-        _ = role
-        return None
-
-    @data_provider(
         column=StudentTableColumns.COL_MARK_RESULT,
     )
-    def get_display_role_of_mark_result(self, student_id: StudentID, role: QtRoleType):
-        _ = student_id
-        _ = role
-        return None
+    def get_data_of_mark_result_cell(self, student_id: StudentID, role: QtRoleType):
+        if role == Qt.DisplayRole:
+            student_mark = get_student_mark_get_usecase().execute(
+                student_id=student_id,
+            )
+            if student_mark.is_marked:
+                return str(student_mark.score)
+            else:
+                return "未採点"
+        elif role == Qt.FontRole:
+            return self._font_link_text()
+        elif role == Qt.ForegroundRole:
+            return self._foreground_link_text()
 
 
 class CachedStudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
@@ -366,7 +365,7 @@ class _StudentObserver(QObject):
         student_id = next(self._student_id_iter)
 
         # スナップショットを取得
-        new_snapshot = get_student_stage_result_take_diff_snapshot_usecase().execute(student_id)
+        new_snapshot = get_student_dynamic_take_diff_snapshot_usecase().execute(student_id)
 
         # 初めて巡回したとき以外は更新を確認してシグナルを送出
         if student_id in self._student_id_mtime_mapping:
@@ -384,6 +383,9 @@ class _StudentObserver(QObject):
 
 class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
     _logger = create_logger()
+
+    student_id_cell_double_clicked = pyqtSignal(StudentID, name="student_id_cell_double_clicked")
+    mark_result_cell_double_clicked = pyqtSignal(StudentID, name="mark_result_cell_double_clicked")
 
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
@@ -419,7 +421,6 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
         self.setColumnWidth(StudentTableColumns.COL_STUDENT_ID, 150)
         self.setColumnWidth(StudentTableColumns.COL_NAME, 150)
         self.setColumnWidth(StudentTableColumns.COL_ERROR, 400)
-        self.setColumnWidth(StudentTableColumns.COL_TESTCASE_RESULT, 300)
         self.setColumnWidth(StudentTableColumns.COL_MARK_RESULT, 300)
 
     def __init_signals(self):
@@ -432,21 +433,21 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
 
         i_row, i_col = self.currentIndex().row(), self.currentIndex().column()
         if i_col == StudentTableColumns.COL_STUDENT_ID:
-            get_student_submission_folder_show_usecase().execute(
-                student_id=self._model.get_student_id_of_row(i_row),
-            )
+            self.student_id_cell_double_clicked.emit(self._model.get_student_id_of_row(i_row))
+        elif i_col == StudentTableColumns.COL_MARK_RESULT:
+            self.mark_result_cell_double_clicked.emit(self._model.get_student_id_of_row(i_row))
 
-        # if self.currentIndex().column() == StudentTableModel.COL_STUDENT_ID:
-        #     index = self.currentIndex().row()
-        #     with state.data(readonly=True) as data:
-        #         student_id = data.student_ids[index]
-        #     state.project_service.open_submission_folder_in_explorer(student_id)
-        # elif self.currentIndex().column() == StudentTableModel.COL_MARK_RESULT:
-        #     index = self.currentIndex().row()
-        #     with state.data(readonly=True) as data:
-        #         student_id = data.student_ids[index]
-        #     dialog = StudentMarkDialog(self, student_id_filter=[student_id])
-        #     dialog.exec_()
+    # if self.currentIndex().column() == StudentTableModel.COL_STUDENT_ID:
+    #     index = self.currentIndex().row()
+    #     with state.data(readonly=True) as data:
+    #         student_id = data.student_ids[index]
+    #     state.project_service.open_submission_folder_in_explorer(student_id)
+    # elif self.currentIndex().column() == StudentTableModel.COL_MARK_RESULT:
+    #     index = self.currentIndex().row()
+    #     with state.data(readonly=True) as data:
+    #         student_id = data.student_ids[index]
+    #     dialog = StudentMarkDialog(self, student_id_filter=[student_id])
+    #     dialog.exec_()
 
     @pyqtSlot(StudentID)
     def _on_student_modification_observed(self, student_id):
