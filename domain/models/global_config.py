@@ -9,6 +9,7 @@ class GlobalConfig:
     compiler_tool_fullpath: Path | None
     compile_timeout: float
     max_workers: int
+    backup_before_export: bool
 
     @classmethod
     def create_default(cls) -> "GlobalConfig":
@@ -18,6 +19,7 @@ class GlobalConfig:
             ) if is_debug() else None,
             compile_timeout=15,
             max_workers=8,
+            backup_before_export=True,
         )
 
     def to_json(self):
@@ -25,6 +27,7 @@ class GlobalConfig:
             compiler_tool_fullpath=str(self.compiler_tool_fullpath),
             compiler_timeout=self.compile_timeout,
             max_workers=self.max_workers,
+            backup_before_export=self.backup_before_export,
         )
 
     @classmethod
@@ -33,4 +36,5 @@ class GlobalConfig:
             compiler_tool_fullpath=Path(body["compiler_tool_fullpath"]),
             compile_timeout=body["compiler_timeout"],
             max_workers=body["max_workers"],
+            backup_before_export=body["backup_before_export"],
         )

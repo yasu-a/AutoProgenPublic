@@ -1,4 +1,4 @@
-from domain.models.settings import GlobalConfig
+from domain.models.global_config import GlobalConfig
 from services.global_config import GlobalConfigGetService, GlobalConfigPutService
 
 

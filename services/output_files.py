@@ -21,14 +21,16 @@ class OutputFilesCreateFromStorageDiffService:
         storage = self._storage_repo.get(storage_id)
 
         output_file_mapping: dict[FileID, OutputFile] = {}
-        for created_file_relative_path in storage_diff.created:
-            if created_file_relative_path == FileID.STDOUT.deployment_relative_path:
+        for file_relative_path in storage_diff.created:
+            if file_relative_path == FileID.STDOUT.deployment_relative_path:
+                file_id = FileID.STDOUT
+            elif file_relative_path == FileID.STDIN.deployment_relative_path:
                 file_id = FileID.STDOUT
             else:
-                file_id = FileID(created_file_relative_path)
+                file_id = FileID(file_relative_path)
             output_file_mapping[file_id] = OutputFile(
                 file_id=file_id,
-                content=storage.files[created_file_relative_path]
+                content=storage.files[file_relative_path]
             )
 
         return OutputFileMapping(output_file_mapping)

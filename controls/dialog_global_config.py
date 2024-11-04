@@ -9,7 +9,7 @@ from application.dependency.usecases import get_global_config_get_usecase, \
     get_global_config_put_usecase, get_run_compile_test_usecase
 from controls.dialog_compiler_search import CompilerSearchDialog
 from controls.res.icons import icon
-from domain.models.settings import GlobalConfig
+from domain.models.global_config import GlobalConfig
 from infra.external.compiler_location import is_compiler_location
 
 
@@ -163,7 +163,7 @@ class MaxWorkersWidget(QWidget):
         return None
 
 
-class GlobalSettingsEditWidget(QWidget):
+class GlobalConfigEditWidget(QWidget):
     _logger = create_logger()
 
     def __init__(self, parent: QObject = None):
@@ -192,17 +192,32 @@ class GlobalSettingsEditWidget(QWidget):
             layout_content.addWidget(widget, i, 0)
             i += 1
 
-        # noinspection PyTypeChecker
         self._w_compiler_tool_path = CompilerToolPathEditWidget(self)
-        add_item("Visual Studio開発者ツールのパス", self._w_compiler_tool_path)
+        add_item(
+            "Visual Studio開発者ツールのパス",
+            self._w_compiler_tool_path,
+        )
 
-        # noinspection PyTypeChecker
         self._w_compiler_timeout = CompilerTimeoutWidget(self)
-        add_item("コンパイルのタイムアウト (秒)", self._w_compiler_timeout)
+        add_item(
+            "コンパイルのタイムアウト (秒)",
+            self._w_compiler_timeout,
+        )
 
-        # noinspection PyTypeChecker
         self._w_max_workers = MaxWorkersWidget(self)
-        add_item("並列タスク実行数（反映するには再起動が必要です）", self._w_max_workers)
+        add_item(
+            "並列タスク実行数（反映するには再起動が必要です）",
+            self._w_max_workers,
+        )
+
+        self._w_backup_before_export = QCheckBox(
+            "成績記録用のExcelに点数をエクスポートする前に同じフォルダにコピーをとる",
+            self,
+        )
+        add_item(
+            "成績記録用Excelのバックアップ",
+            self._w_backup_before_export,
+        )
 
         layout_root.addStretch(1)
 
@@ -235,12 +250,14 @@ class GlobalSettingsEditWidget(QWidget):
         self._w_compiler_tool_path.set_value(settings.compiler_tool_fullpath)
         self._w_compiler_timeout.set_value(int(settings.compile_timeout))
         self._w_max_workers.set_value(settings.max_workers)
+        self._w_backup_before_export.setChecked(settings.backup_before_export)
 
     def get_value(self) -> GlobalConfig:
         return GlobalConfig(
             compiler_tool_fullpath=self._w_compiler_tool_path.get_value(),
             compile_timeout=float(self._w_compiler_timeout.get_value()),
             max_workers=self._w_max_workers.get_value(),
+            backup_before_export=self._w_backup_before_export.isChecked(),
         )
 
     # noinspection PyMethodMayBeStatic
@@ -257,7 +274,7 @@ class GlobalSettingsEditWidget(QWidget):
             return "\n".join(filter(None, validation_results))
 
 
-class GlobalSettingsEditDialog(QDialog):
+class GlobalConfigEditDialog(QDialog):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
@@ -273,7 +290,7 @@ class GlobalSettingsEditDialog(QDialog):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        self._w_settings_edit = GlobalSettingsEditWidget(self)  # type: ignore
+        self._w_settings_edit = GlobalConfigEditWidget(self)  # type: ignore
         self._w_settings_edit.set_value(get_global_config_get_usecase().execute())
         layout.addWidget(self._w_settings_edit)
 

@@ -218,12 +218,12 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
                     = execute_result.output_files.get(file_id)
                 # ^ None if not found
 
-                # 実行結果にファイルが存在する場合，その内容を文字列に変換できなかったらエラー
-                if actual_output_file is not None:
-                    if actual_output_file.content_string is None:
-                        raise TestServiceError(
-                            reason=f"出力ファイル{actual_output_file.file_id!s}の文字コードが不明です",
-                        )
+                # # 実行結果にファイルが存在する場合，その内容を文字列に変換できなかったらエラー
+                # if actual_output_file is not None:
+                #     if actual_output_file.content_string is None:
+                #         raise TestServiceError(
+                #             reason=f"出力ファイル{actual_output_file.file_id!s}の文字コードが不明です",
+                #         )
 
                 if actual_output_file is not None and expected_output_file is None:
                     # 実行結果には含まれているがテストケースにはない出力ファイル

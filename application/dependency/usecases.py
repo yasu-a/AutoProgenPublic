@@ -7,7 +7,10 @@ from usecases.project_name_exist import ProjectNameExistUseCase
 from usecases.project_static_initialize import ProjectStaticInitializeUseCase
 from usecases.recent_project_list import RecentProjectListUseCase
 from usecases.run_compile_test import RunCompileTestUseCase
+from usecases.student_dynamic_diff_snapshot import StudentDynamicTakeDiffSnapshotUseCase
 from usecases.student_id_list_usecase import StudentListIDUseCase
+from usecases.student_mark import StudentMarkGetUseCase, StudentMarkPutUseCase, \
+    StudentMarkListUseCase
 from usecases.student_mark_view_data import StudentMarkViewDataGetTestResultUseCase, \
     StudentMarkViewDataGetMarkSummaryUseCase
 from usecases.student_run_build import StudentRunBuildStageUseCase
@@ -17,7 +20,6 @@ from usecases.student_run_next_stage import StudentRunNextStageUseCase
 from usecases.student_run_test import StudentRunTestStageUseCase
 from usecases.student_source_code import StudentSourceCodeGetUseCase
 from usecases.student_stage_result_clear import StudentStageResultClearUseCase
-from usecases.student_stage_result_diff_snapshot import StudentStageResultTakeDiffSnapshotUseCase
 from usecases.student_submission_folder_show import StudentSubmissionFolderShowUseCase
 from usecases.student_table_cell_data import StudentTableGetStudentIDCellDataUseCase, \
     StudentTableGetStudentNameCellDataUseCase, StudentTableGetStudentStageStateCellDataUseCase, \
@@ -77,7 +79,7 @@ def get_current_project_summary_get_usecase():
 
 def get_student_list_id_usecase():
     return StudentListIDUseCase(
-        student_list_service=get_student_list_service(),
+        student_list_sub_service=get_student_list_sub_service(),
     )
 
 
@@ -200,9 +202,10 @@ def get_student_run_execute_stage_usecase():
 
 
 # StudentStageResultTakeDiffSnapshotUseCase
-def get_student_stage_result_take_diff_snapshot_usecase():
-    return StudentStageResultTakeDiffSnapshotUseCase(
+def get_student_dynamic_take_diff_snapshot_usecase():
+    return StudentDynamicTakeDiffSnapshotUseCase(
         student_stage_result_check_timestamp_query_service=get_student_stage_result_check_timestamp_query_service(),
+        student_mark_check_timestamp_query_service=get_student_mark_check_timestamp_query_service(),
     )
 
 
@@ -254,7 +257,7 @@ def get_student_mark_view_data_get_test_result_usecase():
 def get_student_mark_view_data_get_mark_summary_usecase():
     return StudentMarkViewDataGetMarkSummaryUseCase(
         student_get_service=get_student_get_service(),
-        student_mark_get_service=get_student_mark_get_service(),
+        student_mark_get_sub_service=get_student_mark_get_sub_service(),
         stage_path_list_sub_service=get_stage_path_list_sub_service(),
         student_stage_path_result_get_service=get_student_stage_path_result_get_service(),
         student_stage_path_result_check_rollback_service=get_student_stage_path_result_check_rollback_service(),
@@ -265,4 +268,25 @@ def get_student_mark_view_data_get_mark_summary_usecase():
 def get_student_source_code_get_usecase():
     return StudentSourceCodeGetUseCase(
         student_source_code_get_query_service=get_student_source_code_get_query_service(),
+    )
+
+
+# StudentMarkGetUseCase
+def get_student_mark_get_usecase():
+    return StudentMarkGetUseCase(
+        student_mark_get_sub_service=get_student_mark_get_sub_service(),
+    )
+
+
+# StudentMarkPutUseCase
+def get_student_mark_put_usecase():
+    return StudentMarkPutUseCase(
+        student_mark_put_service=get_student_mark_put_service(),
+    )
+
+
+# StudentMarkListUseCase
+def get_student_mark_list_usecase():
+    return StudentMarkListUseCase(
+        student_mark_list_service=get_student_mark_list_service(),
     )

@@ -15,7 +15,7 @@ class StudentGetService:
         return self._student_repo.get(student_id)
 
 
-class StudentListService:
+class StudentListSubService:
     def __init__(
             self,
             *,

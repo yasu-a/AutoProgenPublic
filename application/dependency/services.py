@@ -15,10 +15,11 @@ from services.storage import StorageLoadTestSourceService, \
 from services.storage_diff_snapshot import StorageTakeSnapshotService
 from services.storage_run_compiler import StorageRunCompilerService
 from services.storage_run_executable import StorageRunExecutableService
-from services.student import StudentGetService, StudentListService
+from services.student import StudentGetService, StudentListSubService
 from services.student_dynamic import StudentDynamicClearService, \
     StudentDynamicSetSourceContentService
-from services.student_mark import StudentMarkGetService, StudentMarkPutService
+from services.student_mark import StudentMarkGetSubService, StudentMarkPutService, \
+    StudentMarkCheckTimestampQueryService, StudentMarkListService
 from services.student_master_create import StudentMasterCreateService
 from services.student_source_code import StudentSourceCodeGetQueryService
 from services.student_stage_path_result import StudentStagePathResultGetService, \
@@ -85,8 +86,8 @@ def get_current_project_get_service():
     )
 
 
-def get_student_list_service():
-    return StudentListService(
+def get_student_list_sub_service():
+    return StudentListSubService(
         student_repo=get_student_repository(),
     )
 
@@ -355,9 +356,9 @@ def get_output_files_create_from_storage_diff_service():
     )
 
 
-# StudentMarkGetService
-def get_student_mark_get_service():
-    return StudentMarkGetService(
+# StudentMarkGetSubService
+def get_student_mark_get_sub_service():
+    return StudentMarkGetSubService(
         student_mark_repo=get_student_mark_repository(),
     )
 
@@ -373,4 +374,20 @@ def get_student_mark_put_service():
 def get_student_source_code_get_query_service():
     return StudentSourceCodeGetQueryService(
         student_dynamic_repo=get_student_dynamic_repository(),
+    )
+
+
+# StudentMarkCheckTimestampQueryService
+def get_student_mark_check_timestamp_query_service():
+    return StudentMarkCheckTimestampQueryService(
+        student_mark_path_provider=get_student_mark_path_provider(),
+        current_project_core_io=get_current_project_core_io(),
+    )
+
+
+# StudentMarkListService
+def get_student_mark_list_service():
+    return StudentMarkListService(
+        student_list_sub_service=get_student_list_sub_service(),
+        student_mark_get_sub_service=get_student_mark_get_sub_service(),
     )

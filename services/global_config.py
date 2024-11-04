@@ -1,4 +1,4 @@
-from domain.models.settings import GlobalConfig
+from domain.models.global_config import GlobalConfig
 from infra.repositories.global_config import GlobalConfigRepository
 
 

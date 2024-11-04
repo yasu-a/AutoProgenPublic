@@ -1,9 +1,6 @@
-from dataclasses import dataclass
-
 from domain.models.values import StudentID
 
 
-@dataclass
 class StudentMark:
     def __init__(self, student_id: StudentID, score: int | None):  # Noneは未採点を表す
         self._student_id = student_id
@@ -43,3 +40,6 @@ class StudentMark:
     def score(self, score: int) -> None:
         assert score is not None
         self._score = score
+
+    def __repr__(self):
+        return f"StudentMark(student_id={self._student_id}, score={self._score})"

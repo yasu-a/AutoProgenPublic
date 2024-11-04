@@ -304,7 +304,7 @@ class TestResultOutputFileMapping(
             if file_entry.has_expected and not file_entry.has_actual:
                 return False
             # 予期されていない実行結果
-            if not file_entry.has_expected and not file_entry.has_actual:
+            if not file_entry.has_expected and file_entry.has_actual:
                 continue
             # 不正解
             if not file_entry.test_result.is_accepted:

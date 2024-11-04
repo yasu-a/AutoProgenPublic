@@ -177,6 +177,7 @@ class StudentMarkSummaryViewData:
     student: Student
     mark: StudentMark
     state: StudentMarkState
+    detailed_text: str | None
 
     @property
     def is_ready(self) -> bool:
@@ -186,4 +187,4 @@ class StudentMarkSummaryViewData:
     def reason(self) -> str:
         if self.is_ready:
             raise ValueError("no reason found")
-        return self.state.value
+        return self.state.value + ("" if self.detailed_text is None else "\n" + self.detailed_text)
