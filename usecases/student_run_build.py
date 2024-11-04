@@ -6,7 +6,6 @@ from services.student_dynamic import StudentDynamicSetSourceContentService, \
     StudentDynamicClearService
 from services.student_submission import StudentSubmissionGetSourceContentService, \
     StudentSubmissionGetSourceFileServiceError, StudentSubmissionGetChecksumService
-from transaction import transactional_with
 
 
 class StudentRunBuildStageUseCase:
@@ -28,7 +27,6 @@ class StudentRunBuildStageUseCase:
         self._student_dynamic_set_source_content_service = student_dynamic_set_source_content_service
         self._student_submission_get_checksum_service = student_submission_get_checksum_service
 
-    @transactional_with("student_id")
     def execute(self, student_id: StudentID) -> None:
         # 動的データをクリアする
         self._student_dynamic_clear_service.execute(

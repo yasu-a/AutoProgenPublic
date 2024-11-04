@@ -3,7 +3,7 @@ import os
 from PyQt5.QtCore import pyqtSignal, QObject, pyqtSlot
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QLineEdit, QPushButton, QFileDialog
 
-from icons import icon
+from controls.res.icons import icon
 
 
 class FilePathWidget(QWidget):

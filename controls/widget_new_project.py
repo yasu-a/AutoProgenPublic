@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import *
 from application.dependency.usecases import get_project_name_exist_usecase
 from application.state.debug import is_debug
 from controls.dto.new_project_config import NewProjectConfig
-from icons import icon
+from controls.res.icons import icon
 
 
 class ProjectZipFileSelectorWidget(QWidget):

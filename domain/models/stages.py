@@ -39,6 +39,7 @@ class AbstractStage(ABC):  # 生徒のプロセスのステージを表す基底
     def from_json(cls, body: dict) -> "AbstractStage":
         for sub_cls in cls.__subclasses__():
             if sub_cls.get_name_str() == body["name"]:
+                # noinspection PyArgumentList
                 return sub_cls(
                     **{
                         f.name: f.type.from_json(body[f.name])

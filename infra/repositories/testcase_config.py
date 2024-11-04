@@ -9,7 +9,6 @@ from domain.models.testcase_config import TestCaseConfig
 from domain.models.values import TestCaseID
 from infra.core.current_project import CurrentProjectCoreIO
 from infra.path_providers.current_project import TestCaseConfigPathProvider
-from transaction import transactional_with, transactional
 
 
 class TestCaseConfigRepository:
@@ -75,7 +74,6 @@ class TestCaseConfigRepository:
             body=test_config.to_json(),
         )
 
-    @transactional_with(testcase_id=lambda args: args["testcase_config"].testcase_id)
     def put(self, testcase_config: TestCaseConfig):
         with self.__lock():
             if testcase_config.testcase_id in self._testcase_cache:
@@ -108,7 +106,6 @@ class TestCaseConfigRepository:
         json_body = self._current_project_core_io.read_json(json_fullpath=json_fullpath)
         return TestCaseTestConfig.from_json(json_body)
 
-    @transactional_with("testcase_id")
     def exists(self, testcase_id: TestCaseID) -> bool:
         with self.__lock():
             return any(
@@ -116,7 +113,6 @@ class TestCaseConfigRepository:
                 for testcase_folder_name in self.__iter_testcase_folder_names()
             )
 
-    @transactional_with("testcase_id")
     def get(self, testcase_id: TestCaseID) -> TestCaseConfig:
         with self.__lock():
             if testcase_id not in self._testcase_cache:
@@ -129,7 +125,6 @@ class TestCaseConfigRepository:
                 )
             return self._testcase_cache[testcase_id]
 
-    @transactional
     def list(self) -> list[TestCaseConfig]:
         return [
             self.get(TestCaseID(folder_name))
@@ -156,7 +151,6 @@ class TestCaseConfigRepository:
     #         path=json_fullpath,
     #     )
 
-    @transactional_with("testcase_id")
     def delete(self, testcase_id: TestCaseID) -> None:
         with self.__lock():
             del self._testcase_cache[testcase_id]

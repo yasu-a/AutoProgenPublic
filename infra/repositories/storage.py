@@ -1,16 +1,19 @@
+import time
 from datetime import datetime
 from pathlib import Path
 
+from app_logging import create_logger
 from domain.models.storage import Storage, StorageFileContentMapper, \
     FileRelativePathListProducerType, FileContentMapperType, FileRelativePathExistsMapperType, \
     FileRelativePathStatMapperType, StorageStat
 from domain.models.values import StorageID
 from infra.core.current_project import CurrentProjectCoreIO
 from infra.path_providers.current_project import StoragePathProvider
-from transaction import transactional_with
 
 
 class StorageRepository:
+    _logger = create_logger()
+
     def __init__(
             self,
             *,
@@ -70,7 +73,6 @@ class StorageRepository:
 
         return file_relative_path_stat_mapper
 
-    @transactional_with("storge_id")
     def create(self, storage_id: StorageID) -> Storage:
         # ストレージを生成する
         base_folder_fullpath = self._storage_path_provider.base_folder_fullpath(storage_id)
@@ -98,7 +100,6 @@ class StorageRepository:
         )
         return storage
 
-    @transactional_with("storge_id")
     def get(self, storage_id: StorageID) -> Storage:
         # 既存のストレージを取得する
 
@@ -128,7 +129,6 @@ class StorageRepository:
         )
         return storage
 
-    @transactional_with(storge_id=lambda args: args["storage"].storage_id)
     def put(self, storage: Storage) -> None:
         # ストレージの変更をコミットする
         # ストレージにコミットした後のストレージインスタンスを操作してはならない！！！
@@ -155,7 +155,6 @@ class StorageRepository:
             else:
                 assert False, command
 
-    @transactional_with(storge_id=lambda args: args["storage"].storage_id)
     def delete(self, storage_id: StorageID) -> None:
         # ストレージを削除する
 
@@ -165,6 +164,21 @@ class StorageRepository:
         if not base_folder_fullpath.exists():
             raise ValueError(f"IO session {storage_id} not found")
 
-        self._current_project_core_io.rmtree_folder(
-            path=base_folder_fullpath,
-        )
+        retry_count = 0
+        while True:
+            try:
+                self._current_project_core_io.rmtree_folder(
+                    path=base_folder_fullpath,
+                )
+            except PermissionError:
+                self._logger.exception(
+                    f"PermissionError occurred in delete({storage_id})\n"
+                    f"next retry_count={retry_count + 1}"
+                )
+                retry_count += 1
+                if retry_count == 5:
+                    raise
+                time.sleep(4)
+                continue
+            else:
+                break

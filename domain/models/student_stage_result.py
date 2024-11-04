@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
 from typing import TypeVar
 
 from domain.models.output_file import OutputFileMapping
 from domain.models.stages import AbstractStage, BuildStage, CompileStage, ExecuteStage, TestStage
+from domain.models.test_result_output_file_entry import AbstractTestResultOutputFileEntry
 from domain.models.values import FileID, StudentID, TestCaseID
 
 
@@ -281,113 +281,41 @@ ExecuteStageResultType = TypeVar(
 )
 
 
-@dataclass(slots=True)
-class MatchedToken:
-    match_begin: int
-    match_end: int
-    expected_token_index: int
-
-    def to_json(self) -> dict:
-        return dict(
-            match_begin=self.match_begin,
-            match_end=self.match_end,
-            expected_token_index=self.expected_token_index,
-        )
-
-    @classmethod
-    def from_json(cls, body: dict) -> "MatchedToken":
-        return cls(
-            match_begin=body["match_begin"],
-            match_end=body["match_end"],
-            expected_token_index=body["expected_token_index"],
-        )
-
-
-@dataclass(slots=True)
-class NonmatchedToken:
-    expected_token_index: int
-
-    def to_json(self) -> dict:
-        return dict(
-            expected_token_index=self.expected_token_index,
-        )
-
-    @classmethod
-    def from_json(cls, body: dict) -> "NonmatchedToken":
-        return cls(
-            expected_token_index=body["expected_token_index"],
-        )
-
-
-@dataclass(slots=True)
-class OutputFileTestResult:
-    file_id: FileID
-    matched_tokens: list[MatchedToken]
-    nonmatched_tokens: list[NonmatchedToken]
-
-    def to_json(self) -> dict:
-        return dict(
-            file_id=self.file_id.to_json(),
-            matched_tokens=[token.to_json() for token in self.matched_tokens],
-            nonmatched_tokens=[token.to_json() for token in self.nonmatched_tokens],
-        )
-
-    @classmethod
-    def from_json(cls, body: dict) -> "OutputFileTestResult":
-        return cls(
-            file_id=FileID.from_json(body["file_id"]),
-            matched_tokens=[
-                MatchedToken.from_json(token_body)
-                for token_body in body["matched_tokens"]
-            ],
-            nonmatched_tokens=[
-                NonmatchedToken.from_json(token_body)
-                for token_body in body["nonmatched_tokens"]
-            ],
-        )
-
-    @property
-    def is_accepted(self) -> bool:  # 正解かどうか
-        return len(self.nonmatched_tokens) == 0
-
-
-class OutputFileTestResultMapping(dict[FileID, OutputFileTestResult | None]):  # 出力ファイルがない場合はNone
+class TestResultOutputFileMapping(
+    dict[FileID, AbstractTestResultOutputFileEntry],
+):
     def to_json(self) -> dict[str, dict]:
         return {
-            file_id.to_json(): (
-                result.to_json()
-                if result is not None
-                else None
-            )
+            file_id.to_json(): result.to_json()
             for file_id, result in self.items()
         }
 
     @classmethod
-    def from_json(cls, body: dict) -> "OutputFileTestResultMapping":
+    def from_json(cls, body: dict) -> "TestResultOutputFileMapping":
         return cls({
-            FileID.from_json(file_id_str): (
-                None
-                if result_body is None
-                else OutputFileTestResult.from_json(result_body)
-            )
+            FileID.from_json(file_id_str): AbstractTestResultOutputFileEntry.from_json(result_body)
             for file_id_str, result_body in body.items()
         })
 
     @property
-    def is_accepted(self) -> bool:  # テストケースが正解かどうか（全ての出力が正解かどうか）
-        return all(result is not None and result.is_accepted for result in self.values())
-
-
-class TestSummary(Enum):
-    WRONG_ANSWER = "正解条件を満たしていません"
-    ACCEPTED = "正解です"
-    UNTESTABLE = "テストできません"
+    def is_accepted(self) -> bool:  # テストケースが正解かどうか
+        for file_id, file_entry in self.items():
+            # 実行結果の出力がない
+            if file_entry.has_expected and not file_entry.has_actual:
+                return False
+            # 予期されていない実行結果
+            if not file_entry.has_expected and not file_entry.has_actual:
+                continue
+            # 不正解
+            if not file_entry.test_result.is_accepted:
+                return False
+        return True
 
 
 @dataclass(slots=True)
 class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生徒・テストケースごと
     test_config_mtime: datetime
-    output_file_test_results: OutputFileTestResultMapping
+    test_result_output_files: TestResultOutputFileMapping
 
     def __post_init__(self):
         assert isinstance(self.stage, TestStage)
@@ -399,31 +327,21 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生�
             student_id: StudentID,
             testcase_id: TestCaseID,
             test_config_mtime: datetime,
-            output_file_test_results: OutputFileTestResultMapping,
+            test_result_output_files: TestResultOutputFileMapping,
     ):
         return cls(
             student_id=student_id,
             stage=TestStage(testcase_id=testcase_id),
             test_config_mtime=test_config_mtime,
-            output_file_test_results=output_file_test_results,
+            test_result_output_files=test_result_output_files,
         )
-
-    @property
-    def summary(self) -> TestSummary:
-        if self.is_success:
-            if self.output_file_test_results.is_accepted:
-                return TestSummary.ACCEPTED
-            else:
-                return TestSummary.WRONG_ANSWER
-        else:
-            return TestSummary.UNTESTABLE
 
     def to_json(self) -> dict:
         return {
             "student_id": self.student_id.to_json(),
             "stage": self.stage.to_json(),
             "test_config_mtime": self.test_config_mtime.isoformat(),
-            "output_file_test_results": self.output_file_test_results.to_json(),
+            "test_result_output_files": self.test_result_output_files.to_json(),
         }
 
     @classmethod
@@ -432,8 +350,8 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生�
             student_id=StudentID.from_json(body["student_id"]),
             stage=AbstractStage.from_json(body["stage"]),
             test_config_mtime=datetime.fromisoformat(body["test_config_mtime"]),
-            output_file_test_results=OutputFileTestResultMapping.from_json(
-                body["output_file_test_results"],
+            test_result_output_files=TestResultOutputFileMapping.from_json(
+                body["test_result_output_files"],
             ),
         )
 

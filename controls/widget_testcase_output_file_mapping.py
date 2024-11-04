@@ -11,13 +11,13 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtWidgets import QTabWidget
 
+from controls.res.icons import icon
 from controls.widget_button_box import ButtonBox
 from domain.models.expected_ouput_file import ExpectedOutputFile, ExpectedOutputFileMapping
 from domain.models.expected_token import AbstractExpectedToken, TextExpectedToken, \
     FloatExpectedToken, ExpectedTokenList
 from domain.models.input_file import InputFileMapping
 from domain.models.values import FileID, SpecialFileType
-from icons import icon
 
 _ET = TypeVar("_ET", bound=AbstractExpectedToken)
 

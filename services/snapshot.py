@@ -1,13 +1,10 @@
 from dataclasses import dataclass
 
-from domain.models.mark import Mark
 from domain.models.stages import AbstractStage
-from domain.models.student_stage_path_result import StudentStagePathProgressWithFinishedStage
-from domain.models.student_stage_result import ExecuteStudentStageResult, TestStudentStageResult
 from domain.models.values import StudentID
 from dto.result_pair import TestCaseExecuteAndTestResultPair, \
     TestCaseExecuteAndTestResultPairMapping
-from dto.snapshot import ProjectSnapshot, StudentSnapshotStagesUnfinished, \
+from usecases.dto.mark_view_data import MarkViewData, StudentSnapshotStagesUnfinished, \
     StudentSnapshotReady, StudentSnapshotRerunRequired, AbstractStudentSnapshot, \
     StudentSnapshotStageFinishedWithError, StudentMarkSnapshotMapping
 from dto.testcase_config import TestCaseConfigMapping
@@ -16,14 +13,6 @@ from infra.repositories.student import StudentRepository
 from infra.repositories.student_stage_result import ProgressIO
 from infra.testcase_config import TestCaseIO
 
-
-@dataclass(slots=True)
-class StudentSnapshotFields:
-    student_id: StudentID
-    mark: Mark
-    progress_of_last_stage: StudentStagePathProgressWithFinishedStage | None
-    execute_result: ExecuteStudentStageResult | None
-    test_result: TestStudentStageResult | None
 
 
 class SnapshotService:
@@ -96,13 +85,13 @@ class SnapshotService:
                         detailed_reason=detailed_reason,
                     )
 
-    def take_project_snapshot(self) -> ProjectSnapshot:
-        return ProjectSnapshot(
+    def take_project_snapshot(self) -> MarkViewData:
+        return MarkViewData(
             student_snapshots=StudentMarkSnapshotMapping({
                 student.student_id: self.take_student_snapshot(student.student_id)
                 for student in self._student_repo.list()
             }),
-            testcases=TestCaseConfigMapping({
+            testcase_configs=TestCaseConfigMapping({
                 testcase_id: self._testcase_io.read_config(testcase_id)
                 for testcase_id in self._testcase_io.list_ids()
             }),

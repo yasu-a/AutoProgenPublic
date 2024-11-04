@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from domain.models.output_file import OutputFile
-from domain.models.student_stage_result import OutputFileTestResult
+from domain.models.output_file_test_result import OutputFileTestResult
 from domain.models.values import FileID, TestCaseID
 
 
@@ -29,10 +29,10 @@ class TestCaseExecuteAndTestResultPair:
         # ファイルIDの整合性を確認
         assert (
                 set(self.execute_result.output_files.keys())
-                == set(self.test_result.output_file_test_results.keys())
+                == set(self.test_result.test_result_output_files.keys())
         ), (
             set(self.execute_result.output_files.keys()),
-            set(self.test_result.output_file_test_results),
+            set(self.test_result.test_result_output_files),
         )
 
     def list_file_ids(self) -> list[FileID]:
@@ -40,7 +40,7 @@ class TestCaseExecuteAndTestResultPair:
 
     def get_output_file_and_test_result_pair(self, file_id: FileID) -> OutputFileAndTestResultPair:
         output_file = self.execute_result.output_files.get(file_id)
-        test_result_pair = self.test_result.output_file_test_results.get(file_id)
+        test_result_pair = self.test_result.test_result_output_files.get(file_id)
         if output_file is None or test_result_pair is None:
             raise KeyError(file_id)
         return OutputFileAndTestResultPair(file_id, output_file, test_result_pair)

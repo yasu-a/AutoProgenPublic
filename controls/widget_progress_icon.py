@@ -1,7 +1,7 @@
 from PyQt5.QtCore import QObject, QTimer, pyqtSlot, Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
 
-from fonts import font
+from controls.res.fonts import font
 
 
 class ProgressIconWidget(QWidget):

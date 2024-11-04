@@ -2,7 +2,7 @@ from domain.models.stage_path import StagePath
 from domain.models.stages import AbstractStage
 from domain.models.values import StudentID
 from services.stage_path import StagePathListSubService
-from services.student_get import StudentGetService
+from services.student import StudentGetService
 from services.student_stage_path_result import StudentStagePathResultGetService
 from services.student_submission import StudentSubmissionExistService
 from usecases.dto.student_table_cell_data import StudentIDCellData, StudentNameCellData, \

@@ -3,8 +3,8 @@ import sys
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from domain.models.student_stage_result import TestSummary
-from fonts import font
+from controls.res.fonts import font
+from usecases.dto.student_mark_view_data import StudentTestCaseSummaryState
 
 
 class TestCaseTestSummaryIndicatorWidget(QFrame):
@@ -43,15 +43,15 @@ class TestCaseTestSummaryIndicatorWidget(QFrame):
         layout.addStretch(1)
 
     _TEST_SUMMARY_ABBREVIATIONS = {
-        TestSummary.WRONG_ANSWER: "WA",
-        TestSummary.ACCEPTED: "AC",
-        TestSummary.UNTESTABLE: "E",
+        StudentTestCaseSummaryState.WRONG_ANSWER: "WA",
+        StudentTestCaseSummaryState.ACCEPTED: "AC",
+        StudentTestCaseSummaryState.UNTESTABLE: "E",
     }
 
     _TEST_SUMMARY_COLORS = {
-        TestSummary.WRONG_ANSWER: "red",
-        TestSummary.ACCEPTED: "#44ffbb",
-        TestSummary.UNTESTABLE: "orange",
+        StudentTestCaseSummaryState.WRONG_ANSWER: "red",
+        StudentTestCaseSummaryState.ACCEPTED: "#44ffbb",
+        StudentTestCaseSummaryState.UNTESTABLE: "orange",
     }
 
     def _update_value(self):
@@ -72,7 +72,7 @@ class TestCaseTestSummaryIndicatorWidget(QFrame):
             # noinspection PyUnresolvedReferences
             self.setToolTip(self.__value.value)
 
-    def set_data(self, value: TestSummary | None):
+    def set_data(self, value: StudentTestCaseSummaryState | None):
         self.__value = value
         self._update_value()
 
@@ -89,9 +89,9 @@ class _TestWidget(QWidget, QObject):
 
         for value in [
             None,
-            TestSummary.WRONG_ANSWER,
-            TestSummary.ACCEPTED,
-            TestSummary.UNTESTABLE,
+            StudentTestCaseSummaryState.WRONG_ANSWER,
+            StudentTestCaseSummaryState.ACCEPTED,
+            StudentTestCaseSummaryState.UNTESTABLE,
         ]:
             widget = TestCaseTestSummaryIndicatorWidget(parent=self)
             widget.set_data(value)

@@ -4,7 +4,6 @@ from domain.models.values import StudentID
 from infra.project import ProjectIO
 from infra.repositories.student_stage_result import ProgressIO, StudentStageResultRepository
 from infra.testcase_config import TestCaseIO
-from transaction import transactional
 
 
 class ProgressService:  # TODO: StudentProgressService?
@@ -13,7 +12,6 @@ class ProgressService:  # TODO: StudentProgressService?
         self._testcase_io = testcase_io
         self._progress_io = progress_io
 
-    @transactional
     def is_execute_config_changed(self, student_id: StudentID) -> bool:
         # テストケースIDが全て一致するかどうか
         testcase_ids_config = self._testcase_io.list_ids()
@@ -55,7 +53,6 @@ class ProgressService:  # TODO: StudentProgressService?
 
         return False
 
-    @transactional
     def determine_next_stage_with_result_and_get_reason(
             self,
             student_progress_io: StudentStageResultRepository,  # TODO: [!] 変な引数 コンテキストの導入

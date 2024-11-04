@@ -3,7 +3,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
 from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
-from fonts import font
+from controls.res.fonts import font
 
 
 class PlainTextEdit(QPlainTextEdit, HorizontalScrollWithShiftAndWheelMixin):

@@ -8,16 +8,16 @@ from PyQt5.QtGui import QColor, QFont
 from PyQt5.QtWidgets import *
 
 from app_logging import create_logger
-from application.dependency.usecases import get_student_id_list_usecase, \
+from application.dependency.usecases import get_student_list_id_usecase, \
     get_student_submission_folder_show_usecase, get_student_table_get_student_id_cell_data_usecase, \
     get_student_table_get_student_name_cell_data_usecase, \
     get_student_table_get_student_stage_state_cell_data_usecase, \
     get_student_table_get_student_error_cell_data_usecase, \
     get_student_stage_result_take_diff_snapshot_usecase
 from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
+from controls.res.fonts import font
 from domain.models.stages import BuildStage, CompileStage, ExecuteStage, TestStage
 from domain.models.values import StudentID
-from fonts import font
 from usecases.dto.student_stage_result_diff_snapshot import StudentStageResultDiffSnapshot, \
     StudentStageResultDiff
 from usecases.dto.student_table_cell_data import StudentStageStateCellDataStageState
@@ -349,7 +349,7 @@ class _StudentObserver(QObject):
         super().__init__(parent)
 
         self._student_id_iter = iter(
-            self.__student_id_cyclic_iterator(get_student_id_list_usecase().execute())
+            self.__student_id_cyclic_iterator(get_student_list_id_usecase().execute())
         )
 
         self._timer = QTimer(self)
@@ -395,7 +395,7 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
 
         self._model_data_provider = CachedStudentTableModelDataProvider.from_provider(
             provider=StudentTableModelDataProvider(
-                student_ids=get_student_id_list_usecase().execute(),
+                student_ids=get_student_list_id_usecase().execute(),
             ),
         )
         self._model = StudentTableModel(

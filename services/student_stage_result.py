@@ -35,6 +35,7 @@ class StudentStageResultCheckTimestampQueryService:
                 folder_fullpath=base_folder_fullpath,
                 return_absolute=True,
         ):
+            # FIXME: transaction導入 ループ中にファイルが消されるとエラー
             timestamp = self._current_project_core_io.get_file_mtime(
                 file_fullpath=file_fullpath,
             )

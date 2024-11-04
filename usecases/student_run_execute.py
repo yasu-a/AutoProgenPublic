@@ -60,6 +60,7 @@ class StudentRunExecuteStageUseCase:
     def execute(self, student_id: StudentID, testcase_id: TestCaseID) -> None:
         # ストレージ領域の生成
         storage_id = self._storage_create_service.execute()
+        print(storage_id, "C")
 
         # ストレージ領域に生徒の実行ファイルをロード
         self._storage_load_student_executable_service.execute(
@@ -92,6 +93,7 @@ class StudentRunExecuteStageUseCase:
                 timeout=execute_options.timeout,
             )
         except StorageRunExecutableServiceError as e:
+            print(storage_id, "f")
             # 失敗したら異常終了の結果を書きこむ
             self._student_stage_result_repo.put(
                 result=ExecuteFailureStudentStageResult.create_instance(
@@ -102,6 +104,7 @@ class StudentRunExecuteStageUseCase:
             )
             return
         else:
+            print(storage_id, "s")
             # 標準出力を書きこむ
             self._storage_write_stdout_file_service.execute(
                 storage_id=storage_id,
@@ -136,7 +139,10 @@ class StudentRunExecuteStageUseCase:
                 )
             )
         finally:
+            print(storage_id, "D")
             # ストレージ領域を解放
+            # FIXME: プロセスの実行に失敗するとmain.exeの削除にPermissionErrorが出る
+            # 　　　　StorageRepositoryのdelete中にリトライの仕組みを追加して対応中
             self._storage_delete_service.execute(
                 storage_id=storage_id,
             )

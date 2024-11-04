@@ -17,7 +17,7 @@ class TestCaseTestConfig:
         self._mtime = mtime or datetime.now().isoformat()
 
     @property
-    def expected_output_files(self):
+    def expected_output_files(self) -> ExpectedOutputFileMapping:
         return self._expected_output_files
 
     @property

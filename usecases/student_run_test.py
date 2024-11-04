@@ -8,11 +8,16 @@ from domain.errors import TestServiceError
 from domain.models.expected_ouput_file import ExpectedOutputFile
 from domain.models.expected_token import AbstractExpectedToken, TextExpectedToken
 from domain.models.expected_token import FloatExpectedToken
+from domain.models.output_file import OutputFile
+from domain.models.output_file_test_result import MatchedToken, NonmatchedToken, \
+    OutputFileTestResult
 from domain.models.stages import ExecuteStage
 from domain.models.student_stage_result import TestFailureStudentStageResult, \
-    TestSuccessStudentStageResult, OutputFileTestResultMapping, OutputFileTestResult, MatchedToken, \
-    NonmatchedToken, ExecuteSuccessStudentStageResult
+    TestSuccessStudentStageResult, TestResultOutputFileMapping, ExecuteSuccessStudentStageResult
 from domain.models.test_config_options import TestConfigOptions
+from domain.models.test_result_output_file_entry import TestResultTestedOutputFileEntry, \
+    AbstractTestResultOutputFileEntry, TestResultAbsentOutputFileEntry, \
+    TestResultUnexpectedOutputFileEntry
 from domain.models.values import StudentID, TestCaseID, FileID
 from infra.repositories.student_stage_result import StudentStageResultRepository
 from services.testcase_config import TestCaseConfigGetTestConfigMtimeService, \
@@ -162,7 +167,7 @@ def test_output_file_content_and_get_token_matches(
     return matched_tokens, nonmatched_tokens
 
 
-class StudentRunTestStageUseCase:
+class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestServiceを分離
     def __init__(
             self,
             *,
@@ -199,44 +204,64 @@ class StudentRunTestStageUseCase:
                 testcase_id=testcase_id,
             ).test_config
 
-            # テストの実行
-            # それぞれの出力ファイルについてテストを実行する
-            output_file_id_test_result_mapping: dict[FileID, OutputFileTestResult] = {}
-            for expected_output_file_id in test_config.expected_output_files.keys():
-                # 実行結果の出力ファイルを取得
-                output_file = execute_result.output_files.get(expected_output_file_id)
+            # テストの実行 - それぞれの出力ファイルについてテストを実行する
+            output_file_id_test_result_mapping: dict[FileID, AbstractTestResultOutputFileEntry] = {}
+            # v 正解
+            expected_output_file_ids: set[FileID] = set(test_config.expected_output_files.keys())
+            # v 実行結果
+            actual_output_file_ids: set[FileID] = set(execute_result.output_files.keys())
+            for file_id in expected_output_file_ids | actual_output_file_ids:
+                expected_output_file: ExpectedOutputFile | None \
+                    = test_config.expected_output_files.get(file_id)
+                # ^ None if not found
+                actual_output_file: OutputFile | None \
+                    = execute_result.output_files.get(file_id)
+                # ^ None if not found
 
-                # 実行結果に出力がファイルが見つからなかったらエラー
-                if output_file is None:
-                    raise TestServiceError(
-                        reason=f"出力ファイル{expected_output_file_id!s}が実行結果に見つかりません",
+                # 実行結果にファイルが存在する場合，その内容を文字列に変換できなかったらエラー
+                if actual_output_file is not None:
+                    if actual_output_file.content_string is None:
+                        raise TestServiceError(
+                            reason=f"出力ファイル{actual_output_file.file_id!s}の文字コードが不明です",
+                        )
+
+                if actual_output_file is not None and expected_output_file is None:
+                    # 実行結果には含まれているがテストケースにはない出力ファイル
+                    file_test_result = TestResultUnexpectedOutputFileEntry(
+                        file_id=file_id,
+                        actual=actual_output_file,
                     )
-
-                # 出力ファイルの内容を文字列に変換できなかったらエラー
-                if output_file.content_string is None:
-                    raise TestServiceError(
-                        reason=f"出力ファイル{output_file.file_id!s}の文字コードが不明です",
+                elif actual_output_file is None and expected_output_file is not None:
+                    # 実行結果には含まれていないがテストケースで出力が期待されているファイル
+                    file_test_result = TestResultAbsentOutputFileEntry(
+                        file_id=file_id,
+                        expected=expected_output_file,
                     )
-
-                # テストケースと照合
-                matched_tokens, nonmatched_tokens = (
-                    test_output_file_content_and_get_token_matches(
-                        content_string=output_file.content_string,
-                        test_config_options=test_config.options,
-                        expected_output_file=(
-                            test_config.expected_output_files[expected_output_file_id]
+                elif actual_output_file is not None and expected_output_file is not None:
+                    # 実行結果とテストケースの両方に含まれているファイル
+                    #  -> テストを行う
+                    matched_tokens, nonmatched_tokens = (
+                        test_output_file_content_and_get_token_matches(
+                            content_string=actual_output_file.content_string,
+                            test_config_options=test_config.options,
+                            expected_output_file=expected_output_file,
+                        )
+                    )
+                    file_test_result = TestResultTestedOutputFileEntry(
+                        file_id=file_id,
+                        actual=actual_output_file,
+                        expected=expected_output_file,
+                        test_result=OutputFileTestResult(
+                            matched_tokens=matched_tokens,
+                            nonmatched_tokens=nonmatched_tokens,
                         ),
                     )
-                )
+                else:
+                    assert False, "unreachable"
+                output_file_id_test_result_mapping[file_id] = file_test_result
 
-                # 照合結果を記録
-                output_file_id_test_result_mapping[expected_output_file_id] = OutputFileTestResult(
-                    file_id=expected_output_file_id,
-                    matched_tokens=matched_tokens,
-                    nonmatched_tokens=nonmatched_tokens,
-                )
             # すべての出力ファイルの結果を生成
-            output_file_test_results = OutputFileTestResultMapping(
+            test_result_output_files = TestResultOutputFileMapping(
                 output_file_id_test_result_mapping
             )
         except TestServiceError as e:
@@ -256,6 +281,6 @@ class StudentRunTestStageUseCase:
                     student_id=student_id,
                     testcase_id=testcase_id,
                     test_config_mtime=test_config_mtime,
-                    output_file_test_results=output_file_test_results,
+                    test_result_output_files=test_result_output_files,
                 )
             )

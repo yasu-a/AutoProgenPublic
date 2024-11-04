@@ -5,13 +5,13 @@ from PyQt5.QtWidgets import *
 from app_logging import create_logger
 from application.dependency.tasks import get_task_manager
 from application.dependency.usecases import get_current_project_summary_get_usecase, \
-    get_student_id_list_usecase
+    get_student_list_id_usecase
 from controls.dialog_global_settings import GlobalSettingsEditDialog
-# from controls.dialog_mark import MarkDialog
+from controls.dialog_mark import MarkDialog
 from controls.dialog_testcase_list_edit import TestCaseListEditDialog
+from controls.res.icons import icon
 from controls.widget_student_table import StudentTableWidget
 from controls.widget_toolbar import ToolBar
-from icons import icon
 from tasks.task_impls import RunStagesStudentTask, CleanAllStagesStudentTask
 from tasks.tasks import AbstractStudentTask
 
@@ -19,7 +19,7 @@ from tasks.tasks import AbstractStudentTask
 def enqueue_student_tasks_if_not_run(parent, task_cls: type[AbstractStudentTask]):
     if get_task_manager().get_student_task_count() > 0:
         return
-    for student_id in get_student_id_list_usecase().execute():
+    for student_id in get_student_list_id_usecase().execute():
         get_task_manager().enqueue_student_task(
             task_cls(
                 parent=parent,
@@ -91,6 +91,7 @@ class MainWindow(QMainWindow):
             dialog.exec_()
         elif name == "mark":
             dialog = MarkDialog(self)
+            dialog.set_data(dialog.states.create_state_of_first_student())
             dialog.exec_()
         else:
             assert False, name
@@ -231,6 +232,7 @@ class MainWindow(QMainWindow):
         io_count = psutil.Process().io_counters()
         cpu_percent = psutil.cpu_percent()
         ram_percent = psutil.virtual_memory().percent
+        ram_mega_bytes = psutil.Process().memory_info().rss // 1e+6
         # noinspection PyUnresolvedReferences
         status_bar: QStatusBar = self.statusBar()
         status_bar.showMessage(
@@ -242,7 +244,7 @@ class MainWindow(QMainWindow):
             f"I/O read: {io_count.read_count} "
             f"I/O write: {io_count.write_count} "
             f"CPU usage: {int(cpu_percent)}% "
-            f"RAM usage: {int(ram_percent)}% "
+            f"RAM usage: {int(ram_mega_bytes):,.0f}MB "
             # f"開発者ツール：{settings_compiler.get_vs_dev_cmd_bat_path()}"
         )
         if task_manager.get_task_count() != 0:

@@ -4,7 +4,6 @@ from domain.models.file_item import SourceFileItem, ExecutableFileItem, StudentD
 from domain.models.values import StudentID
 from infra.core.current_project import CurrentProjectCoreIO
 from infra.path_providers.current_project import StudentDynamicPathProvider
-from transaction import transactional_with
 
 
 class StudentDynamicRepository:
@@ -34,7 +33,6 @@ class StudentDynamicRepository:
         base_folder_fullpath = self._student_dynamic_path_provider.base_folder_fullpath(student_id)
         return base_folder_fullpath / filename
 
-    @transactional_with("student_id")
     def put(self, student_id: StudentID, file_item: StudentDynamicFileItemType) -> None:
         file_fullpath = self.__get_file_item_fullpath(
             student_id=student_id,
@@ -46,7 +44,6 @@ class StudentDynamicRepository:
             content_bytes=file_item.content_bytes,
         )
 
-    @transactional_with("student_id")
     def get(self, student_id: StudentID, file_item_type: type[StudentDynamicFileItemType]) \
             -> StudentDynamicFileItemType:
         file_fullpath = self.__get_file_item_fullpath(
@@ -70,7 +67,6 @@ class StudentDynamicRepository:
         else:
             assert False, file_item_type
 
-    @transactional_with("student_id")
     def exists(self, student_id: StudentID, file_item_type: type[StudentDynamicFileItemType]) \
             -> bool:
         file_fullpath = self.__get_file_item_fullpath(
@@ -79,7 +75,6 @@ class StudentDynamicRepository:
         )
         return file_fullpath.exists()
 
-    @transactional_with("student_id")
     def list(self, student_id: StudentID) -> list[StudentDynamicFileItemType]:
         lst = []
         for file_item_type in (
@@ -94,7 +89,6 @@ class StudentDynamicRepository:
                 lst.append(file_item)
         return lst
 
-    @transactional_with("student_id")
     def delete(
             self,
             student_id: StudentID,

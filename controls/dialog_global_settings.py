@@ -8,8 +8,8 @@ from app_logging import create_logger
 from application.dependency.usecases import get_global_config_get_usecase, \
     get_global_config_put_usecase, get_run_compile_test_usecase
 from controls.dialog_compiler_search import CompilerSearchDialog
+from controls.res.icons import icon
 from domain.models.settings import GlobalConfig
-from icons import icon
 from infra.external.compiler_location import is_compiler_location
 
 

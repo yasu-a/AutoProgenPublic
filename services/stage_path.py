@@ -1,7 +1,8 @@
 from typing import Iterable
 
 from domain.models.stage_path import StagePath
-from domain.models.stages import AbstractStage
+from domain.models.stages import AbstractStage, TestStage
+from domain.models.values import TestCaseID
 from services.stage import StageListRootSubService, StageListChildSubService
 
 
@@ -37,3 +38,30 @@ class StagePathListSubService:
             for path_from_root in self.f(root_stage):
                 results.append(StagePath(path_from_root))
         return results
+
+
+class StagePathGetByTestCaseIDService:
+    # ステージパスのうちから特定のテストケースIDに関連するステージパスを見つける
+    def __init__(
+            self,
+            *,
+            stage_path_list_sub_service: StagePathListSubService,
+    ):
+        self._stage_path_list_sub_service = stage_path_list_sub_service
+
+    def execute(self, testcase_id: TestCaseID) -> StagePath:
+        stage_path_lst: list[StagePath] = self._stage_path_list_sub_service.execute()
+
+        for stage_path in stage_path_lst:
+            # ステージパスと関連づいているテストケースIDを取得
+            test_stage = stage_path.get_stage_by_stage_type(TestStage)
+            if test_stage is None:
+                # ステージパスにTestStageがない（テストケースが定義されていない）
+                continue
+            assert isinstance(test_stage, TestStage)
+            stage_path_testcase_id = test_stage.testcase_id
+
+            if stage_path_testcase_id == testcase_id:
+                return stage_path
+
+        raise ValueError(f"stage path of {testcase_id=} not found")

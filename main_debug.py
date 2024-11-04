@@ -8,9 +8,9 @@ from application.state.debug import set_debug
 from controls.dialog_static_initialize import StaticInitializeProgressDialog
 from controls.dialog_welcome import WelcomeDialog
 from controls.dto.new_project_config import NewProjectConfig
+from controls.res.fonts import font
 from controls.window_main import MainWindow
 from domain.models.values import ProjectID
-from fonts import font
 
 if __name__ == '__main__':
     import sys

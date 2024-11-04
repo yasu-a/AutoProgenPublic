@@ -1,9 +1,9 @@
 from domain.models.student_master import StudentMaster
 from domain.models.values import StudentID
-from services.student_list import StudentListService
+from services.student import StudentListService
 
 
-class StudentIDListUseCase:
+class StudentListIDUseCase:
     def __init__(
             self,
             *,

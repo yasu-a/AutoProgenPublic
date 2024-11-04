@@ -1,7 +1,7 @@
 from PyQt5.QtCore import pyqtSignal, QObject, Qt, QSize
 from PyQt5.QtWidgets import QToolBar, QAction
 
-from icons import icon
+from controls.res.icons import icon
 
 
 class ToolBar(QToolBar):

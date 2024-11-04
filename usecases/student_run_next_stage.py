@@ -1,17 +1,11 @@
 from app_logging import create_logger
 from domain.models.stages import BuildStage, CompileStage, ExecuteStage, TestStage
 from domain.models.student_stage_path_result import StudentStagePathResult
-from domain.models.student_stage_result import BuildSuccessStudentStageResult, \
-    ExecuteSuccessStudentStageResult, TestSuccessStudentStageResult
 from domain.models.values import StudentID
-from services.stage import StageListChildSubService
 from services.stage_path import StagePathListSubService
-from services.student_stage_path_result import StudentStagePathResultGetService
+from services.student_stage_path_result import StudentStagePathResultGetService, \
+    StudentStagePathResultCheckRollbackService
 from services.student_stage_result import StudentStageResultRollbackService
-from services.student_submission import StudentSubmissionGetChecksumService
-from services.testcase_config import TestCaseConfigGetExecuteConfigMtimeService, \
-    TestCaseConfigGetTestConfigMtimeService
-from transaction import transactional_with
 from usecases.student_run_build import StudentRunBuildStageUseCase
 from usecases.student_run_compile import StudentRunCompileStageUseCase
 from usecases.student_run_execute import StudentRunExecuteStageUseCase
@@ -23,30 +17,19 @@ class StudentRunNextStageUseCase:
 
     def __init__(
             self,
-            stage_list_child_sub_service: StageListChildSubService,
             stage_path_list_sub_service: StagePathListSubService,
             student_stage_path_result_get_service: StudentStagePathResultGetService,
-            student_submission_get_checksum_service: StudentSubmissionGetChecksumService,
-            testcase_config_get_execute_config_mtime_service: TestCaseConfigGetExecuteConfigMtimeService,
-            testcase_config_get_test_config_mtime_service: TestCaseConfigGetTestConfigMtimeService,
             student_stage_result_rollback_service: StudentStageResultRollbackService,
             student_run_build_stage_usecase: StudentRunBuildStageUseCase,  # usecase dependency
             student_run_compile_stage_usecase: StudentRunCompileStageUseCase,
             student_run_execute_stage_usecase: StudentRunExecuteStageUseCase,
             student_run_test_stage_usecase: StudentRunTestStageUseCase,
+            student_stage_path_result_check_rollback_service: StudentStagePathResultCheckRollbackService,
     ):
-        self._stage_list_child_sub_service \
-            = stage_list_child_sub_service
         self._stage_path_list_sub_service \
             = stage_path_list_sub_service
         self._student_stage_path_result_get_service \
             = student_stage_path_result_get_service
-        self._student_submission_get_checksum_service \
-            = student_submission_get_checksum_service
-        self._testcase_config_get_execute_config_mtime_service \
-            = testcase_config_get_execute_config_mtime_service
-        self._testcase_config_get_test_config_mtime_service \
-            = testcase_config_get_test_config_mtime_service
         self._student_stage_result_rollback_service \
             = student_stage_result_rollback_service
         self._student_run_build_stage_usecase \
@@ -57,6 +40,8 @@ class StudentRunNextStageUseCase:
             = student_run_execute_stage_usecase
         self._student_run_test_stage_usecase \
             = student_run_test_stage_usecase
+        self._student_stage_path_result_check_rollback_service \
+            = student_stage_path_result_check_rollback_service
 
     def __rollback(
             self,
@@ -65,66 +50,21 @@ class StudentRunNextStageUseCase:
             student_id: StudentID,
     ) -> bool:  # ロールバックをしたらTrue
         # 完了したステージを検証し，場合に応じてロールバック
+        rollback_stage_type = self._student_stage_path_result_check_rollback_service.execute(
+            student_id=student_id,
+            stage_path_result=stage_path_result,
+        )
+        if rollback_stage_type is None:
+            return False
 
-        # * BUILDステージが成功しているとき
-        result = stage_path_result.get_result_by_stage_type(BuildStage)
-        if result is not None and result.is_success:
-            assert isinstance(result, BuildSuccessStudentStageResult)
-            # 現在のチェックサムがステージ実行時の生徒の提出フォルダのチェックサムと異なればロールバック
-            checksum = self._student_submission_get_checksum_service.execute(
-                student_id=student_id,
-            )
-            if checksum != result.submission_folder_checksum:
-                self._student_stage_result_rollback_service.execute(
-                    student_id=student_id,
-                    stage_path=stage_path_result.get_stage_path(),
-                    stage_type=BuildStage,
-                )
-                self._logger.info(f"{student_id} rollback BUILD")
-                return True
+        self._student_stage_result_rollback_service.execute(
+            student_id=student_id,
+            stage_path=stage_path_result.get_stage_path(),
+            stage_type=rollback_stage_type,
+        )
+        self._logger.info(f"{student_id} rollback {rollback_stage_type}")
+        return True
 
-        # * EXECUTEステージが成功しているとき
-        result = stage_path_result.get_result_by_stage_type(ExecuteStage)
-        if result is not None and result.is_success:
-            assert isinstance(result, ExecuteSuccessStudentStageResult)
-            # 現在の実行構成の更新時刻がステージ実行時の実行構成の更新時刻と異なればロールバック
-            stage = stage_path_result.get_result_by_stage_type(ExecuteStage).stage
-            assert isinstance(stage, ExecuteStage)
-            mtime = self._testcase_config_get_execute_config_mtime_service.execute(
-                testcase_id=stage.testcase_id,
-            )
-            if mtime != result.execute_config_mtime:
-                self._student_stage_result_rollback_service.execute(
-                    student_id=student_id,
-                    stage_path=stage_path_result.get_stage_path(),
-                    stage_type=ExecuteStage,
-                )
-                self._logger.info(f"{student_id} rollback EXECUTE")
-                return True
-
-        # * TESTステージが成功しているとき
-        result = stage_path_result.get_result_by_stage_type(TestStage)
-        if result is not None and result.is_success:
-            assert isinstance(result, TestSuccessStudentStageResult)
-            # 現在のテスト構成の更新時刻がステージ実行時の実行構成の更新時刻と異なればロールバック
-            stage = stage_path_result.get_result_by_stage_type(TestStage).stage
-            assert isinstance(stage, TestStage)
-            mtime = self._testcase_config_get_test_config_mtime_service.execute(
-                testcase_id=stage.testcase_id,
-            )
-            if mtime != result.test_config_mtime:
-                self._student_stage_result_rollback_service.execute(
-                    student_id=student_id,
-                    stage_path=stage_path_result.get_stage_path(),
-                    stage_type=TestStage,
-                )
-                self._logger.info(f"{student_id} rollback TEST")
-                return True
-
-        # ロールバックしてない
-        return False
-
-    @transactional_with("student_id")  # FIXME: ステージツリーもロックする必要がある
     def execute(self, student_id: StudentID) -> None:
         finished_stage_path_indexes = set()
         while True:
@@ -133,7 +73,7 @@ class StudentRunNextStageUseCase:
             # 各ステージパスの実行可能なステージを1ステージだけ実行
             result_updated = False
             for stage_path_index, stage_path in enumerate(stage_path_lst):
-                # このステージパスを実行してもこれ以上進捗がないことが判明しているなら即スキップ
+                # このステージパスを実行してもこれ以上進捗がないことがすでに判明しているなら即スキップ
                 if stage_path_index in finished_stage_path_indexes:
                     continue
 

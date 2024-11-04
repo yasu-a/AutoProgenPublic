@@ -8,6 +8,7 @@ from infra.repositories.project import ProjectRepository
 from infra.repositories.storage import StorageRepository
 from infra.repositories.student import StudentRepository
 from infra.repositories.student_dynamic import StudentDynamicRepository
+from infra.repositories.student_mark import StudentMarkRepository
 from infra.repositories.student_stage_result import StudentStageResultRepository
 from infra.repositories.test_source import TestSourceRepository
 from infra.repositories.testcase_config import TestCaseConfigRepository
@@ -77,4 +78,11 @@ def get_test_source_repository():
     return TestSourceRepository(
         global_path_provider=get_global_path_provider(),
         global_core_io=get_global_core_io(),
+    )
+
+
+def get_student_mark_repository():
+    return StudentMarkRepository(
+        student_mark_path_provider=get_student_mark_path_provider(),
+        current_project_core_io=get_current_project_core_io(),
     )

@@ -9,9 +9,13 @@ from infra.path_providers.global_ import GlobalPathProvider
 from infra.path_providers.project import ProjectListPathProvider, ProjectPathProvider
 
 
+def get_global_base_path() -> Path:
+    return Path(sys.argv[0]).resolve().parent
+
+
 def get_global_path_provider():
     return GlobalPathProvider(
-        global_settings_folder_fullpath=Path(sys.argv[0]).resolve().parent,
+        global_settings_folder_fullpath=get_global_base_path(),
     )
 
 

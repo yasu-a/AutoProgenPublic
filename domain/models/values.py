@@ -66,6 +66,8 @@ class StudentID:
         return hash(self.__value)
 
     def __eq__(self, other):
+        if other is None:
+            return False
         assert isinstance(other, type(self))
         return self.__value == other.__value
 
@@ -106,6 +108,8 @@ class TargetID:
         return hash(self.__value)
 
     def __eq__(self, other):
+        if other is None:
+            return False
         assert isinstance(other, type(self))
         return self.__value == other.__value
 
@@ -136,6 +140,8 @@ class TestCaseID:
         return hash(self.__value)
 
     def __eq__(self, other):
+        if other is None:
+            return False
         assert isinstance(other, type(self))
         return self.__value == other.__value
 
@@ -223,6 +229,8 @@ class FileID:
         return self.__to_string()
 
     def __eq__(self, other):
+        if other is None:
+            return False
         assert isinstance(other, FileID), other
         return (
                 self._is_special == other._is_special

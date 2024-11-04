@@ -2,7 +2,6 @@ from domain.models.student_stage_result import *
 from domain.models.values import StudentID
 from infra.core.current_project import CurrentProjectCoreIO
 from infra.path_providers.current_project import StudentStageResultPathProvider
-from transaction import transactional_with
 
 
 class StudentStageResultRepository:
@@ -43,7 +42,6 @@ class StudentStageResultRepository:
                 return sub_cls
         assert False, result_type_name
 
-    @transactional_with(student_id=lambda args: args["result"].student_id)
     def put(
             self,
             result: AbstractStudentStageResult,
@@ -64,7 +62,6 @@ class StudentStageResultRepository:
             },
         )
 
-    @transactional_with("student_id")
     def exists(
             self,
             student_id: StudentID,
@@ -78,7 +75,6 @@ class StudentStageResultRepository:
         )
         return json_fullpath.exists()
 
-    @transactional_with("student_id")
     def get(
             self,
             student_id: StudentID,
@@ -98,7 +94,6 @@ class StudentStageResultRepository:
         result_type = self.__get_result_type_from_type_name(type_name)
         return result_type.from_json(body)
 
-    @transactional_with("student_id")
     def delete(
             self,
             student_id: StudentID,

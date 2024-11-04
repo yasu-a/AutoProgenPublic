@@ -7,7 +7,7 @@ from services.project_create import ProjectCreateService
 from services.project_list import ProjectListService
 from services.stage import StageListRootSubService, StageListChildSubService, \
     StageGetParentSubService
-from services.stage_path import StagePathListSubService
+from services.stage_path import StagePathListSubService, StagePathGetByTestCaseIDService
 from services.storage import StorageLoadTestSourceService, \
     StorageCreateService, StorageDeleteService, StorageLoadStudentSourceService, \
     StorageLoadStudentExecutableService, StorageStoreStudentExecutableService, \
@@ -15,12 +15,14 @@ from services.storage import StorageLoadTestSourceService, \
 from services.storage_diff_snapshot import StorageTakeSnapshotService
 from services.storage_run_compiler import StorageRunCompilerService
 from services.storage_run_executable import StorageRunExecutableService
+from services.student import StudentGetService, StudentListService
 from services.student_dynamic import StudentDynamicClearService, \
     StudentDynamicSetSourceContentService
-from services.student_get import StudentGetService
-from services.student_list import StudentListService
+from services.student_mark import StudentMarkGetService, StudentMarkPutService
 from services.student_master_create import StudentMasterCreateService
-from services.student_stage_path_result import StudentStagePathResultGetService
+from services.student_source_code import StudentSourceCodeGetQueryService
+from services.student_stage_path_result import StudentStagePathResultGetService, \
+    StudentStagePathResultCheckRollbackService
 from services.student_stage_result import StudentStageResultCheckTimestampQueryService, \
     StudentStageResultRollbackService, StudentStageResultClearService
 from services.student_submission import StudentSubmissionExistService, \
@@ -134,9 +136,26 @@ def get_stage_path_list_sub_service():
     )
 
 
+# StagePathGetByTestCaseIDService
+def get_stage_path_get_by_testcase_id_service():
+    return StagePathGetByTestCaseIDService(
+        stage_path_list_sub_service=get_stage_path_list_sub_service(),
+    )
+
+
+# StudentStagePathResultGetService
 def get_student_stage_path_result_get_service():
     return StudentStagePathResultGetService(
         student_stage_result_repo=get_student_stage_result_repository(),
+    )
+
+
+# StudentStagePathResultCheckRollbackService
+def get_student_stage_path_result_check_rollback_service():
+    return StudentStagePathResultCheckRollbackService(
+        student_submission_get_checksum_service=get_student_submission_get_checksum_service(),
+        testcase_config_get_execute_config_mtime_service=get_testcase_config_get_execute_config_mtime_service(),
+        testcase_config_get_test_config_mtime_service=get_testcase_config_get_test_config_mtime_service(),
     )
 
 
@@ -333,4 +352,25 @@ def get_storage_run_executable_service():
 def get_output_files_create_from_storage_diff_service():
     return OutputFilesCreateFromStorageDiffService(
         storage_repo=get_storage_repository(),
+    )
+
+
+# StudentMarkGetService
+def get_student_mark_get_service():
+    return StudentMarkGetService(
+        student_mark_repo=get_student_mark_repository(),
+    )
+
+
+# StudentMarkPutService
+def get_student_mark_put_service():
+    return StudentMarkPutService(
+        student_mark_repo=get_student_mark_repository(),
+    )
+
+
+# StudentSourceCodeGetQueryService
+def get_student_source_code_get_query_service():
+    return StudentSourceCodeGetQueryService(
+        student_dynamic_repo=get_student_dynamic_repository(),
     )
