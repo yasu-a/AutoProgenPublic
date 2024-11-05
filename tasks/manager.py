@@ -4,10 +4,10 @@ from typing import Iterable
 from PyQt5.QtCore import QObject, QTimer, QMutex
 from PyQt5.QtWidgets import qApp
 
-from app_logging import create_logger
 from domain.models.values import StudentID
 from infra.repositories.global_config import GlobalConfigRepository
 from tasks.tasks import AbstractStudentTask, AbstractTask
+from utils.app_logging import create_logger
 
 
 class TaskOperationError(RuntimeError):

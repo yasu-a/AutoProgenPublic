@@ -1,7 +1,5 @@
 from PyQt5.QtWidgets import *
 
-import app_logging
-from app_logging import create_logger
 from application.dependency.usecases import get_project_create_usecase
 from application.state.current_project import set_current_project_id
 from application.state.debug import set_debug
@@ -11,6 +9,8 @@ from controls.dto.new_project_config import NewProjectConfig
 from controls.res.fonts import font
 from controls.window_main import MainWindow
 from domain.models.values import ProjectID
+from utils import app_logging
+from utils.app_logging import create_logger
 
 if __name__ == '__main__':
     import sys

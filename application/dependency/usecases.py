@@ -1,14 +1,12 @@
 from application.dependency.services import *
-from usecases.compiler_search import CompilerSearchUseCase
-from usecases.current_project_summary_get import CurrentProjectSummaryGetUseCase
+from usecases.compile_test import CompileTestRunUseCase
+from usecases.compiler import CompilerSearchUseCase
+from usecases.current_project import CurrentProjectSummaryGetUseCase
 from usecases.global_config import GlobalConfigGetUseCase, GlobalConfigPutUseCase
-from usecases.project_create import ProjectCreateUseCase
-from usecases.project_name_exist import ProjectNameExistUseCase
-from usecases.project_static_initialize import ProjectStaticInitializeUseCase
-from usecases.recent_project_list import RecentProjectListUseCase
-from usecases.run_compile_test import RunCompileTestUseCase
-from usecases.student_dynamic_diff_snapshot import StudentDynamicTakeDiffSnapshotUseCase
-from usecases.student_id_list_usecase import StudentListIDUseCase
+from usecases.project import ProjectCheckExistByNameUseCase, ProjectCreateUseCase, \
+    ProjectInitializeStaticUseCase, ProjectListRecentSummaryUseCase
+from usecases.student import StudentListIDUseCase
+from usecases.student_dynamic import StudentDynamicTakeDiffSnapshotUseCase
 from usecases.student_mark import StudentMarkGetUseCase, StudentMarkPutUseCase, \
     StudentMarkListUseCase
 from usecases.student_mark_view_data import StudentMarkViewDataGetTestResultUseCase, \
@@ -19,13 +17,13 @@ from usecases.student_run_execute import StudentRunExecuteStageUseCase
 from usecases.student_run_next_stage import StudentRunNextStageUseCase
 from usecases.student_run_test import StudentRunTestStageUseCase
 from usecases.student_source_code import StudentSourceCodeGetUseCase
-from usecases.student_stage_result_clear import StudentStageResultClearUseCase
+from usecases.student_stage_result import StudentStageResultClearUseCase
 from usecases.student_submission_folder_show import StudentSubmissionFolderShowUseCase
 from usecases.student_table_cell_data import StudentTableGetStudentIDCellDataUseCase, \
     StudentTableGetStudentNameCellDataUseCase, StudentTableGetStudentStageStateCellDataUseCase, \
     StudentTableGetStudentErrorCellDataUseCase
-from usecases.testcase_config_get import TestCaseConfigGetUseCase, TestCaseConfigPutUseCase
-from usecases.testcase_config_list_id_usecase import TestCaseConfigListIDUseCase
+from usecases.testcase_config import TestCaseConfigGetUseCase, TestCaseConfigPutUseCase, \
+    TestCaseConfigListIDUseCase
 from usecases.testcase_list_edit import TestCaseListEditListSummaryUseCase, \
     TestCaseListEditCreateNewNameUseCase, TestCaseListEditCreateTestCaseUseCase
 
@@ -42,8 +40,8 @@ def get_global_config_put_usecase():
     )
 
 
-def get_recent_project_list_usecase():
-    return RecentProjectListUseCase(
+def get_project_list_recent_summary_usecase():
+    return ProjectListRecentSummaryUseCase(
         project_list_service=get_project_list_service(),
     )
 
@@ -54,8 +52,8 @@ def get_project_create_usecase():
     )
 
 
-def get_project_static_initialize_usecase(manaba_report_archive_fullpath: Path):
-    return ProjectStaticInitializeUseCase(
+def get_project_initialize_static_usecase(manaba_report_archive_fullpath: Path):
+    return ProjectInitializeStaticUseCase(
         student_master_create_service=get_student_master_create_service(
             manaba_report_archive_fullpath=manaba_report_archive_fullpath,
         ),
@@ -65,8 +63,8 @@ def get_project_static_initialize_usecase(manaba_report_archive_fullpath: Path):
     )
 
 
-def get_project_name_exist_usecase():
-    return ProjectNameExistUseCase(
+def get_project_check_exist_by_name_usecase():
+    return ProjectCheckExistByNameUseCase(
         project_list_service=get_project_list_service(),
     )
 
@@ -119,8 +117,8 @@ def get_compiler_search_usecase():
     return CompilerSearchUseCase()
 
 
-def get_run_compile_test_usecase():
-    return RunCompileTestUseCase(
+def get_compile_test_run_usecase():
+    return CompileTestRunUseCase(
         storage_create_service=get_storage_create_service(),
         storage_load_test_source_service=get_storage_load_test_source_service(),
         storage_run_compiler_service=get_storage_run_compiler_service(),
@@ -196,7 +194,7 @@ def get_student_run_execute_stage_usecase():
         testcase_config_get_execute_config_mtime_service=get_testcase_config_get_execute_config_mtime_service(),
         storage_run_executable_service=get_storage_run_executable_service(),
         testcase_config_get_execute_options_service=get_testcase_config_get_execute_options_service(),
-        output_files_create_from_storage_diff_service=get_output_files_create_from_storage_diff_service(),
+        storage_create_output_file_mapping_from_diff_service=get_storage_create_output_file_mapping_from_diff_service(),
         storage_write_stdout_file_service=get_storage_write_stdout_file_service(),
     )
 

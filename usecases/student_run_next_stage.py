@@ -1,4 +1,3 @@
-from app_logging import create_logger
 from domain.models.stages import BuildStage, CompileStage, ExecuteStage, TestStage
 from domain.models.student_stage_path_result import StudentStagePathResult
 from domain.models.values import StudentID
@@ -10,6 +9,7 @@ from usecases.student_run_build import StudentRunBuildStageUseCase
 from usecases.student_run_compile import StudentRunCompileStageUseCase
 from usecases.student_run_execute import StudentRunExecuteStageUseCase
 from usecases.student_run_test import StudentRunTestStageUseCase
+from utils.app_logging import create_logger
 
 
 class StudentRunNextStageUseCase:

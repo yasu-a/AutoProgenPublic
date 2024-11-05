@@ -7,7 +7,6 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import QColor, QFont
 from PyQt5.QtWidgets import *
 
-from app_logging import create_logger
 from application.dependency.usecases import get_student_list_id_usecase, \
     get_student_table_get_student_id_cell_data_usecase, \
     get_student_table_get_student_name_cell_data_usecase, \
@@ -21,6 +20,7 @@ from domain.models.values import StudentID
 from usecases.dto.student_stage_result_diff_snapshot import StudentStageResultDiffSnapshot, \
     StudentStageResultDiff
 from usecases.dto.student_table_cell_data import StudentStageStateCellDataStageState
+from utils.app_logging import create_logger
 
 
 class StudentTableColumns:
@@ -58,6 +58,10 @@ def data_provider(*, column: int):
 class AbstractStudentTableModelDataProvider:
     def __init__(self, student_ids: list[StudentID]):
         self._student_ids = student_ids
+
+    @property
+    def student_ids(self) -> list[StudentID]:
+        return self._student_ids
 
     def _find_cell_provider(self, column: int):
         for name in dir(self):
@@ -289,12 +293,12 @@ class StudentTableModel(QAbstractTableModel):
             self,
             parent: QObject = None,
             *,
-            data_provider: AbstractStudentTableModelDataProvider,
+            provider: AbstractStudentTableModelDataProvider,
     ):
         super().__init__(parent)
 
-        self._student_ids: list[StudentID] = data_provider._student_ids
-        self._data_provider = data_provider
+        self._student_ids: list[StudentID] = provider.student_ids
+        self._data_provider = provider
 
     def get_row_of_student(self, student_id: StudentID) -> int:
         return self._student_ids.index(student_id)
@@ -402,7 +406,7 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
         )
         self._model = StudentTableModel(
             self,
-            data_provider=self._model_data_provider,
+            provider=self._model_data_provider,
         )  # type: ignore
         self.setModel(self._model)
 

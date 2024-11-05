@@ -23,7 +23,4 @@ class StudentSourceCodeGetQueryService:
             file_item_type=SourceFileItem,
         ).content_text
 
-        # FIXME: content_textが一行おきに空行になる どこが原因？それとも元から1行おき？
-        # content_text = content_text.replace("\r\n", "\n")  # 効果なし
-
         return content_text

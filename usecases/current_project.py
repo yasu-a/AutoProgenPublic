@@ -1,4 +1,4 @@
-from services.current_project_get import CurrentProjectGetService
+from services.current_project import CurrentProjectGetService
 from usecases.dto.project_summary import ProjectSummary
 
 

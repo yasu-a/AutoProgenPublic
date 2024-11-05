@@ -6,7 +6,6 @@ from PyQt5.QtWidgets import QDialog, QHBoxLayout, QLabel, \
     QVBoxLayout, QPlainTextEdit, QPushButton, QLineEdit, QComboBox, \
     QFileDialog, QMessageBox
 
-from app_logging import create_logger
 from application.dependency.external_io import get_score_excel_io
 from application.dependency.services import get_current_project_get_service
 from application.dependency.usecases import get_student_list_id_usecase, \
@@ -15,6 +14,7 @@ from controls.res.icons import icon
 from controls.widget_horizontal_line import HorizontalLineWidget
 from domain.models.student_mark import StudentMark
 from domain.models.values import StudentID, TargetID
+from utils.app_logging import create_logger
 
 
 class ScoreExportDialog(QDialog):  # FIXME: usecase化

@@ -4,9 +4,9 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterable
 
-from app_logging import create_logger
 from domain.errors import ManabaReportArchiveIOError
 from domain.models.values import StudentID
+from utils.app_logging import create_logger
 
 
 class ManabaReportArchiveIO:

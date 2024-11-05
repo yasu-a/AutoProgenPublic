@@ -1,8 +1,23 @@
 from datetime import datetime
 
 from domain.models.project import Project
-from domain.models.values import TargetID, ProjectID
+from domain.models.values import ProjectID, TargetID
 from infra.repositories.project import ProjectRepository
+from utils.app_logging import create_logger
+
+
+class ProjectListService:
+    _logger = create_logger()
+
+    def __init__(
+            self,
+            *,
+            project_repo: ProjectRepository,
+    ):
+        self._project_repo = project_repo
+
+    def execute(self) -> list[Project]:
+        return self._project_repo.list()
 
 
 class ProjectCreateService:

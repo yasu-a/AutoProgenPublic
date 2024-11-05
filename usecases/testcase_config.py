@@ -1,6 +1,7 @@
 from domain.models.testcase_config import TestCaseConfig
 from domain.models.values import TestCaseID
-from services.testcase_config import TestCaseConfigGetService, TestCaseConfigPutService
+from services.testcase_config import TestCaseConfigGetService, TestCaseConfigPutService, \
+    TestCaseConfigListIDSubService
 
 
 class TestCaseConfigGetUseCase:
@@ -25,3 +26,15 @@ class TestCaseConfigPutUseCase:
 
     def execute(self, testcase_config: TestCaseConfig) -> None:
         self._testcase_config_put_service.execute(testcase_config)
+
+
+class TestCaseConfigListIDUseCase:
+    def __init__(
+            self,
+            *,
+            testcase_config_list_id_sub_service: TestCaseConfigListIDSubService,
+    ):
+        self._testcase_config_list_id_sub_service = testcase_config_list_id_sub_service
+
+    def execute(self) -> list[TestCaseID]:
+        return self._testcase_config_list_id_sub_service.execute()

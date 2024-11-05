@@ -1,7 +1,7 @@
 from PyQt5.QtCore import QObject, QThread
 
-from app_logging import create_logger
 from domain.models.values import StudentID
+from utils.app_logging import create_logger
 
 
 class AbstractTask(QThread):

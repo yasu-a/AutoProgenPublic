@@ -1,18 +1,16 @@
 from application.dependency.external_io import *
 from application.dependency.repositories import *
-from services.current_project_get import CurrentProjectGetService
+from services.current_project import CurrentProjectGetService
 from services.global_config import GlobalConfigGetService, GlobalConfigPutService
-from services.output_files import OutputFilesCreateFromStorageDiffService
-from services.project_create import ProjectCreateService
-from services.project_list import ProjectListService
+from services.project import ProjectListService, ProjectCreateService
 from services.stage import StageListRootSubService, StageListChildSubService, \
     StageGetParentSubService
 from services.stage_path import StagePathListSubService, StagePathGetByTestCaseIDService
 from services.storage import StorageLoadTestSourceService, \
     StorageCreateService, StorageDeleteService, StorageLoadStudentSourceService, \
     StorageLoadStudentExecutableService, StorageStoreStudentExecutableService, \
-    StorageLoadExecuteConfigInputFilesService, StorageWriteStdoutFileService
-from services.storage_diff_snapshot import StorageTakeSnapshotService
+    StorageLoadExecuteConfigInputFilesService, StorageWriteStdoutFileService, \
+    StorageCreateOutputFileMappingFromDiffService, StorageTakeSnapshotService
 from services.storage_run_compiler import StorageRunCompilerService
 from services.storage_run_executable import StorageRunExecutableService
 from services.student import StudentGetService, StudentListSubService
@@ -350,8 +348,8 @@ def get_storage_run_executable_service():
 
 
 # OutputFilesCreateFromStorageDiffService
-def get_output_files_create_from_storage_diff_service():
-    return OutputFilesCreateFromStorageDiffService(
+def get_storage_create_output_file_mapping_from_diff_service():
+    return StorageCreateOutputFileMappingFromDiffService(
         storage_repo=get_storage_repository(),
     )
 

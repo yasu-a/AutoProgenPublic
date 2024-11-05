@@ -1,7 +1,7 @@
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from application.dependency.usecases import get_recent_project_list_usecase
+from application.dependency.usecases import get_project_list_recent_summary_usecase
 from domain.models.values import ProjectID
 from usecases.dto.project_summary import ProjectSummary
 
@@ -18,7 +18,7 @@ class RecentProjectModel(QAbstractTableModel):
         super().__init__(parent)
 
         self._project_summary_lst: list[ProjectSummary] \
-            = get_recent_project_list_usecase().execute()
+            = get_project_list_recent_summary_usecase().execute()
 
     def data(self, index: QModelIndex, role=None):
         if role == Qt.DisplayRole:

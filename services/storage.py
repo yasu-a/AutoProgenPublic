@@ -3,11 +3,14 @@ from pathlib import Path
 
 from domain.models.file_item import SourceFileItem, ExecutableFileItem
 from domain.models.input_file import InputFileMapping
+from domain.models.output_file import OutputFileMapping, OutputFile
 from domain.models.values import StorageID, StudentID, TestCaseID, FileID
 from infra.repositories.storage import StorageRepository
 from infra.repositories.student_dynamic import StudentDynamicRepository
 from infra.repositories.test_source import TestSourceRepository
 from infra.repositories.testcase_config import TestCaseConfigRepository
+from services.dto.storage_diff_snapshot import StorageDiff, StorageFileSnapshot, \
+    StorageDiffSnapshotFileEntry
 
 
 class StorageCreateService:
@@ -205,3 +208,60 @@ class StorageWriteStdoutFileService:
 
         # ストレージ領域をコミット
         self._storage_repo.put(storage)
+
+
+class StorageCreateOutputFileMappingFromDiffService:
+    def __init__(
+            self,
+            *,
+            storage_repo: StorageRepository,
+    ):
+        self._storage_repo = storage_repo
+
+    def execute(
+            self,
+            *,
+            storage_id: StorageID,
+            storage_diff: StorageDiff,
+    ) -> OutputFileMapping:
+        storage = self._storage_repo.get(storage_id)
+
+        output_file_mapping: dict[FileID, OutputFile] = {}
+        for file_relative_path in storage_diff.created:
+            if file_relative_path == FileID.STDOUT.deployment_relative_path:
+                file_id = FileID.STDOUT
+            elif file_relative_path == FileID.STDIN.deployment_relative_path:
+                file_id = FileID.STDOUT
+            else:
+                file_id = FileID(file_relative_path)
+            output_file_mapping[file_id] = OutputFile(
+                file_id=file_id,
+                content=storage.files[file_relative_path]
+            )
+
+        return OutputFileMapping(output_file_mapping)
+
+
+class StorageTakeSnapshotService:
+    def __init__(
+            self,
+            *,
+            storage_repo: StorageRepository,
+    ):
+        self._storage_repo = storage_repo
+
+    def execute(self, storage_id: StorageID) -> StorageFileSnapshot:
+        storage = self._storage_repo.get(storage_id)
+
+        snapshot_file_entries: list[StorageDiffSnapshotFileEntry] = []
+        for file_relative_path in storage.files:
+            snapshot_file_entries.append(
+                StorageDiffSnapshotFileEntry(
+                    relative_path=file_relative_path,
+                    mtime=storage.files.stat(file_relative_path).mtime
+                )
+            )
+
+        return StorageFileSnapshot(
+            file_entries=frozenset(snapshot_file_entries),
+        )

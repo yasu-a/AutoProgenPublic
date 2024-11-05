@@ -5,7 +5,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import QIntValidator, QRegExpValidator
 from PyQt5.QtWidgets import *
 
-from application.dependency.usecases import get_project_name_exist_usecase
+from application.dependency.usecases import get_project_check_exist_by_name_usecase
 from application.state.debug import is_debug
 from controls.dto.new_project_config import NewProjectConfig
 from controls.res.icons import icon
@@ -103,7 +103,7 @@ class ProjectNameLineEdit(QLineEdit):
     def validate_and_get_reason(self) -> str | None:
         project_name = self.get_value()
         # noinspection PyTypeChecker
-        if get_project_name_exist_usecase().execute(project_name):
+        if get_project_check_exist_by_name_usecase().execute(project_name):
             return "プロジェクト名はすでに存在します"
         return None
 

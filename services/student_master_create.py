@@ -175,7 +175,7 @@ class StudentMasterCreateServiceError(ServiceError):
         self.reason = reason
 
 
-class StudentMasterCreateService:
+class StudentMasterCreateService:  # TODO: StudentService系にモジュールと名称を統合
     def __init__(
             self,
             *,

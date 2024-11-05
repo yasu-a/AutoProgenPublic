@@ -333,6 +333,8 @@ class ExpectedOutputFileEditWidget(QWidget):
             assert False, name
 
 
+# TODO: TestCaseInputFileMappingEditWidgetと機能が重複 抽象化
+# noinspection DuplicatedCode
 class TestCaseExpectedOutputFileMappingEditWidget(QTabWidget):
 
     def __init__(self, parent: QObject = None):

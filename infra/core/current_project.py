@@ -2,9 +2,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional, Iterable
 
-from app_logging import create_logger
 from domain.models.values import ProjectID
 from infra.core.project import ProjectCoreIO
+from utils.app_logging import create_logger
 
 
 class CurrentProjectCoreIO:

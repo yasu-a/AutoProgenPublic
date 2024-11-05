@@ -2,7 +2,6 @@ import psutil
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from app_logging import create_logger
 from application.dependency.tasks import get_task_manager
 from application.dependency.usecases import get_current_project_summary_get_usecase, \
     get_student_list_id_usecase, get_student_submission_folder_show_usecase
@@ -16,6 +15,7 @@ from controls.widget_toolbar import ToolBar
 from domain.models.values import StudentID
 from tasks.task_impls import RunStagesStudentTask, CleanAllStagesStudentTask
 from tasks.tasks import AbstractStudentTask
+from utils.app_logging import create_logger
 
 
 def enqueue_student_tasks_if_not_run(parent, task_cls: type[AbstractStudentTask]):
@@ -134,7 +134,7 @@ class MainWindow(QMainWindow):
         task_manager = get_task_manager()
         io_count = psutil.Process().io_counters()
         cpu_percent = psutil.cpu_percent()
-        ram_percent = psutil.virtual_memory().percent
+        # ram_percent = psutil.virtual_memory().percent
         ram_mega_bytes = psutil.Process().memory_info().rss // 1e+6
         # noinspection PyUnresolvedReferences
         status_bar: QStatusBar = self.statusBar()

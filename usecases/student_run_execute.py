@@ -6,11 +6,10 @@ from domain.models.student_stage_result import ExecuteFailureStudentStageResult,
 from domain.models.values import StudentID, TestCaseID
 from infra.repositories.student_stage_result import StudentStageResultRepository
 from services.dto.storage_diff_snapshot import StorageDiff
-from services.output_files import OutputFilesCreateFromStorageDiffService
 from services.storage import StorageCreateService, StorageDeleteService, \
     StorageLoadStudentExecutableService, StorageLoadExecuteConfigInputFilesService, \
-    StorageWriteStdoutFileService
-from services.storage_diff_snapshot import StorageTakeSnapshotService
+    StorageWriteStdoutFileService, StorageCreateOutputFileMappingFromDiffService, \
+    StorageTakeSnapshotService
 from services.storage_run_executable import StorageRunExecutableService
 from services.testcase_config import TestCaseConfigGetExecuteConfigMtimeService, \
     TestCaseConfigGetExecuteOptionsService
@@ -29,7 +28,7 @@ class StudentRunExecuteStageUseCase:
             testcase_config_get_execute_config_mtime_service: TestCaseConfigGetExecuteConfigMtimeService,
             storage_run_executable_service: StorageRunExecutableService,
             testcase_config_get_execute_options_service: TestCaseConfigGetExecuteOptionsService,
-            output_files_create_from_storage_diff_service: OutputFilesCreateFromStorageDiffService,
+            storage_create_output_file_mapping_from_diff_service: StorageCreateOutputFileMappingFromDiffService,
             storage_write_stdout_file_service: StorageWriteStdoutFileService,
     ):
         self._storage_create_service \
@@ -50,8 +49,8 @@ class StudentRunExecuteStageUseCase:
             = storage_run_executable_service
         self._testcase_config_get_execute_options_service \
             = testcase_config_get_execute_options_service
-        self._output_files_create_from_storage_diff_service \
-            = output_files_create_from_storage_diff_service
+        self._storage_create_output_file_mapping_from_diff_service \
+            = storage_create_output_file_mapping_from_diff_service
         self._storage_write_stdout_file_service \
             = storage_write_stdout_file_service
 
@@ -118,7 +117,7 @@ class StudentRunExecuteStageUseCase:
                 old_snapshot=storage_snapshot_before_run,
                 new_snapshot=storage_snapshot_after_run,
             )
-            output_files = self._output_files_create_from_storage_diff_service.execute(
+            output_files = self._storage_create_output_file_mapping_from_diff_service.execute(
                 storage_id=storage_id,
                 storage_diff=storage_diff,
             )

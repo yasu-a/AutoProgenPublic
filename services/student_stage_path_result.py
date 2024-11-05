@@ -75,6 +75,7 @@ class StudentStagePathResultCheckRollbackService:
                 return BuildStage
 
         # * EXECUTEステージが成功しているとき
+        # noinspection DuplicatedCode
         result = stage_path_result.get_result_by_stage_type(ExecuteStage)
         if result is not None and result.is_success:
             assert isinstance(result, ExecuteSuccessStudentStageResult)
@@ -88,6 +89,7 @@ class StudentStagePathResultCheckRollbackService:
                 return ExecuteStage
 
         # * TESTステージが成功しているとき
+        # noinspection DuplicatedCode
         result = stage_path_result.get_result_by_stage_type(TestStage)
         if result is not None and result.is_success:
             assert isinstance(result, TestSuccessStudentStageResult)

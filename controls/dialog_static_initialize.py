@@ -4,9 +4,9 @@ from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot, Qt
 from PyQt5.QtGui import QShowEvent
 from PyQt5.QtWidgets import QDialog, QLabel, QHBoxLayout
 
-from app_logging import create_logger
-from application.dependency.usecases import get_project_static_initialize_usecase
+from application.dependency.usecases import get_project_initialize_static_usecase
 from controls.widget_progress_icon import ProgressIconWidget
+from utils.app_logging import create_logger
 
 
 class _StaticInitializeWorker(QThread):
@@ -16,7 +16,7 @@ class _StaticInitializeWorker(QThread):
     def __init__(self, parent: QObject = None, *, manaba_report_archive_fullpath: Path):
         super().__init__(parent)
 
-        self._project_static_initialize_usecase = get_project_static_initialize_usecase(
+        self._project_static_initialize_usecase = get_project_initialize_static_usecase(
             manaba_report_archive_fullpath=manaba_report_archive_fullpath,
         )
 

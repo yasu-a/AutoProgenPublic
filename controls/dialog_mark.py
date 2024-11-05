@@ -4,7 +4,6 @@ from PyQt5.QtGui import QSyntaxHighlighter, QColor, QTextCharFormat, QKeyEvent, 
 from PyQt5.QtWidgets import QDialog, QListWidget, QWidget, QHBoxLayout, QLabel, \
     QListWidgetItem, QVBoxLayout, QTabWidget, QPlainTextEdit, QPushButton, QLineEdit
 
-from app_logging import create_logger
 from application.dependency.usecases import get_student_list_id_usecase, \
     get_student_mark_view_data_get_test_result_usecase, \
     get_student_mark_view_data_get_mark_summary_usecase, get_student_source_code_get_usecase, \
@@ -22,6 +21,7 @@ from domain.models.test_result_output_file_entry import AbstractTestResultOutput
 from domain.models.values import StudentID, TestCaseID, FileID, SpecialFileType
 from usecases.dto.student_mark_view_data import AbstractStudentTestCaseTestResultViewData, \
     StudentMarkSummaryViewData
+from utils.app_logging import create_logger
 
 
 class MarkScoreEditWidget(QWidget):
@@ -537,6 +537,7 @@ class StudentTitleViewWidget(QWidget):
         self._init_ui()
         self._init_signals()
 
+    # noinspection DuplicatedCode
     def _init_ui(self):
         self.setFixedHeight(50)
 
@@ -596,6 +597,7 @@ class TestCaseControlWidget(QWidget):
         self._init_ui()
         self._init_signals()
 
+    # noinspection DuplicatedCode
     def _init_ui(self):
         self.setFixedHeight(50)
 
@@ -637,6 +639,8 @@ class TestCaseControlWidget(QWidget):
             self._l_testcase_id.setText(str(testcase_id))
 
 
+# TODO: アルゴリズム改善
+# noinspection DuplicatedCode
 class MarkDialogStateCreator:
     def __init__(
             self,

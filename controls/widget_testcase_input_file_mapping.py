@@ -3,13 +3,15 @@ from enum import IntEnum, auto
 from PyQt5.QtCore import QObject, Qt, pyqtSlot
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QTabWidget, QMessageBox, QInputDialog
 
-from app_logging import create_logger
 from controls.widget_button_box import ButtonBox
 from controls.widget_plain_text_edit import PlainTextEdit
 from domain.models.input_file import InputFile, InputFileMapping
 from domain.models.values import FileID, SpecialFileType
+from utils.app_logging import create_logger
 
 
+# TODO: TestCaseExpectedOutputFileMappingEditWidgetと機能が重複 抽象化
+# noinspection DuplicatedCode
 class TestCaseInputFileMappingEditWidget(QWidget):
     _logger = create_logger()
 

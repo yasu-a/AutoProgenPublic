@@ -2,11 +2,11 @@ from PyQt5.QtCore import QObject
 from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import QVBoxLayout, QDialog
 
-from app_logging import create_logger
 from application.dependency.usecases import get_testcase_config_get_usecase, \
     get_testcase_config_put_usecase
 from controls.widget_testcase_config_edit import TestCaseConfigEditWidget
 from domain.models.values import TestCaseID
+from utils.app_logging import create_logger
 
 
 class TestCaseConfigEditDialog(QDialog):
