@@ -4,7 +4,7 @@ from functools import cache
 from typing import Any, Callable, Iterable
 
 from PyQt5.QtCore import *
-from PyQt5.QtGui import QColor, QFont
+from PyQt5.QtGui import QColor, QFont, QMouseEvent
 from PyQt5.QtWidgets import *
 
 from application.dependency.usecases import get_student_list_id_usecase, \
@@ -26,7 +26,7 @@ from utils.app_logging import create_logger
 class StudentTableColumns:
     COL_STUDENT_ID = 0
     COL_NAME = 1
-    COL_MARK_RESULT = 2
+    COL_SCORE = 2
     COL_STAGE_BUILD = 3
     COL_STAGE_COMPILE = 4
     COL_STAGE_EXECUTE = 5
@@ -35,7 +35,7 @@ class StudentTableColumns:
     HEADER = (
         "学籍番号",
         "名前",
-        "採点",
+        "点数",
         "(1)ソースコード抽出",
         "(2)コンパイル",
         "(3)実行",
@@ -227,7 +227,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
                 )
 
     @data_provider(
-        column=StudentTableColumns.COL_MARK_RESULT,
+        column=StudentTableColumns.COL_SCORE,
     )
     def get_data_of_mark_result_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
@@ -388,8 +388,8 @@ class _StudentObserver(QObject):
 class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
     _logger = create_logger()
 
-    student_id_cell_double_clicked = pyqtSignal(StudentID, name="student_id_cell_double_clicked")
-    mark_result_cell_double_clicked = pyqtSignal(StudentID, name="mark_result_cell_double_clicked")
+    student_id_cell_triggered = pyqtSignal(StudentID, name="student_id_cell_triggered")
+    mark_result_cell_triggered = pyqtSignal(StudentID, name="mark_result_cell_triggered")
 
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
@@ -404,6 +404,7 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
                 student_ids=get_student_list_id_usecase().execute(),
             ),
         )
+        # noinspection PyTypeChecker
         self._model = StudentTableModel(
             self,
             provider=self._model_data_provider,
@@ -417,6 +418,7 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
         # self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setDefaultSectionSize(100)
         self.verticalHeader().hide()
+        self.setMouseTracking(True)  # mouseEventを使うため
 
         vh = self.verticalHeader()
         vh.setSectionResizeMode(QHeaderView.Fixed)
@@ -427,30 +429,18 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
         self.setColumnWidth(StudentTableColumns.COL_ERROR, 400)
 
     def __init_signals(self):
-        self.doubleClicked.connect(self._on_cell_double_clicked)  # type: ignore
+        self.clicked.connect(self._on_cell_triggered)  # type: ignore
 
     @pyqtSlot()
-    def _on_cell_double_clicked(self):
+    def _on_cell_triggered(self):
         if len(self.selectedIndexes()) != 1:
             return
 
         i_row, i_col = self.currentIndex().row(), self.currentIndex().column()
         if i_col == StudentTableColumns.COL_STUDENT_ID:
-            self.student_id_cell_double_clicked.emit(self._model.get_student_id_of_row(i_row))
-        elif i_col == StudentTableColumns.COL_MARK_RESULT:
-            self.mark_result_cell_double_clicked.emit(self._model.get_student_id_of_row(i_row))
-
-    # if self.currentIndex().column() == StudentTableModel.COL_STUDENT_ID:
-    #     index = self.currentIndex().row()
-    #     with state.data(readonly=True) as data:
-    #         student_id = data.student_ids[index]
-    #     state.project_service.open_submission_folder_in_explorer(student_id)
-    # elif self.currentIndex().column() == StudentTableModel.COL_MARK_RESULT:
-    #     index = self.currentIndex().row()
-    #     with state.data(readonly=True) as data:
-    #         student_id = data.student_ids[index]
-    #     dialog = StudentMarkDialog(self, student_id_filter=[student_id])
-    #     dialog.exec_()
+            self.student_id_cell_triggered.emit(self._model.get_student_id_of_row(i_row))
+        elif i_col == StudentTableColumns.COL_SCORE:
+            self.mark_result_cell_triggered.emit(self._model.get_student_id_of_row(i_row))
 
     @pyqtSlot(StudentID)
     def _on_student_modification_observed(self, student_id):
@@ -460,3 +450,13 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
         index_begin = self._model.createIndex(i_row, 0)
         index_end = self._model.createIndex(i_row, self._model.columnCount() - 1)
         self.dataChanged(index_begin, index_end)
+
+    def mouseMoveEvent(self, evt: QMouseEvent):
+        # 特定のセルに来たらマウスカーソルの形を変える
+        index = self.indexAt(evt.pos())
+        if not index.isValid():
+            return
+        if index.column() in (StudentTableColumns.COL_STUDENT_ID, StudentTableColumns.COL_SCORE):
+            self.viewport().setCursor(Qt.PointingHandCursor)
+        else:
+            self.viewport().unsetCursor()

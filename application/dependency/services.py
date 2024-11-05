@@ -1,8 +1,11 @@
 from application.dependency.external_io import *
+from application.dependency.external_io import get_student_folder_show_in_explorer_io
 from application.dependency.repositories import *
 from services.current_project import CurrentProjectGetService
 from services.global_config import GlobalConfigGetService, GlobalConfigPutService
-from services.project import ProjectListService, ProjectCreateService
+from services.project import ProjectListService, ProjectCreateService, ProjectBaseFolderShowService, \
+    ProjectFolderShowService, ProjectDeleteService, ProjectGetSizeQueryService, \
+    ProjectUpdateTimestampService
 from services.stage import StageListRootSubService, StageListChildSubService, \
     StageGetParentSubService
 from services.stage_path import StagePathListSubService, StagePathGetByTestCaseIDService
@@ -55,6 +58,42 @@ def get_project_list_service():
 def get_project_create_service():
     return ProjectCreateService(
         project_repo=get_project_repository(),
+    )
+
+
+# ProjectUpdateTimestampService
+def get_project_update_timestamp_service():
+    return ProjectUpdateTimestampService(
+        project_repo=get_project_repository(),
+    )
+
+
+# ProjectDeleteService
+def get_project_delete_service():
+    return ProjectDeleteService(
+        project_repo=get_project_repository(),
+    )
+
+
+# ProjectGetSizeQueryService
+def get_project_get_size_query_service():
+    return ProjectGetSizeQueryService(
+        project_path_provider=get_project_path_provider(),
+        project_core_io=get_project_core_io(),
+    )
+
+
+# ProjectBaseFolderShowService
+def get_project_base_folder_show_service():
+    return ProjectBaseFolderShowService(
+        project_folder_show_in_explorer_io=get_project_folder_show_in_explorer_io(),
+    )
+
+
+# ProjectFolderShowService
+def get_project_folder_show_service():
+    return ProjectFolderShowService(
+        project_folder_show_in_explorer_io=get_project_folder_show_in_explorer_io(),
     )
 
 

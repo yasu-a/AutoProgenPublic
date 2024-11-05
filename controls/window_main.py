@@ -40,8 +40,11 @@ class MainWindow(QMainWindow):
         self._init_signals()
 
         timer = QTimer(self)
-        timer.setInterval(500)
-        timer.timeout.connect(self.__status_info_update_timer_timeout)  # type: ignore
+        timer.setInterval(1000)
+        # noinspection PyUnresolvedReferences
+        timer.timeout.connect(self.__update_status_info)
+        # noinspection PyUnresolvedReferences
+        timer.timeout.connect(self.__update_tool_bar_state)
         timer.start()  # type: ignore
         self.__context_info_update_timer = timer
 
@@ -69,27 +72,27 @@ class MainWindow(QMainWindow):
 
     def _init_signals(self):
         self._tool_bar.triggered.connect(self.__tool_bar_triggered)
-        self._w_student_table.student_id_cell_double_clicked.connect(
-            self.__w_student_table_student_id_cell_double_clicked
+        self._w_student_table.student_id_cell_triggered.connect(
+            self.__w_student_table_student_id_cell_triggered
         )
-        self._w_student_table.mark_result_cell_double_clicked.connect(
-            self.__w_student_table_mark_result_cell_double_clicked
+        self._w_student_table.mark_result_cell_triggered.connect(
+            self.__w_student_table_mark_result_cell_triggered
         )
 
     @pyqtSlot(StudentID)
-    def __w_student_table_student_id_cell_double_clicked(self, student_id: StudentID):
+    def __w_student_table_student_id_cell_triggered(self, student_id: StudentID):
         get_student_submission_folder_show_usecase().execute(
             student_id=student_id,
         )
 
     @pyqtSlot(StudentID)
-    def __w_student_table_mark_result_cell_double_clicked(self, student_id: StudentID):
+    def __w_student_table_mark_result_cell_triggered(self, student_id: StudentID):
         dialog = MarkDialog(self)
         dialog.set_data(dialog.states.create_state_by_student_id(student_id))
         dialog.exec_()
 
     def __tool_bar_triggered(self, name):
-        # TODO: 実行中はタスクバーのボタンを押せないようにする
+        self._tool_bar.update_button_state(is_task_alive=True)
         if name == "run":
             enqueue_student_tasks_if_not_run(
                 parent=self,
@@ -102,7 +105,7 @@ class MainWindow(QMainWindow):
                 parent=self,
                 task_cls=CleanAllStagesStudentTask,
             )
-        elif name == "settings":
+        elif name == "edit-settings":
             dialog = GlobalConfigEditDialog()
             dialog.exec_()
         elif name == "edit-testcases":
@@ -119,18 +122,14 @@ class MainWindow(QMainWindow):
         else:
             assert False, name
 
-    # noinspection PyPep8Naming
-    def showEvent(self, event):
-        # self.__task_bar_triggered("edit-testcases")
-        # self.__task_bar_triggered("mark")
-        pass
+    @pyqtSlot()
+    def __update_tool_bar_state(self):
+        task_manager = get_task_manager()
+        is_task_alive = task_manager.get_task_count() != 0
+        self._tool_bar.update_button_state(is_task_alive=is_task_alive)
 
-    def closeEvent(self, evt, **kwargs):
-        # state.data_manager.save_if_necessary()
-        get_task_manager().terminate()
-        pass
-
-    def __status_info_update_timer_timeout(self):
+    @pyqtSlot()
+    def __update_status_info(self):
         task_manager = get_task_manager()
         io_count = psutil.Process().io_counters()
         cpu_percent = psutil.cpu_percent()
@@ -156,3 +155,12 @@ class MainWindow(QMainWindow):
         else:
             # noinspection PyUnresolvedReferences
             status_bar.setStyleSheet("")
+
+    def showEvent(self, evt):
+        self.__update_tool_bar_state()
+        self.__update_status_info()
+
+    def closeEvent(self, evt, **kwargs):
+        # state.data_manager.save_if_necessary()
+        get_task_manager().terminate()
+        pass

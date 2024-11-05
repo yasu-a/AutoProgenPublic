@@ -231,7 +231,7 @@ class StorageCreateOutputFileMappingFromDiffService:
             if file_relative_path == FileID.STDOUT.deployment_relative_path:
                 file_id = FileID.STDOUT
             elif file_relative_path == FileID.STDIN.deployment_relative_path:
-                file_id = FileID.STDOUT
+                file_id = FileID.STDIN
             else:
                 file_id = FileID(file_relative_path)
             output_file_mapping[file_id] = OutputFile(

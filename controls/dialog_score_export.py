@@ -10,6 +10,7 @@ from application.dependency.external_io import get_score_excel_io
 from application.dependency.services import get_current_project_get_service
 from application.dependency.usecases import get_student_list_id_usecase, \
     get_student_mark_list_usecase, get_global_config_get_usecase
+from controls.res.fonts import font
 from controls.res.icons import icon
 from controls.widget_horizontal_line import HorizontalLineWidget
 from domain.models.student_mark import StudentMark
@@ -33,11 +34,10 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
     def _init_ui(self):
         self.setWindowTitle("採点結果のエクスポート")
         self.setModal(True)
-        self.resize(800, 500)
+        self.resize(800, 600)
         self.installEventFilter(self)
 
         layout = QVBoxLayout()
-        layout.setSpacing(10)
         self.setLayout(layout)
 
         layout.addWidget(QLabel("1. エクスポート先のExcelワークブックを選択してください", self))
@@ -56,6 +56,7 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
         self._te_message = QPlainTextEdit(self)
         self._te_message.setReadOnly(True)
         self._te_message.setEnabled(False)
+        self._te_message.setFont(font(small=True))
         layout.addWidget(self._te_message)
 
         layout.addWidget(HorizontalLineWidget())
@@ -155,13 +156,13 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
         if messages and self._dl_sheet_names.count() == 0:
             messages.insert(
                 0,
-                "すべてのワークシートが読み込めません。"
+                "すべてのワークシートが読み込めません。\n"
                 "成績記録用のワークブックを指定しましたか？",
             )
         elif messages:
             messages.insert(
                 0,
-                "ワークシートの読み込みが完了しました。"
+                "ワークシートの読み込みが完了しました。\n"
                 "ただし次のシートにはエクスポートできません。",
             )
         else:
@@ -169,7 +170,7 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
                 0,
                 "すべてのワークシートを読み込みました",
             )
-        self._te_message.setPlainText("\n".join(messages))
+        self._te_message.setPlainText("\n\n".join(messages))
         self._te_message.setEnabled(True)
 
         self._update_state()
@@ -229,3 +230,4 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
                     QMessageBox.Yes,
             ) == QMessageBox.Yes:
                 os.startfile(excel_fullpath)
+                self.accept()

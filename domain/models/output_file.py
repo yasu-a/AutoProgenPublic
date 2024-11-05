@@ -51,9 +51,6 @@ class OutputFileMapping(dict[FileID, OutputFile]):
         # キーとしてのFileIDと値の中のFileIDは一致する
         for file_id, output_file in self.items():
             assert file_id == output_file.file_id, (file_id, output_file)
-            # 特殊ファイルは標準出力しかありえない
-            if file_id.is_special:
-                assert file_id in [FileID.STDOUT], file_id
 
     def to_json(self) -> dict[str, dict]:
         self.__validate()

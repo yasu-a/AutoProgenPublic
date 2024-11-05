@@ -9,6 +9,7 @@ class ProjectSummary:
     project_id: ProjectID
     project_name: str
     target_number: int
+    zip_name: str
     open_at: datetime
 
     def __lt__(self, other):

@@ -182,3 +182,13 @@ class CurrentProjectCoreIO:
             project_id=self._current_project_id,
             file_fullpath=file_fullpath,
         )
+
+    def get_folder_size(
+            self,
+            *,
+            folder_fullpath: Path,
+    ) -> int:
+        return self._project_core_io.get_folder_size(
+            project_id=self._current_project_id,
+            folder_fullpath=folder_fullpath,
+        )

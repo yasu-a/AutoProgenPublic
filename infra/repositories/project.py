@@ -1,3 +1,5 @@
+from json import JSONDecodeError
+
 from domain.errors import ProjectIOError
 from domain.models.project import Project
 from domain.models.values import ProjectID
@@ -23,11 +25,20 @@ class ProjectRepository:
         if not config_json_fullpath.exists():
             raise ProjectIOError(f"Project \"{project_id!s}\" not found")
 
-        json_body = self._project_core_io.read_json(
-            project_id=project_id,
-            json_fullpath=config_json_fullpath,
-        )
-        project = Project.from_json(json_body)
+        try:
+            json_body = self._project_core_io.read_json(
+                project_id=project_id,
+                json_fullpath=config_json_fullpath,
+            )
+        except (OSError, JSONDecodeError):  # 失敗した場合は壊れているか古いバージョンのプロジェクトか
+            raise ProjectIOError(f"Project \"{project_id!s}\" is not a valid project")
+        try:
+            project = Project.from_json(json_body)
+        except (KeyError, IndexError, ValueError):
+            raise ProjectIOError(f"Project \"{project_id!s}\" might be old")
+        if project.project_id != project_id:
+            raise ProjectIOError(f"Project name must be the same as folder name")
+
         return project
 
     def put(self, project: Project) -> None:
@@ -60,7 +71,10 @@ class ProjectRepository:
             if not sub_folder_fullpath.is_dir():
                 continue
             folder_name = sub_folder_fullpath.name
-            maybe_project_id = ProjectID(folder_name)
+            try:
+                maybe_project_id = ProjectID(folder_name)
+            except ValueError:  # malformed folder name
+                continue
             maybe_project_ids.append(maybe_project_id)
 
         projects = []
@@ -76,6 +90,10 @@ class ProjectRepository:
 
     def delete(self, project_id: ProjectID) -> None:
         project_folder_fullpath = self._project_path_provider.base_folder_fullpath(project_id)
+
+        if not project_folder_fullpath.exists():
+            raise ProjectIOError(f"Project \"{project_id!s}\" not found")
+
         self._project_core_io.rmtree_folder(
             project_id=project_id,
             path=project_folder_fullpath,

@@ -1,5 +1,11 @@
 import re
 
+import uuid
+
+from enum import Enum
+
+from pathlib import Path
+
 __all__ = (
     "StudentID",
     "TargetID",
@@ -10,16 +16,16 @@ __all__ = (
     "StorageID",
 )
 
-import uuid
-
-from enum import Enum
-
-from pathlib import Path
-
 
 class ProjectID:
     def __init__(self, value: str):
-        assert isinstance(value, str), value
+        if not isinstance(value, str):
+            raise ValueError("ProjectID must be a string", value)
+        value_as_path = Path(value)
+        if len(value_as_path.parts) != 1:
+            raise ValueError("Malformed string", value)
+        if value != value_as_path.parts[0]:
+            raise ValueError("Malformed string", value)
         self.__value = value
 
     def __str__(self) -> str:

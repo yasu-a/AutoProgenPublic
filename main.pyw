@@ -1,7 +1,8 @@
+import os
+
 from PyQt5.QtWidgets import *
 
-from application.dependency.usecases import get_project_create_usecase
-from application.state.current_project import set_current_project_id
+from application.dependency.usecases import get_project_create_usecase, get_project_open_usecase
 from application.state.debug import set_debug
 from controls.dialog_static_initialize import StaticInitializeProgressDialog
 from controls.dialog_welcome import WelcomeDialog
@@ -27,7 +28,7 @@ if __name__ == '__main__':
 
     sys.excepthook = exception_hook
 
-logger = create_logger()
+_logger = create_logger()
 
 
 def create_app() -> QApplication:
@@ -48,7 +49,7 @@ def create_app() -> QApplication:
 
 def launch_existing_project(project_id: ProjectID) -> MainWindow:
     # 現在のプロジェクトを設定
-    set_current_project_id(project_id)
+    get_project_open_usecase().execute(project_id)
     # メインウィンドウを開く
     window = MainWindow()
     # noinspection PyUnresolvedReferences
@@ -62,9 +63,10 @@ def launch_new_project(new_project_config: NewProjectConfig) -> MainWindow:
     project_id = get_project_create_usecase().execute(
         project_name=new_project_config.project_name,
         target_number=new_project_config.target_number,
+        zip_name=new_project_config.manaba_report_archive_fullpath.name,
     )
     # 現在のプロジェクトを設定
-    set_current_project_id(project_id)
+    get_project_open_usecase().execute(project_id)
     # 現在のプロジェクトを初期化
     StaticInitializeProgressDialog(
         manaba_report_archive_fullpath=new_project_config.manaba_report_archive_fullpath,
@@ -78,8 +80,14 @@ def launch_new_project(new_project_config: NewProjectConfig) -> MainWindow:
 
 
 def main():
-    set_debug(True)
+    # 環境変数からデバッグ用の構成を用意
     app_logging.set_level(app_logging.INFO)
+    if os.getenv("APP_DEBUG"):
+        set_debug(True)
+        _logger.info("STARTING WITH DEBUG MODE")
+        if os.getenv("APP_VERBOSE_LOG"):
+            app_logging.set_level(app_logging.DEBUG)
+            _logger.info("VERBOSE LOG ENABLED")
 
     # QApplicationを生成
     app = create_app()
@@ -89,6 +97,7 @@ def main():
     # ウェルカムダイアログの応答によって処理を分ける
     if res == QDialog.Accepted:  # 応答がacceptedなら
         result = welcome.get_data()  # 応答結果を取得
+        del welcome  # ウェルカムダイアログを解放
         if isinstance(result, ProjectID):  # 既存のプロジェクトIDなら
             # 既存のプロジェクトを起動
             project_id: ProjectID = result

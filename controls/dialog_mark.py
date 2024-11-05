@@ -295,10 +295,8 @@ class TestCaseResultOutputFileViewWidget(QPlainTextEdit, HorizontalScrollWithShi
             errors.append("⚠ 出力されたストリームのエンコーディングが不明です")
 
         if errors and not view:
-            self.setEnabled(False)
             self.setPlainText("\n".join(errors))
         elif errors and view:
-            self.setEnabled(False)
             if self._output_file_entry.actual.content_string is None:
                 content_text = "（不明な文字コード）"
             elif self._output_file_entry.actual.content_string == "":
@@ -310,7 +308,6 @@ class TestCaseResultOutputFileViewWidget(QPlainTextEdit, HorizontalScrollWithShi
                     errors) + "\n\n＜ストリームの内容＞\n" + content_text
             )
         else:
-            self.setEnabled(True)
             self.setPlainText(self._output_file_entry.actual.content_string)
 
         if self._output_file_entry.has_actual and self._output_file_entry.has_expected:
@@ -350,6 +347,8 @@ class TestCaseValidTestResultViewWidget(QWidget):
             if file_id.is_special:
                 if file_id.special_file_type == SpecialFileType.STDOUT:
                     title = "[標準出力]"
+                elif file_id.special_file_type == SpecialFileType.STDIN:
+                    title = "[標準入力]"
                 else:
                     assert False, file_id.special_file_type
             else:
@@ -395,18 +394,18 @@ class TestCaseInvalidTestResultViewWidget(QWidget):
         self._l_title.setStyleSheet("color: red")
         layout.addWidget(self._l_title)
 
-        self._l_detailed_reason = QLabel(self)
-        self._l_detailed_reason.setWordWrap(True)
+        self._l_detailed_reason = QPlainTextEdit(self)
+        self._l_detailed_reason.setReadOnly(True)
+        self._l_detailed_reason.setLineWrapMode(QPlainTextEdit.WidgetWidth)
+        self._l_detailed_reason.setEnabled(False)
         self._l_detailed_reason.setStyleSheet("color: red")
         layout.addWidget(self._l_detailed_reason)
-
-        layout.addStretch(1)
 
     def _init_signals(self):
         pass
 
     def set_data(self, detailed_reason: str) -> None:
-        self._l_detailed_reason.setText(detailed_reason)
+        self._l_detailed_reason.setPlainText(detailed_reason)
 
 
 class TestCaseTestResultViewPlaceholderWidget(QWidget):
@@ -505,7 +504,7 @@ class TestCaseTestResultListItemWidget(QWidget):
         layout_title.addWidget(self._l_selected)
 
         self._l_testcase_name = QLabel(self)
-        self._l_testcase_name.setFixedWidth(200)
+        self._l_testcase_name.setMinimumWidth(200)
         self._l_testcase_name.setFont(font(monospace=False, small=True))
         layout_title.addWidget(self._l_testcase_name)
 
@@ -941,7 +940,7 @@ class MarkDialog(QDialog):
     def _init_ui(self):
         self.setWindowTitle("採点")
         self.setModal(True)
-        self.resize(500, 800)
+        self.resize(1300, 700)
         self.installEventFilter(self)
 
         layout = QVBoxLayout()
@@ -964,12 +963,10 @@ class MarkDialog(QDialog):
                     layout_middle_left.addLayout(layout_middle_left_inner)
 
                     self._w_source_code_view = StudentSourceCodeView(self)
-                    self._w_source_code_view.setFixedWidth(450)
                     layout_middle_left_inner.addWidget(self._w_source_code_view)
 
-                    self._w_test_result_view_placeholder = TestCaseTestResultViewPlaceholderWidget(
-                        self)
-                    self._w_test_result_view_placeholder.setFixedWidth(450)
+                    self._w_test_result_view_placeholder \
+                        = TestCaseTestResultViewPlaceholderWidget(self)
                     layout_middle_left_inner.addWidget(self._w_test_result_view_placeholder)
 
             if "middle-right":
@@ -977,10 +974,11 @@ class MarkDialog(QDialog):
                 layout_middle.addLayout(layout_middle_right)
 
                 self._w_testcase_control = TestCaseControlWidget(self)
+                self._w_testcase_control.setFixedWidth(300)
                 layout_middle_right.addWidget(self._w_testcase_control)
 
                 self._w_testcase_result_list = TestCaseTestResultListWidget(self)
-                self._w_testcase_result_list.setFixedWidth(400)
+                self._w_testcase_result_list.setFixedWidth(300)
                 self._w_testcase_result_list.setFocusPolicy(Qt.NoFocus)
                 layout_middle_right.addWidget(self._w_testcase_result_list)
 

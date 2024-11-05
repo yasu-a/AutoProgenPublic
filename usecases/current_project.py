@@ -16,5 +16,6 @@ class CurrentProjectSummaryGetUseCase:
             project_id=project.project_id,
             project_name=str(project.project_id),
             target_number=int(project.target_id),
+            zip_name=project.zip_name,
             open_at=project.open_at,
         )

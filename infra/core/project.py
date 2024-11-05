@@ -340,3 +340,24 @@ class ProjectCoreIO:
             path=file_fullpath,
         )
         return datetime.fromtimestamp(file_fullpath.stat().st_mtime)
+
+    def get_folder_size(
+            self,
+            *,
+            project_id: ProjectID,
+            folder_fullpath: Path,
+    ) -> int:
+        self.__check_folder_location(
+            project_id=project_id,
+            path=folder_fullpath,
+        )
+
+        total_size = 0
+        for file_fullpath in self.walk_files(
+                project_id=project_id,
+                folder_fullpath=folder_fullpath,
+                return_absolute=True,
+        ):
+            total_size += os.path.getsize(file_fullpath)
+
+        return total_size

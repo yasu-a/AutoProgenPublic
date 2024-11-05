@@ -4,7 +4,8 @@ from usecases.compiler import CompilerSearchUseCase
 from usecases.current_project import CurrentProjectSummaryGetUseCase
 from usecases.global_config import GlobalConfigGetUseCase, GlobalConfigPutUseCase
 from usecases.project import ProjectCheckExistByNameUseCase, ProjectCreateUseCase, \
-    ProjectInitializeStaticUseCase, ProjectListRecentSummaryUseCase
+    ProjectInitializeStaticUseCase, ProjectListRecentSummaryUseCase, ProjectBaseFolderShowUseCase, \
+    ProjectFolderShowUseCase, ProjectDeleteUseCase, ProjectGetSizeQueryUseCase, ProjectOpenUseCase
 from usecases.student import StudentListIDUseCase
 from usecases.student_dynamic import StudentDynamicTakeDiffSnapshotUseCase
 from usecases.student_mark import StudentMarkGetUseCase, StudentMarkPutUseCase, \
@@ -46,9 +47,37 @@ def get_project_list_recent_summary_usecase():
     )
 
 
+# ProjectBaseFolderShowUseCase
+def get_project_base_folder_show_usecase():
+    return ProjectBaseFolderShowUseCase(
+        project_base_folder_show_service=get_project_base_folder_show_service(),
+    )
+
+
+# ProjectFolderShowUseCase
+def get_project_folder_show_usecase():
+    return ProjectFolderShowUseCase(
+        project_folder_show_service=get_project_folder_show_service(),
+    )
+
+
 def get_project_create_usecase():
     return ProjectCreateUseCase(
         project_create_service=get_project_create_service(),
+    )
+
+
+# ProjectDeleteUseCase
+def get_project_delete_usecase():
+    return ProjectDeleteUseCase(
+        project_delete_service=get_project_delete_service(),
+    )
+
+
+# ProjectGetSizeQueryUseCase
+def get_project_get_size_query_usecase():
+    return ProjectGetSizeQueryUseCase(
+        project_get_size_query_service=get_project_get_size_query_service(),
     )
 
 
@@ -60,6 +89,13 @@ def get_project_initialize_static_usecase(manaba_report_archive_fullpath: Path):
         student_submission_extract_service=get_student_submission_extract_service(
             manaba_report_archive_fullpath=manaba_report_archive_fullpath,
         ),
+    )
+
+
+# ProjectOpenUseCase
+def get_project_open_usecase():
+    return ProjectOpenUseCase(
+        project_update_timestamp_service=get_project_update_timestamp_service(),
     )
 
 
