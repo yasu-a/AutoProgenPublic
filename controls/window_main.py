@@ -10,19 +10,20 @@ from controls.dialog_mark import MarkDialog
 from controls.dialog_score_export import ScoreExportDialog
 from controls.dialog_testcase_list_edit import TestCaseListEditDialog
 from controls.res.icons import icon
+from controls.tasks.clean_all_stages import CleanAllStagesStudentTask
+from controls.tasks.run_stages import RunStagesStudentTask
 from controls.widget_student_table import StudentTableWidget
 from controls.widget_toolbar import ToolBar
 from domain.models.values import StudentID
-from tasks.task_impls import RunStagesStudentTask, CleanAllStagesStudentTask
-from tasks.tasks import AbstractStudentTask
+from infra.tasks.task import AbstractStudentTask
 from utils.app_logging import create_logger
 
 
 def enqueue_student_tasks_if_not_run(parent, task_cls: type[AbstractStudentTask]):
-    if get_task_manager().get_student_task_count() > 0:
+    if get_task_manager().count() > 0:
         return
     for student_id in get_student_list_id_usecase().execute():
-        get_task_manager().enqueue_student_task(
+        get_task_manager().enqueue(
             task_cls(
                 parent=parent,
                 student_id=student_id,
@@ -124,8 +125,7 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot()
     def __update_tool_bar_state(self):
-        task_manager = get_task_manager()
-        is_task_alive = task_manager.get_task_count() != 0
+        is_task_alive = get_task_manager().has_active()
         self._tool_bar.update_button_state(is_task_alive=is_task_alive)
 
     @pyqtSlot()
@@ -138,7 +138,7 @@ class MainWindow(QMainWindow):
         # noinspection PyUnresolvedReferences
         status_bar: QStatusBar = self.statusBar()
         status_bar.showMessage(
-            f"タスク：{task_manager.get_running_task_count()}/{task_manager.get_task_count()} "
+            f"タスク：{task_manager.count_active()}/{task_manager.count()} "
             # f"I/O read: {io_count.read_bytes // 1000:,}KB "
             # f"I/O write: {io_count.write_bytes // 1000:,}KB "
             # f"I/O read: {io_count.read_time}ms "
@@ -149,7 +149,7 @@ class MainWindow(QMainWindow):
             f"RAM usage: {int(ram_mega_bytes):,.0f}MB "
             # f"開発者ツール：{settings_compiler.get_vs_dev_cmd_bat_path()}"
         )
-        if task_manager.get_task_count() != 0:
+        if task_manager.has_active():
             # noinspection PyUnresolvedReferences
             status_bar.setStyleSheet("background-color: yellow")
         else:

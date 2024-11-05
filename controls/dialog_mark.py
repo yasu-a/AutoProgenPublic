@@ -11,6 +11,7 @@ from application.dependency.usecases import get_student_list_id_usecase, \
 from controls.dto.dialog_mark import MarkDialogState
 from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
 from controls.res.fonts import font
+from controls.widget_page_button import PageButton
 from controls.widget_source_text_edit import SourceTextEdit
 from controls.widget_test_summary_indicator import TestCaseTestSummaryIndicatorWidget
 from domain.models.output_file_test_result import OutputFileTestResult
@@ -42,110 +43,8 @@ class MarkScoreEditWidget(QWidget):
 
         self._le_score = QLineEdit(self)
         self._le_score.setValidator(QRegExpValidator(QRegExp("[1-9][0-9]|[0-9]|")))
-        self._le_score.setFont(font(monospace=True, large=True, bold=True))
-        self._le_score.setPlaceholderText("--")
-        self._le_score.setFixedWidth(50)
-        self._le_score.setFixedHeight(50)
-        self._le_score.setEnabled(False)
-        self._le_score.installEventFilter(self)
-        layout.addWidget(self._le_score)
-
-        layout_right = QVBoxLayout()
-        layout.addLayout(layout_right)
-
-        self._b_unmark = QPushButton(self)
-        self._b_unmark.setText("×")
-        self._b_unmark.setFixedWidth(25)
-        self._b_unmark.setFixedHeight(25)
-        self._b_unmark.setEnabled(False)
-        self._b_unmark.setFocusPolicy(Qt.NoFocus)
-        layout_right.addWidget(self._b_unmark)
-
-        # noinspection PyArgumentList
-        l_unit = QLabel(self)
-        l_unit.setText("点")
-        layout_right.addWidget(l_unit)
-
-    def _init_signals(self):
-        # noinspection PyUnresolvedReferences
-        self._b_unmark.clicked.connect(self.__b_unmark_clicked)
-        # noinspection PyUnresolvedReferences
-        self._le_score.textChanged.connect(self.__le_score_text_changed)
-
-    def eventFilter(self, target: QObject, evt: QEvent):
-        if evt.type() == QEvent.KeyPress:
-            # noinspection PyUnresolvedReferences
-            self.key_pressed.emit(evt)
-            return False
-        return False
-
-    def set_data(self, student_mark: StudentMark | None) -> None:
-        if student_mark is None:
-            self._le_score.setEnabled(False)
-            self._b_unmark.setEnabled(False)
-            self._student_id = None
-        else:
-            if student_mark.is_marked:
-                self._le_score.setText(str(student_mark.score))
-            else:
-                self._le_score.setText("")
-            self._le_score.setEnabled(True)
-            self._b_unmark.setEnabled(True)
-            self._student_id = student_mark.student_id
-        self._is_modified = False
-
-    def set_unmarked(self) -> None:
-        if self._student_id is None:
-            return None
-        self._le_score.setText("")
-
-    def is_modified(self) -> bool:
-        return self._is_modified
-
-    def get_data(self) -> StudentMark | None:
-        if self._student_id is None:
-            return None
-        try:
-            score_int = int(self._le_score.text())
-        except ValueError:
-            return StudentMark(
-                student_id=self._student_id,
-                score=None,
-            )
-        else:
-            return StudentMark(
-                student_id=self._student_id,
-                score=score_int,
-            )
-
-    @pyqtSlot()
-    def __b_unmark_clicked(self):
-        self._le_score.setText("")
-
-    @pyqtSlot()
-    def __le_score_text_changed(self):
-        self._is_modified = True
-
-
-class MarkScoreEditWidget(QWidget):
-    key_pressed = pyqtSignal(QKeyEvent, name="key_pressed")
-
-    def __init__(self, parent: QObject = None):
-        super().__init__(parent)
-
-        self._student_id: StudentID | None = None
-        self._is_modified = False
-
-        self._init_ui()
-        self._init_signals()
-
-    def _init_ui(self):
-        layout = QHBoxLayout()
-        self.setLayout(layout)
-
-        self._le_score = QLineEdit(self)
-        self._le_score.setValidator(QRegExpValidator(QRegExp("[1-9][0-9]|[0-9]|")))
-        self._le_score.setFont(font(monospace=True, large=True, bold=True))
+        self._le_score.setFont(font(monospace=True, very_large=True, bold=True))
+        print(self._le_score.font().pointSize())
         self._le_score.setPlaceholderText("--")
         self._le_score.setFixedWidth(50)
         self._le_score.setFixedHeight(50)
@@ -391,6 +290,7 @@ class TestCaseInvalidTestResultViewWidget(QWidget):
 
         self._l_title = QLabel(self)
         self._l_title.setText("テスト結果を表示できません")
+        self._l_title.setFont(font(bold=True))
         self._l_title.setStyleSheet("color: red")
         layout.addWidget(self._l_title)
 
@@ -421,6 +321,7 @@ class TestCaseTestResultViewPlaceholderWidget(QWidget):
 
     def _init_ui(self):
         layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
     def _init_signals(self):
@@ -646,30 +547,26 @@ class StudentTitleViewWidget(QWidget):
         layout = QHBoxLayout()
         self.setLayout(layout)
 
-        self._b_prev = QPushButton(self)
-        self._b_prev.setText("<")
-        self._b_prev.setFixedWidth(30)
-        self._b_prev.setFocusPolicy(Qt.NoFocus)
+        self._b_prev = PageButton(self, text="< (A)")
         layout.addWidget(self._b_prev)
 
         layout.addStretch(1)
 
         self._l_student_id = QLabel(self)
         self._l_student_id.setFixedWidth(150)
-        self._l_student_id.setFont(font(monospace=True, large=True))
+        self._l_student_id.setFont(font(monospace=True, large=True, bold=True))
+        self._l_student_id.setAlignment(Qt.AlignCenter)
         layout.addWidget(self._l_student_id)
 
         self._l_student_name = QLabel(self)
-        self._l_student_name.setFixedWidth(150)
-        self._l_student_name.setFont(font(large=True))
+        self._l_student_name.setFixedWidth(200)
+        self._l_student_name.setFont(font(large=True, bold=True))
+        self._l_student_name.setAlignment(Qt.AlignCenter)
         layout.addWidget(self._l_student_name)
 
         layout.addStretch(1)
 
-        self._b_next = QPushButton(self)
-        self._b_next.setText(">")
-        self._b_next.setFixedWidth(30)
-        self._b_next.setFocusPolicy(Qt.NoFocus)
+        self._b_next = PageButton(self, text="(D) >")
         layout.addWidget(self._b_next)
 
     def _init_signals(self):
@@ -706,25 +603,20 @@ class TestCaseControlWidget(QWidget):
         layout = QHBoxLayout()
         self.setLayout(layout)
 
-        self._b_prev = QPushButton(self)
-        self._b_prev.setText("<")
-        self._b_prev.setFixedWidth(30)
-        self._b_prev.setFocusPolicy(Qt.NoFocus)
+        self._b_prev = PageButton(self, text="< (Q)")
         layout.addWidget(self._b_prev)
 
         layout.addStretch(1)
 
         self._l_testcase_id = QLabel(self)
         self._l_testcase_id.setFixedWidth(150)
-        self._l_testcase_id.setFont(font(large=True))
+        self._l_testcase_id.setFont(font(large=True, bold=True))
+        self._l_testcase_id.setAlignment(Qt.AlignCenter)
         layout.addWidget(self._l_testcase_id)
 
         layout.addStretch(1)
 
-        self._b_next = QPushButton(self)
-        self._b_next.setText(">")
-        self._b_next.setFixedWidth(30)
-        self._b_next.setFocusPolicy(Qt.NoFocus)
+        self._b_next = PageButton(self, text="(E) >")
         layout.addWidget(self._b_next)
 
     def _init_signals(self):
@@ -1211,8 +1103,10 @@ class MarkDialog(QDialog):
             new_state = self.states.create_state_of_prev_file()
         elif key == Qt.Key_C:
             new_state = self.states.create_state_of_next_file()
-        elif key == Qt.Key_Space:
+        elif key == Qt.Key_Space or key == Qt.Key_Delete:
             self._w_mark_score.set_unmarked()
+        elif key == Qt.Key_Escape:
+            self.close()
 
         if new_state is not None:
             self.set_data(new_state)

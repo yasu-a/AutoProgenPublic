@@ -292,10 +292,13 @@ class TestResultOutputFileMapping(
 
     @classmethod
     def from_json(cls, body: dict) -> "TestResultOutputFileMapping":
-        return cls({
-            FileID.from_json(file_id_str): AbstractTestResultOutputFileEntry.from_json(result_body)
-            for file_id_str, result_body in body.items()
-        })
+        file_ids = [FileID.from_json(file_id_str) for file_id_str in body.keys()]
+        file_ids.sort()
+        dct = {}
+        for file_id in file_ids:
+            dct[file_id] = AbstractTestResultOutputFileEntry.from_json(body[file_id.to_json()])
+        obj = cls(dct)
+        return obj
 
     @property
     def is_accepted(self) -> bool:  # テストケースが正解かどうか

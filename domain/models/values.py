@@ -170,6 +170,10 @@ class SpecialFileType(Enum):  # values are virtual filename
     STDIN = "__stdin__"
     STDOUT = "__stdout__"
 
+    def __lt__(self, other):
+        assert isinstance(other, SpecialFileType)
+        return self.value < other.value
+
 
 class FileID:
     _is_special: bool
@@ -251,7 +255,7 @@ class FileID:
 
     def __order_index(self) -> tuple:  # インスタンスの順序付けのためのオブジェクトを返す
         return (
-            self._is_special,  # is_special
+            not self._is_special,  # is_special
             self._value if self._is_special else None,  # value as a SpecialFileType
             None if self._is_special else self._value,  # value as a Path
         )
