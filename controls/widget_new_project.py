@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import *
 from application.dependency.usecases import get_project_check_exist_by_name_usecase
 from application.state.debug import is_debug
 from controls.dto.new_project_config import NewProjectConfig
-from controls.res.icons import icon
+from controls.res.icons import get_icon
 from domain.models.values import ProjectID
 
 
@@ -46,7 +46,7 @@ class ProjectZipFileSelectorWidget(QWidget):
         layout.addWidget(self._le_fullpath)
 
         self._b_select_folder = QPushButton(self)
-        self._b_select_folder.setIcon(icon("open"))
+        self._b_select_folder.setIcon(get_icon("folder"))
         self._b_select_folder.setFixedWidth(30)
         # noinspection PyUnresolvedReferences
         self._b_select_folder.clicked.connect(self._b_select_folder_clicked)

@@ -36,11 +36,11 @@ class AbstractTaskQueue(ABC, Generic[T]):
         # キュー内で実行中のタスクの数を数える
         return sum(1 for _ in self.iter_active())
 
-    def has_active(self) -> bool:
+    def is_empty(self) -> bool:
         # キュー内で実行中のタスクが存在するか検証する（高速な実装）
-        for _ in self.iter_active():
-            return True
-        return False
+        for _ in self.iter_all():
+            return False
+        return True
 
     @abstractmethod
     def enqueue(self, task: T) -> None:

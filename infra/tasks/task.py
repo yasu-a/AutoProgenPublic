@@ -26,3 +26,12 @@ class AbstractStudentTask(AbstractTask):
     @property
     def student_id(self):
         return self._student_id
+
+    def run(self):
+        raise NotImplementedError()
+
+    def __repr__(self):
+        raise NotImplementedError()
+
+    def __str__(self):
+        raise NotImplementedError()

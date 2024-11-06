@@ -1,5 +1,6 @@
 import time
 from contextlib import contextmanager
+from typing import Callable
 
 from PyQt5.QtCore import QObject, QTimer, QMutex, pyqtSlot
 from PyQt5.QtWidgets import qApp
@@ -32,9 +33,9 @@ class _TaskStack:
             count += task_queue.count_active()
         return count
 
-    def has_active(self) -> bool:
+    def is_empty(self) -> bool:
         for task_queue in self._task_queues.values():
-            if task_queue.has_active():
+            if task_queue.is_empty():
                 return True
         return False
 
@@ -49,6 +50,13 @@ class _TaskStack:
                     return unstarted_tasks
                 unstarted_tasks.append(task)
         return unstarted_tasks
+
+    def list_active_tasks(self) -> list[AbstractTask]:
+        active_tasks: list[AbstractTask] = []
+        for task_queue in self._task_queues.values():
+            for task in task_queue.iter_active():
+                active_tasks.append(task)
+        return active_tasks
 
     def dequeue_finished_tasks(self) -> None:
         for task_queue in self._task_queues.values():
@@ -108,9 +116,9 @@ class TaskManager(QObject):
         with self._lock():
             return self.__stack.count_active()
 
-    def has_active(self):
+    def is_empty(self):
         with self._lock():
-            return self.__stack.has_active()
+            return self.__stack.is_empty()
 
     def enqueue(self, task: AbstractTask):
         with self._lock():
@@ -132,21 +140,33 @@ class TaskManager(QObject):
             # 終了したタスクの削除
             self.__stack.dequeue_finished_tasks()
 
-    def terminate(self):
-        with self._lock():
-            while True:
+    def terminate(self, callback: Callable[[str], None]):
+        while True:
+            # メッセージ
+            with self._lock():
+                n_tasks = self.__stack.count()
+                active_tasks = self.__stack.list_active_tasks()
+                self._logger.info(
+                    f"Waiting {n_tasks} tasks to finish\n"
+                    + "\n".join(f" - {task!r}" for task in active_tasks),
+                )
+                callback(
+                    f"{n_tasks}個のタスクが終了するのを待っています・・・\n"
+                    + "\n".join(f" - {task!s}" for task in active_tasks[:8]),
+                )
+            with self._lock():
                 # 新たなタスクが開始しないように未開始のタスクを消す
                 self.__stack.dequeue_unstarted_tasks()
                 # すべてのタスクに終了シグナルを送る
                 self.__stack.send_stop_to_all_tasks()
-                # 少し待つ
-                time.sleep(0.1)
+            # 少し待つ
+            time.sleep(0.1)
+            with self._lock():
                 # 終了したタスクの削除
                 self.__stack.dequeue_finished_tasks()
                 # タスクが終了しているかを確認
                 n_tasks = self.__stack.count()
                 if n_tasks == 0:
                     break
-                self._logger.info(f"Waiting {n_tasks} tasks to finish")
-                # 少し待つ
-                time.sleep(0.1)
+            # 少し待つ
+            time.sleep(0.1)

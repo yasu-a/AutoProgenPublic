@@ -1,3 +1,6 @@
+from typing import Callable
+
+from domain.errors import StopTask
 from domain.models.stages import BuildStage, CompileStage, ExecuteStage, TestStage
 from domain.models.student_stage_path_result import StudentStagePathResult
 from domain.models.values import StudentID
@@ -65,9 +68,17 @@ class StudentRunNextStageUseCase:
         self._logger.info(f"{student_id} rollback {rollback_stage_type}")
         return True
 
-    def execute(self, student_id: StudentID) -> None:
+    def execute(
+            self,
+            *,
+            student_id: StudentID,
+            stop_producer: Callable[[], bool],  # 停止するときTrueを受け取る
+    ) -> None:
         finished_stage_path_indexes = set()
         while True:
+            if stop_producer():
+                raise StopTask()
+
             stage_path_lst = self._stage_path_list_sub_service.execute()
 
             # 各ステージパスの実行可能なステージを1ステージだけ実行

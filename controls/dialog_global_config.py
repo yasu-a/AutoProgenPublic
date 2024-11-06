@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import *
 from application.dependency.usecases import get_global_config_get_usecase, \
     get_global_config_put_usecase, get_compile_test_run_usecase
 from controls.dialog_compiler_search import CompilerSearchDialog
-from controls.res.icons import icon
+from controls.res.icons import get_icon
 from domain.models.global_config import GlobalConfig
 from infra.external.compiler_location import is_compiler_location
 from utils.app_logging import create_logger
@@ -33,7 +33,7 @@ class CompilerToolPathEditWidget(QWidget):
         layout.addWidget(self._le_path)
 
         self._b_open = QPushButton(self)
-        self._b_open.setIcon(icon("open"))
+        self._b_open.setIcon(get_icon("folder"))
         layout.addWidget(self._b_open)
 
         self._b_search = QPushButton(self)
@@ -142,7 +142,7 @@ class MaxWorkersWidget(QWidget):
 
         self._sb_value = QSpinBox(self)
         self._sb_value.setMinimum(1)
-        self._sb_value.setMaximum(16)
+        self._sb_value.setMaximum(32)
         self._sb_value.setSingleStep(1)
         self._sb_value.setFixedWidth(100)
         layout.addWidget(self._sb_value)

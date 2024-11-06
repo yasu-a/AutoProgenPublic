@@ -2,6 +2,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 from controls.dto.new_project_config import NewProjectConfig
+from controls.res.icons import get_icon
 from controls.widget_new_project import NewProjectWidget
 from controls.widget_recent_project import RecentProjectWidget
 from domain.models.values import ProjectID
@@ -39,11 +40,13 @@ class WelcomeDialog(QDialog):
 
         # タブを左横にする
         self._container.setTabPosition(QTabWidget.West)  # これだけだと文字が90度傾く
+        self._container.tabBar().setTabIcon(0, get_icon("plus", rotate=90))
         self._container.tabBar().setTabButton(
             0,
             QTabBar.LeftSide,
             QLabel("新しいプロジェクト", self),
         )
+        self._container.tabBar().setTabIcon(1, get_icon("article", rotate=90))
         self._container.tabBar().setTabButton(
             1,
             QTabBar.LeftSide,

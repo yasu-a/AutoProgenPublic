@@ -6,6 +6,7 @@ from usecases.global_config import GlobalConfigGetUseCase, GlobalConfigPutUseCas
 from usecases.project import ProjectCheckExistByNameUseCase, ProjectCreateUseCase, \
     ProjectInitializeStaticUseCase, ProjectListRecentSummaryUseCase, ProjectBaseFolderShowUseCase, \
     ProjectFolderShowUseCase, ProjectDeleteUseCase, ProjectGetSizeQueryUseCase, ProjectOpenUseCase
+from usecases.resource_usage import ResourceUsageGetUseCase
 from usecases.student import StudentListIDUseCase
 from usecases.student_dynamic import StudentDynamicTakeDiffSnapshotUseCase
 from usecases.student_mark import StudentMarkGetUseCase, StudentMarkPutUseCase, \
@@ -323,4 +324,11 @@ def get_student_mark_put_usecase():
 def get_student_mark_list_usecase():
     return StudentMarkListUseCase(
         student_mark_list_service=get_student_mark_list_service(),
+    )
+
+
+# ResourceUsageGetUseCase
+def get_resource_usage_get_usecase():
+    return ResourceUsageGetUseCase(
+        resource_usage_io=get_resource_usage_io(),
     )

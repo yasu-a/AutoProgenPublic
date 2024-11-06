@@ -8,9 +8,11 @@ from application.dependency.usecases import get_student_list_id_usecase, \
     get_student_mark_view_data_get_test_result_usecase, \
     get_student_mark_view_data_get_mark_summary_usecase, get_student_source_code_get_usecase, \
     get_testcase_config_list_id_usecase, get_student_mark_get_usecase, get_student_mark_put_usecase
+from controls.dialog_mark_help import MarkHelpDialog
 from controls.dto.dialog_mark import MarkDialogState
 from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
-from controls.res.fonts import font
+from controls.res.fonts import get_font
+from controls.res.icons import get_icon
 from controls.widget_page_button import PageButton
 from controls.widget_source_text_edit import SourceTextEdit
 from controls.widget_test_summary_indicator import TestCaseTestSummaryIndicatorWidget
@@ -43,7 +45,7 @@ class MarkScoreEditWidget(QWidget):
 
         self._le_score = QLineEdit(self)
         self._le_score.setValidator(QRegExpValidator(QRegExp("[1-9][0-9]|[0-9]|")))
-        self._le_score.setFont(font(monospace=True, very_large=True, bold=True))
+        self._le_score.setFont(get_font(monospace=True, very_large=True, bold=True))
         print(self._le_score.font().pointSize())
         self._le_score.setPlaceholderText("--")
         self._le_score.setFixedWidth(50)
@@ -177,7 +179,7 @@ class TestCaseResultOutputFileViewWidget(QPlainTextEdit, HorizontalScrollWithShi
         self._init_ui()
 
     def _init_ui(self):
-        self.setFont(font(monospace=True, small=True))
+        self.setFont(get_font(monospace=True, small=True))
         self.setLineWrapMode(QPlainTextEdit.NoWrap)
         self.setReadOnly(True)
 
@@ -290,7 +292,7 @@ class TestCaseInvalidTestResultViewWidget(QWidget):
 
         self._l_title = QLabel(self)
         self._l_title.setText("テスト結果を表示できません")
-        self._l_title.setFont(font(bold=True))
+        self._l_title.setFont(get_font(bold=True))
         self._l_title.setStyleSheet("color: red")
         layout.addWidget(self._l_title)
 
@@ -401,12 +403,12 @@ class TestCaseTestResultListItemWidget(QWidget):
         self._l_selected = QLabel(self)
         self._l_selected.setFixedWidth(30)
         self._l_selected.setAlignment(Qt.AlignCenter)
-        self._l_selected.setFont(font(monospace=True, small=False))
+        self._l_selected.setFont(get_font(monospace=True, small=False))
         layout_title.addWidget(self._l_selected)
 
         self._l_testcase_name = QLabel(self)
         self._l_testcase_name.setMinimumWidth(200)
-        self._l_testcase_name.setFont(font(monospace=False, small=True))
+        self._l_testcase_name.setFont(get_font(monospace=False, small=True))
         layout_title.addWidget(self._l_testcase_name)
 
         layout_detail = QHBoxLayout()
@@ -554,13 +556,13 @@ class StudentTitleViewWidget(QWidget):
 
         self._l_student_id = QLabel(self)
         self._l_student_id.setFixedWidth(150)
-        self._l_student_id.setFont(font(monospace=True, large=True, bold=True))
+        self._l_student_id.setFont(get_font(monospace=True, large=True, bold=True))
         self._l_student_id.setAlignment(Qt.AlignCenter)
         layout.addWidget(self._l_student_id)
 
         self._l_student_name = QLabel(self)
         self._l_student_name.setFixedWidth(200)
-        self._l_student_name.setFont(font(large=True, bold=True))
+        self._l_student_name.setFont(get_font(large=True, bold=True))
         self._l_student_name.setAlignment(Qt.AlignCenter)
         layout.addWidget(self._l_student_name)
 
@@ -610,7 +612,7 @@ class TestCaseControlWidget(QWidget):
 
         self._l_testcase_id = QLabel(self)
         self._l_testcase_id.setFixedWidth(150)
-        self._l_testcase_id.setFont(font(large=True, bold=True))
+        self._l_testcase_id.setFont(get_font(large=True, bold=True))
         self._l_testcase_id.setAlignment(Qt.AlignCenter)
         layout.addWidget(self._l_testcase_id)
 
@@ -885,6 +887,12 @@ class MarkDialog(QDialog):
 
             layout_bottom.addStretch(1)
 
+            self._b_help = QPushButton("ショートカット一覧", self)
+            self._b_help.setIcon(get_icon("keyboard"))
+            self._b_help.setFixedHeight(30)
+            self._b_help.setFocusPolicy(Qt.NoFocus)
+            layout_bottom.addWidget(self._b_help)
+
     def _init_signals(self):
         # noinspection PyUnresolvedReferences
         self._w_testcase_result_list.testcase_clicked.connect(
@@ -911,7 +919,13 @@ class MarkDialog(QDialog):
             self.__w_test_result_view_placeholder_selected_file_id_changed
         )
         # noinspection PyUnresolvedReferences
-        self._w_mark_score.key_pressed.connect(self.__w_mark_score_key_pressed)
+        self._w_mark_score.key_pressed.connect(
+            self.__w_mark_score_key_pressed
+        )
+        # noinspection PyUnresolvedReferences
+        self._b_help.clicked.connect(
+            self.__b_help_clicked
+        )
 
     @classmethod
     def __get_student_mark_summary_view_data(
@@ -1088,6 +1102,11 @@ class MarkDialog(QDialog):
     def __w_mark_score_key_pressed(self, evt: QKeyEvent):
         self.__on_key_press(evt)
 
+    @pyqtSlot()
+    def __b_help_clicked(self):
+        dialog = MarkHelpDialog()
+        dialog.exec_()
+
     def __on_key_press(self, evt: QKeyEvent):
         key = evt.key()
         new_state = None
@@ -1095,9 +1114,9 @@ class MarkDialog(QDialog):
             new_state = self.states.create_state_of_prev_testcase()
         elif key == Qt.Key_E:
             new_state = self.states.create_state_of_next_testcase()
-        elif key == Qt.Key_A:
+        elif key == Qt.Key_A or key == Qt.Key_Left:
             new_state = self.states.create_state_of_prev_student()
-        elif key == Qt.Key_D:
+        elif key == Qt.Key_D or key == Qt.Key_Right:
             new_state = self.states.create_state_of_next_student()
         elif key == Qt.Key_Z:
             new_state = self.states.create_state_of_prev_file()

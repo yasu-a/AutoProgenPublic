@@ -1,7 +1,7 @@
 from PyQt5.QtCore import QObject, Qt
 from PyQt5.QtWidgets import QPushButton
 
-from controls.res.fonts import font
+from controls.res.fonts import get_font
 
 
 class PageButton(QPushButton):
@@ -15,7 +15,7 @@ class PageButton(QPushButton):
 
     def _init_ui(self):
         self.setText(self._text)
-        self.setFont(font(monospace=True, large=True))
+        self.setFont(get_font(monospace=True, large=True))
         self.setFixedWidth(60)
         self.setFixedHeight(30)
         self.setFocusPolicy(Qt.NoFocus)

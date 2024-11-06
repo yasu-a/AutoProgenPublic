@@ -75,3 +75,7 @@ class CompileTestServiceError(RuntimeError):
 class TaskOperationError(RuntimeError):
     def __init__(self, reason: str):
         self.reason = reason
+
+
+class StopTask(RuntimeError):
+    pass

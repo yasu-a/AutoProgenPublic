@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtWidgets import QTabWidget
 
-from controls.res.icons import icon
+from controls.res.icons import get_icon
 from controls.widget_button_box import ButtonBox
 from domain.models.expected_ouput_file import ExpectedOutputFile, ExpectedOutputFileMapping
 from domain.models.expected_token import AbstractExpectedToken, TextExpectedToken, \
@@ -66,9 +66,9 @@ class ExpectedOutputFileTokenListItemControlButtons(ButtonBox):
 
     def _init_ui(self):
         super()._init_ui()
-        self.add_button("", "move-up", icon=icon("up"), tab_focus=False)
-        self.add_button("", "move-down", icon=icon("down"), tab_focus=False)
-        self.add_button("", "remove", icon=icon("delete"), tab_focus=False)
+        self.add_button("", "move-up", icon=get_icon("up"), tab_focus=False)
+        self.add_button("", "move-down", icon=get_icon("down"), tab_focus=False)
+        self.add_button("", "remove", icon=get_icon("trash"), tab_focus=False)
         self.setFixedWidth(self.sizeHint().width())
 
     def _init_signals(self):
@@ -335,7 +335,7 @@ class ExpectedOutputFileEditWidget(QWidget):
 
 # TODO: TestCaseInputFileMappingEditWidgetと機能が重複 抽象化
 # noinspection DuplicatedCode
-class TestCaseExpectedOutputFileMappingEditWidget(QTabWidget):
+class TestCaseExpectedOutputFileMappingEditWidget(QWidget):
 
     def __init__(self, parent: QObject = None):
         super().__init__(parent)

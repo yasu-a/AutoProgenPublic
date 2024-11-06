@@ -5,7 +5,7 @@ from PyQt5.QtGui import QCloseEvent, QShowEvent
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QWidget, QLabel, QMessageBox, QInputDialog
 
 from application.dependency.usecases import get_compiler_search_usecase
-from controls.res.fonts import font
+from controls.res.fonts import get_font
 
 
 class _CompilerSearchWorker(QThread):
@@ -58,7 +58,7 @@ class _CompilerSearchWidget(QWidget):
         layout.addWidget(QLabel("検索中・・・ "))
 
         self._l_progress = QLabel(self)
-        self._l_progress.setFont(font(monospace=True, small=True))
+        self._l_progress.setFont(get_font(monospace=True, small=True))
         layout.addWidget(self._l_progress)
 
     def _init_signals(self):

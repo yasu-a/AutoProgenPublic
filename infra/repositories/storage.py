@@ -148,6 +148,7 @@ class StorageRepository:
                 )
             elif command_type == "updated":
                 assert updated_content is not None
+                file_fullpath.parent.mkdir(parents=True, exist_ok=True)
                 self._current_project_core_io.write_file_content_bytes(
                     file_fullpath=file_fullpath,
                     content_bytes=updated_content,

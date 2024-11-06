@@ -1,7 +1,7 @@
 from PyQt5.QtGui import QFont
 
 
-def font(
+def get_font(
         *,
         monospace=False,
         small=False,

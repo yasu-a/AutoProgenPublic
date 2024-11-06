@@ -5,7 +5,8 @@ from PyQt5.QtWidgets import *
 from application.dependency.usecases import get_project_list_recent_summary_usecase, \
     get_project_base_folder_show_usecase, get_project_folder_show_usecase, \
     get_project_delete_usecase, get_project_get_size_query_usecase
-from controls.res.fonts import font
+from controls.res.fonts import get_font
+from controls.res.icons import get_icon
 from controls.widget_clickable_label import ClickableLabelWidget
 from domain.models.values import ProjectID
 from usecases.dto.project_summary import ProjectSummary
@@ -44,7 +45,7 @@ class RecentProjectListItemWidget(QWidget):
 
                 self._l_project_name = ClickableLabelWidget(self)
                 self._l_project_name.setMinimumWidth(200)
-                f = font(underline=True, bold=True, large=True)
+                f = get_font(underline=True, bold=True, large=True)
                 self._l_project_name.setStyleSheet("color: blue")
                 self._l_project_name.setFont(f)
                 layout_top.addWidget(self._l_project_name)
@@ -76,8 +77,17 @@ class RecentProjectListItemWidget(QWidget):
             layout_right.setContentsMargins(20, 0, 20, 0)
             layout.addLayout(layout_right)
 
-            self._b_actions = QPushButton("...", self)
+            # self._b_open = QPushButton(self)
+            # self._b_open.setIcon(icon("folder"))
+            # self._b_open.setFixedWidth(30)
+            # self._b_open.setFixedHeight(30)
+            # self._b_open.setEnabled(False)
+            # layout_right.addWidget(self._b_open)
+
+            self._b_actions = QPushButton(self)
+            self._b_actions.setIcon(get_icon("cog"))
             self._b_actions.setFixedWidth(30)
+            self._b_actions.setFixedHeight(30)
             self._b_actions.setEnabled(False)
             layout_right.addWidget(self._b_actions)
 
@@ -86,6 +96,8 @@ class RecentProjectListItemWidget(QWidget):
         self._b_actions.clicked.connect(self.__b_actions_clicked)
         # noinspection PyUnresolvedReferences
         self._l_project_name.clicked.connect(self.__l_project_name_clicked)
+        # # noinspection PyUnresolvedReferences
+        # self._b_open.clicked.connect(self.__b_open_clicked)
 
     @pyqtSlot()
     def __b_actions_clicked(self):
@@ -99,6 +111,12 @@ class RecentProjectListItemWidget(QWidget):
             return
         self.selected.emit(self._project_summary.project_id)
 
+    # @pyqtSlot()
+    # def __b_open_clicked(self):
+    #     if self._project_summary is None:
+    #         return
+    #     self.selected.emit(self._project_summary.project_id)
+
     def set_data(self, project_summary: ProjectSummary | None):
         if project_summary is None:
             self._l_project_name.setText("")
@@ -107,6 +125,7 @@ class RecentProjectListItemWidget(QWidget):
             self._l_target_number.setText("")
             self._l_size.setText("")
             self._b_actions.setEnabled(False)
+            # self._b_open.setEnabled(False)
             self._l_project_name.unsetCursor()
         else:
             self._l_project_name.setText(project_summary.project_name)
@@ -115,6 +134,7 @@ class RecentProjectListItemWidget(QWidget):
             self._l_target_number.setText(f"設問 {project_summary.target_number!s}")
             self._l_size.setText("--")
             self._b_actions.setEnabled(True)
+            # self._b_open.setEnabled(True)
             self._l_project_name.setCursor(QCursor(Qt.PointingHandCursor))
         self._project_summary = project_summary
 
@@ -186,7 +206,6 @@ class RecentProjectListWidget(QListWidget):
         menu.addAction(a_delete)
 
         # メニューを表示
-        # noinspection PyUnresolvedReferences
         self.setContextMenuPolicy(Qt.CustomContextMenu)
 
         # コンテキストメニューをボタンの下に表示

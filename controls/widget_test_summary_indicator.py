@@ -3,7 +3,7 @@ import sys
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from controls.res.fonts import font
+from controls.res.fonts import get_font
 from usecases.dto.student_mark_view_data import StudentTestCaseSummaryState
 
 
@@ -32,12 +32,12 @@ class TestCaseTestSummaryIndicatorWidget(QFrame):
         layout.addStretch(1)
 
         self._l_text = QLabel("", self)
-        self._l_text.setFont(font(monospace=True, bold=True))
+        self._l_text.setFont(get_font(monospace=True, bold=True))
         layout.addWidget(self._l_text)
 
         self._l_indicator = QLabel("", self)
         self._l_indicator.setFixedSize(QSize(11, 11))
-        self._l_indicator.setFont(font(monospace=True))
+        self._l_indicator.setFont(get_font(monospace=True))
         layout.addWidget(self._l_indicator)
 
         layout.addStretch(1)
@@ -102,7 +102,7 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
     # noinspection PyArgumentList
-    app.setFont(font())
+    app.setFont(get_font())
     w = _TestWidget()
     # noinspection PyUnresolvedReferences
     w.show()

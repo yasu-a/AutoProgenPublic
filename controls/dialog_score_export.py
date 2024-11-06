@@ -10,8 +10,8 @@ from application.dependency.external_io import get_score_excel_io
 from application.dependency.services import get_current_project_get_service
 from application.dependency.usecases import get_student_list_id_usecase, \
     get_student_mark_list_usecase, get_global_config_get_usecase
-from controls.res.fonts import font
-from controls.res.icons import icon
+from controls.res.fonts import get_font
+from controls.res.icons import get_icon
 from controls.widget_horizontal_line import HorizontalLineWidget
 from domain.models.student_mark import StudentMark
 from domain.models.values import StudentID, TargetID
@@ -49,14 +49,14 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
         layout_path.addWidget(self._le_excel_fullpath)
 
         self._b_select_excel_fullpath = QPushButton(self)
-        self._b_select_excel_fullpath.setIcon(icon("open"))
+        self._b_select_excel_fullpath.setIcon(get_icon("folder"))
         self._b_select_excel_fullpath.setFixedWidth(30)
         layout_path.addWidget(self._b_select_excel_fullpath)
 
         self._te_message = QPlainTextEdit(self)
         self._te_message.setReadOnly(True)
         self._te_message.setEnabled(False)
-        self._te_message.setFont(font(small=True))
+        self._te_message.setFont(get_font(small=True))
         layout.addWidget(self._te_message)
 
         layout.addWidget(HorizontalLineWidget())

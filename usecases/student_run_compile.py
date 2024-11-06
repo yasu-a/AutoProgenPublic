@@ -54,7 +54,7 @@ class StudentRunCompileStageUseCase:
                 result=CompileFailureStudentStageResult.create_instance(
                     student_id=student_id,
                     reason=f"コンパイルに失敗しました。\n{e.reason}",
-                    output=e.output,
+                    output=e.output or "",
                 )
             )
         else:

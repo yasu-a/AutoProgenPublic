@@ -14,7 +14,7 @@ from application.dependency.usecases import get_student_list_id_usecase, \
     get_student_table_get_student_error_cell_data_usecase, \
     get_student_dynamic_take_diff_snapshot_usecase, get_student_mark_get_usecase
 from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
-from controls.res.fonts import font
+from controls.res.fonts import get_font
 from domain.models.stages import BuildStage, CompileStage, ExecuteStage, TestStage
 from domain.models.values import StudentID
 from usecases.dto.student_stage_result_diff_snapshot import StudentStageResultDiffSnapshot, \
@@ -87,14 +87,14 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     @classmethod
     @cache
     def _font_link_text(cls) -> QFont:
-        f = font(monospace=True)
+        f = get_font(monospace=True)
         f.setUnderline(True)
         return f
 
     @classmethod
     @cache
     def _font_dead_link_text(cls) -> QFont:
-        f = font(monospace=True)
+        f = get_font(monospace=True)
         return f
 
     @classmethod
@@ -135,11 +135,25 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
             cell_data = get_student_table_get_student_name_cell_data_usecase().execute(student_id)
             return cell_data.student_name
 
+    _CHAR_UNFINISHED = "―"
+    _CHAR_SUCCESS = "✔"
+    _CHAR_FAILURE = "⚠"
+
     _STAGE_STATE_TEXT_MAPPING = {
-        StudentStageStateCellDataStageState.UNFINISHED: "―",
-        StudentStageStateCellDataStageState.FINISHED_SUCCESS: "✔",
-        StudentStageStateCellDataStageState.FINISHED_FAILURE: "⚠",
+        StudentStageStateCellDataStageState.UNFINISHED: _CHAR_UNFINISHED,
+        StudentStageStateCellDataStageState.FINISHED_SUCCESS: _CHAR_SUCCESS,
+        StudentStageStateCellDataStageState.FINISHED_FAILURE: _CHAR_FAILURE,
     }
+
+    @classmethod
+    def _foreground_status_text(cls, text) -> QColor | None:
+        if cls._CHAR_FAILURE in text:
+            return QColor("red")
+        if cls._CHAR_UNFINISHED in text:
+            return None
+        if cls._CHAR_SUCCESS in text:
+            return QColor("green")
+        return None
 
     @data_provider(
         column=StudentTableColumns.COL_STAGE_BUILD,
@@ -154,6 +168,9 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
                 if all(state == target_state for state in cell_data.states.values()):
                     return text
             return "？"
+        elif role == Qt.ForegroundRole:
+            text = self.get_data_of_stage_build_cell(student_id, Qt.DisplayRole)
+            return self._foreground_status_text(text)
 
     @data_provider(
         column=StudentTableColumns.COL_STAGE_COMPILE,
@@ -168,6 +185,9 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
                 if all(state == target_state for state in cell_data.states.values()):
                     return text
             return "？"
+        elif role == Qt.ForegroundRole:
+            text = self.get_data_of_stage_compile_cell(student_id, Qt.DisplayRole)
+            return self._foreground_status_text(text)
 
     @data_provider(
         column=StudentTableColumns.COL_STAGE_EXECUTE,
@@ -182,6 +202,9 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
                 self._STAGE_STATE_TEXT_MAPPING[state]
                 for state in cell_data.states.values()
             )
+        elif role == Qt.ForegroundRole:
+            text = self.get_data_of_stage_execute_cell(student_id, Qt.DisplayRole)
+            return self._foreground_status_text(text)
 
     @data_provider(
         column=StudentTableColumns.COL_STAGE_TEST,
@@ -196,6 +219,9 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
                 self._STAGE_STATE_TEXT_MAPPING[state]
                 for state in cell_data.states.values()
             )
+        elif role == Qt.ForegroundRole:
+            text = self.get_data_of_stage_test_cell(student_id, Qt.DisplayRole)
+            return self._foreground_status_text(text)
 
     @data_provider(
         column=StudentTableColumns.COL_ERROR,

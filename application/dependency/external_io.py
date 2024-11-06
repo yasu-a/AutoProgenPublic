@@ -3,6 +3,7 @@ from infra.external.compile_tool import CompileToolIO
 from infra.external.executable import ExecutableIO
 from infra.external.project_base_folder_show_in_explorer import ProjectFolderShowInExplorerIO
 from infra.external.report_archive import ManabaReportArchiveIO
+from infra.external.resource_usage import ResourceUsageIO
 from infra.external.score_excel import ScoreExcelIO
 from infra.external.student_folder_show_in_explorer import StudentFolderShowInExplorerIO
 
@@ -37,3 +38,7 @@ def get_project_folder_show_in_explorer_io():
     return ProjectFolderShowInExplorerIO(
         project_list_path_provider=get_project_list_path_provider(),
     )
+
+
+def get_resource_usage_io():
+    return ResourceUsageIO()

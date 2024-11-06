@@ -7,7 +7,8 @@ from application.state.debug import set_debug
 from controls.dialog_static_initialize import StaticInitializeProgressDialog
 from controls.dialog_welcome import WelcomeDialog
 from controls.dto.new_project_config import NewProjectConfig
-from controls.res.fonts import font
+from controls.res.fonts import get_font
+from controls.res.icons import get_icon
 from controls.window_main import MainWindow
 from domain.models.values import ProjectID
 from utils import app_logging
@@ -40,8 +41,10 @@ def create_app() -> QApplication:
             return super().styleHint(hint, option, widget, return_data)
 
     app = QApplication(sys.argv)
+    app.setApplicationName("プロ言採点")
+    app.setWindowIcon(get_icon("fountain-pen"))
     # noinspection PyArgumentList
-    app.setFont(font())
+    app.setFont(get_font())
     app.setStyle(CustomStyle("Fusion"))
 
     return app
