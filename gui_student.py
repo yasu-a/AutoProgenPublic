@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import *
 import state
 from app_logging import create_logger
 from fonts import font
+from gui_mark import StudentMarkDialog
 from models.student import StudentProcessStage, StudentProcessResult
 
 
@@ -14,7 +15,7 @@ class StudentTableModel(QAbstractTableModel):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-    HEADER = "学籍番号", "名前", "実行環境構築", "コンパイル", "自動テスト", "エラー", "テスト結果"
+    HEADER = "学籍番号", "名前", "実行環境構築", "コンパイル", "自動テスト", "エラー", "テスト結果", "採点結果"
     COL_STUDENT_ID = 0
     COL_NAME = 1
     COL_STATE_BUILD = 2
@@ -22,6 +23,7 @@ class StudentTableModel(QAbstractTableModel):
     COL_STATE_TEST = 4
     COL_ERROR = 5
     COL_TESTCASE_RESULT = 6
+    COL_MARK_RESULT = 7
 
     COLS_STATE = COL_STATE_BUILD, COL_STATE_COMPILE, COL_STATE_TEST
 
@@ -61,6 +63,12 @@ class StudentTableModel(QAbstractTableModel):
                     return ""
                 else:
                     return student.test_result.testcase_result_string
+            elif i_col == self.COL_MARK_RESULT:
+                text = " / ".join(
+                    f"{target_number}: [{' ' if student.mark_scores.get(target_number, -1) < 0 else student.mark_scores.get(target_number, -1)}]"
+                    for target_number in state.project_service.list_registered_target_numbers()
+                )
+                return text
 
         elif role == Qt.ForegroundRole:
             with state.data(readonly=True) as data:
@@ -69,6 +77,8 @@ class StudentTableModel(QAbstractTableModel):
             if i_col == self.COL_STUDENT_ID:
                 if student.meta.submission_folder_name is not None:
                     return QColor("blue")
+            if i_col == self.COL_MARK_RESULT:
+                return QColor("blue")
             if i_col in self.COLS_STATE:
                 if "エラー" in self.data(index, role=Qt.DisplayRole):
                     return QColor("red")
@@ -77,12 +87,17 @@ class StudentTableModel(QAbstractTableModel):
             with state.data(readonly=True) as data:
                 student = data.students[data.student_ids[i_row]]
 
-            monospace = i_col == self.COL_STUDENT_ID or i_col == self.COL_TESTCASE_RESULT
+            monospace = i_col in (
+                self.COL_STUDENT_ID, self.COL_TESTCASE_RESULT, self.COL_MARK_RESULT
+            )
             cell_font = font(monospace=monospace)
             if i_col == self.COL_STUDENT_ID:
                 if student.meta.submission_folder_name is not None:
                     cell_font.setUnderline(True)
                     cell_font.setBold(True)
+            if i_col == self.COL_MARK_RESULT:
+                cell_font.setUnderline(True)
+                cell_font.setBold(True)
             if i_col in self.COLS_STATE:
                 if "エラー" in self.data(index, role=Qt.DisplayRole):
                     cell_font.setBold(True)
@@ -137,14 +152,15 @@ class StudentTableWidget(QTableView):
         vh.setSectionResizeMode(QHeaderView.Fixed)
         vh.setDefaultSectionSize(20)
 
-        self.setColumnWidth(0, 150)
-        self.setColumnWidth(1, 150)
-        self.setColumnWidth(5, 400)
-        self.setColumnWidth(6, 300)
+        self.setColumnWidth(StudentTableModel.COL_STUDENT_ID, 150)
+        self.setColumnWidth(StudentTableModel.COL_NAME, 150)
+        self.setColumnWidth(StudentTableModel.COL_ERROR, 400)
+        self.setColumnWidth(StudentTableModel.COL_TESTCASE_RESULT, 300)
+        self.setColumnWidth(StudentTableModel.COL_MARK_RESULT, 300)
 
     def __init_signals(self):
         self.clicked.connect(self.__w_list_selection_changed)  # type: ignore
-        self.doubleClicked.connect(self.open_selected_in_explorer)  # type: ignore
+        self.doubleClicked.connect(self._on_cell_double_clicked)  # type: ignore
 
     def __w_list_selection_changed(self):
         index = self.currentIndex().row()
@@ -153,15 +169,20 @@ class StudentTableWidget(QTableView):
         self.selection_changed.emit(student_id)  # type: ignore
 
     @pyqtSlot()
-    def open_selected_in_explorer(self):
+    def _on_cell_double_clicked(self):
         if len(self.selectedIndexes()) != 1:
             return
-        if self.currentIndex().column() != 0:
-            return
-        index = self.currentIndex().row()
-        with state.data(readonly=True) as data:
-            student_id = data.student_ids[index]
-        state.project_service.open_submission_folder_in_explorer(student_id)
+        if self.currentIndex().column() == StudentTableModel.COL_STUDENT_ID:
+            index = self.currentIndex().row()
+            with state.data(readonly=True) as data:
+                student_id = data.student_ids[index]
+            state.project_service.open_submission_folder_in_explorer(student_id)
+        elif self.currentIndex().column() == StudentTableModel.COL_MARK_RESULT:
+            index = self.currentIndex().row()
+            with state.data(readonly=True) as data:
+                student_id = data.student_ids[index]
+            dialog = StudentMarkDialog(self, student_id_filter=[student_id])
+            dialog.exec_()
 
     def __update_data_on_timeout(self):
         current_modify_count = state.data_manager.modify_count
@@ -174,6 +195,7 @@ class StudentTableWidget(QTableView):
             self._logger.info("updated")
 
     # https://stackoverflow.com/questions/38234021/horizontal-scroll-on-wheelevent-with-shift-too-fast
+    # noinspection DuplicatedCode
     def wheelEvent(self, event: QWheelEvent):
         if event.modifiers() == Qt.ShiftModifier:
             scrollbar = self.horizontalScrollBar()

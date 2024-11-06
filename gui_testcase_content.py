@@ -72,7 +72,6 @@ class TestCaseContentTextEditWidget(QWidget):
         self._te_input.set_show_editing_symbols(state)
         self._te_output.set_show_editing_symbols(state)
 
-
     def set_input_text(self, text: str):
         self._te_input.setPlainText(text)
 

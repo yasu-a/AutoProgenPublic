@@ -140,14 +140,18 @@ class ProjectService:
             return self.student.meta.student_id == other.student.meta.student_id \
                 and self.target_number == other.target_number
 
-    def list_mark_entries(self) -> list[MarkEntry]:
+    def list_registered_target_numbers(self) -> list[int]:
+        return self.__testcase_io.list_target_numbers()
+
+    def list_mark_entries(self, student_id_filter: list[str] | None = None) -> list[MarkEntry]:
         entries = []
         with state.data(readonly=True) as data:
             for student_id in data.student_ids:
+                if student_id_filter is not None:
+                    if student_id not in student_id_filter:
+                        continue
                 student = data.students[student_id]
-                if student.test_result is None:
-                    continue
-                for target_number in student.test_result.test_session_results.keys():
+                for target_number in self.list_registered_target_numbers():
                     entry = self.MarkEntry(
                         student=student,
                         target_number=target_number,

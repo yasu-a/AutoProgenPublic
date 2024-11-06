@@ -1,12 +1,17 @@
+import os
+import re
+
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 import state
+from app_logging import create_logger
 from gui_compiler_wizard import CompilerConfigurationWizard
 from gui_mark import StudentMarkDialog
 from gui_student import StudentInfoWidget
 from gui_testcase_list import TestCaseListEditDialog
 from icons import icon
+from services.score_exporter import ScoreExporter
 from settings import settings_compiler
 
 
@@ -34,8 +39,12 @@ class ToolBar(QToolBar):
         a.setObjectName("edit-testcases")
         self.addAction(a)
 
-        a = QAction(icon("mark"), "採点", self)
+        a = QAction(icon("mark"), "一括採点", self)
         a.setObjectName("mark")
+        self.addAction(a)
+
+        a = QAction(icon("export-scores"), "点数をエクスポート", self)
+        a.setObjectName("export-scores")
         self.addAction(a)
 
         self.actionTriggered.connect(self.__triggered)  # type: ignore
@@ -45,6 +54,8 @@ class ToolBar(QToolBar):
 
 
 class MainWindow(QMainWindow):
+    _logger = create_logger()
+
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
@@ -57,6 +68,7 @@ class MainWindow(QMainWindow):
         timer.start()  # type: ignore
         self.__context_info_update_timer = timer
 
+    # noinspection PyUnresolvedReferences
     def __init_ui(self):
         self.setWindowTitle("Auto Progen")
         self.setWindowIcon(icon("title"))
@@ -88,6 +100,107 @@ class MainWindow(QMainWindow):
             # noinspection PyTypeChecker
             dialog = StudentMarkDialog(self)
             dialog.exec_()
+        elif name == "export-scores":
+            with state.data(readonly=True) as data:
+                student_ids = data.student_ids
+            exporter = ScoreExporter(student_ids=student_ids)
+
+            # noinspection PyTypeChecker
+            excel_path = QFileDialog.getOpenFileName(
+                self,
+                "点数をエクスポートするエクセルファイルの選択",
+            )[0]
+            if not excel_path or not os.path.exists(excel_path):
+                QMessageBox().critical(
+                    self,
+                    "点数のエクスポート",
+                    "正しいエクセルファイルが選択されませんでした",
+                )
+                return
+            exporter.set_excel_path(excel_path)
+
+            ws_names = exporter.list_valid_worksheet_names()
+            if not ws_names:
+                QMessageBox().critical(
+                    self,
+                    "点数のエクスポート",
+                    "エクスポート先のワークシートが１つも見つかりません",
+                )
+                return
+
+            # noinspection PyTypeChecker
+            ws_name, ok = QInputDialog.getItem(
+                self,
+                "点数のエクスポート",
+                "エクスポート先のワークシートを選択してください",
+                exporter.list_valid_worksheet_names(),
+                0,
+                False,
+            )
+            if not ok:
+                return
+            exporter.set_worksheet_name(ws_name)
+
+            # noinspection PyTypeChecker
+            target_number, ok = QInputDialog.getItem(
+                self,
+                "点数のエクスポート",
+                "エクスポートする設問番号を選択してください",
+                [
+                    f"設問 {target_number:02}"
+                    for target_number in state.project_service.list_registered_target_numbers()
+                ],
+                0,
+                False,
+            )
+            if not ok:
+                return
+            target_number = int(re.findall(r"\d+", target_number)[0])
+            assert target_number in state.project_service.list_registered_target_numbers()
+            exporter.set_target_number(target_number)
+
+            scores = {}
+            with state.data(readonly=True) as data:
+                for student in data.students.values():
+                    student_id = student.meta.student_id
+                    score = student.mark_scores.get(target_number, -1)
+                    scores[student_id] = score
+            exporter.set_scores(scores)
+
+            try:
+                if exporter.has_data():
+                    # noinspection PyTypeChecker
+                    if QMessageBox.question(
+                            self,
+                            "点数のエクスポート",
+                            f"シート名{ws_name}の設問{target_number}に入力データが存在しますが上書きしてよろしいですか？",
+                            QMessageBox.Yes | QMessageBox.No,
+                            QMessageBox.No,
+                    ) == QMessageBox.No:
+                        QMessageBox().critical(
+                            self,
+                            "点数のエクスポート",
+                            "エクスポートを中断しました",
+                        )
+                        return
+                exporter.commit()
+            except Exception as e:
+                self._logger.info("Failed to commit scores to the workbook")
+                self._logger.exception(e)
+                # noinspection PyTypeChecker
+                QMessageBox.critical(
+                    self,
+                    "点数のエクスポート",
+                    "エクスポートに失敗しました。\n" + "\n".join(map(str, e.args)),
+                )
+            else:
+                # noinspection PyTypeChecker
+                QMessageBox.information(
+                    self,
+                    "点数のエクスポート",
+                    "元のファイルをバックアップしてエクスポートしました。ワークブックを開いて確認してください。"
+                )
+                os.startfile(os.path.dirname(excel_path))
         else:
             assert False, name
 

@@ -54,6 +54,7 @@ class TestCaseResultStateIndicatorWidget(QFrame):
             self._set_text_and_color(None, None)
         else:
             if self.__value == TestCaseResultState.OK:
+                # noinspection SpellCheckingInspection
                 self._set_text_and_color(
                     text=self.__value.value,
                     color="#44ffbb",
@@ -126,7 +127,9 @@ class _TestWidget(QWidget, QObject):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
+    # noinspection PyArgumentList
     app.setFont(font())
     w = _TestWidget()
+    # noinspection PyUnresolvedReferences
     w.show()
     app.exec()

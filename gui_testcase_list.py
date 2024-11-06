@@ -349,6 +349,7 @@ class TestCaseEditWidget(QWidget):
         name = self.sender().objectName()
         if name == "add":
             testcase_io = state.project_service.get_testcase_io()
+            # noinspection PyTypeChecker
             i_target, ok = QInputDialog.getInt(
                 self,
                 "新しい設問",
@@ -361,6 +362,7 @@ class TestCaseEditWidget(QWidget):
                 return
             result = testcase_io.add_target_index(i_target)
             if not result:
+                # noinspection PyTypeChecker
                 QMessageBox.critical(
                     self,
                     "新しい設問",
@@ -380,6 +382,7 @@ class TestCaseEditWidget(QWidget):
         if name == "add":
             if isinstance(item, _ListItemTarget):
                 if not item.success:
+                    # noinspection PyTypeChecker
                     QMessageBox.critical(
                         self,
                         "新しいテストケース",
@@ -400,6 +403,7 @@ class TestCaseEditWidget(QWidget):
             target_number = item.get_target_number()
             testcase_io = state.project_service.get_testcase_io()
             if isinstance(item, _ListItemTarget):
+                # noinspection PyTypeChecker
                 if QMessageBox.warning(
                         self,
                         "設問の削除",
@@ -410,6 +414,7 @@ class TestCaseEditWidget(QWidget):
                     return
                 testcase_io.delete_target(target_number)
             elif isinstance(item, _ListItemTestCase):
+                # noinspection PyTypeChecker
                 if QMessageBox.warning(
                         self,
                         "テストケースの削除",

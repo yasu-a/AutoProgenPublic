@@ -13,9 +13,9 @@ class TestCaseTextEdit(QPlainTextEdit):
         self.__init_signals()
 
     def __init_ui(self):
-        self.setLineWrapMode(QPlainTextEdit.NoWrap)
-        self.setFont(font(monospace=True))
+        self.setFont(font(monospace=True, small=True))
         self.set_show_editing_symbols(True)
+        self.setLineWrapMode(QPlainTextEdit.NoWrap)
 
     def set_show_editing_symbols(self, v: bool):
         if v:
@@ -31,6 +31,7 @@ class TestCaseTextEdit(QPlainTextEdit):
         pass
 
     # https://stackoverflow.com/questions/38234021/horizontal-scroll-on-wheelevent-with-shift-too-fast
+    # noinspection DuplicatedCode
     def wheelEvent(self, event: QWheelEvent):
         if event.modifiers() == Qt.ShiftModifier:
             scrollbar = self.horizontalScrollBar()

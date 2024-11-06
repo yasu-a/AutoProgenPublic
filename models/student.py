@@ -69,6 +69,7 @@ class StudentProcessResult(Enum):
 @dataclass(slots=True)
 class Student:
     meta: StudentMeta
+    mark_scores: dict[int, int]  # target-id -> score
     env_meta: StudentEnvMeta | None
     compile_result: EnvironmentCompileResult | None
     test_result: StudentTestResult | None = None
@@ -76,6 +77,7 @@ class Student:
     def to_json(self):
         return dict(
             meta=self.meta.to_json(),
+            mark_scores=self.mark_scores,
             env_meta=None if self.env_meta is None else self.env_meta.to_json(),
             compile_result=None if self.compile_result is None else self.compile_result.to_json(),
             test_result=None if self.test_result is None else self.test_result.to_json(),
@@ -85,6 +87,10 @@ class Student:
     def from_json(cls, body):
         return cls(
             meta=StudentMeta.from_json(body["meta"]),
+            mark_scores={
+                int(k): v
+                for k, v in body.get("mark_scores", {}).items()
+            },
             env_meta=(
                 None
                 if body["env_meta"] is None
@@ -109,6 +115,7 @@ class Student:
             env_meta=None,
             compile_result=None,
             test_result=None,
+            mark_scores={},
         )
 
     @property

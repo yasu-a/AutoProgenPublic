@@ -189,6 +189,7 @@ class TestSession:
     def has_no_testcases(self) -> bool:
         return len(self.testcases) == 0
 
+
 @dataclass(slots=True)
 class TestSessionResult:
     testcase_results: list[TestCaseResult] | None
