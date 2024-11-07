@@ -1,4 +1,4 @@
-from infra.core.global_ import GlobalCoreIO
+from infra.io.files.global_ import GlobalCoreIO
 from infra.path_providers.global_ import GlobalPathProvider
 
 

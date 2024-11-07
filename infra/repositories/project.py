@@ -3,7 +3,7 @@ from json import JSONDecodeError
 from domain.errors import ProjectIOError
 from domain.models.project import Project
 from domain.models.values import ProjectID
-from infra.core.project import ProjectCoreIO
+from infra.io.files.project import ProjectCoreIO
 from infra.path_providers.project import ProjectListPathProvider, ProjectPathProvider
 
 

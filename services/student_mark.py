@@ -2,7 +2,7 @@ from datetime import datetime
 
 from domain.models.student_mark import StudentMark
 from domain.models.values import StudentID
-from infra.core.current_project import CurrentProjectCoreIO
+from infra.io.files.current_project import CurrentProjectCoreIO
 from infra.path_providers.current_project import StudentMarkPathProvider
 from infra.repositories.student_mark import StudentMarkRepository
 from services.student import StudentListSubService

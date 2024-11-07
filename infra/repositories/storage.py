@@ -6,7 +6,7 @@ from domain.models.storage import Storage, StorageFileContentMapper, \
     FileRelativePathListProducerType, FileContentMapperType, FileRelativePathExistsMapperType, \
     FileRelativePathStatMapperType, StorageStat
 from domain.models.values import StorageID
-from infra.core.current_project import CurrentProjectCoreIO
+from infra.io.files.current_project import CurrentProjectCoreIO
 from infra.path_providers.current_project import StoragePathProvider
 from utils.app_logging import create_logger
 

@@ -25,6 +25,25 @@ class ToolBar(QToolBar):
 
         # ツールバーアクションの追加
 
+        self._a_open_project = QAction(get_icon("folder"), "プロジェクトを開く", self)
+        self._a_open_project.setObjectName("open-project")
+        self._a_open_project.setEnabled(True)
+        self.addAction(self._a_open_project)
+
+        self._a_settings = QAction(get_icon("settings"), "設定", self)
+        self._a_settings.setObjectName("edit-settings")
+        self._a_settings.setEnabled(False)
+        self.addAction(self._a_settings)
+
+        self.addSeparator()
+
+        self._a_edit_testcases = QAction(get_icon("research"), "テストケースの編集", self)
+        self._a_edit_testcases.setObjectName("edit-testcases")
+        self._a_edit_testcases.setEnabled(False)
+        self.addAction(self._a_edit_testcases)
+
+        self.addSeparator()
+
         self._a_run = QAction(get_icon("play"), "実行", self)
         self._a_run.setObjectName("run")
         self._a_run.setEnabled(False)
@@ -40,15 +59,7 @@ class ToolBar(QToolBar):
         self._a_delete.setEnabled(False)
         self.addAction(self._a_delete)
 
-        self._a_settings = QAction(get_icon("settings"), "設定", self)
-        self._a_settings.setObjectName("edit-settings")
-        self._a_settings.setEnabled(False)
-        self.addAction(self._a_settings)
-
-        self._a_edit_testcases = QAction(get_icon("research"), "テストケースの編集", self)
-        self._a_edit_testcases.setObjectName("edit-testcases")
-        self._a_edit_testcases.setEnabled(False)
-        self.addAction(self._a_edit_testcases)
+        self.addSeparator()
 
         self._a_mark = QAction(get_icon("marker"), "採点", self)
         self._a_mark.setObjectName("mark")

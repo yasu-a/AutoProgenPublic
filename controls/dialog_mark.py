@@ -46,7 +46,6 @@ class MarkScoreEditWidget(QWidget):
         self._le_score = QLineEdit(self)
         self._le_score.setValidator(QRegExpValidator(QRegExp("[1-9][0-9]|[0-9]|")))
         self._le_score.setFont(get_font(monospace=True, very_large=True, bold=True))
-        print(self._le_score.font().pointSize())
         self._le_score.setPlaceholderText("--")
         self._le_score.setFixedWidth(50)
         self._le_score.setFixedHeight(50)

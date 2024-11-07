@@ -1,11 +1,11 @@
 from application.dependency.path_provider import *
-from infra.external.compile_tool import CompileToolIO
-from infra.external.executable import ExecutableIO
-from infra.external.project_base_folder_show_in_explorer import ProjectFolderShowInExplorerIO
-from infra.external.report_archive import ManabaReportArchiveIO
-from infra.external.resource_usage import ResourceUsageIO
-from infra.external.score_excel import ScoreExcelIO
-from infra.external.student_folder_show_in_explorer import StudentFolderShowInExplorerIO
+from infra.io.compile_tool import CompileToolIO
+from infra.io.executable import ExecutableIO
+from infra.io.project_base_folder_show_in_explorer import ProjectFolderShowInExplorerIO
+from infra.io.report_archive import ManabaReportArchiveIO
+from infra.io.resource_usage import ResourceUsageIO
+from infra.io.score_excel import ScoreExcelIO
+from infra.io.student_folder_show_in_explorer import StudentFolderShowInExplorerIO
 
 
 def get_manaba_report_archive_io(manaba_report_archive_fullpath: Path):

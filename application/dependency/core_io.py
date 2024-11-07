@@ -1,8 +1,8 @@
 from application.dependency.path_provider import *
 from application.state.current_project import get_current_project_id
-from infra.core.current_project import CurrentProjectCoreIO
-from infra.core.global_ import GlobalCoreIO
-from infra.core.project import ProjectCoreIO
+from infra.io.files.current_project import CurrentProjectCoreIO
+from infra.io.files.global_ import GlobalCoreIO
+from infra.io.files.project import ProjectCoreIO
 
 
 def get_global_core_io():

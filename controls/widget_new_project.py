@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import *
 from application.dependency.usecases import get_project_check_exist_by_name_usecase
 from application.state.debug import is_debug
 from controls.dto.new_project_config import NewProjectConfig
+from controls.res.fonts import get_font
 from controls.res.icons import get_icon
 from domain.models.values import ProjectID
 
@@ -155,6 +156,7 @@ class NewProjectWidget(QWidget):
     def _init_ui(self):
         layout = QVBoxLayout()
         layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
         self.setLayout(layout)
 
         if "form":
@@ -179,18 +181,23 @@ class NewProjectWidget(QWidget):
             self._w_target_number_input = TargetNumberLineEdit(self)
             layout_form.addWidget(self._w_target_number_input, 2, 1)
 
-        layout.addStretch(1)
-
         if "button":
             layout_button = QHBoxLayout()
             layout.addLayout(layout_button)
 
             layout_button.addStretch(1)
 
-            self._b_create = QPushButton("プロジェクトを作成", self)
+            self._b_create = QPushButton("START", self)
+            self._b_create.setMinimumWidth(200)
+            self._b_create.setMinimumHeight(30)
+            self._b_create.setFont(get_font(bold=True, monospace=True))
             # noinspection PyUnresolvedReferences
             self._b_create.clicked.connect(self._b_create_clicked)
             layout_button.addWidget(self._b_create)
+
+            layout_button.addStretch(1)
+
+        layout.addStretch(1)
 
     @pyqtSlot()
     def _b_create_clicked(self):

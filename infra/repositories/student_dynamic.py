@@ -2,7 +2,7 @@ from pathlib import Path
 
 from domain.models.file_item import SourceFileItem, ExecutableFileItem, StudentDynamicFileItemType
 from domain.models.values import StudentID
-from infra.core.current_project import CurrentProjectCoreIO
+from infra.io.files.current_project import CurrentProjectCoreIO
 from infra.path_providers.current_project import StudentDynamicPathProvider
 
 

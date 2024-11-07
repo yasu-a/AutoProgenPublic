@@ -14,6 +14,9 @@ class AbstractExpectedToken(ABC):
     def __hash__(self) -> int:
         raise NotImplementedError()
 
+    def __eq__(self, other) -> bool:
+        raise NotImplementedError()
+
     def to_json(self) -> dict:
         return dict(
             **self._to_json(),
@@ -52,6 +55,13 @@ class TextExpectedToken(AbstractExpectedToken):
     def __hash__(self) -> int:
         return hash(self._value)
 
+    def __eq__(self, other) -> bool:
+        if other is None:
+            return False
+        if not isinstance(other, type(self)):
+            return False
+        return self._value == other._value
+
     @property
     def value(self) -> str:
         return self._value
@@ -79,6 +89,13 @@ class FloatExpectedToken(AbstractExpectedToken):
 
     def __hash__(self) -> int:
         return hash(self._value)
+
+    def __eq__(self, other) -> bool:
+        if other is None:
+            return False
+        if not isinstance(other, type(self)):
+            return False
+        return self._value == other._value
 
     @property
     def value(self) -> float:

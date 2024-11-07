@@ -2,7 +2,7 @@ from pathlib import Path
 
 from domain.errors import StorageRunCompilerServiceError, CompileToolIOError
 from domain.models.values import StorageID
-from infra.external.compile_tool import CompileToolIO
+from infra.io.compile_tool import CompileToolIO
 from infra.repositories.global_config import GlobalConfigRepository
 from infra.repositories.storage import StorageRepository
 from infra.repositories.student_dynamic import StudentDynamicRepository

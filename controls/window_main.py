@@ -1,3 +1,5 @@
+import sys
+
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
@@ -104,7 +106,9 @@ class TaskStateStatusBarWidget(QWidget):
         layout.addWidget(self._l_message)
 
     def _init_signals(self):
+        # noinspection PyUnresolvedReferences
         self._icon_timer.timeout.connect(self.__icon_timer_timeout)
+        # noinspection PyUnresolvedReferences
         self._update_timer.timeout.connect(self.__update_timer_timeout)
 
     @pyqtSlot()
@@ -212,9 +216,24 @@ class MainWindow(QMainWindow):
                 )
             )
 
+    def __perform_reopen_project(self) -> None:
+        if QMessageBox.question(
+                self,
+                "プロジェクトを開く",
+                "別のプロジェクトを開きます。このプロジェクトを閉じてもよろしいですか？",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+        ) != QMessageBox.Yes:
+            return
+        self.close()
+        self._logger.info("RESTARTING APP")
+        QProcess.startDetached(sys.executable, sys.argv)
+
     def __tool_bar_triggered(self, name):
         self._tool_bar.update_button_state(is_task_alive=True)
-        if name == "run":
+        if name == "open-project":
+            self.__perform_reopen_project()
+        elif name == "run":
             self.__enqueue_student_tasks_if_not_run(
                 parent=self,
                 task_cls=RunStagesStudentTask,
@@ -244,4 +263,3 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, evt, **kwargs):
         self.__perform_stop_tasks()
-        pass

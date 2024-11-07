@@ -20,7 +20,7 @@ class WelcomeDialog(QDialog):
         # noinspection PyUnresolvedReferences
         self.setWindowTitle("WELCOME")
         self.setModal(True)
-        self.resize(800, 500)
+        self.resize(800, 400)
 
         layout_root = QVBoxLayout()
         self.setLayout(layout_root)

@@ -2,8 +2,8 @@ from datetime import datetime
 
 from domain.models.project import Project
 from domain.models.values import ProjectID, TargetID
-from infra.core.project import ProjectCoreIO
-from infra.external.project_base_folder_show_in_explorer import ProjectFolderShowInExplorerIO
+from infra.io.files.project import ProjectCoreIO
+from infra.io.project_base_folder_show_in_explorer import ProjectFolderShowInExplorerIO
 from infra.path_providers.project import ProjectPathProvider
 from infra.repositories.project import ProjectRepository
 from utils.app_logging import create_logger

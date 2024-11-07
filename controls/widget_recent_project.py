@@ -1,5 +1,5 @@
 from PyQt5.QtCore import *
-from PyQt5.QtGui import QCursor
+from PyQt5.QtGui import QCursor, QMouseEvent
 from PyQt5.QtWidgets import *
 
 from application.dependency.usecases import get_project_list_recent_summary_usecase, \
@@ -214,6 +214,17 @@ class RecentProjectListWidget(QListWidget):
 
     @pyqtSlot(ProjectID)
     def __item_widget_selected(self, project_id: ProjectID):
+        self.project_selected.emit(project_id)
+
+    def mouseDoubleClickEvent(self, evt: QMouseEvent):
+        index = self.indexAt(evt.pos())
+        if not index.isValid():
+            return
+
+        item = self.item(index.row())
+        item_w = self.itemWidget(item)
+        assert isinstance(item_w, RecentProjectListItemWidget)
+        project_id = item_w.get_data().project_id
         self.project_selected.emit(project_id)
 
     def set_data(self, project_summary_lst: list[ProjectSummary]) -> None:

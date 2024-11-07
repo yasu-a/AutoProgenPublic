@@ -5,9 +5,9 @@ from typing import Iterable
 
 from domain.errors import ServiceError, ManabaReportArchiveIOError
 from domain.models.values import StudentID, TargetID
-from infra.core.current_project import CurrentProjectCoreIO
-from infra.external.report_archive import ManabaReportArchiveIO
-from infra.external.student_folder_show_in_explorer import StudentFolderShowInExplorerIO
+from infra.io.files.current_project import CurrentProjectCoreIO
+from infra.io.report_archive import ManabaReportArchiveIO
+from infra.io.student_folder_show_in_explorer import StudentFolderShowInExplorerIO
 from infra.path_providers.current_project import StudentSubmissionPathProvider
 from infra.repositories.current_project import CurrentProjectRepository
 from infra.repositories.student import StudentRepository

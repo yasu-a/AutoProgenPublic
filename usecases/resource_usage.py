@@ -1,4 +1,4 @@
-from infra.external.resource_usage import ResourceUsageIO
+from infra.io.resource_usage import ResourceUsageIO
 from usecases.dto.resource_usage import ResourceUsageGetResult
 
 

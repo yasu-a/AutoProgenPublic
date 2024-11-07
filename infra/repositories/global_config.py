@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from PyQt5.QtCore import QMutex
 
 from domain.models.global_config import GlobalConfig
-from infra.core.global_ import GlobalCoreIO
+from infra.io.files.global_ import GlobalCoreIO
 from infra.path_providers.global_ import GlobalPathProvider
 
 

@@ -7,7 +7,7 @@ from domain.models.execute_config import TestCaseExecuteConfig
 from domain.models.test_config import TestCaseTestConfig
 from domain.models.testcase_config import TestCaseConfig
 from domain.models.values import TestCaseID
-from infra.core.current_project import CurrentProjectCoreIO
+from infra.io.files.current_project import CurrentProjectCoreIO
 from infra.path_providers.current_project import TestCaseConfigPathProvider
 
 
@@ -51,6 +51,11 @@ class TestCaseConfigRepository:
             testcase_id: TestCaseID,
             execute_config: TestCaseExecuteConfig,
     ) -> None:
+        try:
+            if self.__read_execute_config(testcase_id) == execute_config:
+                return
+        except FileNotFoundError:
+            pass
         self.__ensure_testcase_folder_exists(testcase_id)
         json_fullpath = self._testcase_config_path_provider.execute_config_json_fullpath(
             testcase_id=testcase_id,
@@ -65,6 +70,11 @@ class TestCaseConfigRepository:
             testcase_id: TestCaseID,
             test_config: TestCaseTestConfig,
     ) -> None:
+        try:
+            if self.__read_test_config(testcase_id) == test_config:
+                return
+        except FileNotFoundError:
+            pass
         self.__ensure_testcase_folder_exists(testcase_id)
         json_fullpath = self._testcase_config_path_provider.test_config_json_fullpath(
             testcase_id=testcase_id,

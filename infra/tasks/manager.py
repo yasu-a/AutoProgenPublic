@@ -12,7 +12,7 @@ from utils.app_logging import create_logger
 
 
 class _TaskStack:
-    # thead-unsafe
+    # thread-unsafe
 
     def __init__(self):
         self._task_queues: dict[str, AbstractTaskQueue] = {}
@@ -81,7 +81,7 @@ class _TaskStack:
 
 
 class TaskManager(QObject):
-    # thead-safe
+    # thread-safe
 
     _logger = create_logger()
 
@@ -150,6 +150,7 @@ class TaskManager(QObject):
                     f"Waiting {n_tasks} tasks to finish\n"
                     + "\n".join(f" - {task!r}" for task in active_tasks),
                 )
+                # TODO: usecase layer
                 callback(
                     f"{n_tasks}個のタスクが終了するのを待っています・・・\n"
                     + "\n".join(f" - {task!s}" for task in active_tasks[:8]),

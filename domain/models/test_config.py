@@ -47,3 +47,12 @@ class TestCaseTestConfig:
 
     def __hash__(self) -> int:
         return hash((self._expected_output_files, self._options))
+
+    def __eq__(self, other):
+        if other is None:
+            return False
+        assert isinstance(other, type(self))
+        return (
+                self._expected_output_files == other._expected_output_files
+                and self._options == other._options
+        )

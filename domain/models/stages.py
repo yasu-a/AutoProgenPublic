@@ -51,6 +51,8 @@ class AbstractStage(ABC):  # 生徒のプロセスのステージを表す基底
 
 @dataclass(frozen=True)
 class BuildStage(AbstractStage):
+    # ソースコード抽出
+
     @classmethod
     def get_name_str(cls) -> str:
         return "build"
@@ -58,6 +60,8 @@ class BuildStage(AbstractStage):
 
 @dataclass(frozen=True)
 class CompileStage(AbstractStage):
+    # コンパイル
+
     @classmethod
     def get_name_str(cls) -> str:
         return "compile"
@@ -65,6 +69,8 @@ class CompileStage(AbstractStage):
 
 @dataclass(frozen=True)
 class ExecuteStage(AbstractStage):
+    # 実行
+
     testcase_id: TestCaseID
 
     @classmethod
@@ -74,6 +80,8 @@ class ExecuteStage(AbstractStage):
 
 @dataclass(frozen=True)
 class TestStage(AbstractStage):
+    # テスト
+
     testcase_id: TestCaseID
 
     @classmethod

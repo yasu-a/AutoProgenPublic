@@ -31,6 +31,12 @@ class InputFile:
     def __hash__(self) -> int:
         return hash((self._file_id, self._content))
 
+    def __eq__(self, other):
+        if other is None:
+            return False
+        assert isinstance(other, type(self))
+        return self._file_id == other._file_id and self._content == other._content
+
     @property
     def file_id(self) -> FileID:
         return self._file_id

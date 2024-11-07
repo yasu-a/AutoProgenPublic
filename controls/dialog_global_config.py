@@ -9,7 +9,7 @@ from application.dependency.usecases import get_global_config_get_usecase, \
 from controls.dialog_compiler_search import CompilerSearchDialog
 from controls.res.icons import get_icon
 from domain.models.global_config import GlobalConfig
-from infra.external.compiler_location import is_compiler_location
+from infra.io.compiler_location import is_compiler_location
 from utils.app_logging import create_logger
 
 
@@ -192,18 +192,21 @@ class GlobalConfigEditWidget(QWidget):
             layout_content.addWidget(widget, i, 0)
             i += 1
 
+        # noinspection PyTypeChecker
         self._w_compiler_tool_path = CompilerToolPathEditWidget(self)
         add_item(
             "Visual Studio開発者ツールのパス",
             self._w_compiler_tool_path,
         )
 
+        # noinspection PyTypeChecker
         self._w_compiler_timeout = CompilerTimeoutWidget(self)
         add_item(
-            "コンパイルのタイムアウト (秒)",
+            "コンパイルのタイムアウト",
             self._w_compiler_timeout,
         )
 
+        # noinspection PyTypeChecker
         self._w_max_workers = MaxWorkersWidget(self)
         add_item(
             "並列タスク実行数（反映するには再起動が必要です）",

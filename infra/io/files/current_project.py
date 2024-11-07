@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any, Optional, Iterable
 
 from domain.models.values import ProjectID
-from infra.core.project import ProjectCoreIO
+from infra.io.files.project import ProjectCoreIO
 from utils.app_logging import create_logger
 
 

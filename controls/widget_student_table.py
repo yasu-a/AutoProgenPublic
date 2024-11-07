@@ -86,15 +86,15 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
 
     @classmethod
     @cache
-    def _font_link_text(cls) -> QFont:
-        f = get_font(monospace=True)
+    def _font_link_text(cls, *, monospace: bool) -> QFont:
+        f = get_font(monospace=monospace)
         f.setUnderline(True)
         return f
 
     @classmethod
     @cache
-    def _font_dead_link_text(cls) -> QFont:
-        f = get_font(monospace=True)
+    def _font_dead_link_text(cls, monospace: bool) -> QFont:
+        f = get_font(monospace=monospace)
         return f
 
     @classmethod
@@ -117,9 +117,9 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
         elif role == Qt.FontRole:
             cell_data = get_student_table_get_student_id_cell_data_usecase().execute(student_id)
             if cell_data.is_submission_folder_link_alive:
-                return self._font_link_text()
+                return self._font_link_text(monospace=True)
             else:
-                return self._font_dead_link_text()
+                return self._font_dead_link_text(monospace=True)
         elif role == Qt.ForegroundRole:
             cell_data = get_student_table_get_student_id_cell_data_usecase().execute(student_id)
             if cell_data.is_submission_folder_link_alive:
@@ -265,7 +265,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
             else:
                 return "未採点"
         elif role == Qt.FontRole:
-            return self._font_link_text()
+            return self._font_link_text(monospace=False)
         elif role == Qt.ForegroundRole:
             return self._foreground_link_text()
 

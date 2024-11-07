@@ -45,6 +45,7 @@ def get_student_repository():
     )
 
 
+@cache  # キャッシュを持つのでプロジェクト内ステートフル
 def get_student_stage_result_repository():
     return StudentStageResultRepository(
         student_stage_result_path_provider=get_student_stage_result_path_provider(),

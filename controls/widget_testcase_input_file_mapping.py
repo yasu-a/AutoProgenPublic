@@ -96,6 +96,7 @@ class TestCaseInputFileEditWidgetDelegator(AbstractFileTabWidgetDelegator):
             new_file_id = self.__input_new_file_name("ファイルの追加", tab_widget)
             if new_file_id is None:
                 return
+            # noinspection PyTypeChecker
             widget = PlainTextEdit(tab_widget)
             widget.set_show_editing_symbols(False)
             tab_widget.item_append(

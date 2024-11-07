@@ -2,7 +2,7 @@ from pathlib import Path
 
 from domain.errors import StorageRunExecutableServiceError
 from domain.models.values import StorageID, FileID
-from infra.external.executable import ExecutableIOTimeoutError, ExecutableIO
+from infra.io.executable import ExecutableIOTimeoutError, ExecutableIO
 from infra.repositories.storage import StorageRepository
 from services.dto.storage_run_executable import StorageExecuteServiceResult
 

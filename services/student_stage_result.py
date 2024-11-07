@@ -3,7 +3,7 @@ from datetime import datetime
 from domain.models.stage_path import StagePath
 from domain.models.stages import AbstractStage
 from domain.models.values import StudentID
-from infra.core.current_project import CurrentProjectCoreIO
+from infra.io.files.current_project import CurrentProjectCoreIO
 from infra.path_providers.current_project import StudentStageResultPathProvider
 from infra.repositories.student_stage_result import StudentStageResultRepository
 from infra.repositories.testcase_config import TestCaseConfigRepository
