@@ -1,17 +1,148 @@
-import psutil
+import sys
+
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from app_logging import create_logger
-from application.dependency.services import get_project_service
 from application.dependency.tasks import get_task_manager
-from controls.dialog_global_settings import GlobalSettingsEditDialog
+from application.dependency.usecases import get_current_project_summary_get_usecase, \
+    get_student_list_id_usecase, get_student_submission_folder_show_usecase, \
+    get_resource_usage_get_usecase
+from controls.dialog_global_config import GlobalConfigEditDialog
 from controls.dialog_mark import MarkDialog
+from controls.dialog_score_export import ScoreExportDialog
+from controls.dialog_stop_tasks import StopTasksDialog
 from controls.dialog_testcase_list_edit import TestCaseListEditDialog
+from controls.res.fonts import get_font
+from controls.tasks.clean_all_stages import CleanAllStagesStudentTask
+from controls.tasks.run_stages import RunStagesStudentTask
 from controls.widget_student_table import StudentTableWidget
 from controls.widget_toolbar import ToolBar
-from icons import icon
-from tasks.task_impls import RunStagesStudentTask, CleanAllStagesStudentTask
+from domain.models.values import StudentID
+from infra.tasks.task import AbstractStudentTask
+from usecases.dto.resource_usage import ResourceUsageGetResult
+from utils.app_logging import create_logger
+
+
+class ProcessResourceUsageStatusBarWidget(QWidget):
+    def __init__(self, parent: QObject = None):
+        super().__init__(parent)
+
+        self._timer = QTimer(self)
+        self._timer.setInterval(1000)
+
+        self._init_ui()
+        self._init_signals()
+
+        self._timer.start()
+
+    def _init_ui(self):
+        self.setStyleSheet(
+            "QLabel {"
+            "   color: black;"
+            "   background-color: #ffffff;"
+            "   border-radius: 4px;"
+            "   padding: 2px;"
+            "}"
+        )
+
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(layout)
+
+        self._l_disk_read_count = QLabel(self)
+        layout.addWidget(self._l_disk_read_count)
+
+        self._l_disk_write_count = QLabel(self)
+        layout.addWidget(self._l_disk_write_count)
+
+        self._l_cpu_percent = QLabel(self)
+        layout.addWidget(self._l_cpu_percent)
+
+        self._l_memory = QLabel(self)
+        layout.addWidget(self._l_memory)
+
+    def _init_signals(self):
+        # noinspection PyUnresolvedReferences
+        self._timer.timeout.connect(self.__timer_timeout)
+
+    @pyqtSlot()
+    def __timer_timeout(self):
+        result: ResourceUsageGetResult = get_resource_usage_get_usecase().execute()
+        self._l_cpu_percent.setText(f"CPU: {result.cpu_percent}%")
+        self._l_memory.setText(f"RAM: {result.memory_mega_bytes:,} MB")
+        self._l_disk_read_count.setText(f"Disk read: {result.disk_read_count:,}")
+        self._l_disk_write_count.setText(f"Disk write: {result.disk_write_count:,}")
+
+
+class TaskStateStatusBarWidget(QWidget):
+    def __init__(self, parent: QObject = None):
+        super().__init__(parent)
+
+        self.__icon_anim_state = 0
+
+        self._icon_timer = QTimer(self)
+        self._icon_timer.setInterval(100)
+
+        self._update_timer = QTimer(self)
+        self._update_timer.setInterval(1000)
+
+        self._init_ui()
+        self._init_signals()
+
+        self._icon_timer.start()
+        self._update_timer.start()
+
+    def _init_ui(self):
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(layout)
+
+        self._l_icon = QLabel(self)
+        self._l_icon.setFont(get_font(monospace=True))
+        layout.addWidget(self._l_icon)
+
+        self._l_message = QLabel(self)
+        self._l_message.setEnabled(False)
+        layout.addWidget(self._l_message)
+
+    def _init_signals(self):
+        # noinspection PyUnresolvedReferences
+        self._icon_timer.timeout.connect(self.__icon_timer_timeout)
+        # noinspection PyUnresolvedReferences
+        self._update_timer.timeout.connect(self.__update_timer_timeout)
+
+    @pyqtSlot()
+    def __icon_timer_timeout(self):
+        task_manager = get_task_manager()
+        if task_manager.is_empty():
+            self._l_icon.setText("")
+        else:
+            self._l_icon.setText((">" * self.__icon_anim_state).ljust(10, "."))
+            self.__icon_anim_state = (self.__icon_anim_state + 1) % 11
+
+    @pyqtSlot()
+    def __update_timer_timeout(self):
+        task_manager = get_task_manager()
+        if task_manager.is_empty():
+            self._l_message.setText(
+                "実行中のタスクはありません"
+            )
+            color = "black"
+            background_color = "none"
+        else:
+            self._l_message.setText(
+                f"実行中のタスク: {task_manager.count_active()}/{task_manager.count()}"
+            )
+            color = "white"
+            background_color = "#cc3300"
+        self.setStyleSheet(
+            "QLabel {"
+            f"  color: {color};"
+            f"  background-color: {background_color};"
+            "   border-radius: 4px;"
+            "   padding: 2px;"
+            "}"
+        )
 
 
 class MainWindow(QMainWindow):
@@ -21,229 +152,114 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
 
         self._init_ui()
-        self.__init_signals()
-
-        timer = QTimer(self)
-        timer.setInterval(500)
-        timer.timeout.connect(self.__status_info_update_timer_timeout)  # type: ignore
-        timer.start()  # type: ignore
-        self.__context_info_update_timer = timer
+        self._init_signals()
 
     def _init_ui(self):
-        project_service = get_project_service()
+        project_summary = get_current_project_summary_get_usecase().execute()
 
-        # noinspection PyUnresolvedReferences
         self.setWindowTitle(
-            f"Auto Progen "
-            f"{project_service.get_project_name()!s} "
-            f"設問{project_service.get_target_id()!s}"
+            f"{project_summary.project_name} 設問{project_summary.target_number}"
         )
-        # noinspection PyUnresolvedReferences
-        self.setWindowIcon(icon("title"))
         self.resize(1500, 800)
 
         # ツールバー
         self._tool_bar = ToolBar(self)
-        # noinspection PyUnresolvedReferences
         self.addToolBar(self._tool_bar)
 
         # 生徒のテーブル
-        # noinspection PyTypeChecker
         self._w_student_table = StudentTableWidget(self)
-        # noinspection PyUnresolvedReferences
         self.setCentralWidget(self._w_student_table)
 
-    def __init_signals(self):
-        self._tool_bar.triggered.connect(self.__task_bar_triggered)
+        # ステータスバー
+        self._sb_task_state = TaskStateStatusBarWidget(self)
+        self.statusBar().addPermanentWidget(self._sb_task_state)
+        self.statusBar().addPermanentWidget(QLabel(self), 1)
+        self._sb_process_resource_usage = ProcessResourceUsageStatusBarWidget(self)
+        self.statusBar().addPermanentWidget(self._sb_process_resource_usage)
 
-    def __task_bar_triggered(self, name):
-        # TODO: 実行中はタスクバーのボタンを押せないようにする
-        if name == "run":
-            if get_task_manager().get_student_task_count() > 0:
-                return
-            for student_id in get_project_service().get_student_ids():
-                get_task_manager().enqueue_student_task(
-                    RunStagesStudentTask(
-                        parent=self,
-                        student_id=student_id,
-                    )
+    def _init_signals(self):
+        self._tool_bar.triggered.connect(self.__tool_bar_triggered)
+        self._w_student_table.student_id_cell_triggered.connect(
+            self.__w_student_table_student_id_cell_triggered
+        )
+        self._w_student_table.mark_result_cell_triggered.connect(
+            self.__w_student_table_mark_result_cell_triggered
+        )
+
+    @pyqtSlot(StudentID)
+    def __w_student_table_student_id_cell_triggered(self, student_id: StudentID):
+        get_student_submission_folder_show_usecase().execute(
+            student_id=student_id,
+        )
+
+    @pyqtSlot(StudentID)
+    def __w_student_table_mark_result_cell_triggered(self, student_id: StudentID):
+        dialog = MarkDialog(self)
+        dialog.set_data(dialog.states.create_state_by_student_id(student_id))
+        dialog.exec_()
+
+    @classmethod
+    def __perform_stop_tasks(cls):
+        if get_task_manager().count():
+            dialog = StopTasksDialog()
+            dialog.exec_()
+
+    @classmethod
+    def __enqueue_student_tasks_if_not_run(cls, parent, task_cls: type[AbstractStudentTask]):
+        if get_task_manager().count() > 0:
+            return
+        for student_id in get_student_list_id_usecase().execute():
+            get_task_manager().enqueue(
+                task_cls(
+                    parent=parent,
+                    student_id=student_id,
                 )
+            )
+
+    def __perform_reopen_project(self) -> None:
+        if QMessageBox.question(
+                self,
+                "プロジェクトを開く",
+                "別のプロジェクトを開きます。このプロジェクトを閉じてもよろしいですか？",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+        ) != QMessageBox.Yes:
+            return
+        self.close()
+        self._logger.info("RESTARTING APP")
+        QProcess.startDetached(sys.executable, sys.argv)
+
+    def __tool_bar_triggered(self, name):
+        self._tool_bar.update_button_state(is_task_alive=True)
+        if name == "open-project":
+            self.__perform_reopen_project()
+        elif name == "run":
+            self.__enqueue_student_tasks_if_not_run(
+                parent=self,
+                task_cls=RunStagesStudentTask,
+            )
+        elif name == "stop":
+            self.__perform_stop_tasks()
         elif name == "clear":
-            if get_task_manager().get_student_task_count() > 0:
-                return
-            for student_id in get_project_service().get_student_ids():
-                get_task_manager().enqueue_student_task(
-                    CleanAllStagesStudentTask(
-                        parent=self,
-                        student_id=student_id,
-                    )
-                )
-        elif name == "settings":
-            dialog = GlobalSettingsEditDialog()
+            self.__enqueue_student_tasks_if_not_run(
+                parent=self,
+                task_cls=CleanAllStagesStudentTask,
+            )
+        elif name == "edit-settings":
+            dialog = GlobalConfigEditDialog()
             dialog.exec_()
         elif name == "edit-testcases":
-            # noinspection PyTypeChecker
             dialog = TestCaseListEditDialog(self)
             dialog.exec_()
         elif name == "mark":
             dialog = MarkDialog(self)
+            dialog.set_data(dialog.states.create_state_of_first_student())
+            dialog.exec_()
+        elif name == "export-scores":
+            dialog = ScoreExportDialog(self)
             dialog.exec_()
         else:
             assert False, name
-        # if name == "run":
-        #     state.project_service.clear_all_test_results()
-        #     state.task_dispatcher.run_full_process_for_all_students()
-        # elif name == "configure-compiler":
-        #     wizard = CompilerConfigurationWizard(self)
-        #     if wizard.exec_() == QDialog.Accepted:
-        #         settings_compiler.set_vs_dev_cmd_bat_path(wizard.result_path())
-        #         settings_compiler.commit()
-        # elif name == "edit-testcases":
-        #     # noinspection PyTypeChecker
-        #     dialog = TestCaseListEditDialog(self)
-        #     dialog.exec_()
-        # elif name == "mark":
-        #     # noinspection PyTypeChecker
-        #     dialog = StudentMarkDialog(self)
-        #     dialog.exec_()
-        # elif name == "export-scores":
-        #     with state.data(readonly=True) as data:
-        #         student_ids = data.student_ids
-        #     exporter = ScoreExporter(student_ids=student_ids)
-        #
-        #     # noinspection PyTypeChecker
-        #     excel_path = QFileDialog.getOpenFileName(
-        #         self,
-        #         "点数をエクスポートするエクセルファイルの選択",
-        #     )[0]
-        #     if not excel_path or not os.path.exists(excel_path):
-        #         QMessageBox().critical(
-        #             self,
-        #             "点数のエクスポート",
-        #             "正しいエクセルファイルが選択されませんでした",
-        #         )
-        #         return
-        #     exporter.set_excel_path(excel_path)
-        #
-        #     ws_names = exporter.list_valid_worksheet_names()
-        #     if not ws_names:
-        #         QMessageBox().critical(
-        #             self,
-        #             "点数のエクスポート",
-        #             "エクスポート先のワークシートが１つも見つかりません",
-        #         )
-        #         return
-        #
-        #     # noinspection PyTypeChecker
-        #     ws_name, ok = QInputDialog.getItem(
-        #         self,
-        #         "点数のエクスポート",
-        #         "エクスポート先のワークシートを選択してください",
-        #         exporter.list_valid_worksheet_names(),
-        #         0,
-        #         False,
-        #     )
-        #     if not ok:
-        #         return
-        #     exporter.set_worksheet_name(ws_name)
-        #
-        #     # noinspection PyTypeChecker
-        #     target_number, ok = QInputDialog.getItem(
-        #         self,
-        #         "点数のエクスポート",
-        #         "エクスポートする設問番号を選択してください",
-        #         [
-        #             f"設問 {target_number:02}"
-        #             for target_number in state.project_service.list_registered_target_numbers()
-        #         ],
-        #         0,
-        #         False,
-        #     )
-        #     if not ok:
-        #         return
-        #     target_number = int(re.findall(r"\d+", target_number)[0])
-        #     assert target_number in state.project_service.list_registered_target_numbers()
-        #     exporter.set_target_number(target_number)
-        #
-        #     scores = {}
-        #     with state.data(readonly=True) as data:
-        #         for student in data.students.values():
-        #             student_id = student.meta.student_id
-        #             score = student.mark_scores.get(target_number, -1)
-        #             scores[student_id] = score
-        #     exporter.set_scores(scores)
-        #
-        #     try:
-        #         if exporter.has_data():
-        #             # noinspection PyTypeChecker
-        #             if QMessageBox.question(
-        #                     self,
-        #                     "点数のエクスポート",
-        #                     f"シート名{ws_name}の設問{target_number}に入力データが存在しますが上書きしてよろしいですか？",
-        #                     QMessageBox.Yes | QMessageBox.No,
-        #                     QMessageBox.No,
-        #             ) == QMessageBox.No:
-        #                 QMessageBox().critical(
-        #                     self,
-        #                     "点数のエクスポート",
-        #                     "エクスポートを中断しました",
-        #                 )
-        #                 return
-        #         exporter.commit()
-        #     except Exception as e:
-        #         self._logger.info("Failed to commit scores to the workbook")
-        #         self._logger.exception(e)
-        #         # noinspection PyTypeChecker
-        #         QMessageBox.critical(
-        #             self,
-        #             "点数のエクスポート",
-        #             "エクスポートに失敗しました。\n" + "\n".join(map(str, e.args)),
-        #         )
-        #     else:
-        #         # noinspection PyTypeChecker
-        #         QMessageBox.information(
-        #             self,
-        #             "点数のエクスポート",
-        #             "元のファイルをバックアップしてエクスポートしました。ワークブックを開いて確認してください。"
-        #         )
-        #         os.startfile(os.path.dirname(excel_path))
-        # else:
-        #     assert False, name
-        pass
-
-    # noinspection PyPep8Naming
-    def showEvent(self, event):
-        # self.__task_bar_triggered("edit-testcases")
-        # self.__task_bar_triggered("mark")
-        pass
 
     def closeEvent(self, evt, **kwargs):
-        # state.data_manager.save_if_necessary()
-        get_task_manager().terminate()
-        pass
-
-    def __status_info_update_timer_timeout(self):
-        task_manager = get_task_manager()
-        io_count = psutil.Process().io_counters()
-        cpu_percent = psutil.cpu_percent()
-        ram_percent = psutil.virtual_memory().percent
-        # noinspection PyUnresolvedReferences
-        status_bar: QStatusBar = self.statusBar()
-        status_bar.showMessage(
-            f"タスク：{task_manager.get_running_task_count()}/{task_manager.get_task_count()} "
-            # f"I/O read: {io_count.read_bytes // 1000:,}KB "
-            # f"I/O write: {io_count.write_bytes // 1000:,}KB "
-            # f"I/O read: {io_count.read_time}ms "
-            # f"I/O write: {io_count.write_time}ms "
-            f"I/O read: {io_count.read_count} "
-            f"I/O write: {io_count.write_count} "
-            f"CPU usage: {int(cpu_percent)}% "
-            f"RAM usage: {int(ram_percent)}% "
-            # f"開発者ツール：{settings_compiler.get_vs_dev_cmd_bat_path()}"
-        )
-        if task_manager.get_task_count() != 0:
-            # noinspection PyUnresolvedReferences
-            status_bar.setStyleSheet("background-color: yellow")
-        else:
-            # noinspection PyUnresolvedReferences
-            status_bar.setStyleSheet("")
+        self.__perform_stop_tasks()

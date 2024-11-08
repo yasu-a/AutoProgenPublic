@@ -12,7 +12,7 @@ class Student:
     email_address: str
     submitted_at: datetime | None
     num_submissions: int
-    submission_folder_name: str | None
+    submission_folder_name: str | None  # None if the student has no submission
 
     def to_json(self):
         return dict(
@@ -71,3 +71,6 @@ class StudentMaster(list[Student]):
                 for student in body
             ]
         )
+
+    def is_empty(self) -> bool:
+        return len(self) == 0

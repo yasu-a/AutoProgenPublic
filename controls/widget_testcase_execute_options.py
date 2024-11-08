@@ -1,10 +1,10 @@
 from PyQt5.QtCore import QObject, pyqtSlot
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QLabel, QDoubleSpinBox
+from PyQt5.QtWidgets import QVBoxLayout, QGridLayout, QLabel, QDoubleSpinBox, QGroupBox
 
-from domain.models.testcase import ExecuteConfigOptions
+from domain.models.execute_config_options import ExecuteConfigOptions
 
 
-class TestCaseExecuteConfigOptionsEditWidget(QWidget):
+class TestCaseExecuteConfigOptionsEditWidget(QGroupBox):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
@@ -26,8 +26,6 @@ class TestCaseExecuteConfigOptionsEditWidget(QWidget):
         self._sb_timeout.setSingleStep(0.1)
         self._sb_timeout.setDecimals(1)
         layout_content.addWidget(self._sb_timeout, 0, 1)
-
-        layout_root.addStretch(1)
 
     def _init_signals(self):
         pass

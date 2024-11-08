@@ -5,11 +5,12 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import QIntValidator, QRegExpValidator
 from PyQt5.QtWidgets import *
 
-from application.dependency.services import get_project_list_service
+from application.dependency.usecases import get_project_check_exist_by_name_usecase
 from application.state.debug import is_debug
-from domain.models.values import TargetID, ProjectName
-from dto.new_project_config import NewProjectConfig
-from icons import icon
+from controls.dto.new_project_config import NewProjectConfig
+from controls.res.fonts import get_font
+from controls.res.icons import get_icon
+from domain.models.values import ProjectID
 
 
 class ProjectZipFileSelectorWidget(QWidget):
@@ -46,7 +47,7 @@ class ProjectZipFileSelectorWidget(QWidget):
         layout.addWidget(self._le_fullpath)
 
         self._b_select_folder = QPushButton(self)
-        self._b_select_folder.setIcon(icon("open"))
+        self._b_select_folder.setIcon(get_icon("folder"))
         self._b_select_folder.setFixedWidth(30)
         # noinspection PyUnresolvedReferences
         self._b_select_folder.clicked.connect(self._b_select_folder_clicked)
@@ -61,6 +62,8 @@ class ProjectZipFileSelectorWidget(QWidget):
             QStandardPaths.writableLocation(QStandardPaths.DownloadLocation),
             "Zipファイル (*.zip)",
         )
+        if not fullpath:
+            return
         fullpath = Path(fullpath)
         if not self._is_project_zipfile_fullpath(fullpath):
             # noinspection PyTypeChecker
@@ -98,13 +101,19 @@ class ProjectNameLineEdit(QLineEdit):
             import random
             self.setText(f"proj-{random.randint(0, 10000)!s}")
 
-    def get_value(self) -> ProjectName:
-        return ProjectName(self.text())
+    def get_value(self) -> str:
+        return self.text()
 
     def validate_and_get_reason(self) -> str | None:
-        name = self.get_value()
+        project_name = self.get_value().strip()
+        if not project_name:
+            return "プロジェクト名が入力されていません"
+        try:
+            ProjectID(project_name)
+        except ValueError:
+            return "プロジェクト名に使用できない文字が含まれています"
         # noinspection PyTypeChecker
-        if get_project_list_service().name_exists(name):
+        if get_project_check_exist_by_name_usecase().execute(project_name):
             return "プロジェクト名はすでに存在します"
         return None
 
@@ -123,19 +132,19 @@ class TargetNumberLineEdit(QLineEdit):
         if is_debug():
             self.setText("4")
 
-    def get_value(self) -> TargetID:
-        return TargetID(self.text())
+    def get_value(self) -> int:
+        return int(self.text())
 
     def validate_and_get_reason(self) -> str | None:
         try:
-            TargetID(self.text())
+            int(self.text())
         except ValueError:
             return "設問番号には数字を入力してください"
         else:
             return None
 
 
-class NewProjectWidget(QGroupBox):
+class NewProjectWidget(QWidget):
     # noinspection PyArgumentList
     accepted = pyqtSignal(NewProjectConfig)
 
@@ -145,41 +154,55 @@ class NewProjectWidget(QGroupBox):
         self._init_ui()
 
     def _init_ui(self):
-        self.setTitle("新しいプロジェクト")
-
-        layout = QGridLayout()
+        layout = QVBoxLayout()
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
         self.setLayout(layout)
 
-        layout.addWidget(QLabel("プロジェクト名", self), 0, 0)
+        if "form":
+            layout_form = QGridLayout()
+            layout.addLayout(layout_form)
 
-        # noinspection PyTypeChecker
-        self._w_project_name = ProjectNameLineEdit(self)
-        layout.addWidget(self._w_project_name, 0, 1)
+            layout_form.addWidget(QLabel("プロジェクト名", self), 0, 0)
 
-        layout.addWidget(QLabel("提出データ"), 1, 0)
+            # noinspection PyTypeChecker
+            self._w_project_id = ProjectNameLineEdit(self)
+            layout_form.addWidget(self._w_project_id, 0, 1)
 
-        # noinspection PyTypeChecker
-        self._w_project_zipfile_selector = ProjectZipFileSelectorWidget(self)
-        layout.addWidget(self._w_project_zipfile_selector, 1, 1)
+            layout_form.addWidget(QLabel("提出データ"), 1, 0)
 
-        layout.addWidget(QLabel("設問番号"), 2, 0)
+            # noinspection PyTypeChecker
+            self._w_project_zipfile_selector = ProjectZipFileSelectorWidget(self)
+            layout_form.addWidget(self._w_project_zipfile_selector, 1, 1)
 
-        # noinspection PyTypeChecker
-        self._w_target_number_input = TargetNumberLineEdit(self)
-        layout.addWidget(self._w_target_number_input, 2, 1)
+            layout_form.addWidget(QLabel("設問番号"), 2, 0)
 
-        layout_button = QVBoxLayout()
-        layout.addLayout(layout_button, 3, 0, 1, 2)
+            # noinspection PyTypeChecker
+            self._w_target_number_input = TargetNumberLineEdit(self)
+            layout_form.addWidget(self._w_target_number_input, 2, 1)
 
-        self._b_create = QPushButton("プロジェクトを作成", self)
-        # noinspection PyUnresolvedReferences
-        self._b_create.clicked.connect(self._b_create_clicked)
-        layout_button.addWidget(self._b_create)
+        if "button":
+            layout_button = QHBoxLayout()
+            layout.addLayout(layout_button)
+
+            layout_button.addStretch(1)
+
+            self._b_create = QPushButton("START", self)
+            self._b_create.setMinimumWidth(200)
+            self._b_create.setMinimumHeight(30)
+            self._b_create.setFont(get_font(bold=True, monospace=True))
+            # noinspection PyUnresolvedReferences
+            self._b_create.clicked.connect(self._b_create_clicked)
+            layout_button.addWidget(self._b_create)
+
+            layout_button.addStretch(1)
+
+        layout.addStretch(1)
 
     @pyqtSlot()
     def _b_create_clicked(self):
         validation_results = [
-            self._w_project_name.validate_and_get_reason(),
+            self._w_project_id.validate_and_get_reason(),
             self._w_project_zipfile_selector.validate_and_get_reason(),
             self._w_target_number_input.validate_and_get_reason(),
         ]
@@ -189,8 +212,8 @@ class NewProjectWidget(QGroupBox):
             QMessageBox.critical(
                 self,
                 "プロジェクトを作成",
-                "すべての項目を正しく入力してください。\n" + "\n".join(
-                    validation_result
+                "すべての項目を正しく入力してください。\n\n" + "\n".join(
+                    "◆ " + validation_result
                     for validation_result in validation_results
                     if validation_result is not None
                 ),
@@ -198,8 +221,8 @@ class NewProjectWidget(QGroupBox):
             return
         self.accepted.emit(
             NewProjectConfig(
-                project_name=self._w_project_name.get_value(),
+                project_name=self._w_project_id.get_value(),
                 manaba_report_archive_fullpath=self._w_project_zipfile_selector.get_value(),
-                target_id=self._w_target_number_input.get_value(),
+                target_number=self._w_target_number_input.get_value(),
             )
         )

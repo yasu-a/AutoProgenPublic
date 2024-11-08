@@ -1,12 +1,12 @@
 from PyQt5.QtCore import QObject, pyqtSlot
 from PyQt5.QtGui import QDoubleValidator
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QLabel, QCheckBox, QLineEdit, \
-    QSpinBox
+from PyQt5.QtWidgets import QVBoxLayout, QGridLayout, QLabel, QCheckBox, QLineEdit, \
+    QSpinBox, QGroupBox
 
-from domain.models.testcase import TestConfigOptions
+from domain.models.test_config_options import TestConfigOptions
 
 
-class TestCaseTestConfigOptionsEditWidget(QWidget):
+class TestCaseTestConfigOptionsEditWidget(QGroupBox):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
@@ -45,8 +45,6 @@ class TestCaseTestConfigOptionsEditWidget(QWidget):
         #
         # self._cb_ignore_whitespace = QCheckBox(self)
         # layout_content.addWidget(self._cb_ignore_whitespace, 3, 1)
-
-        layout_root.addStretch(1)
 
     def _init_signals(self):
         pass

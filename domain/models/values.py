@@ -1,28 +1,37 @@
 import re
 
-__all__ = (
-    "StudentID",
-    "TargetID",
-    "TestCaseID",
-    "ProjectName",
-    "SpecialFileType",
-    "FileID",
-)
+import uuid
 
 from enum import Enum
 
 from pathlib import Path
 
+__all__ = (
+    "StudentID",
+    "TargetID",
+    "TestCaseID",
+    "ProjectID",
+    "SpecialFileType",
+    "FileID",
+    "StorageID",
+)
 
-class ProjectName:
+
+class ProjectID:
     def __init__(self, value: str):
-        assert isinstance(value, str)
+        if not isinstance(value, str):
+            raise ValueError("ProjectID must be a string", value)
+        value_as_path = Path(value)
+        if len(value_as_path.parts) != 1:
+            raise ValueError("Malformed string", value)
+        if value != value_as_path.parts[0]:
+            raise ValueError("Malformed string", value)
         self.__value = value
 
     def __str__(self) -> str:
         return self.__value
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.__value)
 
     def __eq__(self, other):
@@ -59,10 +68,12 @@ class StudentID:
     def __str__(self) -> str:
         return self.__value
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.__value)
 
     def __eq__(self, other):
+        if other is None:
+            return False
         assert isinstance(other, type(self))
         return self.__value == other.__value
 
@@ -99,10 +110,12 @@ class TargetID:
     def __str__(self) -> str:
         return str(int(self))
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.__value)
 
     def __eq__(self, other):
+        if other is None:
+            return False
         assert isinstance(other, type(self))
         return self.__value == other.__value
 
@@ -129,10 +142,12 @@ class TestCaseID:
     def __str__(self) -> str:
         return self.__value
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.__value)
 
     def __eq__(self, other):
+        if other is None:
+            return False
         assert isinstance(other, type(self))
         return self.__value == other.__value
 
@@ -154,6 +169,10 @@ class TestCaseID:
 class SpecialFileType(Enum):  # values are virtual filename
     STDIN = "__stdin__"
     STDOUT = "__stdout__"
+
+    def __lt__(self, other):
+        assert isinstance(other, SpecialFileType)
+        return self.value < other.value
 
 
 class FileID:
@@ -220,13 +239,15 @@ class FileID:
         return self.__to_string()
 
     def __eq__(self, other):
+        if other is None:
+            return False
         assert isinstance(other, FileID), other
         return (
                 self._is_special == other._is_special
                 and self._value == other._value
         )
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self._is_special, self._value))
 
     def __repr__(self):
@@ -234,7 +255,7 @@ class FileID:
 
     def __order_index(self) -> tuple:  # インスタンスの順序付けのためのオブジェクトを返す
         return (
-            self._is_special,  # is_special
+            not self._is_special,  # is_special
             self._value if self._is_special else None,  # value as a SpecialFileType
             None if self._is_special else self._value,  # value as a Path
         )
@@ -249,3 +270,9 @@ class FileID:
 
 FileID.STDIN = FileID(SpecialFileType.STDIN)
 FileID.STDOUT = FileID(SpecialFileType.STDOUT)
+
+
+class StorageID(uuid.UUID):
+    def __init__(self, value):
+        assert isinstance(value, uuid.UUID), value
+        super().__init__(bytes=value.bytes)

@@ -1,4 +1,13 @@
-from domain.models.testcase import TestCaseExecuteConfig, TestCaseTestConfig
+class RepositoryError(RuntimeError):
+    pass
+
+
+class ServiceError(RuntimeError):
+    pass
+
+
+class UseCaseError(RuntimeError):
+    pass
 
 
 class ProjectIOError(RuntimeError):
@@ -21,26 +30,24 @@ class BuildServiceError(RuntimeError):
         self.reason = reason
 
 
-class CompileServiceError(RuntimeError):
+class StorageRunCompilerServiceError(RuntimeError):
     def __init__(self, *, reason: str, output: str | None):
         self.reason = reason
         self.output = output
 
 
-class ExecuteServiceError(RuntimeError):
-    def __init__(self, *, reason: str, execute_config: TestCaseExecuteConfig):
+class StorageRunExecutableServiceError(RuntimeError):
+    def __init__(self, *, reason: str):
         self.reason = reason
-        self.execute_config = execute_config
+
+
+class ExecuteServiceError(RuntimeError):
+    def __init__(self, *, reason: str):
+        self.reason = reason
 
 
 class TestServiceError(RuntimeError):
-    def __init__(self, *, reason: str, test_config: TestCaseTestConfig):
-        self.reason = reason
-        self.test_config = test_config
-
-
-class ProjectCreateServiceError(RuntimeError):
-    def __init__(self, reason: str):
+    def __init__(self, *, reason: str):
         self.reason = reason
 
 
@@ -63,3 +70,12 @@ class CompileTestServiceError(RuntimeError):
     def __init__(self, *, reason: str, output: str | None):
         self.reason = reason
         self.output = output
+
+
+class TaskOperationError(RuntimeError):
+    def __init__(self, reason: str):
+        self.reason = reason
+
+
+class StopTask(RuntimeError):
+    pass
