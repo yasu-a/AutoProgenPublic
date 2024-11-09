@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
-from PyQt5.QtCore import pyqtSignal, QObject, pyqtSlot, Qt
-from PyQt5.QtGui import QIcon, QCursor
+from PyQt5.QtCore import pyqtSignal, QObject, pyqtSlot, Qt, QPoint
+from PyQt5.QtGui import QIcon, QPaintEvent, QPainter, QMouseEvent
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QToolButton, QMenu, QTabWidget
 
 from controls.res.icons import get_icon
@@ -81,8 +81,12 @@ class FileTabCornerWidget(QWidget):
         self.setContextMenuPolicy(Qt.CustomContextMenu)
 
         # コンテキストメニューをボタンの下に表示
-        position = QCursor.pos()
-        menu.exec_(position)
+        menu.popup(
+            self.mapToGlobal(
+                self.add_button.pos()
+                + QPoint(self.add_button.width(), self.add_button.height()) / 2
+            )
+        )
 
     @pyqtSlot()
     def __add_action_triggered(self):
@@ -132,6 +136,23 @@ class FileTabWidget(QTabWidget):
     @pyqtSlot(int)
     def __tab_close_requested(self, index: int):
         self.__delegator.perform_delete(index, self)
+
+    def paintEvent(self, evt: QPaintEvent):
+        super().paintEvent(evt)
+        # タブがないときにメッセージを表示する
+        if self.count() == 0:
+            painter = QPainter(self)
+            painter.drawText(
+                self.rect(),
+                Qt.AlignCenter,
+                "表示する項目がありません\n右上のアイコンをクリックして項目を追加します",
+            )
+
+    def mousePressEvent(self, evt: QMouseEvent):
+        super().mousePressEvent(evt)
+        # タブがないときにクリックすると項目追加アイコンを駆動してユーザーを誘導する
+        if self.count() == 0:
+            self.corner_widget.add_button.click()
 
     def item_insert(self, index: int, file_id: FileID, widget: QWidget) -> None:
         if file_id in self._file_ids:

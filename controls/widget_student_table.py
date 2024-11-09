@@ -152,7 +152,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
         if cls._CHAR_UNFINISHED in text:
             return None
         if cls._CHAR_SUCCESS in text:
-            return QColor("green")
+            return QColor("limegreen")
         return None
 
     @data_provider(

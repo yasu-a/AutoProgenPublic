@@ -4,8 +4,8 @@ from PyQt5.QtWidgets import QTabWidget, QVBoxLayout, QTabBar, QLabel, QWidget
 from controls.res.fonts import get_font
 from controls.res.icons import get_icon
 from controls.widget_testcase_execute_options import TestCaseExecuteConfigOptionsEditWidget
-from controls.widget_testcase_input_file_mapping import TestCaseInputFileEditWidget
-from controls.widget_testcase_output_file_mapping import TestCaseExpectedOutputFileMappingEditWidget
+from controls.widget_testcase_input_files_edit import TestCaseInputFilesEditWidget
+from controls.widget_testcase_output_files_edit import TestCaseExpectedOutputFilesEditWidget
 from controls.widget_testcase_test_config_options import TestCaseTestConfigOptionsEditWidget
 from domain.models.execute_config import TestCaseExecuteConfig
 from domain.models.test_config import TestCaseTestConfig
@@ -33,7 +33,7 @@ class TestCaseConfigEditWidget(QTabWidget):
             label.setFont(get_font(bold=True))
             layout.addWidget(label)
 
-            self._w_input_files_edit = TestCaseInputFileEditWidget(self)
+            self._w_input_files_edit = TestCaseInputFilesEditWidget(self)
             layout.addWidget(self._w_input_files_edit)
 
             label = QLabel("実行のオプション", self)
@@ -54,7 +54,7 @@ class TestCaseConfigEditWidget(QTabWidget):
             label.setFont(get_font(bold=True))
             layout.addWidget(label)
 
-            self._w_expected_output_files_edit = TestCaseExpectedOutputFileMappingEditWidget(self)
+            self._w_expected_output_files_edit = TestCaseExpectedOutputFilesEditWidget(self)
             layout.addWidget(self._w_expected_output_files_edit)
 
             label = QLabel("自動テストのオプション", self)

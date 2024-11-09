@@ -7,7 +7,7 @@ from controls.res.fonts import get_font
 from usecases.dto.student_mark_view_data import StudentTestCaseSummaryState
 
 
-class TestCaseTestSummaryIndicatorWidget(QFrame):
+class TestCaseTestSummaryIndicatorWidget(QGroupBox):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
@@ -18,10 +18,9 @@ class TestCaseTestSummaryIndicatorWidget(QFrame):
 
     def _init_ui(self):
         self.setFixedSize(QSize(50, 25))
-        self.setFrameStyle(QFrame.Plain | QFrame.Panel)
         # noinspection PyUnresolvedReferences
         self.setStyleSheet(
-            "TestCaseResultStateIndicatorWidget { border: 1px solid black; border-radius: 5px; }"
+            "TestCaseTestSummaryIndicatorWidget { border: 1px solid black; border-radius: 5px; }"
         )
 
         layout = QHBoxLayout()
@@ -50,8 +49,8 @@ class TestCaseTestSummaryIndicatorWidget(QFrame):
 
     _TEST_SUMMARY_COLORS = {
         StudentTestCaseSummaryState.WRONG_ANSWER: "red",
-        StudentTestCaseSummaryState.ACCEPTED: "#44ffbb",
-        StudentTestCaseSummaryState.UNTESTABLE: "orange",
+        StudentTestCaseSummaryState.ACCEPTED: "lime",
+        StudentTestCaseSummaryState.UNTESTABLE: "lightgray",
     }
 
     def _update_value(self):

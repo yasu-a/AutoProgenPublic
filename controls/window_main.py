@@ -36,6 +36,7 @@ class ProcessResourceUsageStatusBarWidget(QWidget):
         self._timer.start()
 
     def _init_ui(self):
+        # noinspection PyUnresolvedReferences
         self.setStyleSheet(
             "QLabel {"
             "   color: black;"
@@ -135,6 +136,7 @@ class TaskStateStatusBarWidget(QWidget):
             )
             color = "white"
             background_color = "#cc3300"
+        # noinspection PyUnresolvedReferences
         self.setStyleSheet(
             "QLabel {"
             f"  color: {color};"
@@ -157,6 +159,7 @@ class MainWindow(QMainWindow):
     def _init_ui(self):
         project_summary = get_current_project_summary_get_usecase().execute()
 
+        # noinspection PyUnresolvedReferences
         self.setWindowTitle(
             f"{project_summary.project_name} 設問{project_summary.target_number}"
         )
@@ -164,17 +167,25 @@ class MainWindow(QMainWindow):
 
         # ツールバー
         self._tool_bar = ToolBar(self)
+        # noinspection PyUnresolvedReferences
         self.addToolBar(self._tool_bar)
 
         # 生徒のテーブル
+        # noinspection PyTypeChecker
         self._w_student_table = StudentTableWidget(self)
+        # noinspection PyUnresolvedReferences
         self.setCentralWidget(self._w_student_table)
 
         # ステータスバー
+        # noinspection PyTypeChecker
         self._sb_task_state = TaskStateStatusBarWidget(self)
+        # noinspection PyUnresolvedReferences
         self.statusBar().addPermanentWidget(self._sb_task_state)
+        # noinspection PyUnresolvedReferences
         self.statusBar().addPermanentWidget(QLabel(self), 1)
+        # noinspection PyTypeChecker
         self._sb_process_resource_usage = ProcessResourceUsageStatusBarWidget(self)
+        # noinspection PyUnresolvedReferences
         self.statusBar().addPermanentWidget(self._sb_process_resource_usage)
 
     def _init_signals(self):
@@ -188,25 +199,38 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot(StudentID)
     def __w_student_table_student_id_cell_triggered(self, student_id: StudentID):
+        # テーブルの生徒の学籍番号がクリックされたとき
+        # 学生の提出データがあるフォルダを開く
         get_student_submission_folder_show_usecase().execute(
             student_id=student_id,
         )
 
     @pyqtSlot(StudentID)
     def __w_student_table_mark_result_cell_triggered(self, student_id: StudentID):
+        # テーブルの生徒の点数がクリックされたとき
+        # 生徒ごとの採点画面を開く
+        if not get_task_manager().is_empty():
+            # noinspection PyTypeChecker
+            QMessageBox.warning(
+                self,
+                "採点",
+                "タスクが終了するまでは採点できません"
+            )
+            return
+
         dialog = MarkDialog(self)
-        dialog.set_data(dialog.states.create_state_by_student_id(student_id))
+        dialog.set_state(dialog.states.create_state_by_student_id(student_id))
         dialog.exec_()
 
     @classmethod
     def __perform_stop_tasks(cls):
-        if get_task_manager().count():
+        if not get_task_manager().is_empty():
             dialog = StopTasksDialog()
             dialog.exec_()
 
     @classmethod
     def __enqueue_student_tasks_if_not_run(cls, parent, task_cls: type[AbstractStudentTask]):
-        if get_task_manager().count() > 0:
+        if not get_task_manager().is_empty():
             return
         for student_id in get_student_list_id_usecase().execute():
             get_task_manager().enqueue(
@@ -217,6 +241,7 @@ class MainWindow(QMainWindow):
             )
 
     def __perform_reopen_project(self) -> None:
+        # noinspection PyTypeChecker
         if QMessageBox.question(
                 self,
                 "プロジェクトを開く",
@@ -253,7 +278,7 @@ class MainWindow(QMainWindow):
             dialog.exec_()
         elif name == "mark":
             dialog = MarkDialog(self)
-            dialog.set_data(dialog.states.create_state_of_first_student())
+            dialog.set_state(dialog.states.create_state_of_first_student())
             dialog.exec_()
         elif name == "export-scores":
             dialog = ScoreExportDialog(self)
