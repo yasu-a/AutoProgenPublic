@@ -111,19 +111,7 @@ class StudentMarkViewDataGetMarkSummaryUseCase:
                 state = StudentMarkState.RERUN_REQUIRED
                 break
 
-            if stage_path_result.are_all_stages_done():
-                # すべてのステージが成功しているとき
-                state = StudentMarkState.READY
-                continue
-            elif stage_path_result.is_success() is False:
-                # ステージが失敗しているとき
-                state = StudentMarkState.STAGES_FAILED
-                detailed_text = stage_path_result.get_detailed_reason()
-                break
-            else:
-                # ステージが未実行のとき
-                state = StudentMarkState.STAGES_UNFINISHED
-                break
+            state = StudentMarkState.READY
 
         return StudentMarkSummaryViewData(
             student_id=student_id,

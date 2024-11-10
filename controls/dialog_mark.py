@@ -246,19 +246,23 @@ class TestCaseValidTestResultViewWidget(QWidget):
         for file_id, output_file_entry in test_result_output_files.items():
             if file_id.is_special:
                 if file_id.special_file_type == SpecialFileType.STDOUT:
-                    title = "[標準出力]"
+                    title = "標準出力"
+                    icon = get_icon("console")
                 elif file_id.special_file_type == SpecialFileType.STDIN:
-                    title = "[標準入力]"
+                    title = "標準入力"
+                    icon = get_icon("console")
                 else:
                     assert False, file_id.special_file_type
             else:
                 title = str(file_id.deployment_relative_path)
+                icon = get_icon("article")
 
             self._w_file_tab.addTab(
                 TestCaseResultOutputFileViewWidget(
                     self,
                     output_file_entry=output_file_entry,
                 ),
+                icon,
                 title,
             )
             self._file_ids.append(file_id)
@@ -309,7 +313,7 @@ class TestCaseInvalidTestResultViewWidget(QWidget):
         self._l_detailed_reason.setPlainText(detailed_reason)
 
 
-class TestCaseTestResultViewPlaceholderWidget(QWidget):
+class TestCaseTestResultViewWidget(QWidget):
     selected_file_id_changed = pyqtSignal(FileID, name="selected_file_id_changed")
 
     def __init__(self, parent: QObject = None):
@@ -328,15 +332,17 @@ class TestCaseTestResultViewPlaceholderWidget(QWidget):
     def _init_signals(self):
         pass
 
-    def __remove_widget(self) -> None:
+    def __set_widget(self, w: QWidget) -> None:
+        # remove widget
         while self.layout().count() > 0:
             self.layout().takeAt(0).widget().deleteLater()
         self.__w = None
 
-    def __set_widget(self, w: QWidget) -> None:
-        self.__remove_widget()
+        # set widget w
         self.layout().addWidget(w)
         self.__w = w
+
+        # connect signals
         if isinstance(self.__w, TestCaseValidTestResultViewWidget):
             # noinspection PyUnresolvedReferences
             self.__w.selected_file_id_changed.connect(self.selected_file_id_changed)
@@ -344,32 +350,23 @@ class TestCaseTestResultViewPlaceholderWidget(QWidget):
     def __get_widget(self) -> QWidget | None:
         return self.__w
 
-    def set_data(
-            self,
-            arg: None = object(),  # デフォルト引数は引数に何も渡されていないことを示すセンチネルオブジェクト
-            /,
-            *,
-            detailed_reason: str = None,
-            test_result_output_files: TestResultOutputFileMapping = None,
-    ):
-        if arg is None:
-            # set_data(None)
-            assert detailed_reason is None and test_result_output_files is None
-            # ウィジェットをクリア
-            self.__remove_widget()
-        elif detailed_reason is not None:
-            # set_data(detailed_reason=...)
-            assert arg is not None and test_result_output_files is None
+    def set_data(self, data: AbstractStudentTestCaseTestResultViewData | str) -> None:
+        # data: str - エラーメッセージ
+        if isinstance(data, AbstractStudentTestCaseTestResultViewData):
+            if data.is_success:
+                # 正常完了時用ウィジェットを設定
+                w = TestCaseValidTestResultViewWidget()
+                w.set_data(test_result_output_files=data.output_and_results)
+                self.__set_widget(w)
+            else:
+                # エラー用ウィジェットを設定
+                w = TestCaseInvalidTestResultViewWidget()
+                w.set_data(detailed_reason=data.detailed_reason)
+                self.__set_widget(w)
+        elif isinstance(data, str):
             # エラー用ウィジェットを設定
             w = TestCaseInvalidTestResultViewWidget()
-            w.set_data(detailed_reason=detailed_reason)
-            self.__set_widget(w)
-        elif test_result_output_files is not None:
-            # set_data(results=...)
-            assert arg is not None and detailed_reason is None
-            # 正常完了時用ウィジェットを設定
-            w = TestCaseValidTestResultViewWidget()
-            w.set_data(test_result_output_files=test_result_output_files)
+            w.set_data(detailed_reason=data)
             self.__set_widget(w)
         else:
             assert False  # invalid call arguments passed
@@ -396,14 +393,7 @@ class TestCaseTestResultListItemWidget(QWidget):
         self.setLayout(layout_root)
 
         layout_title = QHBoxLayout()
-        layout_title.setContentsMargins(0, 2, 0, 2)
         layout_root.addLayout(layout_title)
-
-        self._l_selected = QLabel(self)
-        self._l_selected.setFixedWidth(30)
-        self._l_selected.setAlignment(Qt.AlignCenter)
-        self._l_selected.setFont(get_font(monospace=True, small=False))
-        layout_title.addWidget(self._l_selected)
 
         self._l_testcase_name = QLabel(self)
         self._l_testcase_name.setMinimumWidth(200)
@@ -418,7 +408,6 @@ class TestCaseTestResultListItemWidget(QWidget):
         layout_detail.addWidget(self._l_indicator)
 
         self._l_detail = QLabel(self)
-        self._l_detail.setWordWrap(True)
         layout_detail.addWidget(self._l_detail)
 
     def _init_signals(self):
@@ -428,26 +417,27 @@ class TestCaseTestResultListItemWidget(QWidget):
     def set_data(self, student_testcase_test_summary: AbstractStudentTestCaseTestResultViewData):
         assert student_testcase_test_summary is not None
 
-        # 選択中かどうか
-        self._l_selected.setText("")
         # テストケース名
         self._l_testcase_name.setText(str(student_testcase_test_summary.testcase_id))
         # インジケータ
         self._l_indicator.set_data(student_testcase_test_summary.state)
         # 詳細テキスト
-        if student_testcase_test_summary.is_success:
-            self._l_detail.setText(student_testcase_test_summary.title_text)
-        else:
-            self._l_detail.setText(
-                student_testcase_test_summary.title_text
-            )
+        self._l_detail.setText(student_testcase_test_summary.title_text)
 
     @pyqtSlot(bool)
     def set_selected(self, is_selected: bool):
         if is_selected:
-            self._l_selected.setText("●")
+            self._l_testcase_name.setStyleSheet(
+                "color: white;"
+                "background-color: #0033aa;"
+                "border-radius: 4px;"
+                "padding: 2px;"
+            )
         else:
-            self._l_selected.setText("")
+            self._l_testcase_name.setStyleSheet(
+                "border-radius: 4px;"
+                "padding: 2px;"
+            )
 
 
 class TestCaseTestResultListWidget(QListWidget):
@@ -512,24 +502,6 @@ class TestCaseTestResultListWidget(QListWidget):
             # noinspection PyUnresolvedReferences
             self.testcase_clicked.emit(testcase_id)
 
-
-# class ExecuteResultWidget(QTabWidget):
-#     def __init__(self, parent: QObject = None):
-#         super().__init__(parent)
-#
-#         self._init_ui()
-#         self._init_signals()
-#
-#     def _init_ui(self):
-#         pass
-#
-#     def _init_signals(self):
-#         pass
-#
-#     def set_data(self, execute_result: ExecuteResult):
-#         for testcase_execute_result in execute_result.testcase_result_set:
-#             name = str(testcase_execute_result.output_files)
-#
 
 class StudentTitleViewWidget(QWidget):
     next_student_triggered = pyqtSignal(name="next_testcase_triggered")
@@ -634,9 +606,11 @@ class TestCaseControlWidget(QWidget):
             self._l_testcase_id.setText(str(testcase_id))
 
 
-# TODO: アルゴリズム改善
+# TODO: アルゴリズム改善 アクション入力と現在の状態から次の状態を生成するステートマシンを表現するとわかりやすい？
 # noinspection DuplicatedCode
 class MarkDialogStateCreator:
+    # アクションに応じて呼ばれたメソッド内でダイアログの現在の状態から次の状態を生成する
+
     def __init__(
             self,
             *,
@@ -817,6 +791,8 @@ class MarkDialogStateCreator:
 
 
 class MarkDialog(QDialog):
+    # 採点画面
+
     _logger = create_logger()
 
     def __init__(self, parent: QObject = None):
@@ -847,6 +823,7 @@ class MarkDialog(QDialog):
                 layout_middle_left = QVBoxLayout()
                 layout_middle.addLayout(layout_middle_left)
 
+                # 上に表示する生徒の学籍番号と名前とボタン
                 self._w_student_control = StudentTitleViewWidget(self)
                 layout_middle_left.addWidget(self._w_student_control)
 
@@ -858,9 +835,9 @@ class MarkDialog(QDialog):
                     self._w_source_code_view = StudentSourceCodeView(self)
                     layout_middle_left_inner.addWidget(self._w_source_code_view)
 
-                    self._w_test_result_view_placeholder \
-                        = TestCaseTestResultViewPlaceholderWidget(self)
-                    layout_middle_left_inner.addWidget(self._w_test_result_view_placeholder)
+                    self._w_testcase_test_result_view \
+                        = TestCaseTestResultViewWidget(self)
+                    layout_middle_left_inner.addWidget(self._w_testcase_test_result_view)
 
             if "middle-right":
                 layout_middle_right = QVBoxLayout()
@@ -914,7 +891,7 @@ class MarkDialog(QDialog):
             self.__w_student_control_prev_student_triggered
         )
         # noinspection PyUnresolvedReferences
-        self._w_test_result_view_placeholder.selected_file_id_changed.connect(
+        self._w_testcase_test_result_view.selected_file_id_changed.connect(
             self.__w_test_result_view_placeholder_selected_file_id_changed
         )
         # noinspection PyUnresolvedReferences
@@ -1003,13 +980,9 @@ class MarkDialog(QDialog):
 
         # self._w_test_result_view_placeholder: TestCaseTestResultViewPlaceholderWidget(self)
         if self._state.student_id is None:
-            self._w_test_result_view_placeholder.set_data(
-                detailed_reason="生徒が選択されていません",
-            )
+            self._w_testcase_test_result_view.set_data(data="生徒が選択されていません")
         elif self._state.testcase_id is None:
-            self._w_test_result_view_placeholder.set_data(
-                detailed_reason="テストケースが選択されていません",
-            )
+            self._w_testcase_test_result_view.set_data(data="テストケースが選択されていません")
         else:
             summary_view_data = self.__get_student_mark_summary_view_data(self._state.student_id)
             if summary_view_data.is_ready:
@@ -1017,18 +990,11 @@ class MarkDialog(QDialog):
                     student_id=self._state.student_id,
                     testcase_id=self._state.testcase_id,
                 )
-                if testcase_result_view_data.is_success:
-                    self._w_test_result_view_placeholder.set_data(
-                        test_result_output_files=testcase_result_view_data.output_and_results,
-                    )
-                    self._w_test_result_view_placeholder.set_selected(self._state.file_id)
-                else:
-                    self._w_test_result_view_placeholder.set_data(
-                        detailed_reason=testcase_result_view_data.detailed_reason,
-                    )
+                self._w_testcase_test_result_view.set_data(data=testcase_result_view_data)
+                self._w_testcase_test_result_view.set_selected(self._state.file_id)
             else:
-                self._w_test_result_view_placeholder.set_data(
-                    detailed_reason=summary_view_data.reason,
+                self._w_testcase_test_result_view.set_data(
+                    data=summary_view_data.reason,
                 )
 
         # self._w_testcase_result_list: TestCaseTestResultListWidget(self)
@@ -1061,7 +1027,7 @@ class MarkDialog(QDialog):
             assert student_mark.student_id == self._state.student_id
             self.__put_student_mark(student_mark)
 
-    def set_data(self, state: MarkDialogState):
+    def set_state(self, state: MarkDialogState):
         if self._state == state:
             return
         self.__save_data()
@@ -1071,27 +1037,27 @@ class MarkDialog(QDialog):
     @pyqtSlot(TestCaseID)
     def __w_testcase_result_list_testcase_clicked(self, testcase_id: TestCaseID):
         new_state = self.states.create_state_by_testcase_id(testcase_id)
-        self.set_data(new_state)
+        self.set_state(new_state)
 
     @pyqtSlot()
     def __w_testcase_control_next_testcase_triggered(self):
         new_state = self.states.create_state_of_next_testcase()
-        self.set_data(new_state)
+        self.set_state(new_state)
 
     @pyqtSlot()
     def __w_testcase_control_prev_testcase_triggered(self):
         new_state = self.states.create_state_of_prev_testcase()
-        self.set_data(new_state)
+        self.set_state(new_state)
 
     @pyqtSlot()
     def __w_student_control_next_student_triggered(self):
         new_state = self.states.create_state_of_next_student()
-        self.set_data(new_state)
+        self.set_state(new_state)
 
     @pyqtSlot()
     def __w_student_control_prev_student_triggered(self):
         new_state = self.states.create_state_of_prev_student()
-        self.set_data(new_state)
+        self.set_state(new_state)
 
     @pyqtSlot(FileID)
     def __w_test_result_view_placeholder_selected_file_id_changed(self, file_id: FileID):
@@ -1127,7 +1093,7 @@ class MarkDialog(QDialog):
             self.close()
 
         if new_state is not None:
-            self.set_data(new_state)
+            self.set_state(new_state)
 
     def eventFilter(self, target: QObject, evt: QEvent):
         if evt.type() == QEvent.KeyPress:

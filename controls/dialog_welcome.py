@@ -1,6 +1,8 @@
 from PyQt5.QtCore import *
+from PyQt5.QtGui import QShowEvent
 from PyQt5.QtWidgets import *
 
+from application.dependency.usecases import get_project_list_recent_summary_usecase
 from controls.dto.new_project_config import NewProjectConfig
 from controls.res.icons import get_icon
 from controls.widget_new_project import NewProjectWidget
@@ -15,6 +17,7 @@ class WelcomeDialog(QDialog):
         self._result: ProjectID | NewProjectConfig | None = None
 
         self._init_ui()
+        self._init_signals()
 
     def _init_ui(self):
         # noinspection PyUnresolvedReferences
@@ -30,12 +33,10 @@ class WelcomeDialog(QDialog):
 
         # noinspection PyTypeChecker
         self._w_new_project = NewProjectWidget(self)
-        self._w_new_project.accepted.connect(self.__w_new_project_accepted)
         self._container.addTab(self._w_new_project, "")
 
         # noinspection PyTypeChecker
         self._w_recent_projects = RecentProjectWidget(self)
-        self._w_recent_projects.accepted.connect(self.__w_recent_projects_accepted)
         self._container.addTab(self._w_recent_projects, "")
 
         # タブを左横にする
@@ -53,6 +54,12 @@ class WelcomeDialog(QDialog):
             QLabel("最近のプロジェクト", self),
         )
 
+    def _init_signals(self):
+        self._w_new_project.accepted.connect(self.__w_new_project_accepted)
+        self._w_recent_projects.accepted.connect(self.__w_recent_projects_accepted)
+        self.finished.connect(self.__finished)
+
+
     @pyqtSlot(NewProjectConfig)
     def __w_new_project_accepted(self, new_project_config: NewProjectConfig):
         self._result = new_project_config
@@ -66,8 +73,16 @@ class WelcomeDialog(QDialog):
     def get_data(self) -> NewProjectConfig | ProjectID | None:
         return self._result
 
-    def showEvent(self, evt):
-        if self._w_recent_projects.get_recent_project_count() == 0:
-            self._container.setCurrentIndex(0)
-        else:
+    # noinspection PyMethodOverriding
+    def showEvent(self, evt: QShowEvent):
+        # TODO: ProjectCountUseCaseを実装して置き換える　プロジェクトデータを全て読み込む必要はないため
+        if get_project_list_recent_summary_usecase().execute():
             self._container.setCurrentIndex(1)
+        else:
+            self._container.setCurrentIndex(0)
+        self._w_recent_projects.start_worker()
+
+    # noinspection PyMethodOverriding
+    @pyqtSlot()
+    def __finished(self):
+        self._w_recent_projects.stop_worker()

@@ -14,6 +14,6 @@ class ResourceUsageIO:
         return ResourceUsage(
             disk_read_count=io_count.read_count,
             disk_write_count=io_count.write_count,
-            cpu_percent=int(process.cpu_percent()),
+            cpu_percent=int(psutil.cpu_percent()),
             memory=int(process.memory_info().rss),
         )

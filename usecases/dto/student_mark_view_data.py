@@ -164,10 +164,10 @@ class StudentTestCaseTestResultUntestableViewData(AbstractStudentTestCaseTestRes
 
 
 class StudentMarkState(Enum):
+    # ステージの処理未完了や失敗はテストケースごとの問題なのでここでは提供しない
+    
     READY = "採点可"
     NO_TEST_FOUND = "テストケースがありません"
-    STAGES_UNFINISHED = "すべての処理が完了していません"
-    STAGES_FAILED = "処理に失敗しました"
     RERUN_REQUIRED = "変更が検出されたため再実行が必要です"
 
 
@@ -181,6 +181,7 @@ class StudentMarkSummaryViewData:
 
     @property
     def is_ready(self) -> bool:
+        # なんらかの理由でテストケースごとのAbstractStudentTestCaseTestResultViewDataを提供できないときFalse
         return self.state == StudentMarkState.READY
 
     @property

@@ -50,7 +50,7 @@ class StorageRunExecutableService:
             stdout_text = self._executable_io.run(**kwargs)
         except ExecutableIOTimeoutError:
             raise StorageRunExecutableServiceError(
-                reason="実行がタイムアウトしました",
+                reason="実行がタイムアウトしました\nプログラムが入力を待っているか無限ループしている可能性があります",
             )
 
         return StorageExecuteServiceResult(

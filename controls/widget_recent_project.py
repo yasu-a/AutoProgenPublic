@@ -1,3 +1,7 @@
+import time
+from collections import deque
+from contextlib import contextmanager
+
 from PyQt5.QtCore import *
 from PyQt5.QtGui import QCursor, QMouseEvent
 from PyQt5.QtWidgets import *
@@ -5,6 +9,7 @@ from PyQt5.QtWidgets import *
 from application.dependency.usecases import get_project_list_recent_summary_usecase, \
     get_project_base_folder_show_usecase, get_project_folder_show_usecase, \
     get_project_delete_usecase, get_project_get_size_query_usecase
+from controls.dialog_progress import AbstractProgressDialogWorker, AbstractProgressDialog
 from controls.res.fonts import get_font
 from controls.res.icons import get_icon
 from controls.widget_clickable_label import ClickableLabelWidget
@@ -174,11 +179,13 @@ class RecentProjectListWidget(QListWidget):
         item_widget.set_data(project_summary)
         # Qtのリスト項目を初期化
         list_item = QListWidgetItem()
+        # noinspection PyUnresolvedReferences
         list_item.setSizeHint(item_widget.sizeHint())
         list_item.setFlags(list_item.flags() & ~Qt.ItemIsSelectable)
         # リストに追加
         self.insertItem(i, list_item)
         # 項目のウィジェットとQtのリスト項目を関連付ける
+        # noinspection PyUnresolvedReferences
         self.setItemWidget(list_item, item_widget)
         # シグナルをつなげる
         # noinspection PyUnresolvedReferences
@@ -240,14 +247,77 @@ class RecentProjectListWidget(QListWidget):
             if item_w.get_data().project_id == project_id:
                 item_w.set_size_field(size)
 
-    def get_project_id_size_field_unset(self) -> ProjectID | None:
-        for i in range(self.count()):
-            item = self.item(i)
-            item_w = self.itemWidget(item)
-            assert isinstance(item_w, RecentProjectListItemWidget)
-            if item_w.is_size_unset():
-                return item_w.get_data().project_id
-        return None
+
+class _RecentProjectSizeFieldGetWorker(QThread):
+    field_acquired = pyqtSignal(ProjectID, int, name="field_acquired")  # project_id and size
+
+    def __init__(self, parent: QObject = None):
+        super().__init__(parent)
+
+        self.__stop = False
+        self._lock = QMutex()
+        self._q: deque[ProjectID] = deque()
+
+    @contextmanager
+    def __lock(self):
+        self._lock.lock()
+        try:
+            yield
+        finally:
+            self._lock.unlock()
+
+    def stop(self) -> None:
+        self.__stop = True
+
+    def clear_queue(self) -> None:
+        with self.__lock():
+            self._q.clear()
+
+    def set_queue(self, project_ids: list[ProjectID]) -> None:
+        with self.__lock():
+            self._q.extend(project_ids)
+
+    def run(self):
+        while True:
+            if self.__stop:
+                break
+            with self.__lock():
+                if not self._q:
+                    time.sleep(1)
+                    continue
+                project_id = self._q.popleft()
+            size = get_project_get_size_query_usecase().execute(
+                project_id=project_id,
+            )
+            self.field_acquired.emit(project_id, size)
+            time.sleep(0.05)
+
+
+class _ProjectDeleteWorker(AbstractProgressDialogWorker):
+    def __init__(self, parent: QObject = None, *, project_id: ProjectID):
+        super().__init__(parent)
+
+        self._project_delete_usecase = get_project_delete_usecase()
+        self._project_id = project_id
+
+    def run(self):
+        self._callback("プロジェクトを削除しています・・・")
+        self._project_delete_usecase.execute(self._project_id)
+        time.sleep(1)  # プロジェクトのサイズが小さいとUIが一瞬で消えるので少し待つ
+
+
+class ProjectDeleteProgressDialog(AbstractProgressDialog):
+    # プロジェクトを削除しそのプログレスを表示するダイアログ
+
+    def __init__(self, parent: QObject = None, *, project_id: ProjectID):
+        super().__init__(
+            parent,
+            title="プロジェクトの削除",
+            worker_producer=lambda: _ProjectDeleteWorker(
+                self,
+                project_id=project_id,
+            ),
+        )
 
 
 class RecentProjectWidget(QWidget):
@@ -257,25 +327,19 @@ class RecentProjectWidget(QWidget):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        # self._model_recent_projects = RecentProjectModel()
+        self._project_size_field_get_worker = _RecentProjectSizeFieldGetWorker()
+
         self._init_ui()
         self._init_signals()
 
-        self._timer = QTimer(self)
-        self._timer.setInterval(1000)
-        # noinspection PyUnresolvedReferences
-        self._timer.timeout.connect(self.__update_project_size_field)
-        self._timer.start()
+        self.__update_list()
 
     def _init_ui(self):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        project_summary_lst = get_project_list_recent_summary_usecase().execute()
-
         self._w_list = RecentProjectListWidget()
         self._w_list.project_selected.connect(self.__project_selected)
-        self._w_list.set_data(project_summary_lst)
         layout.addWidget(self._w_list)
 
         layout_button = QHBoxLayout()
@@ -293,17 +357,21 @@ class RecentProjectWidget(QWidget):
         self._w_list.open_project_triggered.connect(self.__project_selected)
         self._w_list.delete_project_triggered.connect(self.__delete_project_triggered)
         self._w_list.show_project_triggered.connect(self.__show_project_triggered)
+        self._project_size_field_get_worker.field_acquired.connect(
+            self.__project_size_field_get_worker_size_field_acquired
+        )
 
-    @pyqtSlot()
-    def __update_project_size_field(self):
-        for _ in range(5):
-            project_id = self._w_list.get_project_id_size_field_unset()
-            if not project_id:
-                return
-            size = get_project_get_size_query_usecase().execute(
-                project_id=project_id,
-            )
-            self._w_list.set_size_field(project_id, size)
+    def __update_list(self) -> None:
+        # プロジェクトのリストを読み込んで設定する
+        project_summary_lst = get_project_list_recent_summary_usecase().execute()
+        self._w_list.set_data(project_summary_lst)
+        # サイズ取得のスレッドにキューを追加する
+        self._project_size_field_get_worker.clear_queue()
+        self._project_size_field_get_worker.set_queue([
+            project_summary.project_id
+            for project_summary in project_summary_lst
+            if project_summary.project_id is not None
+        ])
 
     @pyqtSlot()
     def __b_open_folder_clicked(self):
@@ -315,6 +383,7 @@ class RecentProjectWidget(QWidget):
 
     @pyqtSlot(ProjectID)
     def __delete_project_triggered(self, project_id: ProjectID):
+        # noinspection PyTypeChecker
         if QMessageBox.warning(
                 self,
                 "プロジェクトの削除",
@@ -323,16 +392,22 @@ class RecentProjectWidget(QWidget):
                 QMessageBox.No,
         ) == QMessageBox.No:
             return
-        get_project_delete_usecase().execute(project_id)
-        project_summary_lst = get_project_list_recent_summary_usecase().execute()
-        self._w_list.set_data(project_summary_lst)
+        ProjectDeleteProgressDialog(project_id=project_id).exec_()
+        self.__update_list()
 
     @pyqtSlot(ProjectID)
     def __show_project_triggered(self, project_id: ProjectID):
         get_project_folder_show_usecase().execute(project_id)
 
-    def get_recent_project_count(self) -> int:
-        return self._w_list.count()
+    @pyqtSlot(ProjectID, int)
+    def __project_size_field_get_worker_size_field_acquired(self, project_id: ProjectID, size: int):
+        self._w_list.set_size_field(project_id, size)
 
-    def showEvent(self, evt):
-        self.__update_project_size_field()
+    # TODO: スレッドを開始するもっといい実装方法を探す
+    def start_worker(self) -> None:
+        self._project_size_field_get_worker.start()
+
+    # TODO: スレッドを終了するもっといい実装方法を探す
+    def stop_worker(self) -> None:
+        self._project_size_field_get_worker.stop()
+        self._project_size_field_get_worker.wait()
