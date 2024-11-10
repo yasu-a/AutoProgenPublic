@@ -17,7 +17,7 @@
 - Windows 11
 - Python 3.10
 
-# v0.4-beta
+# v0.4-alpha
 
 > [!WARNING]
 > このバージョンは正式リリースではなく、テストを目的としたアルファ版です。
@@ -25,6 +25,7 @@
 ## 変更点
 
 - １つのプロジェクトで１つの設問を扱うよう変更
+- ファイル入出力に対応
 - UIの大幅な変更
 - [install-requirements.bat](install-requirements.bat)
   でPythonに必要なライブラリをインストールし、[run.bat](run.bat)でインストールしないよう変更

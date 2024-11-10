@@ -1,6 +1,6 @@
 from PyQt5.QtCore import QObject, pyqtSlot, Qt, pyqtSignal, QEvent, QRegExp
 from PyQt5.QtGui import QSyntaxHighlighter, QColor, QTextCharFormat, QKeyEvent, QRegExpValidator, \
-    QCloseEvent
+    QCloseEvent, QTextCursor
 from PyQt5.QtWidgets import QDialog, QListWidget, QWidget, QHBoxLayout, QLabel, \
     QListWidgetItem, QVBoxLayout, QTabWidget, QPlainTextEdit, QPushButton, QLineEdit
 
@@ -156,12 +156,12 @@ class _TestCaseResultOutputFileHighlighter(QSyntaxHighlighter):
 
         self._test_result = test_result
 
-        self._format = QTextCharFormat()
-        self._format.setBackground(QColor("lightgreen"))
-
     def highlightBlock(self, text, **kwargs):
-        for token in self._test_result.matched_tokens:
-            self.setFormat(token.match_begin, token.match_end, self._format)
+        print(repr(text))
+        self.setFormat(0, 1, self._format)
+        self.setFormat(4, 1, self._format)
+        # for token in self._test_result.matched_tokens:
+        #     self.setFormat(token.match_begin, token.match_end - token.match_begin, self._format)
 
 
 class TestCaseResultOutputFileViewWidget(QPlainTextEdit, HorizontalScrollWithShiftAndWheelMixin):
@@ -211,10 +211,18 @@ class TestCaseResultOutputFileViewWidget(QPlainTextEdit, HorizontalScrollWithShi
             self.setPlainText(self._output_file_entry.actual.content_string)
 
         if self._output_file_entry.has_actual and self._output_file_entry.has_expected:
-            self._h = _TestCaseResultOutputFileHighlighter(
-                self.document(),
-                test_result=self._output_file_entry.test_result,
-            )
+            test_result = self._output_file_entry.test_result
+
+            fmt = QTextCharFormat()
+            fmt.setBackground(QColor("lightgreen"))
+
+            for token in test_result.matched_tokens:
+                cursor = self.textCursor()
+                cursor.clearSelection()
+                cursor.setPosition(token.match_begin, QTextCursor.MoveAnchor)
+                cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor,
+                                    token.match_end - token.match_begin)
+                cursor.setCharFormat(fmt)
 
 
 class TestCaseValidTestResultViewWidget(QWidget):

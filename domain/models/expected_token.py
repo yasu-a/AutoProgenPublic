@@ -52,6 +52,9 @@ class TextExpectedToken(AbstractExpectedToken):
             value=body["value"],
         )
 
+    def __repr__(self):
+        return f"s(\"{self._value}\")"
+
     def __hash__(self) -> int:
         return hash(self._value)
 
@@ -73,8 +76,8 @@ class TextExpectedToken(AbstractExpectedToken):
 
 class FloatExpectedToken(AbstractExpectedToken):
     def __init__(self, value: float):
-        assert isinstance(value, float), value
-        self._value = value
+        assert isinstance(value, (int, float)), value
+        self._value = float(value)
 
     def _to_json(self) -> dict:
         return dict(
@@ -86,6 +89,9 @@ class FloatExpectedToken(AbstractExpectedToken):
         return cls(
             value=body["value"],
         )
+
+    def __repr__(self):
+        return f"f({self._value})"
 
     def __hash__(self) -> int:
         return hash(self._value)

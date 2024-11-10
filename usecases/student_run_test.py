@@ -1,16 +1,20 @@
+import copy
+import itertools
 import re
-from typing import Iterable, NamedTuple
+import sys
+from functools import cache, lru_cache
+from pprint import pprint
+from typing import NamedTuple, Iterator
 
-from Levenshtein import distance as edit_distance
-from scipy.sparse.csgraph import maximum_bipartite_matching
+import unicodedata
 
 from domain.errors import TestServiceError
 from domain.models.expected_ouput_file import ExpectedOutputFile
-from domain.models.expected_token import AbstractExpectedToken, TextExpectedToken
-from domain.models.expected_token import FloatExpectedToken
+from domain.models.expected_token import TextExpectedToken, FloatExpectedToken, ExpectedTokenList, \
+    AbstractExpectedToken
 from domain.models.output_file import OutputFile
-from domain.models.output_file_test_result import MatchedToken, NonmatchedToken, \
-    OutputFileTestResult
+from domain.models.output_file_test_result import NonmatchedToken, MatchedToken
+from domain.models.output_file_test_result import OutputFileTestResult
 from domain.models.stages import ExecuteStage
 from domain.models.student_stage_result import TestFailureStudentStageResult, \
     TestSuccessStudentStageResult, TestResultOutputFileMapping, ExecuteSuccessStudentStageResult
@@ -18,153 +22,249 @@ from domain.models.test_config_options import TestConfigOptions
 from domain.models.test_result_output_file_entry import TestResultTestedOutputFileEntry, \
     AbstractTestResultOutputFileEntry, TestResultAbsentOutputFileEntry, \
     TestResultUnexpectedOutputFileEntry
-from domain.models.values import StudentID, TestCaseID, FileID
+from domain.models.values import FileID
+from domain.models.values import StudentID, TestCaseID
 from infra.repositories.student_stage_result import StudentStageResultRepository
 from services.testcase_config import TestCaseConfigGetTestConfigMtimeService, \
     TestCaseConfigGetService
+from utils.app_logging import create_logger
 
 
-class _Token(NamedTuple):
-    text: str
+class _MatchRange(NamedTuple):
     begin: int
-    end: int  # end: exclusive
+    end: int
 
 
-def _tokenize(string: str) -> list[_Token]:
-    def iter_token_begin_and_end() -> Iterable[tuple[int, int]]:
-        begin = 0
-        for m in re.finditer(r"\s+", string):
-            end = m.start()
-            yield begin, end
-            begin = m.end()
-        yield begin, len(string)
-
-    def tokenize():
-        tokens = []
-        for begin, end in iter_token_begin_and_end():
-            token = _Token(string[begin:end], begin, end)
-            tokens.append(token)
-        return tokens
-
-    return tokenize()
+@lru_cache(maxsize=1 << 20)
+def _zen_to_han_char(ch: str):
+    ch_converted = unicodedata.normalize("NFKC", ch)
+    if len(ch_converted) != len(ch):
+        return ch
+    else:
+        return ch_converted
 
 
-def _is_matched(
-        token: _Token,
-        expected_token: AbstractExpectedToken,
-        allowable_edit_distance: int,
-        float_tolerance: float,
-) -> bool:
-    # TODO: 何らかのクラスのポリモーフィズムを使え
-    if isinstance(expected_token, TextExpectedToken):
-        if allowable_edit_distance == 0:
-            return token.text == expected_token.value
+def _zen_to_han(text: str):
+    return "".join(_zen_to_han_char(ch) for ch in text)
+
+
+class _Matcher:
+    _logger = create_logger()
+
+    def __init__(
+            self,
+            *,
+            content_string: str,
+            expected_tokens: list[AbstractExpectedToken],
+            test_config_options: TestConfigOptions,
+    ):
+        self._content_string = _zen_to_han(content_string)
+        self._expected_tokens = []
+        for i, expected_token in enumerate(expected_tokens):
+            expected_token = copy.deepcopy(expected_token)
+            setattr(expected_token, "additional_fields", {"index": i})
+            self._expected_tokens.append(expected_token)
+        self._test_config_options = test_config_options
+
+    @classmethod
+    def _create_regex(cls, query_text: str):
+        query_text = _zen_to_han(query_text)
+        words = re.findall(r"\S+", query_text)
+        return r"\b" + r"\s+".join(re.escape(word) for word in words) + r"\b"
+
+    @cache
+    def _find_token_matches(self, expected_token: AbstractExpectedToken) \
+            -> list[_MatchRange]:
+        # トークン種別ごとにマッチを行う
+        token_matches: list[_MatchRange] = []
+        if isinstance(expected_token, TextExpectedToken):
+            for m in re.finditer(
+                    self._create_regex(expected_token.value),
+                    self._content_string,
+            ):
+                token_matches.append(
+                    _MatchRange(
+                        begin=m.start(),
+                        end=m.end(),
+                    )
+                )
+        elif isinstance(expected_token, FloatExpectedToken):
+            for m in re.finditer(
+                    r"\b[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?\b",
+                    self._content_string,
+            ):
+                value = float(m.group())
+                if abs(value - expected_token.value) <= self._test_config_options.float_tolerance:
+                    token_matches.append(
+                        _MatchRange(
+                            begin=m.start(),
+                            end=m.end(),
+                        )
+                    )
         else:
-            return edit_distance(token.text, expected_token.value) <= allowable_edit_distance
-    elif isinstance(expected_token, FloatExpectedToken):
-        try:
-            token_float = float(token.text)
-        except ValueError:
-            return False
-        return abs(token_float - expected_token.value) < float_tolerance
-    else:
-        assert False, expected_token
+            assert False, expected_token
+        return token_matches
 
+    @cache
+    def _find_matches(self) \
+            -> list[tuple[AbstractExpectedToken, list[_MatchRange]]]:
+        matches: list[tuple[AbstractExpectedToken, list[_MatchRange]]] = []
+        for expected_token in self._expected_tokens:
+            token_matches: list[_MatchRange] = self._find_token_matches(expected_token)
+            matches.append((expected_token, token_matches))
+        self._logger.info(
+            f"Matcher found {sum(map(lambda item: len(item[1]), matches))} matches in text"
+        )
+        return matches
 
-def _get_token_lcs(match_table: list) \
-        -> tuple[list[int], list[int]]:  # list of matched token/expected_token indexes
-    # longest common subsequence for list of token
-    # https://qiita.com/tetsuro731/items/bc9fb99683337ae7dc2e
-    n_tokens = len(match_table)
-    n_expected_tokens = len(match_table[0])
-
-    dp = [[0] * (n_expected_tokens + 1) for _ in range(n_tokens + 1)]
-
-    for i in range(n_tokens):
-        for j in range(n_expected_tokens):
-            if match_table[i][j]:
-                dp[i + 1][j + 1] = dp[i][j] + 1
-            else:
-                dp[i + 1][j + 1] = max(dp[i + 1][j], dp[i][j + 1])
-
-    matched_token_index_lst = []
-    matched_expected_token_index_lst = []
-    i = n_tokens - 1
-    j = n_expected_tokens - 1
-
-    while i >= 0 and j >= 0:
-        if match_table[i][j]:
-            matched_token_index_lst.append(i)
-            matched_expected_token_index_lst.append(j)
-            i -= 1
-            j -= 1
-        elif dp[i + 1][j + 1] == dp[i][j + 1]:
-            i -= 1
-        elif dp[i + 1][j + 1] == dp[i + 1][j]:
-            j -= 1
-
-    return (
-        list(reversed(matched_token_index_lst)),
-        list(reversed(matched_expected_token_index_lst)),
-    )
-
-
-def test_output_file_content_and_get_token_matches(
-        *,
-        content_string: str,
-        test_config_options: TestConfigOptions,
-        expected_output_file: ExpectedOutputFile,
-) -> tuple[list[MatchedToken], list[NonmatchedToken]]:
-    token_lst: list[_Token] = _tokenize(content_string)
-
-    # トークンを比較してマッチテーブルを作成
-    match_table = []  # [index of token, index of expected_token]
-    for token in token_lst:
-        match_table.append([])
-        for expected_token in expected_output_file.expected_tokens:
-            is_matched = _is_matched(
-                token=token,
-                expected_token=expected_token,
-                allowable_edit_distance=test_config_options.allowable_edit_distance,
-                float_tolerance=test_config_options.float_tolerance,
+    @cache
+    def _list_match_combinations(self) \
+            -> list[dict[AbstractExpectedToken, _MatchRange]]:
+        matches: list[tuple[AbstractExpectedToken, list[_MatchRange]]] = self._find_matches()
+        token_index_combination_it = itertools.product(
+            *(
+                range(-1, len(match_ranges))  # -1: unused token
+                for _, match_ranges in matches
             )
-            match_table[-1].append(is_matched)
-
-    if test_config_options.ordered_matching:
-        token_indexes, expected_token_indexes = _get_token_lcs(match_table)
-    else:
-        token_indexes = list(range(len(token_lst)))
-        expected_token_indexes = list(
-            maximum_bipartite_matching(match_table, perm_type='column')  # 2部グラフの最大マッチング問題
         )
-        assert len(token_indexes) == len(expected_token_indexes)
 
-        # マッチしないインデックスは-1になるので対応するインデックスとともにpopする
-        for i in reversed(range(len(token_indexes))):
-            if expected_token_indexes[i] == -1:
-                token_indexes.pop(i)
-                expected_token_indexes.pop(i)
+        total = 1
+        for _, match_ranges in matches:
+            total *= len(match_ranges) + 1
+        self._logger.info(
+            f"Matcher will iterate {total} combinations"
+        )
 
-    matched_tokens = [
-        MatchedToken(
-            match_begin=token_lst[i_token].begin,
-            match_end=token_lst[i_token].end,
-            expected_token_index=i_expected_token,
-        )
-        for i_token, i_expected_token in zip(
-            token_indexes,
-            expected_token_indexes,
-        )
-    ]
-    nonmatched_tokens = [
-        NonmatchedToken(
-            expected_token_index=i_expected_token,
-        )
-        for i_expected_token in range(len(expected_output_file.expected_tokens))
-        if i_expected_token not in expected_token_indexes
-    ]
+        match_combinations = []
+        for token_index_combination in token_index_combination_it:
+            match_combination: dict[AbstractExpectedToken, _MatchRange] = {}
+            for i, (expected_token, match_ranges) in enumerate(matches):
+                token_index = token_index_combination[i]
+                if token_index >= 0:
+                    match_combination[expected_token] = match_ranges[token_index]
+            match_combinations.append(match_combination)
+        return match_combinations
 
-    return matched_tokens, nonmatched_tokens
+    def _iter_match_combinations_no_range_wrap(self) \
+            -> Iterator[dict[AbstractExpectedToken, _MatchRange]]:
+        matches: list[tuple[AbstractExpectedToken, list[_MatchRange]]] = self._find_matches()
+        match_ranges: set[_MatchRange] = {
+            match_range
+            for _, match_ranges in matches
+            for match_range in match_ranges
+        }
+        match_range_wrap_lut: dict[tuple[_MatchRange, _MatchRange], bool] = {}
+        for left in match_ranges:
+            for right in match_ranges:
+                match_range_wrap_lut[(left, right)] = (
+                        left.begin <= right.end - 1 and right.begin <= left.end - 1
+                )
+
+        for match_combination in self._list_match_combinations():
+            wrap = False
+            for et_left, et_right in itertools.combinations(match_combination.keys(), 2):
+                mr_left, mr_right = match_combination[et_left], match_combination[et_right]
+                if match_range_wrap_lut[(mr_left, mr_right)]:
+                    wrap = True
+                    break
+            if not wrap:
+                yield match_combination
+
+    def _iter_match_combinations_ordered(self) \
+            -> Iterator[dict[AbstractExpectedToken, _MatchRange]]:
+        for match_combination in self._iter_match_combinations_no_range_wrap():
+            unordered = False
+            # match_combinationのキー（AbstractExpectedToken）を順番に並び替える
+            expected_tokens = [
+                expected_token
+                for expected_token in self._expected_tokens
+                if expected_token in match_combination
+            ]
+            # 順序が正しいか検証
+            for i in range(len(expected_tokens) - 1):
+                et_left, et_right = expected_tokens[i], expected_tokens[i + 1]
+                mr_left, mr_right = match_combination[et_left], match_combination[et_right]
+                if not mr_left.end <= mr_right.begin:
+                    unordered = True
+                    break
+            if not unordered:
+                yield match_combination
+
+    def _iter_match_combinations_unordered(self) \
+            -> Iterator[dict[AbstractExpectedToken, _MatchRange]]:
+        for match_combination in self._iter_match_combinations_no_range_wrap():
+            yield match_combination
+
+    def get_best_token_matches(self) -> tuple[list[MatchedToken], list[NonmatchedToken]]:
+        if self._test_config_options.ordered_matching:
+            it = self._iter_match_combinations_ordered()
+        else:
+            it = itertools.chain(
+                self._iter_match_combinations_ordered(),
+                self._iter_match_combinations_unordered(),
+            )
+
+        best_match_combination: dict[AbstractExpectedToken, _MatchRange] = {}
+        best_match_token_count = 0
+        for match_combination in it:
+            match_token_count = len(match_combination)
+            if best_match_token_count < match_token_count:
+                best_match_combination = match_combination
+                best_match_token_count = match_token_count
+                # 完全マッチならすぐ終了
+                if match_token_count == len(self._expected_tokens):
+                    break
+
+        matched_tokens = [
+            MatchedToken(
+                match_begin=match_range.begin,
+                match_end=match_range.end,
+                expected_token_index=getattr(expected_token, "additional_fields")["index"],
+            )
+            for expected_token, match_range in best_match_combination.items()
+        ]
+        nonmatched_tokens = [
+            NonmatchedToken(
+                expected_token_index=getattr(expected_token, "additional_fields")["index"],
+            )
+            for expected_token in self._expected_tokens
+            if expected_token not in best_match_combination
+        ]
+        return matched_tokens, nonmatched_tokens
+
+
+def test_main():
+    test_config_options = TestConfigOptions(
+        ordered_matching=True,
+        float_tolerance=0.0001,
+        allowable_edit_distance=0,
+    )
+    expected_output_file = ExpectedOutputFile(
+        file_id=FileID.STDOUT,
+        expected_tokens=ExpectedTokenList([
+            TextExpectedToken("n"),
+            FloatExpectedToken(1),
+            TextExpectedToken("num2"),
+            FloatExpectedToken(2),
+            TextExpectedToken("num3"),
+            FloatExpectedToken(3),
+        ]),
+    )
+    m = _Matcher(
+        content_string="ｎum1: 1 1.0000001\nnum2: 2 3\nnum3: 3",
+        test_config_options=test_config_options,
+        expected_tokens=expected_output_file.expected_tokens,
+    )
+    print(*m._iter_match_combinations_no_range_wrap(), sep="\n")
+    print()
+    print(*m._iter_match_combinations_ordered(), sep="\n")
+    print()
+    pprint(m.get_best_token_matches())
+
+
+if __name__ == '__main__':
+    test_main()
+    sys.exit(0)
 
 
 class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestServiceを分離
@@ -241,11 +341,11 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
                     # 実行結果とテストケースの両方に含まれているファイル
                     #  -> テストを行う
                     matched_tokens, nonmatched_tokens = (
-                        test_output_file_content_and_get_token_matches(
+                        _Matcher(
                             content_string=actual_output_file.content_string,
                             test_config_options=test_config.options,
-                            expected_output_file=expected_output_file,
-                        )
+                            expected_tokens=expected_output_file.expected_tokens,
+                        ).get_best_token_matches()
                     )
                     file_test_result = TestResultTestedOutputFileEntry(
                         file_id=file_id,
