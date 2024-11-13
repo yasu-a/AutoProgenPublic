@@ -74,10 +74,7 @@ class TestCaseListEditCreateTestCaseUseCase:
             test_config=TestCaseTestConfig(
                 expected_output_files=ExpectedOutputFileMapping(),
                 options=TestConfigOptions(
-                    ordered_matching=True,
                     float_tolerance=1.0e-6,
-                    allowable_edit_distance=0,
-                    # ignore_whitespace=False,
                 ),
             ),
         )

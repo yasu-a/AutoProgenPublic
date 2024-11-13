@@ -51,7 +51,6 @@ class RecentProjectListItemWidget(QWidget):
                 self._l_project_name = ClickableLabelWidget(self)
                 self._l_project_name.setMinimumWidth(200)
                 f = get_font(underline=True, bold=True, large=True)
-                self._l_project_name.setStyleSheet("color: blue")
                 self._l_project_name.setFont(f)
                 layout_top.addWidget(self._l_project_name)
 
@@ -303,7 +302,7 @@ class _ProjectDeleteWorker(AbstractProgressDialogWorker):
     def run(self):
         self._callback("プロジェクトを削除しています・・・")
         self._project_delete_usecase.execute(self._project_id)
-        time.sleep(1)  # プロジェクトのサイズが小さいとUIが一瞬で消えるので少し待つ
+        time.sleep(0.5)  # プロジェクトのサイズが小さいとUIが一瞬で消えるので少し待つ
 
 
 class ProjectDeleteProgressDialog(AbstractProgressDialog):

@@ -71,6 +71,12 @@ class ToolBar(QToolBar):
         self._a_export_scores.setEnabled(False)
         self.addAction(self._a_export_scores)
 
+        self.addSeparator()
+
+        self._a_about = QAction(get_icon("fountain-pen"), "About", self)
+        self._a_about.setObjectName("about")
+        self.addAction(self._a_about)
+
     def _init_signals(self):
         # noinspection PyUnresolvedReferences
         self.actionTriggered.connect(self.__triggered)

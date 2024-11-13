@@ -57,8 +57,8 @@ class WelcomeDialog(QDialog):
     def _init_signals(self):
         self._w_new_project.accepted.connect(self.__w_new_project_accepted)
         self._w_recent_projects.accepted.connect(self.__w_recent_projects_accepted)
+        # noinspection PyUnresolvedReferences
         self.finished.connect(self.__finished)
-
 
     @pyqtSlot(NewProjectConfig)
     def __w_new_project_accepted(self, new_project_config: NewProjectConfig):

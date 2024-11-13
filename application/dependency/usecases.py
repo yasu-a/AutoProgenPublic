@@ -1,5 +1,5 @@
 from application.dependency.services import *
-from usecases.compile_test import CompileTestRunUseCase
+from usecases.app_version import AppVersionGetTextUseCase, AppVersionCheckIsStableUseCase
 from usecases.compiler import CompilerSearchUseCase
 from usecases.current_project import CurrentProjectSummaryGetUseCase
 from usecases.global_config import GlobalConfigGetUseCase, GlobalConfigPutUseCase
@@ -24,6 +24,8 @@ from usecases.student_submission_folder_show import StudentSubmissionFolderShowU
 from usecases.student_table_cell_data import StudentTableGetStudentIDCellDataUseCase, \
     StudentTableGetStudentNameCellDataUseCase, StudentTableGetStudentStageStateCellDataUseCase, \
     StudentTableGetStudentErrorCellDataUseCase
+from usecases.test_compile_stage import TestCompileStageUseCase
+from usecases.test_test_stage import TestTestStageUseCase
 from usecases.testcase_config import TestCaseConfigGetUseCase, TestCaseConfigPutUseCase, \
     TestCaseConfigListIDUseCase
 from usecases.testcase_list_edit import TestCaseListEditListSummaryUseCase, \
@@ -39,6 +41,20 @@ def get_global_config_get_usecase():
 def get_global_config_put_usecase():
     return GlobalConfigPutUseCase(
         global_config_put_service=get_global_config_put_service(),
+    )
+
+
+# AppVersionGetTextUseCase
+def get_app_version_get_text_usecase():
+    return AppVersionGetTextUseCase(
+        app_version_get_service=get_app_version_get_service(),
+    )
+
+
+# AppVersionCheckIsStableUseCase
+def get_app_version_check_is_stable_usecase():
+    return AppVersionCheckIsStableUseCase(
+        app_version_get_service=get_app_version_get_service(),
     )
 
 
@@ -154,12 +170,18 @@ def get_compiler_search_usecase():
     return CompilerSearchUseCase()
 
 
-def get_compile_test_run_usecase():
-    return CompileTestRunUseCase(
+def get_test_compile_stage_usecase():
+    return TestCompileStageUseCase(
         storage_create_service=get_storage_create_service(),
         storage_load_test_source_service=get_storage_load_test_source_service(),
         storage_run_compiler_service=get_storage_run_compiler_service(),
         storage_delete_service=get_storage_delete_service(),
+    )
+
+
+def get_test_test_stage_usecase():
+    return TestTestStageUseCase(
+        match_get_best_service=get_match_get_best_service(),
     )
 
 
@@ -271,6 +293,7 @@ def get_student_run_test_stage_usecase():
         testcase_config_get_service=get_testcase_config_get_service(),
         student_stage_result_repo=get_student_stage_result_repository(),
         testcase_config_get_test_config_mtime_service=get_testcase_config_get_test_config_mtime_service(),
+        match_get_best_service=get_match_get_best_service(),
     )
 
 

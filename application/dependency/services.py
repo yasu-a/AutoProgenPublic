@@ -1,8 +1,10 @@
 from application.dependency.external_io import *
 from application.dependency.external_io import get_student_folder_show_in_explorer_io
 from application.dependency.repositories import *
+from services.app_version import AppVersionGetService
 from services.current_project import CurrentProjectGetService
 from services.global_config import GlobalConfigGetService, GlobalConfigPutService
+from services.match import MatchGetBestService
 from services.project import ProjectListService, ProjectCreateService, ProjectBaseFolderShowService, \
     ProjectFolderShowService, ProjectDeleteService, ProjectGetSizeQueryService, \
     ProjectUpdateTimestampService
@@ -46,6 +48,13 @@ def get_global_config_get_service():
 def get_global_config_put_service():
     return GlobalConfigPutService(
         global_config_repo=get_global_config_repository(),
+    )
+
+
+# AppVersionGetService
+def get_app_version_get_service():
+    return AppVersionGetService(
+        app_version_repo=get_app_version_repository(),
     )
 
 
@@ -428,3 +437,7 @@ def get_student_mark_list_service():
         student_list_sub_service=get_student_list_sub_service(),
         student_mark_get_sub_service=get_student_mark_get_sub_service(),
     )
+
+
+def get_match_get_best_service():
+    return MatchGetBestService()

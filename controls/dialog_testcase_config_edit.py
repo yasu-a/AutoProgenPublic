@@ -22,7 +22,7 @@ class TestCaseConfigEditDialog(QDialog):
     def _init_ui(self):
         self.setWindowTitle(f"テストケースの編集 - {self._testcase_id!s}")
         self.setModal(True)
-        self.resize(1000, 700)
+        self.resize(1200, 700)
 
         layout = QVBoxLayout()
         self.setLayout(layout)

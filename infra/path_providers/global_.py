@@ -10,3 +10,6 @@ class GlobalPathProvider:
 
     def test_source_file_fullpath(self) -> Path:
         return self._base / "vctest" / "test.c"
+
+    def app_version_json_fullpath(self) -> Path:
+        return self._base / "app_version.json"

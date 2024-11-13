@@ -11,6 +11,8 @@ __all__ = "get_icon",
 def _get_pixmap(filename: str) -> QPixmap:
     filepath = str(get_global_base_path() / "img" / f"{filename}.png")
     pixmap = QPixmap(filepath)
+    if pixmap.isNull():
+        raise FileNotFoundError(f"Icon '{filename}' not found.")
     return pixmap
 
 

@@ -2,6 +2,7 @@ from functools import cache
 
 from application.dependency.core_io import *
 from application.dependency.path_provider import *
+from infra.repositories.app_version import AppVersionRepository
 from infra.repositories.current_project import CurrentProjectRepository
 from infra.repositories.global_config import GlobalConfigRepository
 from infra.repositories.project import ProjectRepository
@@ -17,6 +18,14 @@ from infra.repositories.testcase_config import TestCaseConfigRepository
 @cache  # インスタンス内部にキャッシュを持つのでプロジェクト内ステートフル
 def get_global_config_repository():
     return GlobalConfigRepository(
+        global_path_provider=get_global_path_provider(),
+        global_core_io=get_global_core_io(),
+    )
+
+
+# AppVersionRepository
+def get_app_version_repository():
+    return AppVersionRepository(
         global_path_provider=get_global_path_provider(),
         global_core_io=get_global_core_io(),
     )

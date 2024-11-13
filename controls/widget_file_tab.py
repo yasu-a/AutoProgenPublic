@@ -204,3 +204,7 @@ class FileTabWidget(QTabWidget):
     def item_clear(self) -> None:
         self.clear()
         self._file_ids.clear()
+
+    def get_current_file_id(self) -> FileID:
+        index: int = self.currentIndex()
+        return self.item_get_file_id(index)

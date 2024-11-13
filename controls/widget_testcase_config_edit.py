@@ -1,5 +1,5 @@
 from PyQt5.QtCore import QObject, pyqtSlot
-from PyQt5.QtWidgets import QTabWidget, QVBoxLayout, QTabBar, QLabel, QWidget
+from PyQt5.QtWidgets import QTabWidget, QVBoxLayout, QTabBar, QLabel, QWidget, QHBoxLayout
 
 from controls.res.fonts import get_font
 from controls.res.icons import get_icon
@@ -7,6 +7,7 @@ from controls.widget_testcase_execute_options import TestCaseExecuteConfigOption
 from controls.widget_testcase_input_files_edit import TestCaseInputFilesEditWidget
 from controls.widget_testcase_output_files_edit import TestCaseExpectedOutputFilesEditWidget
 from controls.widget_testcase_test_config_options import TestCaseTestConfigOptionsEditWidget
+from controls.widget_testcase_test_config_tester import TestCaseTestConfigTesterWidget
 from domain.models.execute_config import TestCaseExecuteConfig
 from domain.models.test_config import TestCaseTestConfig
 from domain.models.testcase_config import TestCaseConfig
@@ -47,22 +48,33 @@ class TestCaseConfigEditWidget(QTabWidget):
             container = QWidget(self)
             self.addTab(container, "")
 
-            layout = QVBoxLayout()
+            layout = QHBoxLayout()
             container.setLayout(layout)
 
-            label = QLabel("出力ストリームの自動テスト構成", self)
-            label.setFont(get_font(bold=True))
-            layout.addWidget(label)
+            if "left":
+                layout_left = QVBoxLayout()
+                layout.addLayout(layout_left)
 
-            self._w_expected_output_files_edit = TestCaseExpectedOutputFilesEditWidget(self)
-            layout.addWidget(self._w_expected_output_files_edit)
+                label = QLabel("出力ストリームの自動テスト構成", self)
+                label.setFont(get_font(bold=True))
+                layout_left.addWidget(label)
 
-            label = QLabel("自動テストのオプション", self)
-            label.setFont(get_font(bold=True))
-            layout.addWidget(label)
+                self._w_expected_output_files_edit = TestCaseExpectedOutputFilesEditWidget(self)
+                layout_left.addWidget(self._w_expected_output_files_edit)
 
-            self._w_test_config_options_edit = TestCaseTestConfigOptionsEditWidget(self)
-            layout.addWidget(self._w_test_config_options_edit)
+                label = QLabel("自動テストのオプション", self)
+                label.setFont(get_font(bold=True))
+                layout_left.addWidget(label)
+
+                self._w_test_config_options_edit = TestCaseTestConfigOptionsEditWidget(self)
+                layout_left.addWidget(self._w_test_config_options_edit)
+
+            if "right":
+                layout_right = QVBoxLayout()
+                layout.addLayout(layout_right)
+
+                self._w_test_config_tester = TestCaseTestConfigTesterWidget(self)
+                layout_right.addWidget(self._w_test_config_tester)
 
         # タブを左横にする
         self.setTabPosition(QTabWidget.West)  # これだけだと文字が90度傾く
@@ -80,7 +92,15 @@ class TestCaseConfigEditWidget(QTabWidget):
         )
 
     def _init_signals(self):
-        pass
+        self._w_test_config_tester.run_requested.connect(self.__w_test_config_tester_run_requested)
+
+    @pyqtSlot()
+    def __w_test_config_tester_run_requested(self):
+        current_file_id = self._w_expected_output_files_edit.get_current_file_id()
+        self._w_test_config_tester.run_and_update(
+            expected_output_file=self._w_expected_output_files_edit.get_data()[current_file_id],
+            test_config_options=self._w_test_config_options_edit.get_data(),
+        )
 
     @pyqtSlot()
     def set_data(self, config: TestCaseConfig):

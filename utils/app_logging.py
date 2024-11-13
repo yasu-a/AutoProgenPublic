@@ -109,6 +109,7 @@ class CustomFormatter(logging.Formatter):
 
 
 _loggers = []
+_global_level: int | None = None
 
 
 def _register_logger(logger):
@@ -116,7 +117,8 @@ def _register_logger(logger):
 
 
 def set_level(level):
-    global _loggers
+    global _loggers, _global_level
+    _global_level = level
     for logger in _loggers:
         logger.setLevel(level)
 
@@ -174,6 +176,9 @@ def create_logger(name=None, cls: type = None) -> logging.Logger:
     formatter = CustomFormatter()
     ch.setFormatter(formatter)
     logger.addHandler(ch)
+
+    if _global_level is not None:
+        logger.setLevel(_global_level)
 
     _register_logger(logger)
 
