@@ -7,7 +7,7 @@ from services.storage_run_compiler import StorageRunCompilerService
 from usecases.dto.compile_test import CompileTestResult
 
 
-class CompileTestRunUseCase:
+class TestCompileStageUseCase:
     def __init__(
             self,
             *,

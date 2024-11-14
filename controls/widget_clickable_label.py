@@ -9,6 +9,14 @@ class ClickableLabelWidget(QLabel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self._init_ui()
+
+    def _init_ui(self):
+        self.setStyleSheet("color: blue")
+        font = self.font()
+        font.setUnderline(True)
+        self.setFont(font)
+
     def mousePressEvent(self, evt: QMouseEvent):
         # noinspection PyUnresolvedReferences
         self.clicked.emit()

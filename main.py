@@ -30,6 +30,7 @@ _logger = create_logger()
 
 def create_app() -> "QApplication":
     from PyQt5.QtWidgets import QApplication, QProxyStyle, QStyle
+    from application.dependency.usecases import get_app_version_get_text_usecase
     from controls.res.icons import get_icon
     from controls.res.fonts import get_font
 
@@ -42,6 +43,7 @@ def create_app() -> "QApplication":
 
     app = QApplication(sys.argv)
     app.setApplicationName("プロ言採点")
+    app.setApplicationVersion(get_app_version_get_text_usecase().execute())
     app.setWindowIcon(get_icon("fountain-pen"))
     # noinspection PyArgumentList
     app.setFont(get_font())

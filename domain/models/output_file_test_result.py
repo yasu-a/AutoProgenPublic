@@ -1,42 +1,50 @@
 from dataclasses import dataclass
 
+from domain.models.pattern import AbstractPattern
+
 
 @dataclass(slots=True)
 class MatchedToken:
-    match_begin: int
-    match_end: int
-    expected_token_index: int
+    pattern: AbstractPattern
+    begin: int
+    end: int
 
     def to_json(self) -> dict:
         return dict(
-            match_begin=self.match_begin,
-            match_end=self.match_end,
-            expected_token_index=self.expected_token_index,
+            pattern=self.pattern.to_json(),
+            begin=self.begin,
+            end=self.end,
         )
 
     @classmethod
     def from_json(cls, body: dict) -> "MatchedToken":
         return cls(
-            match_begin=body["match_begin"],
-            match_end=body["match_end"],
-            expected_token_index=body["expected_token_index"],
+            pattern=AbstractPattern.from_json(body["pattern"]),
+            begin=body["begin"],
+            end=body["end"],
         )
+
+    def __repr__(self):
+        return f"MatchedToken({self.pattern.index}, {self.begin}, {self.end})"
 
 
 @dataclass(slots=True)
 class NonmatchedToken:
-    expected_token_index: int
+    pattern: AbstractPattern
 
     def to_json(self) -> dict:
         return dict(
-            expected_token_index=self.expected_token_index,
+            pattern=self.pattern.to_json(),
         )
 
     @classmethod
     def from_json(cls, body: dict) -> "NonmatchedToken":
         return cls(
-            expected_token_index=body["expected_token_index"],
+            pattern=AbstractPattern.from_json(body["pattern"]),
         )
+
+    def __repr__(self):
+        return f"NonmatchedToken({self.pattern.index})"
 
 
 @dataclass(slots=True)
@@ -45,8 +53,22 @@ class OutputFileTestResult:
     nonmatched_tokens: list[NonmatchedToken]
 
     @property
+    def _are_all_matched_tokens_expected(self) -> bool:
+        return all(
+            matched_token.pattern.is_expected
+            for matched_token in self.matched_tokens
+        )
+
+    @property
+    def _are_all_nonmatched_tokens_unexpected(self) -> bool:
+        return all(
+            not nonmatched_token.pattern.is_expected
+            for nonmatched_token in self.nonmatched_tokens
+        )
+
+    @property
     def is_accepted(self) -> bool:  # 正解かどうか
-        return len(self.nonmatched_tokens) == 0
+        return self._are_all_matched_tokens_expected and self._are_all_nonmatched_tokens_unexpected
 
     def to_json(self):
         return dict(

@@ -5,7 +5,7 @@ from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import *
 
 from application.dependency.usecases import get_global_config_get_usecase, \
-    get_global_config_put_usecase, get_compile_test_run_usecase
+    get_global_config_put_usecase, get_test_compile_stage_usecase
 from controls.dialog_compiler_search import CompilerSearchDialog
 from controls.res.icons import get_icon
 from domain.models.global_config import GlobalConfig
@@ -231,7 +231,7 @@ class GlobalConfigEditWidget(QWidget):
 
     @pyqtSlot(Path)
     def __w_compiler_tool_path_compile_test_requested(self, compiler_tool_fullpath: Path):
-        result = get_compile_test_run_usecase().execute(
+        result = get_test_compile_stage_usecase().execute(
             compiler_tool_fullpath=Path(compiler_tool_fullpath),
         )
         if result.is_success:

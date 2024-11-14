@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QObject, pyqtSlot
+from PyQt5.QtCore import QObject
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMessageBox, QWidget
 
@@ -7,7 +7,6 @@ from controls.res.icons import get_icon
 from controls.widget_file_tab import FileTabWidget
 from controls.widget_testcase_output_file_edit import ExpectedOutputFileEditWidget
 from domain.models.expected_ouput_file import ExpectedOutputFile, ExpectedOutputFileMapping
-from domain.models.input_file import InputFileMapping
 from domain.models.values import FileID
 
 
@@ -59,12 +58,10 @@ class TestCaseOutputFilesEditWidgetDelegator(AbstractTestCaseFilesEditWidgetDele
 
 
 class TestCaseExpectedOutputFilesEditWidget(FileTabWidget):
-
     def __init__(self, parent: QObject = None):
         self.__delegator = TestCaseOutputFilesEditWidgetDelegator()
         super().__init__(parent, delegator=self.__delegator)
 
-    @pyqtSlot(InputFileMapping)
     def set_data(self, output_files: ExpectedOutputFileMapping) -> None:
         self.item_clear()
         for file_id, output_file in output_files.items():
@@ -73,7 +70,6 @@ class TestCaseExpectedOutputFilesEditWidget(FileTabWidget):
                 widget=self.__delegator.create_widget(file_id, self, output_file),
             )
 
-    @pyqtSlot()
     def get_data(self) -> ExpectedOutputFileMapping:
         output_files = ExpectedOutputFileMapping()
         for index in range(self.item_count()):  # 各タブに対して

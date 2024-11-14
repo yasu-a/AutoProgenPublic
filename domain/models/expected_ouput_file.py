@@ -1,4 +1,4 @@
-from domain.models.expected_token import ExpectedTokenList
+from domain.models.pattern import PatternList
 from domain.models.values import FileID
 
 
@@ -7,46 +7,46 @@ class ExpectedOutputFile:
             self,
             *,
             file_id: FileID,
-            expected_tokens: ExpectedTokenList,
+            patterns: PatternList,  # 予期するパターン
     ):
         self._file_id = file_id
-        self._expected_tokens = expected_tokens
+        self._patterns = patterns
 
     def to_json(self) -> dict:
         return dict(
             file_id=self._file_id.to_json(),
-            expected_tokens=self._expected_tokens.to_json(),
+            patterns=self._patterns.to_json(),
         )
 
     @classmethod
     def from_json(cls, body: dict):
         return cls(
             file_id=FileID.from_json(body["file_id"]),
-            expected_tokens=ExpectedTokenList.from_json(body["expected_tokens"]),
+            patterns=PatternList.from_json(body["patterns"]),
         )
 
     def __hash__(self) -> int:
-        return hash((self._file_id, self._expected_tokens))
+        return hash((self._file_id, self._patterns))
 
     def __eq__(self, other):
         if other is None:
             return False
         assert isinstance(other, type(self))
-        return self._file_id == other._file_id and self._expected_tokens == other._expected_tokens
+        return self._file_id == other._file_id and self._patterns == other._patterns
 
     @property
     def file_id(self) -> FileID:
         return self._file_id
 
     @property
-    def expected_tokens(self) -> ExpectedTokenList:
-        return self._expected_tokens
+    def patterns(self) -> PatternList:
+        return self._patterns
 
     @classmethod
     def create_default(cls, file_id: FileID) -> "ExpectedOutputFile":
         return cls(
             file_id=file_id,
-            expected_tokens=ExpectedTokenList(),
+            patterns=PatternList(),
         )
 
 
