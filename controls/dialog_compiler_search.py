@@ -5,7 +5,7 @@ from PyQt5.QtGui import QCloseEvent, QShowEvent
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QWidget, QLabel, QMessageBox, QInputDialog
 
 from application.dependency.usecases import get_compiler_search_usecase
-from controls.res.fonts import get_font
+from res.fonts import get_font
 
 
 class _CompilerSearchWorker(QThread):

@@ -2,11 +2,11 @@ from PyQt5.QtCore import QObject, pyqtSignal, QEvent, Qt
 from PyQt5.QtWidgets import QVBoxLayout, QLabel, QGroupBox, QPlainTextEdit
 
 from application.dependency.usecases import get_test_test_stage_usecase
-from controls.res.fonts import get_font
 from controls.widget_test_summary_indicator import TestCaseTestSummaryIndicatorWidget
-from controls.widget_testcase_result_otuput_file_view import TestCaseResultOutputFileViewWidget
+from controls.widget_testcase_result_output_file_text_view import TestCaseResultOutputFileTextView
 from domain.models.expected_ouput_file import ExpectedOutputFile
 from domain.models.test_config_options import TestConfigOptions
+from res.fonts import get_font
 from usecases.dto.student_mark_view_data import StudentTestCaseSummaryState
 
 
@@ -35,7 +35,7 @@ class TestCaseTestConfigTesterWidget(QGroupBox):
 
         layout.addWidget(QLabel("<html><b>テスト結果</b></html>", self))
 
-        self._result_view = TestCaseResultOutputFileViewWidget()
+        self._result_view = TestCaseResultOutputFileTextView()
         layout.addWidget(self._result_view)
 
         self._w_test_summary_indicator = TestCaseTestSummaryIndicatorWidget(self)
@@ -55,7 +55,10 @@ class TestCaseTestConfigTesterWidget(QGroupBox):
             test_config_options=test_config_options,
             content_text=self._editor.toPlainText(),
         )
-        self._result_view.set_data(test_result_output_file_entry)
+        self._result_view.set_data(
+            source_code_text=test_result_output_file_entry.actual.content_string,
+            matched_tokens=test_result_output_file_entry.test_result.matched_tokens,
+        )
         if test_result_output_file_entry.has_actual and test_result_output_file_entry.has_expected:
             if test_result_output_file_entry.test_result.is_accepted:
                 self._w_test_summary_indicator.set_data(StudentTestCaseSummaryState.ACCEPTED)

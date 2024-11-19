@@ -31,8 +31,8 @@ _logger = create_logger()
 def create_app() -> "QApplication":
     from PyQt5.QtWidgets import QApplication, QProxyStyle, QStyle
     from application.dependency.usecases import get_app_version_get_text_usecase
-    from controls.res.icons import get_icon
-    from controls.res.fonts import get_font
+    from res.icons import get_icon
+    from res.fonts import get_font
 
     class CustomStyle(QProxyStyle):
         # noinspection PyMethodOverriding
@@ -44,7 +44,7 @@ def create_app() -> "QApplication":
     app = QApplication(sys.argv)
     app.setApplicationName("プロ言採点")
     app.setApplicationVersion(get_app_version_get_text_usecase().execute())
-    app.setWindowIcon(get_icon("fountain-pen"))
+    app.setWindowIcon(get_icon("app"))
     # noinspection PyArgumentList
     app.setFont(get_font())
     app.setStyle(CustomStyle("Fusion"))
@@ -69,8 +69,9 @@ def launch_existing_project(project_id: "ProjectID") -> "MainWindow":
 def launch_new_project(new_project_config: "NewProjectConfig") -> "MainWindow":
     from application.dependency.usecases import get_project_create_usecase
     from application.dependency.usecases import get_project_open_usecase
-    from controls.dialog_static_initialize import StaticInitializeProgressDialog
+    from controls.dialog_project_initialize import ProjectInitializeProgressDialog
     from controls.window_main import MainWindow
+    from PyQt5.QtWidgets import QDialog, QMessageBox
 
     # 新規にプロジェクトを生成
 
@@ -82,9 +83,18 @@ def launch_new_project(new_project_config: "NewProjectConfig") -> "MainWindow":
     # 現在のプロジェクトを設定
     get_project_open_usecase().execute(project_id)
     # 現在のプロジェクトを初期化
-    StaticInitializeProgressDialog(
+    dialog = ProjectInitializeProgressDialog(
         manaba_report_archive_fullpath=new_project_config.manaba_report_archive_fullpath,
-    ).exec_()
+    )
+    if dialog.exec_() != QDialog.Accepted:
+        QMessageBox.critical(
+            dialog,
+            "プロジェクトの初期化",
+            dialog.get_error_object().message,
+            QMessageBox.Ok,
+        )
+        sys.exit(1)
+
     # メインウィンドウを開く
     window = MainWindow()
     # noinspection PyUnresolvedReferences

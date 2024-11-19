@@ -2,12 +2,13 @@ from application.dependency.external_io import *
 from application.dependency.external_io import get_student_folder_show_in_explorer_io
 from application.dependency.repositories import *
 from services.app_version import AppVersionGetService
-from services.current_project import CurrentProjectGetService
-from services.global_config import GlobalConfigGetService, GlobalConfigPutService
+from services.current_project import CurrentProjectGetService, CurrentProjectSetInitializedService
+from services.global_settings import GlobalSettingsGetService, GlobalSettingsPutService
 from services.match import MatchGetBestService
-from services.project import ProjectListService, ProjectCreateService, ProjectBaseFolderShowService, \
+from services.project import ProjectCreateService, ProjectBaseFolderShowService, \
     ProjectFolderShowService, ProjectDeleteService, ProjectGetSizeQueryService, \
-    ProjectUpdateTimestampService
+    ProjectUpdateTimestampService, ProjectGetConfigStateQueryService, ProjectListIDQueryService, \
+    ProjectGetService
 from services.stage import StageListRootSubService, StageListChildSubService, \
     StageGetParentSubService
 from services.stage_path import StagePathListSubService, StagePathGetByTestCaseIDService
@@ -39,15 +40,15 @@ from services.testcase_config import TestCaseConfigListIDSubService, \
     TestCaseConfigGetTestOptionsService, TestCaseConfigGetService, TestCaseConfigPutService
 
 
-def get_global_config_get_service():
-    return GlobalConfigGetService(
-        global_config_repo=get_global_config_repository(),
+def get_global_settings_get_service():
+    return GlobalSettingsGetService(
+        global_settings_repo=get_global_settings_repository(),
     )
 
 
-def get_global_config_put_service():
-    return GlobalConfigPutService(
-        global_config_repo=get_global_config_repository(),
+def get_global_settings_put_service():
+    return GlobalSettingsPutService(
+        global_settings_repo=get_global_settings_repository(),
     )
 
 
@@ -58,8 +59,24 @@ def get_app_version_get_service():
     )
 
 
-def get_project_list_service():
-    return ProjectListService(
+# ProjectGetConfigStateQueryService
+def get_project_get_config_state_query_service():
+    return ProjectGetConfigStateQueryService(
+        project_path_provider=get_project_path_provider(),
+        project_core_io=get_project_core_io(),
+        app_version_get_service=get_app_version_get_service(),
+    )
+
+
+# ProjectListIDQueryService
+def get_project_list_id_query_service():
+    return ProjectListIDQueryService(
+        project_list_path_provider=get_project_list_path_provider(),
+    )
+
+
+def get_project_get_service():
+    return ProjectGetService(
         project_repo=get_project_repository(),
     )
 
@@ -67,6 +84,7 @@ def get_project_list_service():
 def get_project_create_service():
     return ProjectCreateService(
         project_repo=get_project_repository(),
+        app_version_get_service=get_app_version_get_service(),
     )
 
 
@@ -128,6 +146,12 @@ def get_student_submission_extract_service(manaba_report_archive_fullpath: Path)
 
 def get_current_project_get_service():
     return CurrentProjectGetService(
+        current_project_repo=get_current_project_repository(),
+    )
+
+
+def get_current_project_set_initialized_service():
+    return CurrentProjectSetInitializedService(
         current_project_repo=get_current_project_repository(),
     )
 
@@ -236,7 +260,7 @@ def get_storage_load_test_source_service():
 def get_storage_run_compiler_service():
     return StorageRunCompilerService(
         compile_tool_io=get_compile_tool_io(),
-        global_config_repo=get_global_config_repository(),
+        global_settings_repo=get_global_settings_repository(),
         student_dynamic_repo=get_student_dynamic_repository(),
         storage_repo=get_storage_repository(),
     )

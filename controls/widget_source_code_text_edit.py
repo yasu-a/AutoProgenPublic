@@ -6,7 +6,8 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
 from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
-from controls.res.fonts import get_font
+from controls.widget_plain_text_edit import PlainTextEdit
+from res.fonts import get_font
 
 
 # https://github.com/baoboa/pyqt5/blob/master/examples/richtext/syntaxhighlighter.py
@@ -100,7 +101,7 @@ class _CHighlighter(QSyntaxHighlighter):
             start_index = self.comment_start_expression.indexIn(text, start_index + comment_length)
 
 
-class SourceTextEdit(QPlainTextEdit, HorizontalScrollWithShiftAndWheelMixin):
+class SourceCodeTextEdit(PlainTextEdit, HorizontalScrollWithShiftAndWheelMixin):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
@@ -122,7 +123,7 @@ class _TestWidget(QWidget, QObject):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        te = SourceTextEdit(self)
+        te = SourceCodeTextEdit(self)
         with codecs.open("../vctest/test.c", "r", "utf-8") as f:
             te.setPlainText(f.read())
         layout.addWidget(te)

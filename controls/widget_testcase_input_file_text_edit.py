@@ -1,10 +1,10 @@
 from PyQt5.QtCore import QObject
 
 from application.dependency.usecases import get_global_settings_get_usecase
-from controls.widget_source_code_text_edit import SourceCodeTextEdit
+from controls.widget_plain_text_edit import PlainTextEdit
 
 
-class StudentSourceCodeView(SourceCodeTextEdit):
+class TestCaseInputFileTextEdit(PlainTextEdit):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
@@ -12,12 +12,12 @@ class StudentSourceCodeView(SourceCodeTextEdit):
 
     def __init_ui(self):
         self.setEnabled(False)
-        self.setReadOnly(True)
+        self.setReadOnly(False)
         self.set_show_editing_symbols(
-            get_global_settings_get_usecase().execute().show_editing_symbols_in_source_code,
+            get_global_settings_get_usecase().execute().show_editing_symbols_in_stream_content,
         )
         self.set_line_wrap(
-            get_global_settings_get_usecase().execute().enable_line_wrap_in_source_code,
+            get_global_settings_get_usecase().execute().enable_line_wrap_in_stream_content,
         )
         self.setPlainText("")
 
@@ -28,3 +28,9 @@ class StudentSourceCodeView(SourceCodeTextEdit):
         else:
             self.setEnabled(True)
             self.setPlainText(source_code_text)
+
+    def get_data(self) -> str | None:
+        if self.isEnabled():
+            return self.toPlainText()
+        else:
+            return None

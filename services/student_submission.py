@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 from typing import Iterable
 
-from domain.errors import ServiceError, ManabaReportArchiveIOError
+from domain.errors import ServiceError, ManabaReportArchiveIOError, StudentSubmissionServiceError
 from domain.models.values import StudentID, TargetID
 from infra.io.files.current_project import CurrentProjectCoreIO
 from infra.io.report_archive import ManabaReportArchiveIO
@@ -11,6 +11,7 @@ from infra.io.student_folder_show_in_explorer import StudentFolderShowInExplorer
 from infra.path_providers.current_project import StudentSubmissionPathProvider
 from infra.repositories.current_project import CurrentProjectRepository
 from infra.repositories.student import StudentRepository
+from utils.app_logging import create_logger
 
 
 class StudentSubmissionExistService:
@@ -25,12 +26,9 @@ class StudentSubmissionExistService:
         return self._student_repo.get(student_id).is_submitted
 
 
-class StudentSubmissionExtractServiceError(ServiceError):
-    def __init__(self, reason: str) -> None:
-        self.reason = reason
-
-
 class StudentSubmissionExtractService:
+    _logger = create_logger()
+
     def __init__(
             self,
             *,
@@ -46,7 +44,7 @@ class StudentSubmissionExtractService:
 
     def execute(self):
         if not self._student_repo.exists():
-            raise StudentSubmissionExtractServiceError("生徒マスタが存在しません")
+            raise StudentSubmissionServiceError("生徒マスタが作成されていません")
 
         # 生徒マスタを読み込んで生徒ID→提出フォルダ名のマッピングを作る
         student_master = self._student_repo.list()
@@ -83,6 +81,7 @@ class StudentSubmissionExtractService:
                 )
                 # それぞれのファイルを展開する
                 for content_relative_path, fp in it:
+                    self._logger.info(f"Extracting {student_id} {content_relative_path!s}")
                     # パスにスペースが含まれているとこの先のos.makedirsで失敗するので取り除く
                     content_relative_path = Path(*map(str.strip, content_relative_path.parts))
                     # コピー先のファイルパス
@@ -98,8 +97,8 @@ class StudentSubmissionExtractService:
                         content_bytes=fp.read(),
                     )
         except ManabaReportArchiveIOError as e:
-            raise StudentSubmissionExtractServiceError(
-                reason=f"ZIPアーカイブの展開中にエラーが発生しました。\n{e.reason}",
+            raise StudentSubmissionServiceError(
+                reason=f"提出アーカイブの展開中にエラーが発生しました。\n{e.reason}",
             )
 
 

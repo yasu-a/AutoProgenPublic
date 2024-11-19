@@ -1,7 +1,7 @@
 from PyQt5.QtCore import QObject, Qt
 from PyQt5.QtWidgets import QDialog, QHBoxLayout, QLabel, QVBoxLayout, qApp
 
-from controls.res.fonts import get_font
+from res.fonts import get_font
 
 
 class AboutDialog(QDialog):

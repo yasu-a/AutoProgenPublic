@@ -1,10 +1,11 @@
 from application.dependency.services import *
 from usecases.app_version import AppVersionGetTextUseCase, AppVersionCheckIsStableUseCase
 from usecases.compiler import CompilerSearchUseCase
-from usecases.current_project import CurrentProjectSummaryGetUseCase
-from usecases.global_config import GlobalConfigGetUseCase, GlobalConfigPutUseCase
+from usecases.current_project import CurrentProjectSummaryGetUseCase, \
+    CurrentProjectInitializeStaticUseCase
+from usecases.global_settings import GlobalSettingsGetUseCase, GlobalSettingsPutUseCase
 from usecases.project import ProjectCheckExistByNameUseCase, ProjectCreateUseCase, \
-    ProjectInitializeStaticUseCase, ProjectListRecentSummaryUseCase, ProjectBaseFolderShowUseCase, \
+    ProjectListRecentSummaryUseCase, ProjectBaseFolderShowUseCase, \
     ProjectFolderShowUseCase, ProjectDeleteUseCase, ProjectGetSizeQueryUseCase, ProjectOpenUseCase
 from usecases.resource_usage import ResourceUsageGetUseCase
 from usecases.student import StudentListIDUseCase
@@ -32,15 +33,15 @@ from usecases.testcase_list_edit import TestCaseListEditListSummaryUseCase, \
     TestCaseListEditCreateNewNameUseCase, TestCaseListEditCreateTestCaseUseCase
 
 
-def get_global_config_get_usecase():
-    return GlobalConfigGetUseCase(
-        global_config_get_service=get_global_config_get_service(),
+def get_global_settings_get_usecase():
+    return GlobalSettingsGetUseCase(
+        global_settings_get_service=get_global_settings_get_service(),
     )
 
 
-def get_global_config_put_usecase():
-    return GlobalConfigPutUseCase(
-        global_config_put_service=get_global_config_put_service(),
+def get_global_settings_put_usecase():
+    return GlobalSettingsPutUseCase(
+        global_settings_put_service=get_global_settings_put_service(),
     )
 
 
@@ -60,7 +61,9 @@ def get_app_version_check_is_stable_usecase():
 
 def get_project_list_recent_summary_usecase():
     return ProjectListRecentSummaryUseCase(
-        project_list_service=get_project_list_service(),
+        project_list_id_query_service=get_project_list_id_query_service(),
+        project_get_config_state_query_service=get_project_get_config_state_query_service(),
+        project_get_service=get_project_get_service(),
     )
 
 
@@ -98,14 +101,15 @@ def get_project_get_size_query_usecase():
     )
 
 
-def get_project_initialize_static_usecase(manaba_report_archive_fullpath: Path):
-    return ProjectInitializeStaticUseCase(
+def get_current_project_initialize_static_usecase(manaba_report_archive_fullpath: Path):
+    return CurrentProjectInitializeStaticUseCase(
         student_master_create_service=get_student_master_create_service(
             manaba_report_archive_fullpath=manaba_report_archive_fullpath,
         ),
         student_submission_extract_service=get_student_submission_extract_service(
             manaba_report_archive_fullpath=manaba_report_archive_fullpath,
         ),
+        current_project_set_initialized_service=get_current_project_set_initialized_service(),
     )
 
 
@@ -118,7 +122,7 @@ def get_project_open_usecase():
 
 def get_project_check_exist_by_name_usecase():
     return ProjectCheckExistByNameUseCase(
-        project_list_service=get_project_list_service(),
+        project_list_id_query_service=get_project_list_id_query_service(),
     )
 
 

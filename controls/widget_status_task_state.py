@@ -2,7 +2,7 @@ from PyQt5.QtCore import QObject, QTimer, pyqtSlot
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel
 
 from application.dependency.tasks import get_task_manager
-from controls.res.fonts import get_font
+from res.fonts import get_font
 
 
 class TaskStateStatusBarWidget(QWidget):

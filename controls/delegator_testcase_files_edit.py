@@ -5,10 +5,10 @@ from PyQt5.QtWidgets import (
     QMessageBox, QInputDialog, QWidget
 )
 
-from controls.res.icons import get_icon
 from controls.widget_file_tab import AbstractFileTabWidgetDelegator, FileTabWidget
 from domain.models.expected_ouput_file import ExpectedOutputFile
 from domain.models.values import FileID, SpecialFileType
+from res.icons import get_icon
 
 
 class AbstractTestCaseFilesEditWidgetDelegator(AbstractFileTabWidgetDelegator, ABC):

@@ -4,10 +4,10 @@ from PyQt5.QtWidgets import *
 
 from application.dependency.usecases import get_project_list_recent_summary_usecase
 from controls.dto.new_project_config import NewProjectConfig
-from controls.res.icons import get_icon
 from controls.widget_new_project import NewProjectWidget
 from controls.widget_recent_project import RecentProjectWidget
 from domain.models.values import ProjectID
+from res.icons import get_icon
 
 
 class WelcomeDialog(QDialog):

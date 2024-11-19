@@ -1,8 +1,6 @@
 from PyQt5.QtCore import QObject, pyqtSlot
 from PyQt5.QtWidgets import QTabWidget, QVBoxLayout, QTabBar, QLabel, QWidget, QHBoxLayout
 
-from controls.res.fonts import get_font
-from controls.res.icons import get_icon
 from controls.widget_testcase_execute_options import TestCaseExecuteConfigOptionsEditWidget
 from controls.widget_testcase_input_files_edit import TestCaseInputFilesEditWidget
 from controls.widget_testcase_output_files_edit import TestCaseExpectedOutputFilesEditWidget
@@ -11,6 +9,8 @@ from controls.widget_testcase_test_config_tester import TestCaseTestConfigTester
 from domain.models.execute_config import TestCaseExecuteConfig
 from domain.models.test_config import TestCaseTestConfig
 from domain.models.testcase_config import TestCaseConfig
+from res.fonts import get_font
+from res.icons import get_icon
 
 
 class TestCaseConfigEditWidget(QTabWidget):

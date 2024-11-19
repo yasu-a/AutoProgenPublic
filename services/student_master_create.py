@@ -5,7 +5,7 @@ import dateutil.parser
 import openpyxl
 import pandas as pd
 
-from domain.errors import ManabaReportArchiveIOError, ServiceError
+from domain.errors import ManabaReportArchiveIOError, StudentMasterServiceError
 from domain.models.student import Student
 from domain.models.student_master import StudentMaster
 from domain.models.values import StudentID
@@ -171,11 +171,6 @@ class _StudentMasterExcelReader:
         return df
 
 
-class StudentMasterCreateServiceError(ServiceError):
-    def __init__(self, reason: str):
-        self.reason = reason
-
-
 class StudentMasterCreateService:  # TODO: StudentService系にモジュールと名称を統合
     def __init__(
             self,
@@ -219,7 +214,7 @@ class StudentMasterCreateService:  # TODO: StudentService系にモジュール�
                     )
                     student_master.append(student)
         except (_UnexpectedStudentMasterExcelError, ManabaReportArchiveIOError) as e:
-            raise StudentMasterCreateServiceError(
+            raise StudentMasterServiceError(
                 reason=f"マスターデータの構成中にエラーが発生しました。\n{e.reason}",
             )
         else:

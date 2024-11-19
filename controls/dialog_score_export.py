@@ -9,12 +9,12 @@ from PyQt5.QtWidgets import QDialog, QHBoxLayout, QLabel, \
 from application.dependency.external_io import get_score_excel_io
 from application.dependency.services import get_current_project_get_service
 from application.dependency.usecases import get_student_list_id_usecase, \
-    get_student_mark_list_usecase, get_global_config_get_usecase
-from controls.res.fonts import get_font
-from controls.res.icons import get_icon
+    get_student_mark_list_usecase, get_global_settings_get_usecase
 from controls.widget_horizontal_line import HorizontalLineWidget
 from domain.models.student_mark import StudentMark
 from domain.models.values import StudentID, TargetID
+from res.fonts import get_font
+from res.icons import get_icon
 from utils.app_logging import create_logger
 
 
@@ -205,7 +205,7 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
                 worksheet_name=worksheet_name,
                 target_id=self._target_id,
                 student_marks=self._student_marks,
-                do_backup=get_global_config_get_usecase().execute().backup_before_export,
+                do_backup=get_global_settings_get_usecase().execute().backup_before_export,
             )
         except Exception as e:
             self._logger.info("Failed to commit scores to the workbook")

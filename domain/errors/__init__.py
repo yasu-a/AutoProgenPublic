@@ -20,6 +20,11 @@ class ProjectIOError(RuntimeError):
         self.reason = reason
 
 
+class ProjectServiceError(ServiceError):
+    def __init__(self, reason: str):
+        self.reason = reason
+
+
 class TestCaseIOError(RuntimeError):
     def __init__(self, reason: str):
         self.reason = reason
@@ -27,6 +32,11 @@ class TestCaseIOError(RuntimeError):
 
 class ManabaReportArchiveIOError(RuntimeError):
     def __init__(self, *, reason: str):
+        self.reason = reason
+
+
+class StudentSubmissionServiceError(ServiceError):
+    def __init__(self, reason: str):
         self.reason = reason
 
 
@@ -84,3 +94,8 @@ class TaskOperationError(RuntimeError):
 
 class StopTask(RuntimeError):
     pass
+
+
+class StudentMasterServiceError(ServiceError):
+    def __init__(self, reason: str):
+        self.reason = reason

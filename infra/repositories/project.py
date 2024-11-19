@@ -61,33 +61,6 @@ class ProjectRepository:
         )
         return project
 
-    def list(self) -> list[Project]:
-        project_list_folder_fullpath = self._project_list_path_provider.base_folder_fullpath()
-
-        project_list_folder_fullpath.mkdir(parents=True, exist_ok=True)
-
-        maybe_project_ids: list[ProjectID] = []
-        for sub_folder_fullpath in project_list_folder_fullpath.iterdir():
-            if not sub_folder_fullpath.is_dir():
-                continue
-            folder_name = sub_folder_fullpath.name
-            try:
-                maybe_project_id = ProjectID(folder_name)
-            except ValueError:  # malformed folder name
-                continue
-            maybe_project_ids.append(maybe_project_id)
-
-        projects = []
-        for maybe_project_id in maybe_project_ids:
-            try:
-                project = self.get(maybe_project_id)
-            except ProjectIOError:
-                continue
-            else:
-                projects.append(project)
-
-        return projects
-
     def delete(self, project_id: ProjectID) -> None:
         project_folder_fullpath = self._project_path_provider.base_folder_fullpath(project_id)
 
