@@ -2,11 +2,11 @@ from PyQt5.QtCore import QObject, pyqtSignal, QEvent, Qt
 from PyQt5.QtWidgets import QVBoxLayout, QLabel, QGroupBox, QPlainTextEdit
 
 from application.dependency.usecases import get_test_test_stage_usecase
-from controls.res.fonts import get_font
 from controls.widget_test_summary_indicator import TestCaseTestSummaryIndicatorWidget
 from controls.widget_testcase_result_otuput_file_view import TestCaseResultOutputFileViewWidget
 from domain.models.expected_ouput_file import ExpectedOutputFile
 from domain.models.test_config_options import TestConfigOptions
+from res.fonts import get_font
 from usecases.dto.student_mark_view_data import StudentTestCaseSummaryState
 
 

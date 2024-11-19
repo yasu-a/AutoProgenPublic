@@ -4,8 +4,8 @@ from PyQt5.QtCore import QThread, pyqtSignal, QObject, Qt, pyqtSlot
 from PyQt5.QtGui import QShowEvent
 from PyQt5.QtWidgets import QDialog, QHBoxLayout, QLabel, QVBoxLayout
 
-from controls.res.fonts import get_font
 from controls.widget_progress_icon import ProgressIconWidget
+from res.fonts import get_font
 
 
 class AbstractProgressDialogWorker(QThread):

@@ -10,10 +10,10 @@ from application.dependency.usecases import get_project_list_recent_summary_usec
     get_project_base_folder_show_usecase, get_project_folder_show_usecase, \
     get_project_delete_usecase, get_project_get_size_query_usecase
 from controls.dialog_progress import AbstractProgressDialogWorker, AbstractProgressDialog
-from controls.res.fonts import get_font
-from controls.res.icons import get_icon
 from controls.widget_clickable_label import ClickableLabelWidget
 from domain.models.values import ProjectID
+from res.fonts import get_font
+from res.icons import get_icon
 from usecases.dto.project_summary import ProjectSummary
 
 

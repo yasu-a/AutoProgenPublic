@@ -13,6 +13,14 @@ def get_global_base_path() -> Path:
     return Path(sys.argv[0]).resolve().parent
 
 
+def get_static_resource_base_path() -> Path:
+    return get_global_base_path() / "static"
+
+
+def get_icon_fullpath(filename: str) -> Path:
+    return get_static_resource_base_path() / "icon" / f"{filename}.png"
+
+
 def get_global_path_provider():
     return GlobalPathProvider(
         global_settings_folder_fullpath=get_global_base_path(),

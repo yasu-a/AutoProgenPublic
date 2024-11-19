@@ -14,10 +14,10 @@ from application.dependency.usecases import get_student_list_id_usecase, \
     get_student_table_get_student_error_cell_data_usecase, \
     get_student_dynamic_take_diff_snapshot_usecase, get_student_mark_get_usecase
 from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
-from controls.res.fonts import get_font
 from domain.errors import StudentUseCaseError
 from domain.models.stages import BuildStage, CompileStage, ExecuteStage, TestStage
 from domain.models.values import StudentID
+from res.fonts import get_font
 from usecases.dto.student_stage_result_diff_snapshot import StudentStageResultDiffSnapshot, \
     StudentStageResultDiff
 from usecases.dto.student_table_cell_data import StudentStageStateCellDataStageState

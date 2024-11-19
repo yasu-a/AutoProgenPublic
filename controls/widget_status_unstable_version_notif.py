@@ -2,7 +2,7 @@ from PyQt5.QtCore import QObject
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel
 
 from application.dependency.usecases import get_app_version_check_is_stable_usecase
-from controls.res.fonts import get_font
+from res.fonts import get_font
 
 
 class UnstableVersionNotificationStatusBarWidget(QWidget):

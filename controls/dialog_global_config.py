@@ -7,9 +7,9 @@ from PyQt5.QtWidgets import *
 from application.dependency.usecases import get_global_config_get_usecase, \
     get_global_config_put_usecase, get_test_compile_stage_usecase
 from controls.dialog_compiler_search import CompilerSearchDialog
-from controls.res.icons import get_icon
 from domain.models.global_config import GlobalConfig
 from infra.io.compiler_location import is_compiler_location
+from res.icons import get_icon
 from utils.app_logging import create_logger
 
 

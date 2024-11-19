@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QDialog, QGridLayout, QVBoxLayout, QLabel, QHBoxLayout
 
-from controls.res.fonts import get_font
+from res.fonts import get_font
 
 
 class MarkHelpDialog(QDialog):

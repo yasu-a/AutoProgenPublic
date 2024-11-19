@@ -9,8 +9,6 @@ from application.dependency.usecases import get_student_list_id_usecase, \
     get_testcase_config_list_id_usecase, get_student_mark_get_usecase, get_student_mark_put_usecase
 from controls.dialog_mark_help import MarkHelpDialog
 from controls.dto.dialog_mark import MarkDialogState
-from controls.res.fonts import get_font
-from controls.res.icons import get_icon
 from controls.widget_mark_score_edit import MarkScoreEditWidget
 from controls.widget_page_button import PageButton
 from controls.widget_student_source_code_view import StudentSourceCodeViewWidget
@@ -19,6 +17,8 @@ from controls.widget_testcase_test_result_view import TestCaseTestResultViewWidg
 from domain.models.student import Student
 from domain.models.student_mark import StudentMark
 from domain.models.values import StudentID, TestCaseID, FileID
+from res.fonts import get_font
+from res.icons import get_icon
 from usecases.dto.student_mark_view_data import AbstractStudentTestCaseTestResultViewData, \
     StudentMarkSummaryViewData
 from utils.app_logging import create_logger

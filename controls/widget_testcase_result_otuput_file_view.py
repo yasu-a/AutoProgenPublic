@@ -3,8 +3,8 @@ from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor
 from PyQt5.QtWidgets import QPlainTextEdit
 
 from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
-from controls.res.fonts import get_font
 from domain.models.test_result_output_file_entry import AbstractTestResultOutputFileEntry
+from res.fonts import get_font
 
 
 class TestCaseResultOutputFileViewWidget(QPlainTextEdit, HorizontalScrollWithShiftAndWheelMixin):

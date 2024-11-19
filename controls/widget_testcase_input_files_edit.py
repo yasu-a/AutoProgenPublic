@@ -3,11 +3,11 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMessageBox, QWidget
 
 from controls.delegator_testcase_files_edit import AbstractTestCaseFilesEditWidgetDelegator
-from controls.res.icons import get_icon
 from controls.widget_file_tab import FileTabWidget
 from controls.widget_plain_text_edit import PlainTextEdit
 from domain.models.input_file import InputFileMapping, InputFile
 from domain.models.values import FileID
+from res.icons import get_icon
 
 
 class TestCaseInputFilesEditWidgetDelegator(AbstractTestCaseFilesEditWidgetDelegator):

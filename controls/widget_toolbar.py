@@ -1,8 +1,8 @@
 from PyQt5.QtCore import pyqtSignal, QObject, Qt, QSize, QTimer, pyqtSlot
-from PyQt5.QtWidgets import QToolBar, QAction
+from PyQt5.QtWidgets import QToolBar, QAction, qApp
 
 from application.dependency.tasks import get_task_manager
-from controls.res.icons import get_icon
+from res.icons import get_icon
 
 
 class ToolBar(QToolBar):
@@ -73,7 +73,7 @@ class ToolBar(QToolBar):
 
         self.addSeparator()
 
-        self._a_about = QAction(get_icon("fountain-pen"), "About", self)
+        self._a_about = QAction(qApp.windowIcon(), "About", self)
         self._a_about.setObjectName("about")
         self.addAction(self._a_about)
 
