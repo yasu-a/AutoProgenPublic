@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Any, Iterable
 
+from domain.errors import CoreIOError
 from domain.models.values import ProjectID
 from infra.path_providers.project import ProjectPathProvider
 from utils.app_logging import create_logger
@@ -25,8 +26,10 @@ class ProjectCoreIO:
             path: Path,
             external_ok=False,
     ) -> None:
-        assert path.is_absolute(), path
-        assert path.is_file(), path
+        if not path.is_absolute():
+            raise CoreIOError(f"path must be absolute: {path}")
+        if not path.is_file():
+            raise CoreIOError(f"path must be a file: {path}")
         if not external_ok:
             assert path.is_relative_to(
                 self._project_path_provider.base_folder_fullpath(project_id)
@@ -39,8 +42,10 @@ class ProjectCoreIO:
             path: Path,
             external_ok=False,
     ) -> None:
-        assert path.is_absolute(), path
-        assert path.is_dir(), path
+        if not path.is_absolute():
+            raise CoreIOError(f"path must be absolute: {path}")
+        if not path.is_dir():
+            raise CoreIOError(f"path must be a directory: {path}")
         if not external_ok:
             assert path.is_relative_to(
                 self._project_path_provider.base_folder_fullpath(project_id)
@@ -54,11 +59,12 @@ class ProjectCoreIO:
             external_ok=False,
     ) -> None:
         # 存在しないかもしれないパスを調べるので種類は宣言しない
-        assert path.is_absolute(), path
+        if not path.is_absolute():
+            raise CoreIOError(f"path must be absolute: {path}")
         if not external_ok:
-            assert path.is_relative_to(
-                self._project_path_provider.base_folder_fullpath(project_id)
-            ), path
+            if not path.is_relative_to(
+                    self._project_path_provider.base_folder_fullpath(project_id)):
+                raise CoreIOError(f"path must be within project: {path}")
 
     def rmtree_folder(
             self,

@@ -2,8 +2,8 @@ from abc import abstractmethod, ABC
 from dataclasses import dataclass
 from enum import Enum
 
+from domain.models.student import Student
 from domain.models.student_mark import StudentMark
-from domain.models.student_master import Student
 from domain.models.student_stage_result import TestResultOutputFileMapping
 from domain.models.values import StudentID, TestCaseID
 

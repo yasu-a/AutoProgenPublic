@@ -15,6 +15,7 @@ from application.dependency.usecases import get_student_list_id_usecase, \
     get_student_dynamic_take_diff_snapshot_usecase, get_student_mark_get_usecase
 from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
 from controls.res.fonts import get_font
+from domain.errors import StudentUseCaseError
 from domain.models.stages import BuildStage, CompileStage, ExecuteStage, TestStage
 from domain.models.values import StudentID
 from usecases.dto.student_stage_result_diff_snapshot import StudentStageResultDiffSnapshot, \
@@ -366,6 +367,8 @@ class StudentTableModel(QAbstractTableModel):
 
 
 class _StudentObserver(QObject):
+    _logger = create_logger()
+
     student_modified = pyqtSignal(StudentID, name="student_modified")
 
     @staticmethod
@@ -395,7 +398,12 @@ class _StudentObserver(QObject):
         student_id = next(self._student_id_iter)
 
         # スナップショットを取得
-        new_snapshot = get_student_dynamic_take_diff_snapshot_usecase().execute(student_id)
+        # TODO: StudentStageResultCheckTimestampQueryServiceのFIXMEを暫定的に解消するためのtry-exceptロジック
+        try:
+            new_snapshot = get_student_dynamic_take_diff_snapshot_usecase().execute(student_id)
+        except StudentUseCaseError:
+            self._logger.warning(f"Failed to get snapshot for student_id={student_id}")
+            return
 
         # 初めて巡回したとき以外は更新を確認してシグナルを送出
         if student_id in self._student_id_mtime_mapping:

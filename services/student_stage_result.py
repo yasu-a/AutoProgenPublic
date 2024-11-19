@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from domain.errors import CoreIOError, StudentServiceError
 from domain.models.stage_path import StagePath
 from domain.models.stages import AbstractStage
 from domain.models.values import StudentID
@@ -36,9 +37,13 @@ class StudentStageResultCheckTimestampQueryService:
                 return_absolute=True,
         ):
             # FIXME: transaction導入 ループ中にファイルが消されるとエラー
-            timestamp = self._current_project_core_io.get_file_mtime(
-                file_fullpath=file_fullpath,
-            )
+            # TODO: このFIXMEを暫定的に解決するためにエラーが起きたらStudentServiceErrorをスローするロジックを実装　ちゃんと対策して書き直す
+            try:
+                timestamp = self._current_project_core_io.get_file_mtime(
+                    file_fullpath=file_fullpath,
+                )
+            except CoreIOError:
+                raise StudentServiceError("failed to obtain timestamp")
             if latest_timestamp is None or latest_timestamp < timestamp:
                 latest_timestamp = timestamp
 
