@@ -2,7 +2,8 @@ from contextlib import contextmanager
 
 from PyQt5.QtCore import QMutex
 
-from domain.models.student_master import StudentMaster, Student
+from domain.models.student import Student
+from domain.models.student_master import StudentMaster
 from domain.models.values import StudentID
 from infra.io.files.current_project import CurrentProjectCoreIO
 from infra.path_providers.current_project import ProjectStaticPathProvider

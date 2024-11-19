@@ -70,6 +70,8 @@ class ManabaReportArchiveIO:
     ) -> Iterable[tuple[Path, io.BufferedReader]]:  # relative path in archive and fp
         self._logger.debug(f"iter_student_submission_archive_contents\n"
                            f" - {student_id!s} {student_submission_folder_name}")
+        # FIXME: manabaのアーカイブがBadZipFileエラーになる（manabaのせい）
+        # FIXME: アーカイブを展開して圧縮しなおすとなおるので圧縮しなおしたアーカイブを開けるように対応（暫定対応済み）
         with zipfile.ZipFile(self._archive_fullpath, "r") as zf:
             for name in zf.namelist():
                 path = Path(name)
@@ -77,16 +79,19 @@ class ManabaReportArchiveIO:
                     continue
                 if not path.is_relative_to(student_submission_folder_name):
                     continue
-                assert path.parts[0] == student_submission_folder_name, path
-                path = Path(*path.parts[1:])  # remove submission folder part itself
+                assert len(path.parts) > 0 and path.parts[0] == student_submission_folder_name, path
+
+                child_path = Path(*path.parts[1:])  # remove submission folder part itself
+                if len(child_path.parts) == 0:
+                    continue
                 with zf.open(name, "r") as f:
                     if zipfile.is_zipfile(f):
-                        f = zipfile.ZipFile(f)
-                        yield from self._iter_archive_contents(
-                            path.parent / path.stem,
-                            f
-                        )
+                        with zipfile.ZipFile(f) as zf_inner:
+                            yield from self._iter_archive_contents(
+                                child_path.parent / child_path.stem,
+                                zf_inner,
+                            )
                     else:
-                        assert not path.is_absolute(), path
-                        assert path.parts[0] == student_submission_folder_name, path
-                        yield path, f
+                        assert not child_path.is_absolute(), child_path
+                        assert child_path.parts[0] == student_submission_folder_name, child_path
+                        yield child_path, f

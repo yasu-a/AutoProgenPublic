@@ -1,3 +1,8 @@
+class CoreIOError(RuntimeError):
+    def __init__(self, message):
+        self.message = message
+
+
 class RepositoryError(RuntimeError):
     pass
 
@@ -56,20 +61,20 @@ class ProjectListServiceError(RuntimeError):
         self.reason = reason
 
 
-# class ExecuteConfigEditDomainServiceError(RuntimeError):
-#     def __init__(self, *, reason: str):
-#         self.reason = reason
-
 class CompileToolIOError(RuntimeError):
     def __init__(self, reason: str, output: str | None):
         self.reason = reason
         self.output = output
 
 
-class CompileTestServiceError(RuntimeError):
-    def __init__(self, *, reason: str, output: str | None):
-        self.reason = reason
-        self.output = output
+class StudentServiceError(ServiceError):
+    def __init__(self, message: str):
+        self.message = message
+
+
+class StudentUseCaseError(UseCaseError):
+    def __init__(self, message: str):
+        self.message = message
 
 
 class TaskOperationError(RuntimeError):

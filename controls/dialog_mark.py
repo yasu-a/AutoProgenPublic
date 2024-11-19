@@ -16,8 +16,8 @@ from controls.widget_page_button import PageButton
 from controls.widget_student_source_code_view import StudentSourceCodeViewWidget
 from controls.widget_testcase_test_result_list import TestCaseTestResultListWidget
 from controls.widget_testcase_test_result_view import TestCaseTestResultViewWidget
+from domain.models.student import Student
 from domain.models.student_mark import StudentMark
-from domain.models.student_master import Student
 from domain.models.values import StudentID, TestCaseID, FileID
 from usecases.dto.student_mark_view_data import AbstractStudentTestCaseTestResultViewData, \
     StudentMarkSummaryViewData
