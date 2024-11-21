@@ -2,6 +2,6 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class CompileTestResult:
+class TestCompileStageResult:
     is_success: bool
     output: str

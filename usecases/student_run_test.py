@@ -1,4 +1,4 @@
-from domain.errors import TestServiceError
+from domain.errors import TestServiceError, MatchServiceError
 from domain.models.expected_ouput_file import ExpectedOutputFile
 from domain.models.output_file import OutputFile
 from domain.models.output_file_test_result import OutputFileTestResult
@@ -84,11 +84,16 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
                 elif actual_output_file is not None and expected_output_file is not None:
                     # 実行結果とテストケースの両方に含まれているファイル
                     #  -> テストを行う
-                    match_service_result = self._match_get_best_service.execute(
-                        content_string=actual_output_file.content_string,
-                        test_config_options=test_config.options,
-                        patterns=expected_output_file.patterns,
-                    )
+                    try:
+                        match_service_result = self._match_get_best_service.execute(
+                            content_string=actual_output_file.content_string,
+                            test_config_options=test_config.options,
+                            patterns=expected_output_file.patterns,
+                        )
+                    except MatchServiceError as e:
+                        raise TestServiceError(
+                            reason=e.reason,
+                        )
                     file_test_result = TestResultTestedOutputFileEntry(
                         file_id=file_id,
                         actual=actual_output_file,

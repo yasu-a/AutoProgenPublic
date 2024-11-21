@@ -1,14 +1,22 @@
 import copy
+import gc
 import itertools
+from datetime import datetime
 from functools import cache
 from typing import Iterator
 
+from domain.errors import MatchServiceError
 from domain.models.output_file_test_result import NonmatchedToken, MatchedToken
 from domain.models.pattern import AbstractPattern, MatchRange, MatchSource, PatternMatchOptions
 from domain.models.test_config_options import TestConfigOptions
 from services.dto.match_result import MatchServiceResult
 from utils.app_logging import create_logger
 from utils.zen_han import zen_to_han
+
+
+class _MatcherError(RuntimeError):
+    def __init__(self, reason: str):
+        self.reason = reason
 
 
 class _Matcher:
@@ -20,6 +28,7 @@ class _Matcher:
             content_string: str,
             patterns: list[AbstractPattern],
             test_config_options: TestConfigOptions,
+            maximum_match_scale: float = 6.1,  # 検証する組み合わせの数が10^maximum_match_scaleを超えたらエラーを出す
     ):
         self._content_string = zen_to_han(content_string)
         self._patterns: list[AbstractPattern] = []
@@ -27,6 +36,7 @@ class _Matcher:
             pattern = copy.deepcopy(pattern)
             self._patterns.append(pattern)
         self._test_config_options = test_config_options
+        self._maximum_match_scale = maximum_match_scale
 
     @cache
     def _find_token_matches(self, pattern: AbstractPattern) \
@@ -51,17 +61,18 @@ class _Matcher:
             token_matches: list[MatchRange] = self._find_token_matches(pattern)
             matches.append((pattern, token_matches))
         self._logger.info(
-            f"Matcher found {sum(map(lambda item: len(item[1]), matches))} matches in text"
+            f"Matcher[{id(self)}] found {sum(map(lambda item: len(item[1]), matches))} matches in text"
         )
         return matches
 
     @cache
-    def _list_ordered_match_combinations(self) \
-            -> list[dict[AbstractPattern, MatchRange]]:
+    def _list_ordered_match_combinations(self) -> list[dict[AbstractPattern, MatchRange]]:
         # すべてのパターンに対するすべてのマッチ箇所について，マッチ箇所のいずれかを取るか一つも取らないかの組み合わせを見つける
 
         # すべてのパターンに対してすべてのマッチ箇所を見つける
         matches: list[tuple[AbstractPattern, list[MatchRange]]] = self._find_matches()
+
+        max_n_match_combinations = 10 ** self._maximum_match_scale
 
         # 順序付けられたマッチ範囲を持つマッチ箇所の組み合わせを生成する再帰ジェネレータ
         def iter_index_combinations(index_combination: tuple[int, ...] = (), prev_match_end=0):
@@ -92,14 +103,19 @@ class _Matcher:
                     match_combination[pattern] = match_ranges[token_index]
             match_combinations.append(match_combination)
 
+            if len(match_combinations) >= max_n_match_combinations:
+                raise _MatcherError(
+                    "現在のマッチングアルゴリズムの実装ではこのテストケースと出力の規模に対応できません\n"
+                    "テストケースの自動テストの構成から大規模な設定を削除して手動で採点してください"
+                )
+
         self._logger.info(
-            f"Matcher found {len(match_combinations)} match-combinations"
+            f"Matcher[{id(self)}] found {len(match_combinations)} match-combinations"
         )
 
         return match_combinations
 
-    def _iter_match_combinations_no_range_wrap(self) \
-            -> Iterator[dict[AbstractPattern, MatchRange]]:
+    def _iter_match_combinations_no_range_wrap(self) -> Iterator[dict[AbstractPattern, MatchRange]]:
         # マッチの組み合わせから範囲が重複するものを取り除く
 
         # 任意の2つの範囲どうしが重複しているかどうかのルックアップテーブルを作る
@@ -117,7 +133,11 @@ class _Matcher:
                 )
 
         # 範囲が重複しない組み合わせのみをyieldする
-        for match_combination in self._list_ordered_match_combinations():
+        ordered_match_combinations = self._list_ordered_match_combinations()
+        n_total = len(ordered_match_combinations)
+        i_current = 0
+        next_i_to_show_log = n_total / 10
+        for match_combination in ordered_match_combinations:
             wrap = False
             for et_left, et_right in itertools.combinations(match_combination.keys(), 2):
                 mr_left, mr_right = match_combination[et_left], match_combination[et_right]
@@ -126,6 +146,14 @@ class _Matcher:
                     break
             if not wrap:
                 yield match_combination
+
+            i_current += 1
+            if i_current > next_i_to_show_log:
+                self._logger.info(
+                    f"Matcher[{id(self)}] "
+                    f"progress: [{i_current / n_total * 100:3.0f} %] {i_current:,}/{n_total:,}"
+                )
+                next_i_to_show_log += n_total / 10
 
     @classmethod
     def _calculate_match_score(cls, match_combination: dict[AbstractPattern, MatchRange]) \
@@ -138,7 +166,7 @@ class _Matcher:
         match_length = sum(match_range.length for match_range in match_combination.values())
         return match_count, match_length
 
-    def get_best_token_matches(self) -> MatchServiceResult:
+    def get_best_token_matches(self) -> tuple[list[MatchedToken], list[NonmatchedToken]]:
         # もっともよいマッチを探索して，マッチしたトークンの集合とマッチしないトークンの集合を返す
         it = self._iter_match_combinations_no_range_wrap()
 
@@ -152,26 +180,28 @@ class _Matcher:
                 best_match_combination = match_combination
                 best_score = score
 
-        return MatchServiceResult(
-            matched_tokens=[
-                MatchedToken(
-                    begin=match_range.begin,
-                    end=match_range.end,
-                    pattern=pattern,
-                )
-                for pattern, match_range in best_match_combination.items()
-            ],
-            nonmatched_tokens=[
-                NonmatchedToken(
-                    pattern=pattern,
-                )
-                for pattern in self._patterns
-                if pattern not in best_match_combination
-            ],
-        )
+        matched_tokens = [
+            MatchedToken(
+                begin=match_range.begin,
+                end=match_range.end,
+                pattern=pattern,
+            )
+            for pattern, match_range in best_match_combination.items()
+        ]
+        nonmatched_tokens = [
+            NonmatchedToken(
+                pattern=pattern,
+            )
+            for pattern in self._patterns
+            if pattern not in best_match_combination
+        ]
+
+        return matched_tokens, nonmatched_tokens
 
 
 class MatchGetBestService:
+    _logger = create_logger()
+
     def __init__(self):
         pass
 
@@ -183,8 +213,26 @@ class MatchGetBestService:
             patterns: list[AbstractPattern],
             test_config_options: TestConfigOptions,
     ) -> MatchServiceResult:
-        return _Matcher(
+        # マッチングを実行
+        matcher = _Matcher(
             content_string=content_string,
             patterns=patterns,
             test_config_options=test_config_options,
-        ).get_best_token_matches()
+        )
+        time_start = datetime.now()
+        try:
+            matched_tokens, nonmatched_tokens = matcher.get_best_token_matches()
+        except _MatcherError as e:
+            raise MatchServiceError(reason=e.reason)
+        time_end = datetime.now()
+
+        # FIXME: _Matcherが解放されない
+        del matcher
+        gc.collect()  # TODO: _Matcherの実装を解放を必要としない効率のよい実装に変更する
+
+        # 結果を生成
+        return MatchServiceResult(
+            matched_tokens=matched_tokens,
+            nonmatched_tokens=nonmatched_tokens,
+            test_execution_timedelta=time_end - time_start,
+        )

@@ -48,6 +48,7 @@ class Split(NamedTuple):
     name: str
     separator: str
     body: str
+    enable_ljust: bool = True
 
     @classmethod
     def from_string(cls, s: str):
@@ -60,30 +61,43 @@ class Split(NamedTuple):
         for body_line in body_lines:
             yield self._replace(body=body_line)
 
-    def iter_multiline_splits(self):
+    def iter_multiline_splits(self, single_title_mode=False):
         splits = list(self.iter_split_for_lines())
-        for i, split in enumerate(splits):
-            replacement = {}
-            if len(splits) == 1:
-                replacement.update(separator='─')
-            else:
-                if i == 0:
-                    replacement.update(separator='┬')
-                elif i < len(splits) - 1:
-                    replacement.update(separator='│')
+        if single_title_mode:
+            yield self._replace(separator="", body="")
+            for i, split in enumerate(splits):
+                split = split._replace(
+                    separator=' ',
+                    timestamp=' ...      ',
+                    loglevel='',
+                    name='',
+                    enable_ljust=False,
+                )
+                yield split
+        else:
+            for i, split in enumerate(splits):
+                replacement = {}
+                if len(splits) == 1:
+                    replacement.update(separator='─')
                 else:
-                    replacement.update(separator='└')
-            if i != 0:
-                replacement.update(timestamp=' ... ', loglevel='', name='')
-            split = split._replace(**replacement)
-            yield split
+                    if i == 0:
+                        replacement.update(separator='┬')
+                    elif i < len(splits) - 1:
+                        replacement.update(separator='│')
+                    else:
+                        replacement.update(separator='└')
+                if i != 0:
+                    replacement.update(timestamp=' ... ', loglevel='', name='')
+                split = split._replace(**replacement)
+                yield split
 
     def to_string(self, ljust_state: LeftAdjustState):
         header = ' '.join([self.timestamp, self.loglevel, self.name])
         separator = self.separator
         body = self.body
 
-        header = ljust_state.ljust(header)
+        if self.enable_ljust:
+            header = ljust_state.ljust(header)
 
         return ' '.join([header, separator, body])
 

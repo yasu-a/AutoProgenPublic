@@ -2,11 +2,10 @@ from abc import ABC, abstractmethod
 
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
-    QMessageBox, QInputDialog, QWidget
+    QMessageBox, QInputDialog
 )
 
 from controls.widget_file_tab import AbstractFileTabWidgetDelegator, FileTabWidget
-from domain.models.expected_ouput_file import ExpectedOutputFile
 from domain.models.values import FileID, SpecialFileType
 from res.icons import get_icon
 
@@ -15,12 +14,6 @@ class AbstractTestCaseFilesEditWidgetDelegator(AbstractFileTabWidgetDelegator, A
     @abstractmethod
     def add_button_context_menu_titles(self, tab_widget: "FileTabWidget") \
             -> dict[str, tuple[str, QIcon | None]]:
-        raise NotImplementedError()
-
-    @classmethod
-    @abstractmethod
-    def create_widget(cls, file_id, tab_widget, expected_output_file: ExpectedOutputFile = None) \
-            -> QWidget:
         raise NotImplementedError()
 
     @classmethod

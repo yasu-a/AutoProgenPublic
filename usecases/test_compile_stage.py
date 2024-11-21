@@ -4,7 +4,7 @@ from domain.errors import StorageRunCompilerServiceError
 from services.storage import StorageCreateService, StorageLoadTestSourceService, \
     StorageDeleteService
 from services.storage_run_compiler import StorageRunCompilerService
-from usecases.dto.compile_test import CompileTestResult
+from usecases.dto.test_compile_stage import TestCompileStageResult
 
 
 class TestCompileStageUseCase:
@@ -23,7 +23,7 @@ class TestCompileStageUseCase:
 
     __SOURCE_FILE_RELATIVE_PATH = Path("main.c")
 
-    def execute(self, compiler_tool_fullpath: Path = None) -> CompileTestResult:
+    def execute(self, compiler_tool_fullpath: Path = None) -> TestCompileStageResult:
         # ストレージ領域の生成
         storage_id = self._storage_create_service.execute()
 
@@ -41,7 +41,7 @@ class TestCompileStageUseCase:
                 compiler_tool_fullpath=compiler_tool_fullpath,
             )
         except StorageRunCompilerServiceError as e:
-            result = CompileTestResult(
+            result = TestCompileStageResult(
                 is_success=False,
                 output=(
                     f"コンパイルテストに失敗しました\n"
@@ -53,7 +53,7 @@ class TestCompileStageUseCase:
                 ),
             )
         else:
-            result = CompileTestResult(
+            result = TestCompileStageResult(
                 is_success=True,
                 output=(
                     f"コンパイルテストに成功しました。\n"
