@@ -51,12 +51,11 @@ ${!skip-lines-unless} ${is_beta} ${3}
 
 ### 重大なバグ
 
-- 何も入力していないテストケースでテスト構成のデバッグを実行するとクラッシュする
 - 文字列`***`に「文字列が出現`*`」「文字列が出現`**`」のパターンがマッチしない
+
+### ほかのバグ・問題点
+
 - マッチングのアルゴリズムの計算量が大きすぎる
-
-### ほかのバグ
-
 - manabaからダウンロードした提出データのzipファイルが開けないことがある。一度展開してから圧縮しなおすと開ける。
 - プロジェクトを開いた直後とステージデータが更新された後、テーブルをスクロールするとすごく重い。
 - テストケースが複数ある状態ですべてのステージの実行を完了したのち、ソースコード抽出やコンパイルがエラーとなる状況を作って実行すると、1つ目のテストケース以外の実行状況が完了状態で残る。
@@ -80,10 +79,10 @@ ${!skip-lines-unless} ${is_beta} ${3}
 
 # 使用技術
 
-- Python
-- PyQt5
-- JSON
-- Visual Studio Developer Command Prompt
+- [Python](https://www.python.org/)
+- [PyQt5](https://pypi.org/project/PyQt5/)
+- [JSON](https://docs.python.org/ja/3/library/json.html)
+- [Visual Studio Developer Command Prompt](https://learn.microsoft.com/ja-jp/visualstudio/ide/reference/command-prompt-powershell)
 
 # FAQ
 
