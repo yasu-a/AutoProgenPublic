@@ -23,6 +23,7 @@ class TestCaseInputFilesEditWidgetDelegator(AbstractTestCaseFilesEditWidgetDeleg
 
     @classmethod
     def create_widget(cls, file_id, tab_widget, content_text: str = None) -> QWidget:
+        _ = file_id
         widget = TestCaseInputFileTextEdit(tab_widget)
         if content_text is None:
             content_text = ""
