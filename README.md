@@ -33,8 +33,8 @@
 - テストケースのテスト方法を変更
 - ファイル入出力に対応
 - UIの大幅な変更
-- [install-requirements.bat](install-requirements.bat)
-  でPythonに必要なライブラリをインストールし、[run.bat](run.bat)でインストールしないよう変更
+- [install-requirements.bat](../../install-requirements.bat)
+  でPythonに必要なライブラリをインストールし、[run.bat](../../run.bat)でインストールしないよう変更
 - （開発: 設計をレイヤー化）
 
 ## 既知のバグ
@@ -102,9 +102,9 @@
 
 バグでクラッシュしています。
 
-もし時間があれば、[run.bat](run.bat)で起動する代わりに[run-debug.bat](run-debug.bat)で起動し、
+もし時間があれば、[run.bat](../../run.bat)で起動する代わりに[run-debug.bat](../../run-debug.bat)で起動し、
 バグを再現し、クラッシュしたときにコマンドプロンプトに表示されるエラーログを開発者に送ってやってください。
-[run-debug.bat](run-debug.bat)で起動すると、プロセスの終了後もすぐにコマンドプロンプトが消えなくなります。
+[run-debug.bat](../../run-debug.bat)で起動すると、プロセスの終了後もすぐにコマンドプロンプトが消えなくなります。
 
 # チュートリアル
 
@@ -131,8 +131,8 @@ GUIの背後でコンパイルと実行のプロンプトを叩いています�
 3. このツールはPythonで動作します。
    Pythonがインストールされていない場合はインストールする必要があります。（[Download Python | Python.org](https://www.python.org/downloads/)）
 4. ツールの動作に必要なPythonライブラリをインストールします
-   手順2で展開したフォルダにある[install-requirements.bat](install-requirements.bat)を実行します。
-5. 手順2で展開したフォルダにある[run.bat](run.bat)を実行してツールを起動します。
+   手順2で展開したフォルダにある[install-requirements.bat](../../install-requirements.bat)を実行します。
+5. 手順2で展開したフォルダにある[run.bat](../../run.bat)を実行してツールを起動します。
 
 ### 2回目以降
 
