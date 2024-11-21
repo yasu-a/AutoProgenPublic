@@ -5,6 +5,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import QIntValidator, QRegExpValidator
 from PyQt5.QtWidgets import *
 
+from application.dependency.external_io import get_manaba_report_archive_io
 from application.dependency.usecases import get_project_check_exist_by_name_usecase
 from application.state.debug import is_debug
 from controls.dto.new_project_config import NewProjectConfig
@@ -22,9 +23,8 @@ class ProjectZipFileSelectorWidget(QWidget):
             return False
         if not zipfile.is_zipfile(folder_fullpath):
             return False
-        with zipfile.ZipFile(folder_fullpath, "r") as zf:
-            if "reportlist.xlsx" not in zf.namelist():
-                return False
+        if not get_manaba_report_archive_io(folder_fullpath).validate_master_excel_exists():
+            return False
         return True
 
     def __init__(self, parent: QObject = None):

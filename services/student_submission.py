@@ -1,6 +1,6 @@
 import io
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Iterable
 
 from domain.errors import ServiceError, ManabaReportArchiveIOError, StudentSubmissionServiceError
@@ -56,6 +56,7 @@ class StudentSubmissionExtractService:
 
         # 生徒の提出物を展開する
         try:
+            self._manaba_report_archive_io.validate_master_excel_exists()
             self._manaba_report_archive_io.validate_archive_contents(
                 student_submission_folder_names=set(
                     student_id_to_submission_folder_name_mapping.values()
@@ -73,7 +74,7 @@ class StudentSubmissionExtractService:
                 # 展開先のフォルダが存在しなかったらフォルダを生成
                 extract_base_folder_fullpath.mkdir(parents=True, exist_ok=False)
                 # 生徒のアーカイブ内のファイルの相対パスとファイルポインタのイテラブルを取得
-                it: Iterable[tuple[Path, io.BufferedReader]] = (
+                it: Iterable[tuple[PurePosixPath, io.BufferedReader]] = (
                     self._manaba_report_archive_io.iter_student_submission_archive_contents(
                         student_id=student_id,
                         student_submission_folder_name=student_submission_folder_name,
@@ -83,13 +84,15 @@ class StudentSubmissionExtractService:
                 for content_relative_path, fp in it:
                     self._logger.info(f"Extracting {student_id} {content_relative_path!s}")
                     # パスにスペースが含まれているとこの先のos.makedirsで失敗するので取り除く
-                    content_relative_path = Path(*map(str.strip, content_relative_path.parts))
+                    content_relative_path = PurePosixPath(
+                        *map(str.strip, content_relative_path.parts)
+                    )
                     # コピー先のファイルパス
                     dst_file_fullpath = extract_base_folder_fullpath / content_relative_path
                     dst_file_fullpath = dst_file_fullpath.resolve()
                     assert dst_file_fullpath.parent.is_relative_to(
                         extract_base_folder_fullpath
-                    ), dst_file_fullpath
+                    ), (dst_file_fullpath, extract_base_folder_fullpath)
                     # 親フォルダを生成
                     dst_file_fullpath.parent.mkdir(parents=True, exist_ok=True)
                     self._current_project_core_io.write_file_content_bytes(
