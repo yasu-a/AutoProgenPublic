@@ -3,7 +3,7 @@ import sys
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from controls.res.fonts import get_font
+from res.fonts import get_font
 from usecases.dto.student_mark_view_data import StudentTestCaseSummaryState
 
 

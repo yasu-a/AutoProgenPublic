@@ -27,6 +27,14 @@ class AppVersion:
         else:
             return f"{self.major}.{self.minor}-{self.release_type.value}.{self.patch}"
 
+    def to_json(self) -> dict:
+        return dict(
+            major=self.major,
+            minor=self.minor,
+            release_type=self.release_type.value,
+            patch=self.patch,
+        )
+
     @classmethod
     def from_json(cls, body):
         return cls(

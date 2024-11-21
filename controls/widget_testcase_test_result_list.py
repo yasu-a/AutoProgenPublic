@@ -1,9 +1,9 @@
 from PyQt5.QtCore import QObject, pyqtSlot, pyqtSignal
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget, QListWidgetItem
 
-from controls.res.fonts import get_font
 from controls.widget_test_summary_indicator import TestCaseTestSummaryIndicatorWidget
 from domain.models.values import TestCaseID
+from res.fonts import get_font
 from usecases.dto.student_mark_view_data import AbstractStudentTestCaseTestResultViewData
 
 

@@ -9,16 +9,16 @@ from application.dependency.usecases import get_student_list_id_usecase, \
     get_testcase_config_list_id_usecase, get_student_mark_get_usecase, get_student_mark_put_usecase
 from controls.dialog_mark_help import MarkHelpDialog
 from controls.dto.dialog_mark import MarkDialogState
-from controls.res.fonts import get_font
-from controls.res.icons import get_icon
 from controls.widget_mark_score_edit import MarkScoreEditWidget
 from controls.widget_page_button import PageButton
-from controls.widget_student_source_code_view import StudentSourceCodeViewWidget
+from controls.widget_student_source_code_view import StudentSourceCodeView
 from controls.widget_testcase_test_result_list import TestCaseTestResultListWidget
 from controls.widget_testcase_test_result_view import TestCaseTestResultViewWidget
 from domain.models.student import Student
 from domain.models.student_mark import StudentMark
 from domain.models.values import StudentID, TestCaseID, FileID
+from res.fonts import get_font
+from res.icons import get_icon
 from usecases.dto.student_mark_view_data import AbstractStudentTestCaseTestResultViewData, \
     StudentMarkSummaryViewData
 from utils.app_logging import create_logger
@@ -353,25 +353,28 @@ class MarkDialog(QDialog):
                     layout_middle_left_inner.setContentsMargins(0, 0, 0, 0)
                     layout_middle_left.addLayout(layout_middle_left_inner)
 
-                    self._w_source_code_view = StudentSourceCodeViewWidget(self)
+                    # 生徒のソースコード
+                    self._w_source_code_view = StudentSourceCodeView(self)
                     layout_middle_left_inner.addWidget(self._w_source_code_view)
 
-                    self._w_testcase_test_result_view \
-                        = TestCaseTestResultViewWidget(self)
+                    # ファイルごとのテスト結果
+                    self._w_testcase_test_result_view = TestCaseTestResultViewWidget(self)
                     layout_middle_left_inner.addWidget(self._w_testcase_test_result_view)
 
             if "middle-right":
                 layout_middle_right = QVBoxLayout()
                 layout_middle.addLayout(layout_middle_right)
 
+                # 上に表示するテストケースの名前とボタン
                 self._w_testcase_control = MarkTestCaseControlWidget(self)
                 self._w_testcase_control.setFixedWidth(300)
                 layout_middle_right.addWidget(self._w_testcase_control)
 
-                self._w_testcase_result_list = TestCaseTestResultListWidget(self)
-                self._w_testcase_result_list.setFixedWidth(300)
-                self._w_testcase_result_list.setFocusPolicy(Qt.NoFocus)
-                layout_middle_right.addWidget(self._w_testcase_result_list)
+                # テスト結果の一覧
+                self._w_test_result_list = TestCaseTestResultListWidget(self)
+                self._w_test_result_list.setFixedWidth(300)
+                self._w_test_result_list.setFocusPolicy(Qt.NoFocus)
+                layout_middle_right.addWidget(self._w_test_result_list)
 
         if "bottom":
             layout_bottom = QHBoxLayout()
@@ -392,8 +395,8 @@ class MarkDialog(QDialog):
 
     def _init_signals(self):
         # noinspection PyUnresolvedReferences
-        self._w_testcase_result_list.testcase_clicked.connect(
-            self.__w_testcase_result_list_testcase_clicked
+        self._w_test_result_list.testcase_clicked.connect(
+            self.__w_test_result_list_testcase_clicked
         )
         # noinspection PyUnresolvedReferences
         self._w_testcase_control.next_testcase_triggered.connect(
@@ -429,6 +432,7 @@ class MarkDialog(QDialog):
             cls,
             student_id: StudentID,
     ) -> StudentMarkSummaryViewData:
+        # ユースケースの使用
         return get_student_mark_view_data_get_mark_summary_usecase().execute(student_id)
 
     @classmethod
@@ -437,6 +441,7 @@ class MarkDialog(QDialog):
             student_id: StudentID,
             testcase_id: TestCaseID,
     ) -> AbstractStudentTestCaseTestResultViewData:
+        # ユースケースの使用
         return get_student_mark_view_data_get_test_result_usecase().execute(student_id, testcase_id)
 
     @classmethod
@@ -444,6 +449,7 @@ class MarkDialog(QDialog):
             cls,
             student_id: StudentID,
     ) -> str | None:
+        # ユースケースの使用
         return get_student_source_code_get_usecase().execute(student_id)
 
     @classmethod
@@ -451,6 +457,7 @@ class MarkDialog(QDialog):
             cls,
             student_id: StudentID,
     ) -> StudentMark:
+        # ユースケースの使用
         return get_student_mark_get_usecase().execute(student_id)
 
     @classmethod
@@ -458,6 +465,7 @@ class MarkDialog(QDialog):
             cls,
             student_mark: StudentMark,
     ) -> None:
+        # ユースケースの使用
         get_student_mark_put_usecase().execute(student_mark)
 
     @property
@@ -469,6 +477,8 @@ class MarkDialog(QDialog):
         )
 
     def __reflect_state(self):
+        # 状態を実際の表示に反映する
+
         # self._w_student_title_view: StudentTitleViewWidget
         if self._state.student_id is None:
             self._w_student_control.set_data(None)
@@ -520,9 +530,9 @@ class MarkDialog(QDialog):
 
         # self._w_testcase_result_list: TestCaseTestResultListWidget(self)
         if self._state.student_id is None:
-            self._w_testcase_result_list.set_data(None)
+            self._w_test_result_list.set_data(None)
         else:
-            self._w_testcase_result_list.set_data(
+            self._w_test_result_list.set_data(
                 [
                     self.__get_student_testcase_test_result_view_data(
                         student_id=self._state.student_id,
@@ -531,7 +541,7 @@ class MarkDialog(QDialog):
                     for testcase_id in self._testcase_ids
                 ]
             )
-            self._w_testcase_result_list.set_selected_id(self._state.testcase_id)
+            self._w_test_result_list.set_selected_id(self._state.testcase_id)
 
         # self._w_mark_score: MarkScoreEditWidget
         if self._state.student_id is None:
@@ -556,44 +566,80 @@ class MarkDialog(QDialog):
         self.__reflect_state()
 
     @pyqtSlot(TestCaseID)
-    def __w_testcase_result_list_testcase_clicked(self, testcase_id: TestCaseID):
+    def __w_test_result_list_testcase_clicked(self, testcase_id: TestCaseID):
+        """
+        テスト結果の一覧の項目（テストケース）がクリックされたとき
+        評価のためのダイアログの状態を、クリックされたテストケースに対応する新しい状態に更新する
+        """
         new_state = self.states.create_state_by_testcase_id(testcase_id)
         self.set_state(new_state)
 
     @pyqtSlot()
     def __w_testcase_control_next_testcase_triggered(self):
+        """
+        次のテストケースを表示するためのボタンがクリックされたとき
+        評価のためのダイアログの状態を、次のテストケースに対応する新しい状態に更新する
+        """
         new_state = self.states.create_state_of_next_testcase()
         self.set_state(new_state)
 
     @pyqtSlot()
     def __w_testcase_control_prev_testcase_triggered(self):
+        """
+        前のテストケースを表示するためのボタンがクリックされたとき
+        評価のためのダイアログの状態を、前のテストケースに対応する新しい状態に更新する
+        """
         new_state = self.states.create_state_of_prev_testcase()
         self.set_state(new_state)
 
     @pyqtSlot()
     def __w_student_control_next_student_triggered(self):
+        """
+        次の生徒の評価を表示するためのボタンがクリックされたとき
+        評価のためのダイアログの状態を、次の生徒に対応する新しい状態に更新する
+        """
         new_state = self.states.create_state_of_next_student()
         self.set_state(new_state)
 
     @pyqtSlot()
     def __w_student_control_prev_student_triggered(self):
+        """
+        前の生徒の評価を表示するためのボタンがクリックされたとき
+        評価のためのダイアログの状態を、前の生徒に対応する新しい状態に更新する
+        """
         new_state = self.states.create_state_of_prev_student()
         self.set_state(new_state)
 
     @pyqtSlot(FileID)
     def __w_test_result_view_placeholder_selected_file_id_changed(self, file_id: FileID):
+        """
+        テスト結果の表示で、別のファイルが選択されたとき
+        評価のためのダイアログの状態を、選択されたファイルに対応する新しい状態に更新する
+        """
         self._state.file_id = file_id
 
     @pyqtSlot(QKeyEvent)
     def __w_mark_score_key_pressed(self, evt: QKeyEvent):
+        """
+        キーボードのキーが押されたとき
+        押されたキーに対応する新しい状態を評価のためのダイアログの状態に更新する
+        """
         self.__on_key_press(evt)
 
     @pyqtSlot()
     def __b_help_clicked(self):
+        """
+        ヘルプダイアログを表示するためのボタンがクリックされたとき
+        ヘルプダイアログを表示する
+        """
         dialog = MarkHelpDialog()
         dialog.exec_()
 
     def __on_key_press(self, evt: QKeyEvent):
+        """
+        キーボードのキーが押されたとき
+        押されたキーに対応する新しい状態を評価のためのダイアログの状態に更新する
+        """
         key = evt.key()
         new_state = None
         if key == Qt.Key_Q:

@@ -3,11 +3,11 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMessageBox, QWidget
 
 from controls.delegator_testcase_files_edit import AbstractTestCaseFilesEditWidgetDelegator
-from controls.res.icons import get_icon
 from controls.widget_file_tab import FileTabWidget
-from controls.widget_plain_text_edit import PlainTextEdit
+from controls.widget_testcase_input_file_text_edit import TestCaseInputFileTextEdit
 from domain.models.input_file import InputFileMapping, InputFile
 from domain.models.values import FileID
+from res.icons import get_icon
 
 
 class TestCaseInputFilesEditWidgetDelegator(AbstractTestCaseFilesEditWidgetDelegator):
@@ -23,10 +23,10 @@ class TestCaseInputFilesEditWidgetDelegator(AbstractTestCaseFilesEditWidgetDeleg
 
     @classmethod
     def create_widget(cls, file_id, tab_widget, content_text: str = None) -> QWidget:
-        widget = PlainTextEdit(tab_widget)
-        widget.set_show_editing_symbols(False)
-        if content_text is not None:
-            widget.setPlainText(content_text)
+        widget = TestCaseInputFileTextEdit(tab_widget)
+        if content_text is None:
+            content_text = ""
+        widget.set_data(content_text)
         return widget
 
     def perform_add(self, action_name: str, tab_widget: "FileTabWidget") -> None:
@@ -81,8 +81,9 @@ class TestCaseInputFilesEditWidget(FileTabWidget):
             file_id = self.item_get_file_id(index)
             # 内容
             widget = self.item_widget(index)
-            assert isinstance(widget, PlainTextEdit)
-            content_string = widget.toPlainText()
+            assert isinstance(widget, TestCaseInputFileTextEdit)
+            content_string = widget.get_data()
+            assert content_string is not None
             # データに設定
             input_files[file_id] = InputFile(
                 file_id=file_id,

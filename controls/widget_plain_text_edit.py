@@ -3,7 +3,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
 from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
-from controls.res.fonts import get_font
+from res.fonts import get_font
 
 
 class PlainTextEdit(QPlainTextEdit, HorizontalScrollWithShiftAndWheelMixin):
@@ -15,8 +15,6 @@ class PlainTextEdit(QPlainTextEdit, HorizontalScrollWithShiftAndWheelMixin):
 
     def _init_ui(self):
         self.setFont(get_font(monospace=True, small=True))
-        self.set_show_editing_symbols(True)
-        self.setLineWrapMode(QPlainTextEdit.NoWrap)
 
     def set_show_editing_symbols(self, v: bool):
         if v:
@@ -28,6 +26,13 @@ class PlainTextEdit(QPlainTextEdit, HorizontalScrollWithShiftAndWheelMixin):
         else:
             self.document().setDefaultTextOption(QTextOption())
 
+    def set_line_wrap(self, v: bool):
+        if v:
+            self.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+            self.setWordWrapMode(QTextOption.WrapAnywhere)
+        else:
+            self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+            self.setWordWrapMode(QTextOption.NoWrap)
+
     def _init_signals(self):
         pass
-

@@ -4,7 +4,7 @@ from application.dependency.core_io import *
 from application.dependency.path_provider import *
 from infra.repositories.app_version import AppVersionRepository
 from infra.repositories.current_project import CurrentProjectRepository
-from infra.repositories.global_config import GlobalConfigRepository
+from infra.repositories.global_settings import GlobalSettingsRepository
 from infra.repositories.project import ProjectRepository
 from infra.repositories.storage import StorageRepository
 from infra.repositories.student import StudentRepository
@@ -16,8 +16,8 @@ from infra.repositories.testcase_config import TestCaseConfigRepository
 
 
 @cache  # インスタンス内部にキャッシュを持つのでプロジェクト内ステートフル
-def get_global_config_repository():
-    return GlobalConfigRepository(
+def get_global_settings_repository():
+    return GlobalSettingsRepository(
         global_path_provider=get_global_path_provider(),
         global_core_io=get_global_core_io(),
     )

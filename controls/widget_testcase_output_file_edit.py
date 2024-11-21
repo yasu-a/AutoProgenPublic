@@ -6,13 +6,13 @@ from PyQt5.QtGui import QDoubleValidator
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, \
     QVBoxLayout, QBoxLayout, QPushButton
 
-from controls.res.fonts import get_font
-from controls.res.icons import get_icon
 from controls.widget_button_box import ButtonBox
 from domain.models.expected_ouput_file import ExpectedOutputFile
 from domain.models.pattern import AbstractPattern, TextPattern, \
     FloatPattern, PatternList, SpaceOrEOLPattern
 from domain.models.values import FileID
+from res.fonts import get_font
+from res.icons import get_icon
 
 
 class ExpectedOutputFileTokenListItemControlButtons(ButtonBox):

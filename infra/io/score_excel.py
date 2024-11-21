@@ -146,7 +146,7 @@ class _ScoreExcelWorksheetReader:
                 )
             if worksheet_only:
                 messages.append(
-                    "ワークシートに存在しますが採点していません: "
+                    "ワークシートに存在しますがプロジェクトに存在しません: "
                     + " ".join(map(str, worksheet_only))
                 )
             raise ScoreExcelMalformedWorksheetError(

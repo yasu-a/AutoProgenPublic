@@ -1,15 +1,13 @@
 from datetime import datetime
-from typing import Callable
 
 from application.state.current_project import set_current_project_id
-from domain.models.project import Project
 from domain.models.values import ProjectID, TargetID
-from services.project import ProjectListService, ProjectCreateService, ProjectBaseFolderShowService, \
+from services.dto.project import ProjectConfigState
+from services.project import ProjectCreateService, ProjectBaseFolderShowService, \
     ProjectFolderShowService, ProjectDeleteService, ProjectGetSizeQueryService, \
-    ProjectUpdateTimestampService
-from services.student_master_create import StudentMasterCreateService
-from services.student_submission import StudentSubmissionExtractService
-from usecases.dto.project_summary import ProjectSummary
+    ProjectUpdateTimestampService, ProjectListIDQueryService, ProjectGetService, \
+    ProjectGetConfigStateQueryService
+from usecases.dto.project import NormalProjectSummary, ErrorProjectSummary
 
 
 class ProjectCheckExistByNameUseCase:
@@ -18,16 +16,16 @@ class ProjectCheckExistByNameUseCase:
     def __init__(
             self,
             *,
-            project_list_service: ProjectListService,
+            project_list_id_query_service: ProjectListIDQueryService,
     ):
-        self._project_list_service = project_list_service
+        self._project_list_id_query_service = project_list_id_query_service
 
     def execute(self, target_project_name: str) -> bool:
         target_project_id = ProjectID(target_project_name)
 
-        projects: list[Project] = self._project_list_service.execute()
-        for project in projects:
-            if target_project_id == project.project_id:
+        project_ids: list[ProjectID] = self._project_list_id_query_service.execute()
+        for project_id in project_ids:
+            if target_project_id == project_id:
                 return True
 
         return False
@@ -76,25 +74,6 @@ class ProjectGetSizeQueryUseCase:
         return self._project_get_size_query_service.execute(project_id)
 
 
-class ProjectInitializeStaticUseCase:
-    # プロジェクトの静的データを初期化するユースケース
-
-    def __init__(
-            self,
-            *,
-            student_master_create_service: StudentMasterCreateService,
-            student_submission_extract_service: StudentSubmissionExtractService,
-    ):
-        self._student_master_create_service = student_master_create_service
-        self._student_submission_extract_service = student_submission_extract_service
-
-    def execute(self, callback: Callable[[str], None]) -> None:
-        callback("生徒マスタを生成しています")
-        self._student_master_create_service.execute()
-        callback("生徒の提出ファイルを展開しています")
-        self._student_submission_extract_service.execute()
-
-
 class ProjectOpenUseCase:
     def __init__(
             self,
@@ -116,24 +95,48 @@ class ProjectListRecentSummaryUseCase:
     def __init__(
             self,
             *,
-            project_list_service: ProjectListService,
+            project_list_id_query_service: ProjectListIDQueryService,
+            project_get_config_state_query_service: ProjectGetConfigStateQueryService,
+            project_get_service: ProjectGetService,
     ):
-        self._project_list_service = project_list_service
+        self._project_list_id_query_service = project_list_id_query_service
+        self._project_get_config_state_query_service = project_get_config_state_query_service
+        self._project_get_service = project_get_service
 
-    def execute(self) -> list[ProjectSummary]:
-        projects = self._project_list_service.execute()
-        lst = [
-            ProjectSummary(
-                project_id=project.project_id,
-                project_name=str(project.project_id),
-                target_number=int(project.target_id),
-                zip_name=project.zip_name,
-                open_at=project.open_at,
-            )
-            for project in projects
-        ]
-        lst.sort(reverse=True)
-        return lst
+    def execute(self) -> list[NormalProjectSummary]:
+        project_ids = self._project_list_id_query_service.execute()
+        project_summaries = []
+        for project_id in project_ids:
+            project_config_state = self._project_get_config_state_query_service.execute(project_id)
+            if project_config_state == ProjectConfigState.NORMAL:
+                project = self._project_get_service.execute(project_id)
+                project_summary = NormalProjectSummary(
+                    project_id=project.project_id,
+                    target_number=int(project.target_id),
+                    zip_name=project.zip_name,
+                    open_at=project.open_at,
+                )
+            elif project_config_state == ProjectConfigState.INCOMPATIBLE_APP_VERSION:
+                project_summary = ErrorProjectSummary(
+                    project_id=project_id,
+                    error_message="現在のバージョンと互換性がありません",
+                )
+            elif project_config_state == ProjectConfigState.UNOPENABLE:
+                project_summary = ErrorProjectSummary(
+                    project_id=project_id,
+                    error_message="プロジェクトデータが破損していて開けません",
+                )
+            elif project_config_state == ProjectConfigState.META_BROKEN:
+                project_summary = ErrorProjectSummary(
+                    project_id=project_id,
+                    error_message="メタデータが破損していて読み取れません",
+                )
+            else:
+                assert False, project_config_state
+            project_summaries.append(project_summary)
+
+        project_summaries.sort()
+        return project_summaries
 
 
 class ProjectBaseFolderShowUseCase:

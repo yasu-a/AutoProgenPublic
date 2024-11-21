@@ -1,28 +1,41 @@
-from typing import Callable
+from typing import Callable, TypeVar, Generic
 
 from PyQt5.QtCore import QThread, pyqtSignal, QObject, Qt, pyqtSlot
 from PyQt5.QtGui import QShowEvent
 from PyQt5.QtWidgets import QDialog, QHBoxLayout, QLabel, QVBoxLayout
 
-from controls.res.fonts import get_font
 from controls.widget_progress_icon import ProgressIconWidget
+from res.fonts import get_font
+
+_EO = TypeVar("_EO")  # error object
 
 
-class AbstractProgressDialogWorker(QThread):
-    message_updated = pyqtSignal(str, name="message_updated")  # message: str
+class AbstractProgressDialogWorker(QThread, Generic[_EO]):
+    message_update_requested = pyqtSignal(str, name="message_updated")  # message: str
 
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
+        self._error_object: _EO | None = None
+
     def _callback(self, message: str) -> None:
         # noinspection PyUnresolvedReferences
-        self.message_updated.emit(message)
+        self.message_update_requested.emit(message)
+
+    def set_rejected(self, error_object: _EO):
+        self._error_object = error_object
+
+    def is_rejected(self):
+        return self._error_object is not None
+
+    def get_error_object(self) -> _EO | None:
+        return self._error_object
 
     def run(self):
         raise NotImplementedError()
 
 
-class AbstractProgressDialog(QDialog):
+class AbstractProgressDialog(QDialog, Generic[_EO]):
     # プログレスを表示するダイアログ
 
     def __init__(
@@ -30,13 +43,13 @@ class AbstractProgressDialog(QDialog):
             parent: QObject = None,
             *,
             title: str = None,
-            worker_producer: Callable[[], AbstractProgressDialogWorker],
+            worker_producer: Callable[[], AbstractProgressDialogWorker[_EO]],
             # ^ parentに渡すインスタンスの親の初期化が終わる前にworkerを作ることができないので遅延評価
     ):
         super().__init__(parent)
 
         self.__title = title
-        self.__worker: AbstractProgressDialogWorker = worker_producer()
+        self.__worker: AbstractProgressDialogWorker[_EO] = worker_producer()
 
         self._init_ui()
         self._init_signals()
@@ -79,7 +92,7 @@ class AbstractProgressDialog(QDialog):
 
     def _init_signals(self):
         # noinspection PyUnresolvedReferences
-        self.__worker.message_updated.connect(self.__worker_progress_updated)
+        self.__worker.message_update_requested.connect(self.__worker_message_update_requested)
         # noinspection PyUnresolvedReferences
         self.__worker.finished.connect(self.__worker_progress_finished)
 
@@ -88,9 +101,15 @@ class AbstractProgressDialog(QDialog):
             self.__worker.start()
 
     @pyqtSlot(str)
-    def __worker_progress_updated(self, progress_title: str):
-        self._l_message.setText(progress_title)
+    def __worker_message_update_requested(self, message: str):
+        self._l_message.setText(message)
 
     @pyqtSlot()
     def __worker_progress_finished(self):
-        self.accept()
+        if self.__worker.is_rejected():
+            self.reject()
+        else:
+            self.accept()
+
+    def get_error_object(self) -> _EO | None:
+        return self.__worker.get_error_object()

@@ -1,11 +1,11 @@
 from PyQt5.QtCore import pyqtSignal, QObject, pyqtSlot
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTabWidget, QLabel, QPlainTextEdit
 
-from controls.res.fonts import get_font
-from controls.res.icons import get_icon
 from controls.widget_testcase_result_otuput_file_view import TestCaseResultOutputFileViewWidget
 from domain.models.student_stage_result import TestResultOutputFileMapping
 from domain.models.values import FileID, SpecialFileType
+from res.fonts import get_font
+from res.icons import get_icon
 from usecases.dto.student_mark_view_data import AbstractStudentTestCaseTestResultViewData
 
 
@@ -106,7 +106,8 @@ class TestCaseTestResultViewWidget(QWidget):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self.__w: TestCaseValidTestResultViewWidget | None = None
+        self.__w: TestCaseValidTestResultViewWidget | TestCaseInvalidTestResultViewWidget | None \
+            = None
 
         self._init_ui()
         self._init_signals()

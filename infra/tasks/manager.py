@@ -5,7 +5,7 @@ from typing import Callable
 from PyQt5.QtCore import QObject, QTimer, QMutex, pyqtSlot
 from PyQt5.QtWidgets import qApp
 
-from infra.repositories.global_config import GlobalConfigRepository
+from infra.repositories.global_settings import GlobalSettingsRepository
 from infra.tasks.queue import AbstractTaskQueue, StudentTaskQueue
 from infra.tasks.task import AbstractTask, AbstractStudentTask
 from utils.app_logging import create_logger
@@ -85,7 +85,7 @@ class TaskManager(QObject):
 
     _logger = create_logger()
 
-    def __init__(self, global_settings_repo: GlobalConfigRepository):
+    def __init__(self, global_settings_repo: GlobalSettingsRepository):
         super().__init__(qApp)
 
         self._max_workers = global_settings_repo.get().max_workers

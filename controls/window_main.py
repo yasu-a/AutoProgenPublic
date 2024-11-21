@@ -7,7 +7,7 @@ from application.dependency.tasks import get_task_manager
 from application.dependency.usecases import get_current_project_summary_get_usecase, \
     get_student_list_id_usecase, get_student_submission_folder_show_usecase
 from controls.dialog_about import AboutDialog
-from controls.dialog_global_config import GlobalConfigEditDialog
+from controls.dialog_global_settings import GlobalSettingsEditDialog
 from controls.dialog_mark import MarkDialog
 from controls.dialog_score_export import ScoreExportDialog
 from controls.dialog_stop_tasks import StopTasksDialog
@@ -155,7 +155,7 @@ class MainWindow(QMainWindow):
                 task_cls=CleanAllStagesStudentTask,
             )
         elif name == "edit-settings":
-            dialog = GlobalConfigEditDialog()
+            dialog = GlobalSettingsEditDialog()
             dialog.exec_()
         elif name == "edit-testcases":
             dialog = TestCaseListEditDialog(self)

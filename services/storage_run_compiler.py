@@ -3,7 +3,7 @@ from pathlib import Path
 from domain.errors import StorageRunCompilerServiceError, CompileToolIOError
 from domain.models.values import StorageID
 from infra.io.compile_tool import CompileToolIO
-from infra.repositories.global_config import GlobalConfigRepository
+from infra.repositories.global_settings import GlobalSettingsRepository
 from infra.repositories.storage import StorageRepository
 from infra.repositories.student_dynamic import StudentDynamicRepository
 from services.dto.storage_run_compiler import StorageCompileServiceResult
@@ -15,12 +15,12 @@ class StorageRunCompilerService:
             self,
             *,
             compile_tool_io: CompileToolIO,
-            global_config_repo: GlobalConfigRepository,
+            global_settings_repo: GlobalSettingsRepository,
             student_dynamic_repo: StudentDynamicRepository,
             storage_repo: StorageRepository,
     ):
         self._compile_tool_io = compile_tool_io
-        self._global_config_repo = global_config_repo
+        self._global_settings_repo = global_settings_repo
         self._student_dynamic_repo = student_dynamic_repo
         self._storage_repo = storage_repo
 
@@ -33,7 +33,7 @@ class StorageRunCompilerService:
     ) -> StorageCompileServiceResult:
         # コンパイラのパスを取得する
         if compiler_tool_fullpath is None:
-            compiler_tool_fullpath = self._global_config_repo.get().compiler_tool_fullpath
+            compiler_tool_fullpath = self._global_settings_repo.get().compiler_tool_fullpath
         if compiler_tool_fullpath is None:
             raise StorageRunCompilerServiceError(
                 reason="コンパイラが設定されていません",
@@ -54,7 +54,7 @@ class StorageRunCompilerService:
             # コンパイラのパス
             compiler_tool_fullpath=compiler_tool_fullpath,
             # コンパイルのタイムアウト
-            timeout=self._global_config_repo.get().compile_timeout,
+            timeout=self._global_settings_repo.get().compile_timeout,
             # コンパイル時のカレントディレクトリ
             cwd_fullpath=source_file_fullpath.parent,
             # ソースコードの相対パス

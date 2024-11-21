@@ -4,12 +4,12 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import *
 
-from application.dependency.usecases import get_global_config_get_usecase, \
-    get_global_config_put_usecase, get_test_compile_stage_usecase
+from application.dependency.usecases import get_global_settings_get_usecase, \
+    get_global_settings_put_usecase, get_test_compile_stage_usecase
 from controls.dialog_compiler_search import CompilerSearchDialog
-from controls.res.icons import get_icon
-from domain.models.global_config import GlobalConfig
+from domain.models.global_settings import GlobalSettings
 from infra.io.compiler_location import is_compiler_location
+from res.icons import get_icon
 from utils.app_logging import create_logger
 
 
@@ -163,7 +163,7 @@ class MaxWorkersWidget(QWidget):
         return None
 
 
-class GlobalConfigEditWidget(QWidget):
+class GlobalSettingsEditWidget(QWidget):
     _logger = create_logger()
 
     def __init__(self, parent: QObject = None):
@@ -181,45 +181,90 @@ class GlobalConfigEditWidget(QWidget):
 
         i = 0
 
-        def add_item(title: str, widget: QWidget):
+        def add_item(title: str | None, widget: QWidget):
             nonlocal i
-            label = QLabel(title, self)
-            font = label.font()
-            font.setBold(True)
-            label.setFont(font)
-            layout_content.addWidget(label, i, 0)
-            i += 1
+            if title is not None:
+                label = QLabel(title, self)
+                font = label.font()
+                font.setBold(True)
+                label.setFont(font)
+                layout_content.addWidget(label, i, 0)
+                i += 1
             layout_content.addWidget(widget, i, 0)
             i += 1
 
+        # GlobalSettings::compiler_tool_fullpath: Path | None
         # noinspection PyTypeChecker
         self._w_compiler_tool_path = CompilerToolPathEditWidget(self)
         add_item(
-            "Visual Studio開発者ツールのパス",
-            self._w_compiler_tool_path,
+            title="Visual Studio開発者ツールのパス",
+            widget=self._w_compiler_tool_path,
         )
 
+        # GlobalSettings::compiler_timeout: float
         # noinspection PyTypeChecker
         self._w_compiler_timeout = CompilerTimeoutWidget(self)
         add_item(
-            "コンパイルのタイムアウト",
-            self._w_compiler_timeout,
+            title="コンパイルのタイムアウト",
+            widget=self._w_compiler_timeout,
         )
 
+        # GlobalSettings::max_workers: int
         # noinspection PyTypeChecker
         self._w_max_workers = MaxWorkersWidget(self)
         add_item(
-            "並列タスク実行数（反映するには再起動が必要です）",
-            self._w_max_workers,
+            title="並列タスク実行数（反映するには再起動が必要です）",
+            widget=self._w_max_workers,
         )
 
+        # GlobalSettings::backup_before_export: bool
         self._w_backup_before_export = QCheckBox(
             "成績記録用のExcelに点数をエクスポートする前に同じフォルダにコピーをとる",
             self,
         )
         add_item(
-            "成績記録用Excelのバックアップ",
-            self._w_backup_before_export,
+            title="成績記録用Excelのバックアップ",
+            widget=self._w_backup_before_export,
+        )
+
+        # GlobalSettings::show_editing_symbols_in_stream_content: bool
+        self._w_show_editing_symbols_in_stream_content = QCheckBox(
+            "ストリームの内容を表示するときに編集記号を表示する",
+            self,
+        )
+        add_item(
+            title="編集記号の表示",
+            widget=self._w_show_editing_symbols_in_stream_content,
+        )
+
+        # GlobalSettings::show_editing_symbols_in_source_code: bool
+        self._w_show_editing_symbols_in_source_code = QCheckBox(
+            "ソースコードを表示するときに編集記号を表示する",
+            self,
+        )
+        add_item(
+            title=None,
+            widget=self._w_show_editing_symbols_in_source_code,
+        )
+
+        # GlobalSettings::enable_line_wrap_in_stream_content: bool
+        self._w_enable_line_wrap_in_stream_content = QCheckBox(
+            "ストリームの内容の長い行を折り返す",
+            self,
+        )
+        add_item(
+            title="行折り返しの設定",
+            widget=self._w_enable_line_wrap_in_stream_content,
+        )
+
+        # GlobalSettings::enable_line_wrap_in_source_code: bool
+        self._w_enable_line_wrap_in_source_code = QCheckBox(
+            "ソースコードの長い行を折り返す",
+            self,
+        )
+        add_item(
+            title=None,
+            widget=self._w_enable_line_wrap_in_source_code,
         )
 
         layout_root.addStretch(1)
@@ -249,18 +294,58 @@ class GlobalConfigEditWidget(QWidget):
                 f"{result.output}",
             )
 
-    def set_value(self, settings: GlobalConfig) -> None:
-        self._w_compiler_tool_path.set_value(settings.compiler_tool_fullpath)
-        self._w_compiler_timeout.set_value(int(settings.compile_timeout))
-        self._w_max_workers.set_value(settings.max_workers)
-        self._w_backup_before_export.setChecked(settings.backup_before_export)
+    def set_value(self, settings: GlobalSettings) -> None:
+        self._w_compiler_tool_path.set_value(
+            settings.compiler_tool_fullpath,
+        )
+        self._w_compiler_timeout.set_value(int(
+            settings.compile_timeout),
+        )
+        self._w_max_workers.set_value(
+            settings.max_workers,
+        )
+        self._w_backup_before_export.setChecked(
+            settings.backup_before_export,
+        )
+        self._w_show_editing_symbols_in_stream_content.setChecked(
+            settings.show_editing_symbols_in_stream_content,
+        )
+        self._w_show_editing_symbols_in_source_code.setChecked(
+            settings.show_editing_symbols_in_source_code,
+        )
+        self._w_enable_line_wrap_in_stream_content.setChecked(
+            settings.enable_line_wrap_in_stream_content,
+        )
+        self._w_enable_line_wrap_in_source_code.setChecked(
+            settings.enable_line_wrap_in_source_code,
+        )
 
-    def get_value(self) -> GlobalConfig:
-        return GlobalConfig(
-            compiler_tool_fullpath=self._w_compiler_tool_path.get_value(),
-            compile_timeout=float(self._w_compiler_timeout.get_value()),
-            max_workers=self._w_max_workers.get_value(),
-            backup_before_export=self._w_backup_before_export.isChecked(),
+    def get_value(self) -> GlobalSettings:
+        return GlobalSettings(
+            compiler_tool_fullpath=(
+                self._w_compiler_tool_path.get_value()
+            ),
+            compile_timeout=(
+                float(self._w_compiler_timeout.get_value())
+            ),
+            max_workers=(
+                self._w_max_workers.get_value()
+            ),
+            backup_before_export=(
+                self._w_backup_before_export.isChecked()
+            ),
+            show_editing_symbols_in_stream_content=(
+                self._w_show_editing_symbols_in_stream_content.isChecked()
+            ),
+            show_editing_symbols_in_source_code=(
+                self._w_show_editing_symbols_in_source_code.isChecked()
+            ),
+            enable_line_wrap_in_stream_content=(
+                self._w_enable_line_wrap_in_stream_content.isChecked()
+            ),
+            enable_line_wrap_in_source_code=(
+                self._w_enable_line_wrap_in_source_code.isChecked()
+            )
         )
 
     # noinspection PyMethodMayBeStatic
@@ -277,7 +362,7 @@ class GlobalConfigEditWidget(QWidget):
             return "\n".join(filter(None, validation_results))
 
 
-class GlobalConfigEditDialog(QDialog):
+class GlobalSettingsEditDialog(QDialog):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
@@ -293,8 +378,8 @@ class GlobalConfigEditDialog(QDialog):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        self._w_settings_edit = GlobalConfigEditWidget(self)  # type: ignore
-        self._w_settings_edit.set_value(get_global_config_get_usecase().execute())
+        self._w_settings_edit = GlobalSettingsEditWidget(self)  # type: ignore
+        self._w_settings_edit.set_value(get_global_settings_get_usecase().execute())
         layout.addWidget(self._w_settings_edit)
 
     def _init_signals(self):
@@ -304,7 +389,7 @@ class GlobalConfigEditDialog(QDialog):
     def closeEvent(self, evt: QCloseEvent):
         reason = self._w_settings_edit.validate_and_get_reason()
         if reason is None:
-            get_global_config_put_usecase().execute(self._w_settings_edit.get_value())
+            get_global_settings_put_usecase().execute(self._w_settings_edit.get_value())
         else:
             # ユーザーにエラーを示して変更を破棄して閉じるか閉じずに編集するかを聞く
             res = QMessageBox.warning(

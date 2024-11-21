@@ -3,38 +3,43 @@ from collections import deque
 from contextlib import contextmanager
 
 from PyQt5.QtCore import *
-from PyQt5.QtGui import QCursor, QMouseEvent
+from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import *
 
 from application.dependency.usecases import get_project_list_recent_summary_usecase, \
     get_project_base_folder_show_usecase, get_project_folder_show_usecase, \
     get_project_delete_usecase, get_project_get_size_query_usecase
 from controls.dialog_progress import AbstractProgressDialogWorker, AbstractProgressDialog
-from controls.res.fonts import get_font
-from controls.res.icons import get_icon
-from controls.widget_clickable_label import ClickableLabelWidget
+from controls.widget_clickable_label import ClickableLabel
 from domain.models.values import ProjectID
-from usecases.dto.project_summary import ProjectSummary
+from res.fonts import get_font
+from res.icons import get_icon
+from usecases.dto.project import NormalProjectSummary, AbstractProjectSummary, \
+    ErrorProjectSummary
 
 
 class RecentProjectListItemWidget(QWidget):
     # ----------------------------------------------
     #  Project-X                              [...]
     #  report5.zip       Q.5 2024/11/05 30MB
+    #  <error message>
     # ----------------------------------------------
 
-    control_triggered = pyqtSignal(ProjectID, name="control_triggered")
-    selected = pyqtSignal(ProjectID, name="project_selected")
+    open_project_requested = pyqtSignal(ProjectID, name="open_project_requested")
+    open_folder_requested = pyqtSignal(ProjectID, name="open_folder_requested")
+    delete_project_requested = pyqtSignal(ProjectID, name="delete_project_requested")
 
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self._project_summary: ProjectSummary | None = None
+        self._project_summary: AbstractProjectSummary | None = None
 
         self._init_ui()
         self._init_signals()
 
     def _init_ui(self):
+        self.installEventFilter(self)
+
         layout = QHBoxLayout()
         self.setLayout(layout)
 
@@ -48,7 +53,7 @@ class RecentProjectListItemWidget(QWidget):
                 layout_top = QHBoxLayout()
                 layout_left.addLayout(layout_top)
 
-                self._l_project_name = ClickableLabelWidget(self)
+                self._l_project_name = ClickableLabel(self)
                 self._l_project_name.setMinimumWidth(200)
                 f = get_font(underline=True, bold=True, large=True)
                 self._l_project_name.setFont(f)
@@ -56,7 +61,7 @@ class RecentProjectListItemWidget(QWidget):
 
                 layout_top.addStretch(1)
 
-            if "bottom":
+            if "middle":
                 layout_bottom = QHBoxLayout()
                 layout_left.addLayout(layout_bottom)
 
@@ -76,17 +81,15 @@ class RecentProjectListItemWidget(QWidget):
                 self._l_size.setFixedWidth(50)
                 layout_bottom.addWidget(self._l_size)
 
+            if "bottom":
+                self._l_error_message = QLabel(self)
+                self._l_error_message.setStyleSheet("color: red")
+                layout_left.addWidget(self._l_error_message)
+
         if "right":
             layout_right = QHBoxLayout()
             layout_right.setContentsMargins(20, 0, 20, 0)
             layout.addLayout(layout_right)
-
-            # self._b_open = QPushButton(self)
-            # self._b_open.setIcon(icon("folder"))
-            # self._b_open.setFixedWidth(30)
-            # self._b_open.setFixedHeight(30)
-            # self._b_open.setEnabled(False)
-            # layout_right.addWidget(self._b_open)
 
             self._b_actions = QPushButton(self)
             self._b_actions.setIcon(get_icon("cog"))
@@ -100,28 +103,57 @@ class RecentProjectListItemWidget(QWidget):
         self._b_actions.clicked.connect(self.__b_actions_clicked)
         # noinspection PyUnresolvedReferences
         self._l_project_name.clicked.connect(self.__l_project_name_clicked)
-        # # noinspection PyUnresolvedReferences
-        # self._b_open.clicked.connect(self.__b_open_clicked)
 
     @pyqtSlot()
     def __b_actions_clicked(self):
         if self._project_summary is None:
             return
-        self.control_triggered.emit(self._project_summary.project_id)
+
+        menu = QMenu(self)
+
+        # メニューにアクションを追加
+
+        if not self._project_summary.has_error:
+            a_open = QAction("開く", self)
+            # noinspection PyUnresolvedReferences
+            a_open.triggered.connect(
+                lambda: self.open_project_requested.emit(self._project_summary.project_id),
+            )
+            menu.addAction(a_open)
+
+        a_show = QAction("場所をエクスプローラで開く", self)
+        # noinspection PyUnresolvedReferences
+        a_show.triggered.connect(
+            lambda: self.open_folder_requested.emit(self._project_summary.project_id),
+        )
+        menu.addAction(a_show)
+
+        a_delete = QAction("削除", self)
+        # noinspection PyUnresolvedReferences
+        a_delete.triggered.connect(
+            lambda: self.delete_project_requested.emit(self._project_summary.project_id),
+        )
+        menu.addAction(a_delete)
+
+        # メニューを表示
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        menu.exec_(QCursor.pos())  # コンテキストメニューをボタンの下に表示
 
     @pyqtSlot()
     def __l_project_name_clicked(self):
         if self._project_summary is None:
             return
-        self.selected.emit(self._project_summary.project_id)
+        if self._project_summary.has_error:
+            return
+        self.open_project_requested.emit(self._project_summary.project_id)
 
-    # @pyqtSlot()
-    # def __b_open_clicked(self):
-    #     if self._project_summary is None:
-    #         return
-    #     self.selected.emit(self._project_summary.project_id)
+    def eventFilter(self, target: QObject, event: QEvent):
+        if event.type() == QEvent.MouseButtonDblClick:
+            self.__l_project_name_clicked()
+            return True
+        return False
 
-    def set_data(self, project_summary: ProjectSummary | None):
+    def set_data(self, project_summary: AbstractProjectSummary | None):
         if project_summary is None:
             self._l_project_name.setText("")
             self._l_open_at.setText("")
@@ -129,17 +161,29 @@ class RecentProjectListItemWidget(QWidget):
             self._l_target_number.setText("")
             self._l_size.setText("")
             self._b_actions.setEnabled(False)
-            # self._b_open.setEnabled(False)
             self._l_project_name.unsetCursor()
+            self._l_error_message.hide()
+        elif project_summary.has_error:
+            assert isinstance(project_summary, ErrorProjectSummary), project_summary
+            self._l_project_name.setText(project_summary.project_name)
+            self._l_open_at.setText("--")
+            self._l_zip_name.setText("--")
+            self._l_target_number.setText("--")
+            self._l_size.setText("--")
+            self._b_actions.setEnabled(True)
+            self._l_project_name.setCursor(QCursor(Qt.ForbiddenCursor))
+            self._l_error_message.show()
+            self._l_error_message.setText(project_summary.error_message)
         else:
+            assert isinstance(project_summary, NormalProjectSummary), project_summary
             self._l_project_name.setText(project_summary.project_name)
             self._l_open_at.setText(project_summary.open_at.strftime("%Y/%m/%d %H:%M:%S"))
             self._l_zip_name.setText(project_summary.zip_name)
             self._l_target_number.setText(f"設問 {project_summary.target_number!s}")
             self._l_size.setText("--")
             self._b_actions.setEnabled(True)
-            # self._b_open.setEnabled(True)
             self._l_project_name.setCursor(QCursor(Qt.PointingHandCursor))
+            self._l_error_message.hide()
         self._project_summary = project_summary
 
     def set_size_field(self, size: int) -> int:
@@ -149,15 +193,14 @@ class RecentProjectListItemWidget(QWidget):
     def is_size_unset(self) -> bool:
         return self._l_size.text() == "--"
 
-    def get_data(self) -> ProjectSummary | None:
+    def get_data(self) -> AbstractProjectSummary | None:
         return self._project_summary
 
 
 class RecentProjectListWidget(QListWidget):
-    project_selected = pyqtSignal(ProjectID, name="project_selected")
-    open_project_triggered = pyqtSignal(ProjectID, name="action_triggered")
-    delete_project_triggered = pyqtSignal(ProjectID, name="delete_project_triggered")
-    show_project_triggered = pyqtSignal(ProjectID, name="show_project_project_triggered")
+    open_project_requested = pyqtSignal(ProjectID, name="open_project_requested")
+    open_folder_requested = pyqtSignal(ProjectID, name="open_folder_requested")
+    delete_project_requested = pyqtSignal(ProjectID, name="delete_project_requested")
 
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
@@ -171,7 +214,7 @@ class RecentProjectListWidget(QListWidget):
     def _init_signals(self):
         pass
 
-    def __insert_item(self, i: int, project_summary: ProjectSummary):
+    def __insert_item(self, i: int, project_summary: AbstractProjectSummary):
         # 項目のウィジェットを初期化
         # noinspection PyTypeChecker
         item_widget = RecentProjectListItemWidget(self)
@@ -188,52 +231,11 @@ class RecentProjectListWidget(QListWidget):
         self.setItemWidget(list_item, item_widget)
         # シグナルをつなげる
         # noinspection PyUnresolvedReferences
-        item_widget.control_triggered.connect(self.__item_widget_control_triggered)
-        item_widget.selected.connect(self.__item_widget_selected)
+        item_widget.open_project_requested.connect(self.open_project_requested)
+        item_widget.open_folder_requested.connect(self.open_folder_requested)
+        item_widget.delete_project_requested.connect(self.delete_project_requested)
 
-    @pyqtSlot(ProjectID)
-    def __item_widget_control_triggered(self, project_id: ProjectID):
-        menu = QMenu(self)
-
-        # メニューにアクションを追加
-        a_open = QAction("開く", self)
-        # noinspection PyUnresolvedReferences
-        a_open.triggered.connect(lambda: self.open_project_triggered.emit(project_id))
-        menu.addAction(a_open)
-
-        a_show = QAction("場所をエクスプローラで開く", self)
-        # noinspection PyUnresolvedReferences
-        a_show.triggered.connect(lambda: self.show_project_triggered.emit(project_id))
-        menu.addAction(a_show)
-
-        a_delete = QAction("削除", self)
-        # noinspection PyUnresolvedReferences
-        a_delete.triggered.connect(lambda: self.delete_project_triggered.emit(project_id))
-        menu.addAction(a_delete)
-
-        # メニューを表示
-        self.setContextMenuPolicy(Qt.CustomContextMenu)
-
-        # コンテキストメニューをボタンの下に表示
-        position = QCursor.pos()
-        menu.exec_(position)
-
-    @pyqtSlot(ProjectID)
-    def __item_widget_selected(self, project_id: ProjectID):
-        self.project_selected.emit(project_id)
-
-    def mouseDoubleClickEvent(self, evt: QMouseEvent):
-        index = self.indexAt(evt.pos())
-        if not index.isValid():
-            return
-
-        item = self.item(index.row())
-        item_w = self.itemWidget(item)
-        assert isinstance(item_w, RecentProjectListItemWidget)
-        project_id = item_w.get_data().project_id
-        self.project_selected.emit(project_id)
-
-    def set_data(self, project_summary_lst: list[ProjectSummary]) -> None:
+    def set_data(self, project_summary_lst: list[NormalProjectSummary]) -> None:
         self.clear()
         for i, project_summary in enumerate(project_summary_lst):
             self.__insert_item(i, project_summary)
@@ -248,7 +250,7 @@ class RecentProjectListWidget(QListWidget):
 
 
 class _RecentProjectSizeFieldGetWorker(QThread):
-    field_acquired = pyqtSignal(ProjectID, int, name="field_acquired")  # project_id and size
+    size_acquired = pyqtSignal(ProjectID, int, name="size_acquired")  # project_id and size
 
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
@@ -288,7 +290,7 @@ class _RecentProjectSizeFieldGetWorker(QThread):
             size = get_project_get_size_query_usecase().execute(
                 project_id=project_id,
             )
-            self.field_acquired.emit(project_id, size)
+            self.size_acquired.emit(project_id, size)
             time.sleep(0.05)
 
 
@@ -313,7 +315,7 @@ class ProjectDeleteProgressDialog(AbstractProgressDialog):
             parent,
             title="プロジェクトの削除",
             worker_producer=lambda: _ProjectDeleteWorker(
-                self,
+                self,  # type: ignore
                 project_id=project_id,
             ),
         )
@@ -338,26 +340,33 @@ class RecentProjectWidget(QWidget):
         self.setLayout(layout)
 
         self._w_list = RecentProjectListWidget()
-        self._w_list.project_selected.connect(self.__project_selected)
         layout.addWidget(self._w_list)
 
         layout_button = QHBoxLayout()
         layout.addLayout(layout_button)
 
-        self._b_open_folder = QPushButton(self)
-        self._b_open_folder.setText("プロジェクトの管理フォルダを開く")
-        # noinspection PyUnresolvedReferences
-        self._b_open_folder.clicked.connect(self.__b_open_folder_clicked)
-        layout_button.addWidget(self._b_open_folder)
+        self._b_open_projects_base_folder = QPushButton(self)
+        self._b_open_projects_base_folder.setText("プロジェクトの管理フォルダを開く")
+        layout_button.addWidget(self._b_open_projects_base_folder)
 
         layout_button.addStretch(1)
 
     def _init_signals(self):
-        self._w_list.open_project_triggered.connect(self.__project_selected)
-        self._w_list.delete_project_triggered.connect(self.__delete_project_triggered)
-        self._w_list.show_project_triggered.connect(self.__show_project_triggered)
-        self._project_size_field_get_worker.field_acquired.connect(
-            self.__project_size_field_get_worker_size_field_acquired
+        self._w_list.open_project_requested.connect(
+            self.__w_list_open_project_requested,
+        )
+        self._w_list.open_folder_requested.connect(
+            self.__w_list_open_folder_requested,
+        )
+        self._w_list.delete_project_requested.connect(
+            self.__w_list_delete_project_requested,
+        )
+        self._project_size_field_get_worker.size_acquired.connect(
+            self.__project_size_field_get_worker_size_acquired,
+        )
+        # noinspection PyUnresolvedReferences
+        self._b_open_projects_base_folder.clicked.connect(
+            self.__b_open_projects_base_folder_clicked,
         )
 
     def __update_list(self) -> None:
@@ -372,16 +381,19 @@ class RecentProjectWidget(QWidget):
             if project_summary.project_id is not None
         ])
 
-    @pyqtSlot()
-    def __b_open_folder_clicked(self):
-        get_project_base_folder_show_usecase().execute()
-
     @pyqtSlot(ProjectID)
-    def __project_selected(self, project_id: ProjectID):
+    def __w_list_open_project_requested(self, project_id: ProjectID):
+        # プロジェクトを開く要求
         self.accepted.emit(project_id)
 
     @pyqtSlot(ProjectID)
-    def __delete_project_triggered(self, project_id: ProjectID):
+    def __w_list_open_folder_requested(self, project_id: ProjectID):
+        # プロジェクトのフォルダを開く要求
+        get_project_folder_show_usecase().execute(project_id)
+
+    @pyqtSlot(ProjectID)
+    def __w_list_delete_project_requested(self, project_id: ProjectID):
+        # プロジェクトを削除する要求
         # noinspection PyTypeChecker
         if QMessageBox.warning(
                 self,
@@ -394,12 +406,14 @@ class RecentProjectWidget(QWidget):
         ProjectDeleteProgressDialog(project_id=project_id).exec_()
         self.__update_list()
 
-    @pyqtSlot(ProjectID)
-    def __show_project_triggered(self, project_id: ProjectID):
-        get_project_folder_show_usecase().execute(project_id)
+    @pyqtSlot()
+    def __b_open_projects_base_folder_clicked(self):
+        # プロジェクトを管理するフォルダを開く要求
+        get_project_base_folder_show_usecase().execute()
 
     @pyqtSlot(ProjectID, int)
-    def __project_size_field_get_worker_size_field_acquired(self, project_id: ProjectID, size: int):
+    def __project_size_field_get_worker_size_acquired(self, project_id: ProjectID, size: int):
+        # プロジェクトのサイズが取得できたとき
         self._w_list.set_size_field(project_id, size)
 
     # TODO: スレッドを開始するもっといい実装方法を探す

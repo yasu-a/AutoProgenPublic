@@ -2,9 +2,9 @@ from PyQt5.QtCore import pyqtSignal, QObject, QRegExp, Qt, QEvent, pyqtSlot
 from PyQt5.QtGui import QKeyEvent, QRegExpValidator
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QVBoxLayout, QPushButton, QLabel
 
-from controls.res.fonts import get_font
 from domain.models.student_mark import StudentMark
 from domain.models.values import StudentID
+from res.fonts import get_font
 
 
 class MarkScoreEditWidget(QWidget):

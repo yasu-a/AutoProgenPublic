@@ -1,125 +1,119 @@
 from PyQt5.QtCore import QObject
-from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor
-from PyQt5.QtWidgets import QPlainTextEdit
+from PyQt5.QtWidgets import QVBoxLayout, QLabel, QWidget
 
-from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
-from controls.res.fonts import get_font
+from controls.widget_testcase_result_output_file_text_view import \
+    TestCaseResultOutputFileTextView
 from domain.models.test_result_output_file_entry import AbstractTestResultOutputFileEntry
 
 
-class TestCaseResultOutputFileViewWidget(QPlainTextEdit, HorizontalScrollWithShiftAndWheelMixin):
+class TestCaseResultOutputFileViewWidget(QWidget):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
         self._output_file_entry: AbstractTestResultOutputFileEntry | None = None
 
-        self._show_pure_text = False
-
         self._init_ui()
         self._init_signals()
 
     def _init_ui(self):
-        self.setFont(get_font(monospace=True, small=True))
-        self.setLineWrapMode(QPlainTextEdit.NoWrap)
-        self.setReadOnly(True)
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+
+        # エラーメッセージを表示するラベル
+        self._l_messages = QLabel(self)
+        self._l_messages.setWordWrap(True)
+        self._l_messages.setStyleSheet("color: red")
+        layout.addWidget(self._l_messages)
+
+        # 内容を表示するテキストエディタ
+        self._te = TestCaseResultOutputFileTextView()
+        layout.addWidget(self._te)
 
     def _init_signals(self):
         pass
 
     def __update(self):
-        if self._output_file_entry is None:
-            self.setPlainText("")
-            self.setEnabled(False)
+        of = self._output_file_entry
+
+        # データがない
+        if of is None:
+            self._te.setPlainText("")
+            self._te.setEnabled(False)
             return
-        else:
-            self.setEnabled(True)
 
-        text_cursor_before_update = self.textCursor()
+        # ウィジェットを有効化
+        self._te.setEnabled(True)
 
-        errors = []
+        # エラーを分析
+        errors: list[tuple[str, str | None]] = []  # message, detailed_message
         content_replacement = None
         actual_content = ""
-        if self._output_file_entry.has_actual:
-            actual_content = self._output_file_entry.actual.content_string
+        if of.has_actual:
+            actual_content = of.actual.content_string
             if actual_content is None:
-                errors.append("⚠ 文字コードが不明です")
+                errors.append(
+                    (
+                        "文字コードが不明です",
+                        None,
+                    )
+                )
                 actual_content = ""
                 content_replacement = "（不明な文字コード）"
             elif actual_content == "":
                 content_replacement = "（空）"
             else:
                 pass  # 正常な出力
-            if self._output_file_entry.has_expected:
+            if of.has_expected:
                 pass  # 正常な結果
             else:
-                errors.append("⚠ テスト対象ではありません")
+                errors.append(
+                    (
+                        "テスト対象ではありません",
+                        "このエラーを消すにはテストケースの自動テストの構成でストリームを追加してください",
+                    ),
+                )
         else:
-            if self._output_file_entry.has_expected:
-                errors.append("⚠ プログラムから出力されませんでした")
+            if of.has_expected:
+                errors.append(
+                    (
+                        "プログラムから出力されませんでした",
+                        None,
+                    ),
+                )
             else:
                 assert False, "unreachable"
 
-        if self._show_pure_text:
-            # エラーや代替テキストがあっても表示しない
-            content_header = ""
-            content_text = actual_content
+        # エラーを表示
+        if errors:
+            self._l_messages.show()
+            error_text = []
+            for message, detailed_message in errors:
+                error_text.append(f"⚠ {message}")
+                if detailed_message is not None:
+                    error_text[-1] += f" - {detailed_message}"
+            self._l_messages.setText("\n".join(error_text))
         else:
-            if errors:
-                content_header = "\n".join(errors) + "\n\n＜ストリームの内容＞\n"
-            else:
-                content_header = ""
-            if content_replacement is None:
-                content_text = actual_content
-            else:
-                content_text = content_replacement
+            self._l_messages.hide()
 
-        pure_text_shown = not content_header and content_replacement is None and content_text
-
-        self.blockSignals(True)
+        # プレイスホルダーを表示するか実際の内容を表示するか
+        if content_replacement is None:
+            content_text = actual_content
+            pure_text_shown = True
+        else:
+            content_text = content_replacement
+            pure_text_shown = False
 
         # テキストをセット
-        text_to_set = content_header + content_text
-        if self.toPlainText() != text_to_set:
-            self.setPlainText(content_header + content_text)
-
-        # テスト結果が存在すればテキストをハイライトする
-        if self._output_file_entry.has_actual and self._output_file_entry.has_expected:
-            if pure_text_shown:
-                test_result = self._output_file_entry.test_result
-
-                fmt_expected = QTextCharFormat()
-                fmt_expected.setBackground(QColor("lightgreen"))
-
-                fmt_unexpected = QTextCharFormat()
-                fmt_unexpected.setBackground(QColor("lightcoral"))
-
-                for token in test_result.matched_tokens:
-                    # テキスト中の該当箇所を選択する
-                    cursor = self.textCursor()
-                    cursor.clearSelection()
-                    cursor.setPosition(
-                        token.begin,
-                        QTextCursor.MoveAnchor,
-                    )
-                    cursor.movePosition(
-                        QTextCursor.Right,
-                        QTextCursor.KeepAnchor,
-                        token.end - token.begin,
-                    )
-                    # 選択範囲を塗りつぶす
-                    if token.pattern.is_expected:
-                        cursor.setCharFormat(fmt_expected)
-                    else:
-                        cursor.setCharFormat(fmt_unexpected)
-
-        self.blockSignals(False)
-
-        self.textCursor().setPosition(text_cursor_before_update.position())
-
-    def set_show_pure_text(self, v: bool):
-        if self._show_pure_text != v:
-            self._show_pure_text = v
-            self.__update()
+        if of.has_actual and of.has_expected and pure_text_shown:
+            self._te.set_data(
+                source_code_text=content_text,
+                matched_tokens=of.test_result.matched_tokens,
+            )
+        else:
+            self._te.set_data(
+                source_code_text=content_text,
+                matched_tokens=None,  # ハイライトしない
+            )
 
     def set_data(self, output_file_entry: AbstractTestResultOutputFileEntry):
         self._output_file_entry = output_file_entry
