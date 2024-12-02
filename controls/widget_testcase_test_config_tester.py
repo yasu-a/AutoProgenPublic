@@ -47,6 +47,7 @@ class TestCaseTestConfigTesterWidget(QGroupBox):
         self._result_view = TestCaseResultOutputFileTextView()
         layout.addWidget(self._result_view)
 
+        # noinspection PyTypeChecker
         self._w_test_summary_indicator = TestCaseTestSummaryIndicatorWidget(self)
         layout.addWidget(self._w_test_summary_indicator, alignment=Qt.AlignHCenter)
 

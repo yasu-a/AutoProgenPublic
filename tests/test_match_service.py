@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Any
 
 import pytest
@@ -54,6 +55,7 @@ class _TestCaseBuilder:
                     NonmatchedToken(pattern=self._patterns[index])
                     for index in nonmatched_tokens
                 ],
+                test_execution_timedelta=timedelta(0),
             )
         }
         return self
@@ -332,4 +334,5 @@ def test_match_service(
         test_config_options=test_config_options,
         content_string=content_text,
     )
-    assert match_result == expected_match_result
+    assert match_result.matched_tokens == expected_match_result.matched_tokens
+    assert match_result.nonmatched_tokens == expected_match_result.nonmatched_tokens

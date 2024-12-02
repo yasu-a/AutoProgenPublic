@@ -158,6 +158,7 @@ class MainWindow(QMainWindow):
             dialog = GlobalSettingsEditDialog()
             dialog.exec_()
         elif name == "edit-testcases":
+            # noinspection PyTypeChecker
             dialog = TestCaseListEditDialog(self)
             dialog.exec_()
         elif name == "mark":
