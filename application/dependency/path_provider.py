@@ -27,9 +27,13 @@ def get_global_path_provider():
     )
 
 
+def get_project_list_folder_fullpath() -> Path:
+    return Path("~/AutoProgenProjects").expanduser().resolve()
+
+
 def get_project_list_path_provider():
     return ProjectListPathProvider(
-        project_list_folder_fullpath=Path("~/AutoProgenProjects").expanduser().resolve(),
+        project_list_folder_fullpath=get_project_list_folder_fullpath(),
     )
 
 
