@@ -1,10 +1,7 @@
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from functools import cache
 from typing import NamedTuple
-
-from utils.zen_han import zen_to_han
 
 
 class MatchRange(NamedTuple):
@@ -34,41 +31,6 @@ class MatchSource:
     def source(self) -> str:
         return self._source_text
 
-    @cache
-    def list_regex_float_matches(self) -> tuple[re.Match, ...]:
-        return tuple(
-            re.finditer(
-                r"\b[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?\b",
-                self._source_text,
-            )
-        )
-
-    @cache
-    def list_space_or_eol_matches(self) -> tuple[re.Match, ...]:
-        return tuple(
-            re.finditer(
-                r"\s*$\s*|\s+",
-                self._source_text,
-            )
-        )
-
-    @staticmethod
-    def _create_regex_from_query_text(query_text: str) -> str:
-        query_text = zen_to_han(query_text)
-        words = re.findall(r"\S+", query_text)
-
-        return r"\s+".join(re.escape(word) for word in words)
-
-    @cache
-    def list_regex_text_matches(self, pattern_text: str) -> tuple[re.Match, ...]:
-        return tuple(
-            re.finditer(
-                self._create_regex_from_query_text(pattern_text),
-                self._source_text,
-                re.MULTILINE,
-            )
-        )
-
 
 @dataclass(frozen=True)
 class PatternMatchOptions:
@@ -83,6 +45,7 @@ class AbstractPattern(ABC):
     is_expected: bool  # このパターンが出力に出現するor出現しない
 
     @classmethod
+    @abstractmethod
     def create_default(cls, index: int) -> "AbstractPattern":
         raise NotImplementedError()
 
@@ -118,14 +81,63 @@ class AbstractPattern(ABC):
         assert False, body
 
     @abstractmethod
-    def find_matches(self, source: MatchSource, options: PatternMatchOptions) \
-            -> list[MatchRange]:
+    def _to_regex(self) -> str:
         raise NotImplementedError()
+
+    @property
+    def regex_group_name(self) -> str:
+        return f"_{self.index}"
+
+    def to_regex_with_group(self):
+        if self.is_expected:
+            return "(?P<" + self.regex_group_name + ">" + self._to_regex() + ")"
+        else:
+            return "(?P<" + self.regex_group_name + ">" + self._to_regex() + ")?"
+
+
+@dataclass(frozen=True)
+class RegexPattern(AbstractPattern):
+    regex: str
+
+    def __post_init__(self):
+        assert isinstance(self.regex, str), self.regex
+        try:
+            re.compile(self.regex)
+        except re.error:
+            assert False, f"invalid regex string: {self.regex!s}"
+
+    def _fields_to_json(self) -> dict:
+        return dict(
+            **super()._fields_to_json(),
+            regex=self.regex,
+        )
+
+    @classmethod
+    def _json_to_fields(cls, body: dict):
+        return dict(
+            regex=body.pop("regex"),
+            **super()._json_to_fields(body),
+        )
+
+    def __repr__(self):
+        if self.is_expected:
+            return f"r({self.regex!r})"
+        else:
+            return f"r!({self.regex!r})"
+
+    @classmethod
+    def create_default(cls, index: int) -> "RegexPattern":
+        return cls(index=index, is_expected=True, regex="")
+
+    def _to_regex(self) -> str:
+        return self.regex
 
 
 @dataclass(frozen=True)
 class TextPattern(AbstractPattern):
     text: str
+    is_multiple_space_ignored: bool
+    is_word: bool
 
     def __post_init__(self):
         assert isinstance(self.text, str), self.text
@@ -134,12 +146,16 @@ class TextPattern(AbstractPattern):
         return dict(
             **super()._fields_to_json(),
             text=self.text,
+            is_multiple_space_ignored=self.is_multiple_space_ignored,
+            is_word=self.is_word
         )
 
     @classmethod
     def _json_to_fields(cls, body: dict):
         return dict(
             text=body.pop("text"),
+            is_multiple_space_ignored=body.pop("is_multiple_space_ignored"),
+            is_word=body.pop("is_word"),
             **super()._json_to_fields(body),
         )
 
@@ -151,59 +167,29 @@ class TextPattern(AbstractPattern):
 
     @classmethod
     def create_default(cls, index: int) -> "TextPattern":
-        return cls(index=index, is_expected=True, text="")
+        return cls(index=index, is_expected=True, text="", is_multiple_space_ignored=True,
+                   is_word=False)
 
-    # noinspection PyMethodOverriding
-    def find_matches(self, source: MatchSource, options: PatternMatchOptions) \
-            -> list[MatchRange]:
-        return [
-            MatchRange.from_regex_match(m)
-            for m in source.list_regex_text_matches(pattern_text=self.text)
-        ]
-
-
-@dataclass(frozen=True)
-class FloatPattern(AbstractPattern):
-    value: int | float
-
-    def __post_init__(self):
-        assert isinstance(self.value, (int, float)), self.value
-
-    def _fields_to_json(self) -> dict:
-        return dict(
-            **super()._fields_to_json(),
-            value=self.value,
-        )
-
-    @classmethod
-    def _json_to_fields(cls, body: dict):
-        return dict(
-            value=body.pop("value"),
-            **super()._json_to_fields(body),
-        )
-
-    def __repr__(self):
-        if self.is_expected:
-            return f"f({self.value})"
+    def _to_regex(self) -> str:
+        text = self.text
+        tokens = re.findall(r"\s+|\S+", text)
+        if self.is_multiple_space_ignored:
+            regex_tokens = []
+            for token in tokens:
+                if re.fullmatch(r"\s+", token):
+                    regex_tokens.append(r"\s+")
+                else:
+                    regex_tokens.append(re.escape(token))
+            regex = "".join(regex_tokens)
         else:
-            return f"f!({self.value})"
-
-    @classmethod
-    def create_default(cls, index: int) -> "FloatPattern":
-        return cls(index=index, is_expected=True, value=0.0)
-
-    # noinspection PyMethodOverriding
-    def find_matches(self, source: MatchSource, options: PatternMatchOptions) \
-            -> list[MatchRange]:
-        return [
-            MatchRange.from_regex_match(m)
-            for m in source.list_regex_float_matches()
-            if abs(float(m.group(0)) - self.value) <= options.float_tolerance
-        ]
+            regex = re.escape(text)
+        if self.is_word:
+            regex = rf"\b{regex}\b"
+        return regex
 
 
 @dataclass(frozen=True)
-class SpaceOrEOLPattern(AbstractPattern):
+class SpacePattern(AbstractPattern):
     def _fields_to_json(self) -> dict:
         return dict(
             **super()._fields_to_json(),
@@ -217,21 +203,43 @@ class SpaceOrEOLPattern(AbstractPattern):
 
     def __repr__(self):
         if self.is_expected:
-            return f"space_or_eol()"
+            return f"space()"
         else:
-            return f"space_or_eol!()"
+            return f"space!()"
 
     @classmethod
-    def create_default(cls, index: int) -> "SpaceOrEOLPattern":
+    def create_default(cls, index: int) -> "SpacePattern":
         return cls(index=index, is_expected=True)
 
-    # noinspection PyMethodOverriding
-    def find_matches(self, source: MatchSource, options: PatternMatchOptions) \
-            -> list[MatchRange]:
-        return [
-            MatchRange.from_regex_match(m)
-            for m in source.list_space_or_eol_matches()
-        ]
+    def _to_regex(self) -> str:
+        return r"\s+"
+
+
+@dataclass(frozen=True)
+class EOLPattern(AbstractPattern):
+    def _fields_to_json(self) -> dict:
+        return dict(
+            **super()._fields_to_json(),
+        )
+
+    @classmethod
+    def _json_to_fields(cls, body: dict):
+        return dict(
+            **super()._json_to_fields(body),
+        )
+
+    def __repr__(self):
+        if self.is_expected:
+            return f"eol()"
+        else:
+            return f"eol!()"
+
+    @classmethod
+    def create_default(cls, index: int) -> "EOLPattern":
+        return cls(index=index, is_expected=True)
+
+    def _to_regex(self) -> str:
+        return r"\n"
 
 
 class PatternList(list[AbstractPattern]):
@@ -254,5 +262,16 @@ class PatternList(list[AbstractPattern]):
     def __hash__(self) -> int:
         return hash(tuple(self))
 
-    def is_empty(self) -> bool:
-        return len(self) == 0
+    def to_regex_pattern(self, *, ignore_case: bool) -> tuple[str, int]:  # pattern and flags
+        pattern_regex_lst = []
+        for pattern in self:
+            regex = pattern.to_regex_with_group()
+            pattern_regex_lst.append(regex)
+
+        total_regex = r".*?" + r".*?".join(pattern_regex_lst) + r".*?"
+
+        flags = re.DOTALL | re.MULTILINE
+        if ignore_case:
+            flags |= re.IGNORECASE
+
+        return total_regex, flags

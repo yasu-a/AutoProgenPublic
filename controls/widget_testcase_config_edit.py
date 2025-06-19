@@ -97,6 +97,8 @@ class TestCaseConfigEditWidget(QTabWidget):
     @pyqtSlot()
     def __w_test_config_tester_run_requested(self):
         current_file_id = self._w_expected_output_files_edit.get_current_file_id()
+        if current_file_id is None:  # ファイルタブが選択されていなかったら
+            return
         self._w_test_config_tester.run_and_update(
             expected_output_file=self._w_expected_output_files_edit.get_data()[current_file_id],
             test_config_options=self._w_test_config_options_edit.get_data(),

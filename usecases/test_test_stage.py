@@ -46,6 +46,7 @@ class TestTestStageUseCase:
             ),
         )
         return TestTestStageResult.create_success(
+            regex_pattern=match_service_result.regex_pattern,
             file_test_result=file_test_result,
             test_execution_timedelta=match_service_result.test_execution_timedelta,
         )

@@ -3,15 +3,15 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class TestConfigOptions:
-    float_tolerance: float
+    ignore_case: bool
 
     def to_json(self):
         return dict(
-            float_tolerance=self.float_tolerance,
+            ignore_case=self.ignore_case,
         )
 
     @classmethod
     def from_json(cls, body):
         return cls(
-            float_tolerance=body["float_tolerance"],
+            ignore_case=body["ignore_case"],
         )
