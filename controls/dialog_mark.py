@@ -664,6 +664,7 @@ class MarkDialog(QDialog):
 
     def eventFilter(self, target: QObject, evt: QEvent):
         if evt.type() == QEvent.KeyPress:
+            assert isinstance(evt, QKeyEvent)
             self.__on_key_press(evt)
             return True
         return False

@@ -2,7 +2,7 @@ import io
 import zipfile
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
-from typing import Iterable
+from typing import Iterable, ContextManager, Generator, IO
 
 from domain.errors import ManabaReportArchiveIOError
 from domain.models.values import StudentID
@@ -37,7 +37,7 @@ class ManabaReportArchiveIO:
         return self._get_master_excel_relative_path().parent
 
     @contextmanager
-    def open_master_excel(self) -> io.BufferedReader:
+    def open_master_excel(self) -> Generator[IO[bytes], None, None]:
         with zipfile.ZipFile(self._archive_fullpath, "r") as zf:
             with zf.open(str(self._get_master_excel_relative_path()), "r") as f:
                 yield f
@@ -87,7 +87,7 @@ class ManabaReportArchiveIO:
 
     @classmethod
     def _iter_archive_contents(cls, zf_path: PurePosixPath, zf: zipfile.ZipFile) \
-            -> Iterable[tuple[PurePosixPath, io.BufferedReader]]:
+            -> Iterable[tuple[PurePosixPath, IO[bytes]]]:
         for info in zf.infolist():
             if info.is_dir():
                 continue

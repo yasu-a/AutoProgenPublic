@@ -127,6 +127,8 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
                 return self._foreground_link_text()
             else:
                 return self._foreground_dead_link_text()
+        else:
+            return None
 
     @data_provider(
         column=StudentTableColumns.COL_NAME,
@@ -135,6 +137,8 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
         if role == Qt.DisplayRole:
             cell_data = get_student_table_get_student_name_cell_data_usecase().execute(student_id)
             return cell_data.student_name
+        else:
+            return None
 
     _CHAR_UNFINISHED = "―"
     _CHAR_SUCCESS = "✔"
@@ -172,6 +176,8 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
         elif role == Qt.ForegroundRole:
             text = self.get_data_of_stage_build_cell(student_id, Qt.DisplayRole)
             return self._foreground_status_text(text)
+        else:
+            return None
 
     @data_provider(
         column=StudentTableColumns.COL_STAGE_COMPILE,
@@ -189,6 +195,8 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
         elif role == Qt.ForegroundRole:
             text = self.get_data_of_stage_compile_cell(student_id, Qt.DisplayRole)
             return self._foreground_status_text(text)
+        else:
+            return None
 
     @data_provider(
         column=StudentTableColumns.COL_STAGE_EXECUTE,
@@ -206,6 +214,8 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
         elif role == Qt.ForegroundRole:
             text = self.get_data_of_stage_execute_cell(student_id, Qt.DisplayRole)
             return self._foreground_status_text(text)
+        else:
+            return None
 
     @data_provider(
         column=StudentTableColumns.COL_STAGE_TEST,
@@ -223,6 +233,8 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
         elif role == Qt.ForegroundRole:
             text = self.get_data_of_stage_test_cell(student_id, Qt.DisplayRole)
             return self._foreground_status_text(text)
+        else:
+            return None
 
     @data_provider(
         column=StudentTableColumns.COL_ERROR,
@@ -252,6 +264,8 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
                     f"◆ {entry.detailed_text}"
                     for entry in aggregated_text_entries
                 )
+        else:
+            return None
 
     @data_provider(
         column=StudentTableColumns.COL_SCORE,
@@ -269,6 +283,8 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
             return self._font_link_text(monospace=False)
         elif role == Qt.ForegroundRole:
             return self._foreground_link_text()
+        else:
+            return None
 
 
 class CachedStudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
@@ -361,6 +377,8 @@ class StudentTableModel(QAbstractTableModel):
                 return StudentTableColumns.HEADER[section]
             else:
                 return ""
+        else:
+            return None
 
     def get_student_id_of_row(self, i_row: int) -> StudentID:
         return self._student_ids[i_row]
