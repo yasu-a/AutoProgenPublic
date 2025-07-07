@@ -106,7 +106,7 @@ class CompilerTimeoutWidget(QWidget):
 
         self._sb_value = QSpinBox(self)
         self._sb_value.setMinimum(1)
-        self._sb_value.setMaximum(30)
+        self._sb_value.setMaximum(120)
         self._sb_value.setSingleStep(1)
         self._sb_value.setFixedWidth(100)
         layout.addWidget(self._sb_value)
