@@ -1,5 +1,7 @@
 # AutoProgen ${app_version}
 
+${img_screenshot}
+
 プロ言の提出物の採点を効率化するためのツールです。
 
 > [!IMPORTANT]

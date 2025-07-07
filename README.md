@@ -3,6 +3,8 @@
 
 # AutoProgen 1.0-beta.4
 
+![image_filename](static/img/screenshot.jpg)
+
 プロ言の提出物の採点を効率化するためのツールです。
 
 > [!IMPORTANT]
