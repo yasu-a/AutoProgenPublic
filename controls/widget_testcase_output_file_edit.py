@@ -2,14 +2,13 @@ import uuid
 from typing import TypeVar, Generic
 
 from PyQt5.QtCore import pyqtSignal, QObject, Qt, pyqtSlot
-from PyQt5.QtGui import QDoubleValidator
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, \
     QVBoxLayout, QBoxLayout, QPushButton
 
 from controls.widget_button_box import ButtonBox
 from domain.models.expected_ouput_file import ExpectedOutputFile
-from domain.models.pattern import AbstractPattern, TextPattern, \
-    FloatPattern, PatternList, SpaceOrEOLPattern
+from domain.models.pattern import AbstractPattern, TextPattern, PatternList, SpacePattern, \
+    EOLPattern
 from domain.models.values import FileID
 from res.fonts import get_font
 from res.icons import get_icon
@@ -149,6 +148,26 @@ class ExpectedOutputFileTextTokenListItemWidget(
         self._le_value.setPlaceholderText("文字列を入力")
         layout.addWidget(self._le_value)
 
+        self._b_is_multiple_space_ignored = QPushButton(self)
+        self._b_is_multiple_space_ignored.setCheckable(True)
+        self._b_is_multiple_space_ignored.setText("␣+")
+        self._b_is_multiple_space_ignored.setFixedWidth(40)
+        self._b_is_multiple_space_ignored.setFont(get_font(small=True))
+        self._b_is_multiple_space_ignored.setToolTip(
+            "連続した複数のスペースを１つのスペースとしてマッチングします"
+        )
+        layout.addWidget(self._b_is_multiple_space_ignored)
+
+        self._b_is_word = QPushButton(self)
+        self._b_is_word.setCheckable(True)
+        self._b_is_word.setText("W")
+        self._b_is_word.setFixedWidth(40)
+        self._b_is_word.setFont(get_font(small=True))
+        self._b_is_word.setToolTip(
+            "単語単位でマッチングします"
+        )
+        layout.addWidget(self._b_is_word)
+
     @classmethod
     def _is_acceptable(cls, pattern: AbstractPattern) -> bool:
         return isinstance(pattern, TextPattern)
@@ -156,72 +175,66 @@ class ExpectedOutputFileTextTokenListItemWidget(
     def set_data(self, pattern: TextPattern) -> None:
         self._le_value.setText(pattern.text)
         self._b_is_expected.set_state(int(pattern.is_expected))
+        self._b_is_multiple_space_ignored.setChecked(pattern.is_multiple_space_ignored)
+        self._b_is_word.setChecked(pattern.is_word)
 
     def get_data(self, index: int) -> TextPattern:
         return TextPattern(
             index=index,
             is_expected=bool(self._b_is_expected.get_state()),
             text=self._le_value.text(),
+            is_multiple_space_ignored=self._b_is_multiple_space_ignored.isChecked(),
+            is_word=self._b_is_word.isChecked(),
         )
 
 
-class ExpectedOutputFileFloatTokenListItemWidget(
-    AbstractExpectedOutputFileTokenListItemWidget[FloatPattern],
+class ExpectedOutputFileSpaceTokenListItemWidget(
+    AbstractExpectedOutputFileTokenListItemWidget[SpacePattern],
 ):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
     def _init_ui_inner(self, layout: QBoxLayout):
         self._b_is_expected = TextRotatablePushButton(self)
-        self._b_is_expected.set_texts("次の実数値が出現しない", "次の実数値が出現する")
+        self._b_is_expected.set_texts("空白が出現しない", "空白が出現する")
         self._b_is_expected.setFont(get_font(small=True))
         layout.addWidget(self._b_is_expected)
 
-        self._le_value = QLineEdit(self)
-        self._le_value.setPlaceholderText("実数値を入力")
-        validator = QDoubleValidator(self)
-        validator.setDecimals(6)
-        validator.setNotation(QDoubleValidator.ScientificNotation)
-        self._le_value.setValidator(validator)
-        layout.addWidget(self._le_value)
-
     @classmethod
     def _is_acceptable(cls, pattern: AbstractPattern) -> bool:
-        return isinstance(pattern, FloatPattern)
+        return isinstance(pattern, SpacePattern)
 
-    def set_data(self, pattern: FloatPattern) -> None:
-        self._le_value.setText(str(pattern.value))
+    def set_data(self, pattern: SpacePattern) -> None:
         self._b_is_expected.set_state(int(pattern.is_expected))
 
-    def get_data(self, index: int) -> FloatPattern:
-        return FloatPattern(
+    def get_data(self, index: int) -> SpacePattern:
+        return SpacePattern(
             index=index,
             is_expected=bool(self._b_is_expected.get_state()),
-            value=float(self._le_value.text()),
         )
 
 
-class ExpectedOutputFileSpaceOrEOLTokenListItemWidget(
-    AbstractExpectedOutputFileTokenListItemWidget[SpaceOrEOLPattern],
+class ExpectedOutputFileEOLTokenListItemWidget(
+    AbstractExpectedOutputFileTokenListItemWidget[EOLPattern],
 ):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
     def _init_ui_inner(self, layout: QBoxLayout):
         self._b_is_expected = TextRotatablePushButton(self)
-        self._b_is_expected.set_texts("空白or改行or行末が出現しない", "空白or改行or行末が出現する")
+        self._b_is_expected.set_texts("改行が出現しない", "改行が出現する")
         self._b_is_expected.setFont(get_font(small=True))
         layout.addWidget(self._b_is_expected)
 
     @classmethod
     def _is_acceptable(cls, pattern: AbstractPattern) -> bool:
-        return isinstance(pattern, SpaceOrEOLPattern)
+        return isinstance(pattern, EOLPattern)
 
-    def set_data(self, pattern: SpaceOrEOLPattern) -> None:
+    def set_data(self, pattern: EOLPattern) -> None:
         self._b_is_expected.set_state(int(pattern.is_expected))
 
-    def get_data(self, index: int) -> SpaceOrEOLPattern:
-        return SpaceOrEOLPattern(
+    def get_data(self, index: int) -> EOLPattern:
+        return EOLPattern(
             index=index,
             is_expected=bool(self._b_is_expected.get_state()),
         )
@@ -309,17 +322,17 @@ class ExpectedOutputFileTokenListWidget(QListWidget):
         # 下までスクロール
         self.scrollToBottom()
 
-    def perform_create_float(self):
+    def perform_create_space(self):
         # トークンのモデルインスタンスを生成
-        token = FloatPattern.create_default(index=self.count())
+        token = SpacePattern.create_default(index=self.count())
         # 項目を追加
         self.__insert_item(self.count(), token)
         # 下までスクロール
         self.scrollToBottom()
 
-    def perform_create_space(self):
+    def perform_create_eol(self):
         # トークンのモデルインスタンスを生成
-        token = SpaceOrEOLPattern.create_default(index=self.count())
+        token = EOLPattern.create_default(index=self.count())
         # 項目を追加
         self.__insert_item(self.count(), token)
         # 下までスクロール
@@ -380,8 +393,8 @@ class ExpectedOutputFileEditWidget(QWidget):
 
         self._w_buttons = ButtonBox(self, orientation=Qt.Horizontal)
         self._w_buttons.add_button("文字列を追加", "add-text")
-        self._w_buttons.add_button("実数値を追加", "add-float")
-        self._w_buttons.add_button("空白・改行を追加", "add-space")
+        self._w_buttons.add_button("空白を追加", "add-space")
+        self._w_buttons.add_button("改行を追加", "add-eol")
         layout.addWidget(self._w_buttons)
 
     def _init_signals(self):
@@ -401,9 +414,9 @@ class ExpectedOutputFileEditWidget(QWidget):
     def _w_buttons_triggered(self, name: str):
         if name == "add-text":
             self._w_token_list.perform_create_text()
-        elif name == "add-float":
-            self._w_token_list.perform_create_float()
         elif name == "add-space":
             self._w_token_list.perform_create_space()
+        elif name == "add-eol":
+            self._w_token_list.perform_create_eol()
         else:
             assert False, name

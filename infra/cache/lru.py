@@ -44,6 +44,7 @@ class LRUCache(Generic[K, V]):
         return self.__cache[k].v
 
     def __setitem__(self, k: K, v: V) -> None:
+        # noinspection PyArgumentList
         self.__cache[k] = LRUCacheEntry[V](v=v, age=self.__next_age)
         self.__reduce_if_needed()
 

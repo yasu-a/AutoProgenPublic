@@ -29,9 +29,11 @@ class ProjectGetConfigStateQueryService:
         # JSONのパスを取得
         config_json_fullpath = self._project_path_provider.config_json_fullpath(project_id)
 
-        # パスが存在するか確認
+        # JSONが存在するか確認
         if not config_json_fullpath.exists():
-            raise ProjectServiceError(f"Project \"{project_id}\" not found")
+            # JSONが存在しないただのフォルダはUNOPENABLEとする
+            # raise ProjectServiceError(f"Project \"{project_id}\" not found")
+            return ProjectConfigState.UNOPENABLE
 
         # JSONを読み込む
         try:

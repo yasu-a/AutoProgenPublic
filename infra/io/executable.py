@@ -25,12 +25,15 @@ class ExecutableIO:
     ) -> str:  # returns the content of stdout as a text
         kwargs = dict(
             # Set the current working directory to the parent directory of the executable
-            cwd=str(executable_fullpath.parent),
-            args=[str(executable_fullpath.name)],
+            cwd="\\" + str(Path(*executable_fullpath.parent.parts[1:])),
+            # ^ ドライブレターを取り除く
+            args=[str(executable_fullpath)],
+            # ^ fullpathにしないとFileNotFoundErrorになる fullpathにしろとドキュメントにも書いてある
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             universal_newlines=True,
-            shell=True,  # cwdを動作させるために必要？
+            # shell=True,  # cwdを動作させるために必要？
+            # ^ TrueにするとPopenの__exit__ `stdout.close()`でハングする
         )
         if input_file_fullpath is not None:
             kwargs["stdin"] = input_file_fullpath.open(mode="r")

@@ -83,7 +83,7 @@ class StudentRunExecuteStageUseCase:
             testcase_id=testcase_id,
         )
 
-        # コンパイルの実行と標準出力ファイルの書き込み
+        # 実行
         try:
             service_result = self._storage_run_executable_service.execute(
                 storage_id=storage_id,

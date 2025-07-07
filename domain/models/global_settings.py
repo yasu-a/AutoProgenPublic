@@ -21,7 +21,7 @@ class GlobalSettings:
             compiler_tool_fullpath=Path(
                 r"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat",
             ) if is_debug() else None,
-            compile_timeout=30,
+            compile_timeout=60,
             max_workers=4,
             backup_before_export=True,
             show_editing_symbols_in_stream_content=False,

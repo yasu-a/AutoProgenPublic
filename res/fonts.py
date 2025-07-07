@@ -5,16 +5,30 @@ def get_font(
         *,
         monospace=False,
         small=False,
-        bold=False,
         large=False,
         very_large=False,
+        bold=False,
         underline=False,
 ) -> QFont:
     assert int(small) + int(large) + int(very_large) <= 1, (small, large, very_large)
+    size_name = "small" if small else "large" if large else "very_large" if very_large else "normal"
     if monospace:
-        f = QFont("Consolas", 9 if small else (13 if large else (16 if very_large else 10)))
+        size = {
+            "small": 9,
+            "normal": 10,
+            "large": 13,
+            "very_large": 16,
+        }[size_name]
+        name = "Consolas"
     else:
-        f = QFont("Meiryo", 8 if small else (12 if large else (15 if very_large else 9)))
+        size = {
+            "small": 8,
+            "normal": 9,
+            "large": 12,
+            "very_large": 15,
+        }[size_name]
+        name = "Meiryo"
+    f = QFont(name, size)
     f.setBold(bold)
     f.setUnderline(underline)
     return f

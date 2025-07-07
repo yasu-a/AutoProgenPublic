@@ -97,6 +97,7 @@ class ProjectCoreIO:
             project_id=project_id,
             path=dst_folder_fullpath,
         )
+        self._logger.debug(f"copy_file_into_folder({project_id=}, {src_file_fullpath=}, {dst_folder_fullpath=})")
         if dst_file_name is None:
             dst_file_name = src_file_fullpath.name
         shutil.copy(src_file_fullpath, dst_folder_fullpath / dst_file_name)
@@ -117,6 +118,7 @@ class ProjectCoreIO:
             project_id=project_id,
             path=dst_folder_fullpath,
         )
+        self._logger.debug(f"copy_files_in_folder_into_folder({project_id=}, {src_folder_fullpath=}, {dst_folder_fullpath=})")
         for src_fullpath in dst_folder_fullpath.iterdir():
             if src_fullpath.is_file():
                 self.copy_file_into_folder(
@@ -147,6 +149,7 @@ class ProjectCoreIO:
             project_id=project_id,
             path=dst_path,
         )
+        self._logger.debug(f"copy_folder({project_id=}, {src_path=}, {dst_path=})")
         shutil.copytree(src_path, dst_path)
 
     def copy_external_file_into_folder(
@@ -167,6 +170,7 @@ class ProjectCoreIO:
             project_id=project_id,
             path=dst_folder_fullpath,
         )
+        self._logger.debug(f"copy_external_file_into_folder({project_id=}, {src_file_fullpath=}, {dst_folder_fullpath=})")
         if dst_file_name is None:
             dst_file_name = src_file_fullpath.name
         shutil.copy(src_file_fullpath, dst_folder_fullpath / dst_file_name)
@@ -297,6 +301,8 @@ class ProjectCoreIO:
             path=folder_fullpath,
         )
 
+        self._logger.debug(f"calculate_folder_checksum({project_id=}, {folder_fullpath=})")
+
         entries: list[dict] = []
         for root, dirs, files in os.walk(str(folder_fullpath)):
             root = Path(root)
@@ -327,6 +333,8 @@ class ProjectCoreIO:
             path=folder_fullpath,
         )
 
+        self._logger.debug(f"walk_files({project_id=}, {folder_fullpath=})")
+
         for root, dirs, files in os.walk(str(folder_fullpath)):
             for filename in files:
                 file_fullpath = Path(root) / filename
@@ -345,6 +353,7 @@ class ProjectCoreIO:
             project_id=project_id,
             path=file_fullpath,
         )
+        self._logger.debug(f"get_file_mtime({project_id=}, {file_fullpath=})")
         return datetime.fromtimestamp(file_fullpath.stat().st_mtime)
 
     def get_folder_size(
@@ -357,6 +366,8 @@ class ProjectCoreIO:
             project_id=project_id,
             path=folder_fullpath,
         )
+
+        self._logger.debug(f"get_folder_size({project_id=}, {folder_fullpath=})")
 
         total_size = 0
         for file_fullpath in self.walk_files(

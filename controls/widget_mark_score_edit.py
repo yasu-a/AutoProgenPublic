@@ -79,7 +79,7 @@ class MarkScoreEditWidget(QWidget):
 
     def set_unmarked(self) -> None:
         if self._student_id is None:
-            return None
+            return
         self._le_score.setText("")
 
     def is_modified(self) -> bool:

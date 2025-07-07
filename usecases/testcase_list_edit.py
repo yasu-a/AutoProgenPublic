@@ -50,6 +50,7 @@ class TestCaseListEditCreateNewNameUseCase:
             new_testcase_id = TestCaseID(new_testcase_id_format.format(number=i + 1))
             if new_testcase_id not in testcase_id_set:
                 return str(new_testcase_id)
+        assert False, "unreachable"
 
 
 class TestCaseListEditCreateTestCaseUseCase:
@@ -74,7 +75,7 @@ class TestCaseListEditCreateTestCaseUseCase:
             test_config=TestCaseTestConfig(
                 expected_output_files=ExpectedOutputFileMapping(),
                 options=TestConfigOptions(
-                    float_tolerance=1.0e-6,
+                    ignore_case=True,
                 ),
             ),
         )

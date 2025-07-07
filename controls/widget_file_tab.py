@@ -195,6 +195,9 @@ class FileTabWidget(QTabWidget):
         self._file_ids[index] = file_id
 
     def item_get_file_id(self, index: int) -> FileID:
+        assert 0 <= index < len(self._file_ids), (
+            f"invalid index: {index}, total number of file tabs: {len(self._file_ids)}"
+        )
         return self._file_ids[index]
 
     def item_delete(self, index: int) -> None:
@@ -205,6 +208,8 @@ class FileTabWidget(QTabWidget):
         self.clear()
         self._file_ids.clear()
 
-    def get_current_file_id(self) -> FileID:
+    def get_current_file_id(self) -> FileID | None:
         index: int = self.currentIndex()
+        if index < 0:
+            return None
         return self.item_get_file_id(index)
