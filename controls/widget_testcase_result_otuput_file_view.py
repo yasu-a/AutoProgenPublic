@@ -69,7 +69,7 @@ class TestCaseResultOutputFileViewWidget(QWidget):
                 errors.append(
                     (
                         "テスト対象ではありません",
-                        "このエラーを消すにはテストケースの自動テストの構成でストリームを追加してください",
+                        "テスト対象である場合はテストケースの自動テストの構成でストリームを追加してください",
                     ),
                 )
         else:
