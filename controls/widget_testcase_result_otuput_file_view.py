@@ -53,7 +53,7 @@ class TestCaseResultOutputFileViewWidget(QWidget):
             if actual_content is None:
                 errors.append(
                     (
-                        "文字コードが不明です",
+                        "このストリームの文字コードが不明です",
                         None,
                     )
                 )
@@ -68,7 +68,7 @@ class TestCaseResultOutputFileViewWidget(QWidget):
             else:
                 errors.append(
                     (
-                        "テスト対象ではありません",
+                        "このストリームはテスト対象ではありません",
                         "テスト対象である場合はテストケースの自動テストの構成でストリームを追加してください",
                     ),
                 )
@@ -76,7 +76,7 @@ class TestCaseResultOutputFileViewWidget(QWidget):
             if of.has_expected:
                 errors.append(
                     (
-                        "プログラムから出力されませんでした",
+                        "プログラムからこのストリームへの出力がありませんでした",
                         None,
                     ),
                 )

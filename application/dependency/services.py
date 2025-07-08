@@ -35,7 +35,8 @@ from services.student_submission import StudentSubmissionExistService, \
 from services.testcase_config import TestCaseConfigListIDSubService, \
     TestCaseConfigGetExecuteConfigMtimeService, TestCaseConfigGetTestConfigMtimeService, \
     TestCaseConfigDeleteService, TestCaseConfigGetExecuteOptionsService, \
-    TestCaseConfigGetTestOptionsService, TestCaseConfigGetService, TestCaseConfigPutService
+    TestCaseConfigGetTestOptionsService, TestCaseConfigGetService, TestCaseConfigPutService, \
+    TestCaseConfigCopyService
 
 
 def get_global_settings_get_service():
@@ -344,6 +345,13 @@ def get_testcase_config_get_service():
 # TestCaseConfigPutService
 def get_testcase_config_put_service():
     return TestCaseConfigPutService(
+        testcase_config_repo=get_testcase_config_repository(),
+    )
+
+
+# TestCaseConfigCopyService
+def get_testcase_config_copy_service():
+    return TestCaseConfigCopyService(
         testcase_config_repo=get_testcase_config_repository(),
     )
 

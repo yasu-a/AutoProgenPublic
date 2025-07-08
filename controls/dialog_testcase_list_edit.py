@@ -3,9 +3,11 @@ from PyQt5.QtWidgets import *
 
 from application.dependency.services import get_testcase_config_delete_service
 from application.dependency.usecases import get_testcase_list_edit_list_summary_usecase, \
-    get_testcase_list_edit_create_new_name_usecase, get_testcase_list_edit_create_testcase_usecase
+    get_testcase_list_edit_create_new_name_usecase, get_testcase_list_edit_create_testcase_usecase, \
+    get_testcase_list_edit_copy_testcase_usecase
 from controls.dialog_testcase_config_edit import TestCaseConfigEditDialog
 from controls.widget_button_box import ButtonBox
+from domain.errors import UseCaseError
 from domain.models.values import TestCaseID
 from usecases.dto.testcase_list_edit import TestCaseListEditTestCaseSummary
 
@@ -70,6 +72,7 @@ class TestCaseListEditWidget(QWidget):
         self._w_buttons = ButtonBox(self, orientation=Qt.Vertical)
         self._w_buttons.add_button("新規作成", "add")
         self._w_buttons.add_button("編集", "edit")
+        self._w_buttons.add_button("コピー", "copy")
         self._w_buttons.add_button("削除", "delete")
         layout.addWidget(self._w_buttons)
 
@@ -80,18 +83,61 @@ class TestCaseListEditWidget(QWidget):
 
     @pyqtSlot()
     def dispatch_action_add(self):
-        testcase_name, ok = QInputDialog.getText(
-            self,  # type: ignore
-            "新しいテストケース",
-            "新しいテストケースの名前を入力してください",
-            text=get_testcase_list_edit_create_new_name_usecase().execute(),
-        )
-        if not ok:
-            return
-        testcase_name = testcase_name.strip()
-        if not testcase_name:
-            return
-        get_testcase_list_edit_create_testcase_usecase().execute(testcase_name)
+        while True:
+            testcase_name, ok = QInputDialog.getText(
+                self,  # type: ignore
+                "新しいテストケース",
+                "新しいテストケースの名前を入力してください",
+                text=get_testcase_list_edit_create_new_name_usecase().execute(),
+            )
+            if not ok:
+                return
+            testcase_name = testcase_name.strip()
+            if not testcase_name:
+                return
+            try:
+                get_testcase_list_edit_create_testcase_usecase().execute(testcase_name)
+            except UseCaseError:
+                QMessageBox.critical(
+                    self,
+                    "新しいテストケース",
+                    f"{testcase_name}と同じ名前のテストケースが既に存在します",
+                    buttons=QMessageBox.Ok,
+                )
+                continue
+            else:
+                break
+        self.testcase_modified.emit()
+
+    @pyqtSlot(TestCaseID)
+    def dispatch_action_copy(self, testcase_id: TestCaseID):
+        while True:
+            new_testcase_name, ok = QInputDialog.getText(
+                self,
+                f"{testcase_id!s}のコピー",
+                "新しいテストケースの名前を入力してください",
+                text=get_testcase_list_edit_create_new_name_usecase().execute(),
+            )
+            if not ok:
+                return
+            new_testcase_name = new_testcase_name.strip()
+            if not new_testcase_name:
+                return
+            try:
+                get_testcase_list_edit_copy_testcase_usecase().execute(
+                    src_testcase_id=testcase_id,
+                    new_testcase_name=new_testcase_name,
+                )
+            except UseCaseError:
+                QMessageBox.critical(
+                    self,
+                    f"{testcase_id!s}のコピー",
+                    f"{new_testcase_name}と同じ名前のテストケースが既に存在します",
+                    buttons=QMessageBox.Ok,
+                )
+                continue
+            else:
+                break
         self.testcase_modified.emit()
 
     @pyqtSlot(TestCaseID)
@@ -118,6 +164,11 @@ class TestCaseListEditWidget(QWidget):
     def __w_buttons_triggered(self, name: str):
         if name == "add":
             self.dispatch_action_add()
+        elif name == "copy":
+            testcase_id = self._w_testcase_list.get_selected_testcase_id()
+            if testcase_id is None:
+                return
+            self.dispatch_action_copy(testcase_id)
         elif name == "delete":
             testcase_id = self._w_testcase_list.get_selected_testcase_id()
             if testcase_id is None:

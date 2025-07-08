@@ -1,5 +1,6 @@
 import itertools
 
+from domain.errors import UseCaseError, ServiceError
 from domain.models.execute_config import TestCaseExecuteConfig
 from domain.models.execute_config_options import ExecuteConfigOptions
 from domain.models.expected_ouput_file import ExpectedOutputFileMapping
@@ -9,7 +10,7 @@ from domain.models.test_config_options import TestConfigOptions
 from domain.models.testcase_config import TestCaseConfig
 from domain.models.values import TestCaseID
 from infra.repositories.testcase_config import TestCaseConfigRepository
-from services.testcase_config import TestCaseConfigListIDSubService
+from services.testcase_config import TestCaseConfigListIDSubService, TestCaseConfigCopyService
 from usecases.dto.testcase_list_edit import TestCaseListEditTestCaseSummary
 
 
@@ -80,4 +81,24 @@ class TestCaseListEditCreateTestCaseUseCase:
             ),
         )
 
+        if self._testcase_config_repo.exists(config.testcase_id):
+            raise UseCaseError("testcase already exists")
         self._testcase_config_repo.put(config)
+
+
+class TestCaseListEditCopyTestCaseUseCase:
+    # テストケースのコピーを作成する
+
+    def __init__(
+            self,
+            *,
+            testcase_config_copy_service: TestCaseConfigCopyService,
+    ):
+        self._testcase_config_copy_service = testcase_config_copy_service
+
+    def execute(self, *, src_testcase_id: TestCaseID, new_testcase_name: str) -> None:
+        new_testcase_id = TestCaseID(new_testcase_name)
+        try:
+            self._testcase_config_copy_service.execute(src_testcase_id, new_testcase_id)
+        except ServiceError:
+            raise UseCaseError("testcase already exists")
