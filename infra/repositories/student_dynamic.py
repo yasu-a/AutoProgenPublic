@@ -18,12 +18,12 @@ class StudentExecutableRepository:
                 """
                 CREATE TABLE IF NOT EXISTS student_executable
                 (
-                    student_id    TEXT PRIMARY KEY,
-                    content_bytes BLOB
+                    student_id    TEXT NOT NULL PRIMARY KEY,
+                    content_bytes BLOB NOT NULL,
+                    FOREIGN KEY (student_id) REFERENCES student (student_id)
                 )
                 """
             )
-            # TODO: create student master table and make student_id as a foreign key
             con.commit()
 
     def put(self, student_id: StudentID, file_item: ExecutableFileItem) -> None:
@@ -110,7 +110,8 @@ class StudentSourceRepository:
                 (
                     student_id    TEXT PRIMARY KEY,
                     content_bytes BLOB,
-                    encoding      TEXT
+                    encoding TEXT,
+                    FOREIGN KEY (student_id) REFERENCES student (student_id)
                 )
                 """
             )

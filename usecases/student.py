@@ -1,4 +1,4 @@
-from domain.models.student_master import StudentMaster
+from domain.models.student import Student
 from domain.models.values import StudentID
 from services.student import StudentListSubService
 
@@ -12,5 +12,5 @@ class StudentListIDUseCase:
         self._student_list_sub_service = student_list_sub_service
 
     def execute(self) -> list[StudentID]:
-        students: StudentMaster = self._student_list_sub_service.execute()
+        students: list[Student] = self._student_list_sub_service.execute()
         return [student.student_id for student in students]

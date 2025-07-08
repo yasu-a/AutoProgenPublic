@@ -7,7 +7,6 @@ import pandas as pd
 
 from domain.errors import ManabaReportArchiveIOError, StudentMasterServiceError
 from domain.models.student import Student
-from domain.models.student_master import StudentMaster
 from domain.models.values import StudentID
 from infra.io.report_archive import ManabaReportArchiveIO
 from infra.repositories.student import StudentRepository
@@ -182,7 +181,7 @@ class StudentMasterCreateService:  # TODO: StudentService系にモジュール�
         self._manaba_report_archive_io = manaba_report_archive_io
 
     def execute(self):
-        if self._student_repo.exists():
+        if self._student_repo.exists_any():
             return
 
         try:
@@ -192,7 +191,7 @@ class StudentMasterCreateService:  # TODO: StudentService系にモジュール�
                     # read_only=True,  # ハイパーリンクを読み取れなくなる
                 )
                 df = _StudentMasterExcelReader(wb).as_dataframe()
-                student_master = StudentMaster()
+                students: list[Student] = []
                 for _, row in df.iterrows():
                     has_submission = row["submission_folder_name"] is not None
                     student = Student(
@@ -212,12 +211,12 @@ class StudentMasterCreateService:  # TODO: StudentService系にモジュール�
                         ),
                         submission_folder_name=row["submission_folder_name"],
                     )
-                    student_master.append(student)
+                    students.append(student)
         except (_UnexpectedStudentMasterExcelError, ManabaReportArchiveIOError) as e:
             raise StudentMasterServiceError(
                 reason=f"マスターデータの構成中にエラーが発生しました。\n{e.reason}",
             )
         else:
-            self._student_repo.put(student_master)
+            self._student_repo.create_all(students)
         finally:
             wb.close()

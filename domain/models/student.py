@@ -14,6 +14,22 @@ class Student:
     num_submissions: int
     submission_folder_name: str | None  # None if the student has no submission
 
+    def __post_init__(self):
+        assert isinstance(self.student_id, StudentID), \
+            (self.student_id, type(self.student_id))
+        assert isinstance(self.name, str), \
+            (self.name, type(self.name))
+        assert isinstance(self.name_en, str), \
+            (self.name_en, type(self.name_en))
+        assert isinstance(self.email_address, str), \
+            (self.email_address, type(self.email_address))
+        assert self.submitted_at is None or isinstance(self.submitted_at, datetime), \
+            (self.submitted_at, type(self.submitted_at))
+        assert isinstance(self.num_submissions, int), \
+            (self.num_submissions, type(self.num_submissions))
+        assert self.submission_folder_name is None or isinstance(self.submission_folder_name, str), \
+            (self.submission_folder_name, type(self.submission_folder_name))
+
     def to_json(self):
         return dict(
             student_id=self.student_id.to_json(),

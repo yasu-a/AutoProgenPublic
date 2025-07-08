@@ -1,5 +1,4 @@
 from domain.models.student import Student
-from domain.models.student_master import StudentMaster
 from domain.models.values import StudentID
 from infra.repositories.student import StudentRepository
 
@@ -24,5 +23,5 @@ class StudentListSubService:
     ):
         self._student_repo = student_repo
 
-    def execute(self) -> StudentMaster:
+    def execute(self) -> list[Student]:
         return self._student_repo.list()

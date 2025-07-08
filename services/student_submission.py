@@ -42,7 +42,7 @@ class StudentSubmissionExtractService:
         self._student_submission_path_provider = student_submission_path_provider
 
     def execute(self):
-        if not self._student_repo.exists():
+        if not self._student_repo.exists_any():
             raise StudentSubmissionServiceError("生徒マスタが作成されていません")
 
         # 生徒マスタを読み込んで生徒ID→提出フォルダ名のマッピングを作る
