@@ -114,7 +114,6 @@ class StudentMarkViewDataGetMarkSummaryUseCase:
             state = StudentMarkState.READY
 
         return StudentMarkSummaryViewData(
-            student_id=student_id,
             student=self._student_get_service.execute(student_id),
             mark=self._student_mark_get_sub_service.execute(student_id),
             state=state,

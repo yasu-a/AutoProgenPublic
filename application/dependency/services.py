@@ -9,8 +9,6 @@ from services.project import ProjectCreateService, ProjectBaseFolderShowService,
     ProjectFolderShowService, ProjectDeleteService, ProjectGetSizeQueryService, \
     ProjectUpdateTimestampService, ProjectGetConfigStateQueryService, ProjectListIDQueryService, \
     ProjectGetService
-from services.stage import StageListRootSubService, StageListChildSubService, \
-    StageGetParentSubService
 from services.stage_path import StagePathListSubService, StagePathGetByTestCaseIDService
 from services.storage import StorageLoadTestSourceService, \
     StorageCreateService, StorageDeleteService, StorageLoadStudentSourceService, \
@@ -186,24 +184,9 @@ def get_testcase_config_list_id_sub_service():
     )
 
 
-def get_stage_list_root_sub_service():
-    return StageListRootSubService()
-
-
-def get_stage_list_child_sub_service():
-    return StageListChildSubService(
-        testcase_config_list_id_sub_service=get_testcase_config_list_id_sub_service(),
-    )
-
-
-def get_stage_get_parent_sub_service():
-    return StageGetParentSubService()
-
-
 def get_stage_path_list_sub_service():
     return StagePathListSubService(
-        stage_list_root_sub_service=get_stage_list_root_sub_service(),
-        stage_list_child_sub_service=get_stage_list_child_sub_service(),
+        testcase_config_list_id_sub_service=get_testcase_config_list_id_sub_service(),
     )
 
 
