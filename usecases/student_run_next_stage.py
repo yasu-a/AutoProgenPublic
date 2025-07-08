@@ -1,6 +1,7 @@
 from typing import Callable
 
 from domain.errors import StopTask
+from domain.models.stage_path import StagePath
 from domain.models.stages import BuildStage, CompileStage, ExecuteStage, TestStage
 from domain.models.student_stage_path_result import StudentStagePathResult
 from domain.models.values import StudentID
@@ -79,7 +80,7 @@ class StudentRunNextStageUseCase:
             if stop_producer():
                 raise StopTask()
 
-            stage_path_lst = self._stage_path_list_sub_service.execute()
+            stage_path_lst: list[StagePath] = self._stage_path_list_sub_service.execute()
 
             # 各ステージパスの実行可能なステージを1ステージだけ実行
             result_updated = False

@@ -30,7 +30,8 @@ from usecases.test_test_stage import TestTestStageUseCase
 from usecases.testcase_config import TestCaseConfigGetUseCase, TestCaseConfigPutUseCase, \
     TestCaseConfigListIDUseCase
 from usecases.testcase_list_edit import TestCaseListEditListSummaryUseCase, \
-    TestCaseListEditCreateNewNameUseCase, TestCaseListEditCreateTestCaseUseCase
+    TestCaseListEditCreateNewNameUseCase, TestCaseListEditCreateTestCaseUseCase, \
+    TestCaseListEditCopyTestCaseUseCase
 
 
 def get_global_settings_get_usecase():
@@ -230,6 +231,13 @@ def get_testcase_list_edit_create_new_name_usecase():
 def get_testcase_list_edit_create_testcase_usecase():
     return TestCaseListEditCreateTestCaseUseCase(
         testcase_config_repo=get_testcase_config_repository(),
+    )
+
+
+# TestCaseListEditCopyTestCaseUseCase
+def get_testcase_list_edit_copy_testcase_usecase():
+    return TestCaseListEditCopyTestCaseUseCase(
+        testcase_config_copy_service=get_testcase_config_copy_service(),
     )
 
 

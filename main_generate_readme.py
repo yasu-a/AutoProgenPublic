@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from application.dependency.path_provider import get_static_resource_base_path, get_icon_fullpath, \
-    get_global_base_path
+    get_global_base_path, get_image_fullpath
 from application.dependency.services import get_app_version_get_service
 from domain.models.app_version import ReleaseType, AppVersion
 
@@ -23,6 +23,15 @@ class ResourceIconVariableFactory(VariableFactory):
         icon_filename = var_name[5:]
         icon_path = get_icon_fullpath(icon_filename).relative_to(get_global_base_path())
         return f"<img src=\"/{icon_path.as_posix()}\" width=\"15px\">"
+
+
+class ResourceImageVariableFactory(VariableFactory):
+    def __getitem__(self, var_name: str) -> Any:
+        if not var_name.startswith("img_"):
+            raise KeyError(var_name)
+        image_filename = var_name[4:]
+        image_path = get_image_fullpath(image_filename).relative_to(get_global_base_path())
+        return f"![image_filename]({image_path.as_posix()})"
 
 
 def _get_app_version() -> AppVersion:
@@ -121,6 +130,7 @@ Path("README.md").write_text(
     TemplateParser(
         variable_factory=ChainedVariableFactory(
             ResourceIconVariableFactory(),
+            ResourceImageVariableFactory(),
             AppInfoVariableFactory(),
             AppStateVariableFactory(),
         )

@@ -1,5 +1,7 @@
+import copy
 from datetime import datetime
 
+from domain.errors import ServiceError
 from domain.models.execute_config_options import ExecuteConfigOptions
 from domain.models.test_config_options import TestConfigOptions
 from domain.models.testcase_config import TestCaseConfig
@@ -43,6 +45,22 @@ class TestCaseConfigPutService:
         self._testcase_config_repo = testcase_config_repo
 
     def execute(self, testcase_config: TestCaseConfig) -> None:
+        self._testcase_config_repo.put(testcase_config)
+
+
+class TestCaseConfigCopyService:
+    def __init__(
+            self,
+            *,
+            testcase_config_repo: TestCaseConfigRepository,
+    ):
+        self._testcase_config_repo = testcase_config_repo
+
+    def execute(self, testcase_id: TestCaseID, new_testcase_id: TestCaseID) -> None:
+        if self._testcase_config_repo.exists(new_testcase_id):
+            raise ServiceError(f"testcase_id {new_testcase_id} already exists")
+        testcase_config = copy.deepcopy(self._testcase_config_repo.get(testcase_id))
+        testcase_config.testcase_id = new_testcase_id
         self._testcase_config_repo.put(testcase_config)
 
 

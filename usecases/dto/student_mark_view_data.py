@@ -165,7 +165,7 @@ class StudentTestCaseTestResultUntestableViewData(AbstractStudentTestCaseTestRes
 
 class StudentMarkState(Enum):
     # ステージの処理未完了や失敗はテストケースごとの問題なのでここでは提供しない
-    
+
     READY = "採点可"
     NO_TEST_FOUND = "テストケースがありません"
     RERUN_REQUIRED = "変更が検出されたため再実行が必要です"
@@ -173,11 +173,14 @@ class StudentMarkState(Enum):
 
 @dataclass(slots=True)
 class StudentMarkSummaryViewData:
-    student_id: StudentID
     student: Student
     mark: StudentMark
     state: StudentMarkState
     detailed_text: str | None
+
+    @property
+    def student_id(self) -> StudentID:
+        return self.student.student_id
 
     @property
     def is_ready(self) -> bool:

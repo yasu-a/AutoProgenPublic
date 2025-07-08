@@ -9,7 +9,6 @@ from application.dependency.services import get_storage_create_service, \
 from application.state.current_project import set_current_project_id, get_current_project_id
 from application.state.debug import set_debug
 from domain.errors import StorageRunCompilerServiceError, StorageRunExecutableServiceError
-from domain.models.execute_config_options import ExecuteConfigOptions
 from domain.models.values import ProjectID, FileID
 
 

@@ -15,7 +15,7 @@ class AbstractStage(ABC):  # 生徒のプロセスのステージを表す基底
 
     @classmethod
     @abstractmethod
-    def get_name_str(cls) -> str:
+    def get_name(cls) -> str:
         raise NotImplementedError()
 
     def __repr__(self):
@@ -28,7 +28,7 @@ class AbstractStage(ABC):  # 生徒のプロセスのステージを表す基底
 
     def to_json(self) -> dict:
         return {
-            "name": self.get_name_str(),
+            "name": self.get_name(),
             **{
                 f.name: getattr(self, f.name).to_json()
                 for f in fields(self)
@@ -38,7 +38,7 @@ class AbstractStage(ABC):  # 生徒のプロセスのステージを表す基底
     @classmethod
     def from_json(cls, body: dict) -> "AbstractStage":
         for sub_cls in cls.__subclasses__():
-            if sub_cls.get_name_str() == body["name"]:
+            if sub_cls.get_name() == body["name"]:
                 # noinspection PyArgumentList
                 return sub_cls(
                     **{
@@ -54,7 +54,7 @@ class BuildStage(AbstractStage):
     # ソースコード抽出
 
     @classmethod
-    def get_name_str(cls) -> str:
+    def get_name(cls) -> str:
         return "build"
 
 
@@ -63,7 +63,7 @@ class CompileStage(AbstractStage):
     # コンパイル
 
     @classmethod
-    def get_name_str(cls) -> str:
+    def get_name(cls) -> str:
         return "compile"
 
 
@@ -74,7 +74,7 @@ class ExecuteStage(AbstractStage):
     testcase_id: TestCaseID
 
     @classmethod
-    def get_name_str(cls) -> str:
+    def get_name(cls) -> str:
         return "execute"
 
 
@@ -85,5 +85,5 @@ class TestStage(AbstractStage):
     testcase_id: TestCaseID
 
     @classmethod
-    def get_name_str(cls) -> str:
+    def get_name(cls) -> str:
         return "test"

@@ -9,8 +9,6 @@ from services.project import ProjectCreateService, ProjectBaseFolderShowService,
     ProjectFolderShowService, ProjectDeleteService, ProjectGetSizeQueryService, \
     ProjectUpdateTimestampService, ProjectGetConfigStateQueryService, ProjectListIDQueryService, \
     ProjectGetService
-from services.stage import StageListRootSubService, StageListChildSubService, \
-    StageGetParentSubService
 from services.stage_path import StagePathListSubService, StagePathGetByTestCaseIDService
 from services.storage import StorageLoadTestSourceService, \
     StorageCreateService, StorageDeleteService, StorageLoadStudentSourceService, \
@@ -37,7 +35,8 @@ from services.student_submission import StudentSubmissionExistService, \
 from services.testcase_config import TestCaseConfigListIDSubService, \
     TestCaseConfigGetExecuteConfigMtimeService, TestCaseConfigGetTestConfigMtimeService, \
     TestCaseConfigDeleteService, TestCaseConfigGetExecuteOptionsService, \
-    TestCaseConfigGetTestOptionsService, TestCaseConfigGetService, TestCaseConfigPutService
+    TestCaseConfigGetTestOptionsService, TestCaseConfigGetService, TestCaseConfigPutService, \
+    TestCaseConfigCopyService
 
 
 def get_global_settings_get_service():
@@ -186,24 +185,9 @@ def get_testcase_config_list_id_sub_service():
     )
 
 
-def get_stage_list_root_sub_service():
-    return StageListRootSubService()
-
-
-def get_stage_list_child_sub_service():
-    return StageListChildSubService(
-        testcase_config_list_id_sub_service=get_testcase_config_list_id_sub_service(),
-    )
-
-
-def get_stage_get_parent_sub_service():
-    return StageGetParentSubService()
-
-
 def get_stage_path_list_sub_service():
     return StagePathListSubService(
-        stage_list_root_sub_service=get_stage_list_root_sub_service(),
-        stage_list_child_sub_service=get_stage_list_child_sub_service(),
+        testcase_config_list_id_sub_service=get_testcase_config_list_id_sub_service(),
     )
 
 
@@ -361,6 +345,13 @@ def get_testcase_config_get_service():
 # TestCaseConfigPutService
 def get_testcase_config_put_service():
     return TestCaseConfigPutService(
+        testcase_config_repo=get_testcase_config_repository(),
+    )
+
+
+# TestCaseConfigCopyService
+def get_testcase_config_copy_service():
+    return TestCaseConfigCopyService(
         testcase_config_repo=get_testcase_config_repository(),
     )
 

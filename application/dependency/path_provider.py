@@ -21,6 +21,10 @@ def get_icon_fullpath(filename: str) -> Path:
     return get_static_resource_base_path() / "icon" / f"{filename}.png"
 
 
+def get_image_fullpath(filename: str) -> Path:
+    return get_static_resource_base_path() / "img" / f"{filename}.jpg"
+
+
 def get_global_path_provider():
     return GlobalPathProvider(
         global_settings_folder_fullpath=get_global_base_path(),

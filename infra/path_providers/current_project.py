@@ -116,7 +116,7 @@ class StudentStageResultPathProvider:
 
     def result_json_fullpath(self, student_id: StudentID, stage: AbstractStage) -> Path:
         filename \
-            = f"{stage.get_name_str()}_" + "_".join(stage.list_context_elements_str()) + ".json"
+            = f"{stage.get_name()}_" + "_".join(stage.list_context_elements_str()) + ".json"
         return self.base_folder_fullpath(student_id) / filename
 
 
