@@ -36,6 +36,7 @@ class ExecutableIO:
             # ^ TrueにするとPopenの__exit__ `stdout.close()`でハングする
         )
         if input_file_fullpath is not None:
+            # noinspection PyTypeChecker
             kwargs["stdin"] = input_file_fullpath.open(mode="r")
         self._logger.info(
             "Run executable:\n" + pformat(kwargs)
@@ -55,4 +56,5 @@ class ExecutableIO:
                     return stdout_text.replace("\r\n", "\n")
         finally:
             if input_file_fullpath is not None:
+                # noinspection PyUnresolvedReferences
                 kwargs["stdin"].close()

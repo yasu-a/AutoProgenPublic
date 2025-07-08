@@ -337,7 +337,7 @@ def get_student_mark_view_data_get_mark_summary_usecase():
 # StudentSourceCodeGetUseCase
 def get_student_source_code_get_usecase():
     return StudentSourceCodeGetUseCase(
-        student_source_code_get_query_service=get_student_source_code_get_query_service(),
+        student_source_code_get_query_service=get_student_dynamic_get_source_content_service(),
     )
 
 

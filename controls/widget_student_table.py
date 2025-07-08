@@ -18,8 +18,7 @@ from domain.errors import StudentUseCaseError
 from domain.models.stages import BuildStage, CompileStage, ExecuteStage, TestStage
 from domain.models.values import StudentID
 from res.fonts import get_font
-from usecases.dto.student_stage_result_diff_snapshot import StudentStageResultDiffSnapshot, \
-    StudentStageResultDiff
+from usecases.dto.student_stage_result_diff_snapshot import StudentStageResultDiffSnapshot
 from usecases.dto.student_table_cell_data import StudentStageStateCellDataStageState
 from utils.app_logging import create_logger
 
@@ -426,11 +425,7 @@ class _StudentObserver(QObject):
         # 初めて巡回したとき以外は更新を確認してシグナルを送出
         if student_id in self._student_id_mtime_mapping:
             old_snapshot = self._student_id_mtime_mapping.get(student_id)
-            diff = StudentStageResultDiff.from_snapshots(
-                old_snapshot=old_snapshot,
-                new_snapshot=new_snapshot,
-            )
-            if diff.updated:
+            if new_snapshot.is_different_from(old_snapshot):
                 # noinspection PyUnresolvedReferences
                 self.student_modified.emit(student_id)
 

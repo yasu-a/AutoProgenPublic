@@ -9,18 +9,7 @@ class StudentStageResultDiffSnapshot:
     student_id: StudentID
     timestamp: datetime | None
 
-
-@dataclass
-class StudentStageResultDiff:
-    updated: bool
-
-    @classmethod
-    def from_snapshots(
-            cls,
-            *,
-            old_snapshot: StudentStageResultDiffSnapshot,
-            new_snapshot: StudentStageResultDiffSnapshot,
-    ) -> "StudentStageResultDiff":
-        return cls(
-            updated=old_snapshot.timestamp != new_snapshot.timestamp,
-        )
+    def is_different_from(self, other):
+        if not isinstance(other, StudentStageResultDiffSnapshot):
+            return NotImplemented
+        return self.timestamp == other.timestamp

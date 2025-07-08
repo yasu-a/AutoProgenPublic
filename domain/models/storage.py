@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
-from typing import Callable, Iterable, Literal
+from typing import Callable, Iterable
 
 from domain.models.values import StorageID
 
@@ -32,6 +33,10 @@ FileRelativePathStatMapperType = Callable[[Path], StorageStat | None]  # ^
 
 
 # ^ returns None if file not found
+
+class CommandType(Enum):
+    DELETED = "deleted"
+    UPDATED = "updated"
 
 
 class StorageFileContentMapper:
@@ -123,8 +128,7 @@ class StorageFileContentMapper:
             is_deleted=True,
         )
 
-    def iter_modifications(self) \
-            -> Iterable[tuple[Path, tuple[Literal["updated", "deleted"], bytes | None]]]:
+    def iter_modifications(self) -> Iterable[tuple[Path, tuple[CommandType, bytes | None]]]:
         # ストレージに対する変更をイテレートする
         for relative_file_path, cache_entry in self._cache.items():
             if not cache_entry.is_modified:
@@ -132,10 +136,10 @@ class StorageFileContentMapper:
                 continue
             if cache_entry.is_deleted:
                 # 削除された
-                yield relative_file_path, ("deleted", None)
+                yield relative_file_path, (CommandType.DELETED, None)
             else:
                 # 内容が上書きされた
-                yield relative_file_path, ("updated", cache_entry.file_item.content_bytes)
+                yield relative_file_path, (CommandType.UPDATED, cache_entry.file_item.content_bytes)
 
     def __iter__(self) -> Iterable[Path]:
         # ストレージ内に存在するファイルの相対パスをイテレートする

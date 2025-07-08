@@ -57,15 +57,6 @@ class AbstractProgressDialog(QDialog, Generic[_EO]):
     def _init_ui(self):
         self.setModal(True)
         self.setMinimumWidth(700)
-        # self.setStyleSheet(
-        #     "QDialog {"
-        #     "   background-color: white;"
-        #     "   border: 3px solid;"
-        #     "   border-color: black;"
-        #     "   border-radius: 10px;"
-        #     "}"
-        # )
-        # self.setWindowFlag(Qt.FramelessWindowHint, True)
         self.setWindowFlag(Qt.WindowCloseButtonHint, False)
         self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
 

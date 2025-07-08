@@ -155,7 +155,7 @@ class _StudentMasterExcelReader:
             if submission_folder_cell.hyperlink is None:
                 link_path = None
             else:
-                link_path = submission_folder_cell.hyperlink.target
+                link_path = str(submission_folder_cell.hyperlink.target)
             if link_path is not None and not link_path.endswith("\\"):
                 raise _UnexpectedStudentMasterExcelError(
                     reason=f"不明な形式のフォルダパスです: {link_path}"

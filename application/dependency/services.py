@@ -19,11 +19,10 @@ from services.storage_run_compiler import StorageRunCompilerService
 from services.storage_run_executable import StorageRunExecutableService
 from services.student import StudentGetService, StudentListSubService
 from services.student_dynamic import StudentDynamicClearService, \
-    StudentDynamicSetSourceContentService
+    StudentDynamicSetSourceContentService, StudentDynamicGetSourceContentService
 from services.student_mark import StudentMarkGetSubService, StudentMarkPutService, \
     StudentMarkCheckTimestampQueryService, StudentMarkListService
 from services.student_master_create import StudentMasterCreateService
-from services.student_source_code import StudentSourceCodeGetQueryService
 from services.student_stage_path_result import StudentStagePathResultGetService, \
     StudentStagePathResultCheckRollbackService
 from services.student_stage_result import StudentStageResultCheckTimestampQueryService, \
@@ -245,28 +244,27 @@ def get_storage_run_compiler_service():
     return StorageRunCompilerService(
         compile_tool_io=get_compile_tool_io(),
         global_settings_repo=get_global_settings_repository(),
-        student_dynamic_repo=get_student_dynamic_repository(),
         storage_repo=get_storage_repository(),
     )
 
 
 def get_storage_load_student_source_service():
     return StorageLoadStudentSourceService(
-        student_dynamic_repository=get_student_dynamic_repository(),
+        student_source_repo=get_student_source_repository(),
         storage_repo=get_storage_repository(),
     )
 
 
 def get_storage_load_student_executable_service():
     return StorageLoadStudentExecutableService(
-        student_dynamic_repository=get_student_dynamic_repository(),
+        student_executable_repo=get_student_executable_repository(),
         storage_repo=get_storage_repository(),
     )
 
 
 def get_storage_store_student_executable_service():
     return StorageStoreStudentExecutableService(
-        student_dynamic_repository=get_student_dynamic_repository(),
+        student_executable_repo=get_student_executable_repository(),
         storage_repo=get_storage_repository(),
     )
 
@@ -392,13 +390,21 @@ def get_testcase_config_delete_service():
 
 def get_student_dynamic_clear_service():
     return StudentDynamicClearService(
-        student_dynamic_repo=get_student_dynamic_repository(),
+        student_source_repo=get_student_source_repository(),
+        student_execute_repo=get_student_executable_repository(),
     )
 
 
 def get_student_dynamic_set_source_content_service():
     return StudentDynamicSetSourceContentService(
-        student_dynamic_repo=get_student_dynamic_repository(),
+        student_source_repo=get_student_source_repository(),
+    )
+
+
+# StudentDynamicGetSourceContentService
+def get_student_dynamic_get_source_content_service():
+    return StudentDynamicGetSourceContentService(
+        student_source_repo=get_student_source_repository(),
     )
 
 
@@ -428,13 +434,6 @@ def get_student_mark_get_sub_service():
 def get_student_mark_put_service():
     return StudentMarkPutService(
         student_mark_repo=get_student_mark_repository(),
-    )
-
-
-# StudentSourceCodeGetQueryService
-def get_student_source_code_get_query_service():
-    return StudentSourceCodeGetQueryService(
-        student_dynamic_repo=get_student_dynamic_repository(),
     )
 
 

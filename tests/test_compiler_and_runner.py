@@ -1,6 +1,8 @@
 from contextlib import contextmanager
 from pathlib import Path
 
+import pytest
+
 from application.dependency.path_provider import get_global_path_provider
 from application.dependency.repositories import get_storage_repository
 from application.dependency.services import get_storage_create_service, \
@@ -14,6 +16,8 @@ from domain.models.values import ProjectID, FileID
 
 def override_dependency():
     import application.dependency.path_provider
+
+    print(f"{Path(__file__).parent=}")
 
     def get_project_list_folder_fullpath_override():
         return Path(__file__).parent / "test_project_list"
@@ -32,6 +36,14 @@ def override_dependency():
 
     application.dependency.path_provider.get_storage_path_provider \
         = get_storage_path_provider_override
+
+
+@pytest.fixture(autouse=True)
+def setup_test():
+    set_debug(True)  # コンパイラの設定をデバッグ時の設定にするため
+    if get_current_project_id() is None:
+        set_current_project_id(ProjectID("test_project_id"))  # テスト用プロジェクトを設定
+    override_dependency()
 
 
 def write_test_source(source: str):
@@ -56,11 +68,6 @@ EXECUTABLE_FILE_RELATIVE_PATH = Path("main.exe")
 
 
 def test_compile_success():
-    set_debug(True)  # コンパイラの設定をデバッグ時の設定にするため
-    if get_current_project_id() is None:
-        set_current_project_id(ProjectID("test_project_id"))  # テスト用プロジェクトを設定
-    override_dependency()
-
     write_test_source(r"""
         #include <stdio.h>
         int main() {
@@ -94,11 +101,6 @@ def test_compile_success():
 
 
 def test_compile_fail():
-    set_debug(True)  # コンパイラの設定をデバッグ時の設定にするため
-    if get_current_project_id() is None:
-        set_current_project_id(ProjectID("test_project_id"))  # テスト用プロジェクトを設定
-    override_dependency()
-
     write_test_source(r"""
         #include <stdio.h>
         int main() {
@@ -134,11 +136,6 @@ def test_compile_fail():
 
 
 def test_execute_normal_source_code():
-    set_debug(True)  # コンパイラの設定をデバッグ時の設定にするため
-    if get_current_project_id() is None:
-        set_current_project_id(ProjectID("test_project_id"))  # テスト用プロジェクトを設定
-    override_dependency()
-
     write_test_source(r"""
         #include <stdio.h>
         int main() {
@@ -181,11 +178,6 @@ def test_execute_normal_source_code():
 
 
 def test_execute_normal_scanf_source_code():
-    set_debug(True)  # コンパイラの設定をデバッグ時の設定にするため
-    if get_current_project_id() is None:
-        set_current_project_id(ProjectID("test_project_id"))  # テスト用プロジェクトを設定
-    override_dependency()
-
     write_test_source(r"""
         #include <stdio.h>
         int main() {
@@ -236,13 +228,8 @@ def test_execute_normal_scanf_source_code():
             assert service_result.stdout_text == "sum = 58023\n"  # 12345 + 45678
 
 
-# NOT WORKING
+# FIXME: NOT WORKING 実行のタイムアウトが再現できない
 # def test_execute_infinite_scanf_blocking_timeout():
-#     set_debug(True)  # コンパイラの設定をデバッグ時の設定にするため
-#     if get_current_project_id() is None:
-#         set_current_project_id(ProjectID("test_project_id"))  # テスト用プロジェクトを設定
-#     override_dependency()
-#
 #     write_test_source(r"""
 #         #include <stdio.h>
 #         int main() {
@@ -273,12 +260,12 @@ def test_execute_normal_scanf_source_code():
 #         # 標準入力の準備
 #         # storage_repo = get_storage_repository()
 #         # storage = storage_repo.get(storage_id)
-#         # storage.files[FileID.STDIN.deployment_relative_path] = b""
+#         # storage.files[FileID.STDIN.deployment_relative_path] = b""  # give nothing
 #         # storage_repo.put(storage)
 #
 #         # コンパイルの実効と標準出力ファイルの書き込み
 #         try:
-#             service_result = get_storage_run_executable_service().execute(
+#             get_storage_run_executable_service().execute(
 #                 storage_id=storage_id,
 #                 executable_file_relative_path=EXECUTABLE_FILE_RELATIVE_PATH,
 #                 timeout=2,
@@ -286,8 +273,6 @@ def test_execute_normal_scanf_source_code():
 #         except StorageRunExecutableServiceError as e:
 #             print(" *** reason")
 #             print(e.reason)
-#             assert False
+#             assert "タイムアウト" in e.reason
 #         else:
-#             print(" *** output")
-#             print(repr(service_result.stdout_text))
-#             assert service_result.stdout_text == "sum = 58023\n"  # 12345 + 45678
+#             assert False

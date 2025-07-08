@@ -1,12 +1,12 @@
 from domain.models.values import StudentID
-from services.student_source_code import StudentSourceCodeGetQueryService
+from services.student_dynamic import StudentDynamicGetSourceContentService
 
 
 class StudentSourceCodeGetUseCase:
     def __init__(
             self,
             *,
-            student_source_code_get_query_service: StudentSourceCodeGetQueryService,
+            student_source_code_get_query_service: StudentDynamicGetSourceContentService,
     ):
         self._student_source_code_get_query_service = student_source_code_get_query_service
 

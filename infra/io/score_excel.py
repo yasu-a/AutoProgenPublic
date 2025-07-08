@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import cached_property, cache
 from pathlib import Path
-from typing import ContextManager
+from typing import Any, Generator
 
 import openpyxl
 from openpyxl.workbook import Workbook
@@ -185,7 +185,7 @@ class ScoreExcelIO:
         self._excel_fullpath = excel_fullpath
 
     @contextmanager
-    def _open(self, *, readonly: bool) -> ContextManager[Workbook]:
+    def _open(self, *, readonly: bool) -> Generator[Workbook, Any, None]:
         wb = openpyxl.open(self._excel_fullpath, read_only=readonly)
         try:
             yield wb
@@ -199,8 +199,8 @@ class ScoreExcelIO:
     ) -> list[WorksheetStat]:
         with self._open(readonly=True) as wb:
             ws_stats = []
-            for ws_name in wb.get_sheet_names():
-                ws: Worksheet = wb.get_sheet_by_name(ws_name)
+            for ws_name in wb.sheetnames:
+                ws: Worksheet = wb[ws_name]
                 try:
                     _ScoreExcelWorksheetReader(ws).validate(student_ids)
                 except ScoreExcelMalformedWorksheetError as e:
@@ -228,7 +228,7 @@ class ScoreExcelIO:
             target_id: TargetID,
     ):
         with self._open(readonly=True) as wb:
-            ws = wb.get_sheet_by_name(worksheet_name)
+            ws = wb[worksheet_name]
             reader = _ScoreExcelWorksheetReader(ws)
             writing_positions = reader.get_writing_positions(student_ids, target_id)
             for student_id in student_ids:
@@ -256,7 +256,7 @@ class ScoreExcelIO:
             else:
                 backup_path = None
 
-            ws = wb.get_sheet_by_name(worksheet_name)
+            ws = wb[worksheet_name]
             reader = _ScoreExcelWorksheetReader(ws)
             writing_positions = reader.get_writing_positions(student_ids, target_id)
             for student_mark in student_marks:

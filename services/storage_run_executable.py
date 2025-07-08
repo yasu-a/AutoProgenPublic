@@ -41,13 +41,14 @@ class StorageRunExecutableService:
         # 標準入力にリダイレクトするファイルのパス
         input_file_fullpath = storage.base_folder_fullpath / FileID.STDIN.deployment_relative_path
         if not input_file_fullpath.exists():
-            kwargs["input_file_fullpath"] = None
-        else:
-            kwargs["input_file_fullpath"] = input_file_fullpath
+            input_file_fullpath = None
 
         # 実行ファイルの実行
         try:
-            stdout_text = self._executable_io.run(**kwargs)
+            stdout_text = self._executable_io.run(
+                **kwargs,
+                input_file_fullpath=input_file_fullpath,
+            )
         except ExecutableIOTimeoutError:
             raise StorageRunExecutableServiceError(
                 reason="実行がタイムアウトしました\nプログラムが入力を待っているか無限ループしている可能性があります",

@@ -46,7 +46,7 @@ class StudentEnvEntry:
 
 @dataclass(slots=True)
 class StudentEnvImportResult:
-    source_item_path: str | None  # item relative path in archive
+    source_item_path: str | None  # item relative path in the archive
     env_item_path: str | None  # item relative path in environment
     success: bool
     reason: str | None

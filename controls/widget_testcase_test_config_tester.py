@@ -44,6 +44,7 @@ class TestCaseTestConfigTesterWidget(QGroupBox):
         self._b_run.setText("▶")
         self._b_run.setFixedWidth(30)
         self._b_run.setFixedHeight(30)
+        # noinspection PyUnresolvedReferences
         self._b_run.clicked.connect(self.run_requested)
         layout_cell_buttons.addWidget(self._b_run)
 
@@ -126,6 +127,7 @@ class TestCaseTestConfigTesterWidget(QGroupBox):
     def eventFilter(self, source: QObject, event: QEvent) -> bool:
         # self._editorでCtrl+Enterが押されたら実行をリクエストする
         if source is self._editor and event.type() == QEvent.KeyPress:
+            # noinspection PyUnresolvedReferences
             if event.key() == Qt.Key_Return and event.modifiers() & Qt.ControlModifier:
                 # noinspection PyUnresolvedReferences
                 self.run_requested.emit()

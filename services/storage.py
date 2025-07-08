@@ -1,12 +1,13 @@
 import uuid
 from pathlib import Path
 
-from domain.models.file_item import SourceFileItem, ExecutableFileItem
+from domain.models.file_item import ExecutableFileItem
 from domain.models.input_file import InputFileMapping
 from domain.models.output_file import OutputFileMapping, OutputFile
 from domain.models.values import StorageID, StudentID, TestCaseID, FileID
 from infra.repositories.storage import StorageRepository
-from infra.repositories.student_dynamic import StudentDynamicRepository
+from infra.repositories.student_dynamic import StudentSourceRepository, \
+    StudentExecutableRepository
 from infra.repositories.test_source import TestSourceRepository
 from infra.repositories.testcase_config import TestCaseConfigRepository
 from services.dto.storage_diff_snapshot import StorageDiff, StorageFileSnapshot, \
@@ -72,10 +73,10 @@ class StorageLoadStudentSourceService:
     def __init__(
             self,
             *,
-            student_dynamic_repository: StudentDynamicRepository,
+            student_source_repo: StudentSourceRepository,
             storage_repo: StorageRepository,
     ):
-        self._student_dynamic_repository = student_dynamic_repository
+        self._student_source_repo = student_source_repo
         self._storage_repo = storage_repo
 
     def execute(
@@ -86,10 +87,7 @@ class StorageLoadStudentSourceService:
             file_relative_path: Path,
     ) -> None:
         # 生徒のソースコードを読み込む
-        content_bytes = self._student_dynamic_repository.get(
-            student_id=student_id,
-            file_item_type=SourceFileItem,
-        ).content_bytes
+        content_bytes = self._student_source_repo.get(student_id).content_bytes
 
         # ストレージ領域に配置する
         storage = self._storage_repo.get(storage_id)
@@ -103,10 +101,10 @@ class StorageLoadStudentExecutableService:
     def __init__(
             self,
             *,
-            student_dynamic_repository: StudentDynamicRepository,
+            student_executable_repo: StudentExecutableRepository,
             storage_repo: StorageRepository,
     ):
-        self._student_dynamic_repository = student_dynamic_repository
+        self._student_executable_repo = student_executable_repo
         self._storage_repo = storage_repo
 
     def execute(
@@ -117,10 +115,7 @@ class StorageLoadStudentExecutableService:
             file_relative_path: Path,
     ) -> None:
         # 生徒の実行ファイルを読み込む
-        content_bytes = self._student_dynamic_repository.get(
-            student_id=student_id,
-            file_item_type=ExecutableFileItem,
-        ).content_bytes
+        content_bytes = self._student_executable_repo.get(student_id).content_bytes
 
         # ストレージ領域に配置する
         storage = self._storage_repo.get(storage_id)
@@ -134,10 +129,10 @@ class StorageStoreStudentExecutableService:
     def __init__(
             self,
             *,
-            student_dynamic_repository: StudentDynamicRepository,
+            student_executable_repo: StudentExecutableRepository,
             storage_repo: StorageRepository,
     ):
-        self._student_dynamic_repository = student_dynamic_repository
+        self._student_executable_repo = student_executable_repo
         self._storage_repo = storage_repo
 
     def execute(
@@ -152,11 +147,11 @@ class StorageStoreStudentExecutableService:
             raise FileNotFoundError(
                 f"指定された実行ファイルが見つかりません。: {file_relative_path}")
         content_bytes = storage.files[file_relative_path]
-        self._student_dynamic_repository.put(
+        self._student_executable_repo.put(
             student_id=student_id,
             file_item=ExecutableFileItem(
                 content_bytes=content_bytes,
-            ),
+            )
         )
 
 

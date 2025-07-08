@@ -1,7 +1,6 @@
 from datetime import datetime
 from json import JSONDecodeError
 
-from domain.errors import ProjectServiceError
 from domain.models.app_version import AppVersion
 from domain.models.project import Project
 from domain.models.values import ProjectID, TargetID

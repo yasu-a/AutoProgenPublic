@@ -74,6 +74,19 @@ class DynamicPathProvider:
         return self.base_folder_fullpath() / "students"
 
 
+# データベースのパス
+class DatabasePathProvider:
+    def __init__(
+            self,
+            *,
+            dynamic_path_provider: DynamicPathProvider,
+    ):
+        self._dynamic_path_provider = dynamic_path_provider
+
+    def fullpath(self) -> Path:
+        return self._dynamic_path_provider.base_folder_fullpath() / "database.sqlite3"
+
+
 # コンパイル・実行関連で使うファイル操作を行うためのストレージ領域
 class StoragePathProvider:
     def __init__(

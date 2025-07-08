@@ -5,7 +5,6 @@ from domain.models.values import StorageID
 from infra.io.compile_tool import CompileToolIO
 from infra.repositories.global_settings import GlobalSettingsRepository
 from infra.repositories.storage import StorageRepository
-from infra.repositories.student_dynamic import StudentDynamicRepository
 from services.dto.storage_run_compiler import StorageCompileServiceResult
 
 
@@ -16,12 +15,10 @@ class StorageRunCompilerService:
             *,
             compile_tool_io: CompileToolIO,
             global_settings_repo: GlobalSettingsRepository,
-            student_dynamic_repo: StudentDynamicRepository,
             storage_repo: StorageRepository,
     ):
         self._compile_tool_io = compile_tool_io
         self._global_settings_repo = global_settings_repo
-        self._student_dynamic_repo = student_dynamic_repo
         self._storage_repo = storage_repo
 
     def execute(

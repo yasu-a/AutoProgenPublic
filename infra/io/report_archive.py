@@ -1,8 +1,7 @@
-import io
 import zipfile
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
-from typing import Iterable, ContextManager, Generator, IO
+from typing import Iterable, Generator, IO
 
 from domain.errors import ManabaReportArchiveIOError
 from domain.models.values import StudentID
@@ -101,7 +100,7 @@ class ManabaReportArchiveIO:
             *,
             student_id: StudentID,
             student_submission_folder_name: str,
-    ) -> Iterable[tuple[PurePosixPath, io.BufferedReader]]:  # [^]
+    ) -> Iterable[tuple[PurePosixPath, IO[bytes]]]:  # [^]
         # ^ relative path in student folder in archive and fp
 
         self._logger.info(f"iter_student_submission_archive_contents\n"

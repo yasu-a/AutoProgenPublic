@@ -1,7 +1,6 @@
-import io
 import re
 from pathlib import Path, PurePosixPath
-from typing import Iterable
+from typing import Iterable, IO
 
 from domain.errors import ServiceError, ManabaReportArchiveIOError, StudentSubmissionServiceError
 from domain.models.values import StudentID, TargetID
@@ -74,7 +73,7 @@ class StudentSubmissionExtractService:
                 # 展開先のフォルダが存在しなかったらフォルダを生成
                 extract_base_folder_fullpath.mkdir(parents=True, exist_ok=False)
                 # 生徒のアーカイブ内のファイルの相対パスとファイルポインタのイテラブルを取得
-                it: Iterable[tuple[PurePosixPath, io.BufferedReader]] = (
+                it: Iterable[tuple[PurePosixPath, IO[bytes]]] = (
                     self._manaba_report_archive_io.iter_student_submission_archive_contents(
                         student_id=student_id,
                         student_submission_folder_name=student_submission_folder_name,

@@ -1,105 +1,186 @@
-from pathlib import Path
-
-from domain.models.file_item import SourceFileItem, ExecutableFileItem, StudentDynamicFileItemType
+from domain.models.file_item import SourceFileItem, ExecutableFileItem
 from domain.models.values import StudentID
-from infra.io.files.current_project import CurrentProjectCoreIO
-from infra.path_providers.current_project import StudentDynamicPathProvider
+from infra.io.project_database import ProjectDatabaseIO
 
 
-class StudentDynamicRepository:
-    # ステージの進行とともに生成される生徒のデータの読み書き
-
+class StudentExecutableRepository:
     def __init__(
             self,
             *,
-            student_dynamic_path_provider: StudentDynamicPathProvider,
-            current_project_core_io: CurrentProjectCoreIO,
+            project_database_io: ProjectDatabaseIO,
     ):
-        self._student_dynamic_path_provider = student_dynamic_path_provider
-        self._current_project_core_io = current_project_core_io
+        self._project_database_io = project_database_io
 
-    def __get_file_item_fullpath(
+    def _create_database_if_not_exists(self):
+        with self._project_database_io.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS student_executable
+                (
+                    student_id    TEXT PRIMARY KEY,
+                    content_bytes BLOB
+                )
+                """
+            )
+            # TODO: create student master table and make student_id as a foreign key
+            con.commit()
+
+    def put(self, student_id: StudentID, file_item: ExecutableFileItem) -> None:
+        self._create_database_if_not_exists()
+        with self._project_database_io.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO student_executable
+                (
+                    student_id,
+                    content_bytes
+                )
+                VALUES (?, ?)
+                """,
+                (str(student_id), file_item.content_bytes),
+            )
+            con.commit()
+
+    def get(self, student_id: StudentID) -> ExecutableFileItem:
+        self._create_database_if_not_exists()
+        with self._project_database_io.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                """
+                SELECT content_bytes
+                FROM student_executable
+                WHERE student_id = ?
+                """,
+                (str(student_id),),
+            )
+            row = cur.fetchone()
+        if row is None:
+            raise FileNotFoundError()
+        return ExecutableFileItem(
+            content_bytes=row["content_bytes"],
+        )
+
+    def exists(self, student_id: StudentID) -> bool:
+        self._create_database_if_not_exists()
+        with self._project_database_io.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                """
+                SELECT EXISTS (SELECT 1
+                               FROM student_executable
+                               WHERE student_id = ?)
+                """,
+                (str(student_id),),
+            )
+            return bool(cur.fetchone()[0])
+
+    def delete(self, student_id: StudentID) -> None:
+        self._create_database_if_not_exists()
+        with self._project_database_io.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                """
+                DELETE
+                FROM student_executable
+                WHERE student_id = ?
+                """,
+                (str(student_id),),
+            )
+            if cur.rowcount == 0:
+                raise FileNotFoundError()
+            con.commit()
+
+
+class StudentSourceRepository:
+    def __init__(
             self,
             *,
-            student_id: StudentID,
-            file_item_type: type[StudentDynamicFileItemType],
-    ) -> Path:
-        if file_item_type is SourceFileItem:
-            filename = "main.c"
-        elif file_item_type is ExecutableFileItem:
-            filename = "main.exe"
-        else:
-            assert False, file_item_type
-        base_folder_fullpath = self._student_dynamic_path_provider.base_folder_fullpath(student_id)
-        return base_folder_fullpath / filename
+            project_database_io: ProjectDatabaseIO,
+    ):
+        self._project_database_io = project_database_io
 
-    def put(self, student_id: StudentID, file_item: StudentDynamicFileItemType) -> None:
-        file_fullpath = self.__get_file_item_fullpath(
-            student_id=student_id,
-            file_item_type=type(file_item),
-        )
-        file_fullpath.parent.mkdir(parents=True, exist_ok=True)
-        self._current_project_core_io.write_file_content_bytes(
-            file_fullpath=file_fullpath,
-            content_bytes=file_item.content_bytes,
-        )
-
-    def get(self, student_id: StudentID, file_item_type: type[StudentDynamicFileItemType]) \
-            -> StudentDynamicFileItemType:
-        file_fullpath = self.__get_file_item_fullpath(
-            student_id=student_id,
-            file_item_type=file_item_type,
-        )
-        if not file_fullpath.exists():
-            raise FileNotFoundError()
-        content_bytes = self._current_project_core_io.read_file_content_bytes(
-            file_fullpath=file_fullpath,
-        )
-        if file_item_type is SourceFileItem:
-            return SourceFileItem(
-                content_bytes=content_bytes,
-                encoding="utf-8",
+    def _create_database_if_not_exists(self):
+        with self._project_database_io.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS student_source
+                (
+                    student_id    TEXT PRIMARY KEY,
+                    content_bytes BLOB,
+                    encoding      TEXT
+                )
+                """
             )
-        elif file_item_type is ExecutableFileItem:
-            return ExecutableFileItem(
-                content_bytes=content_bytes,
+            # TODO: create student master table and make student_id as a foreign key
+            con.commit()
+
+    def put(self, student_id: StudentID, file_item: SourceFileItem) -> None:
+        self._create_database_if_not_exists()
+        with self._project_database_io.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO student_source
+                (
+                    student_id,
+                    content_bytes,
+                    encoding
+                )
+                VALUES (?, ?, ?)
+                """,
+                (str(student_id), file_item.content_bytes, file_item.encoding),
             )
-        else:
-            assert False, file_item_type
+            con.commit()
 
-    def exists(self, student_id: StudentID, file_item_type: type[StudentDynamicFileItemType]) \
-            -> bool:
-        file_fullpath = self.__get_file_item_fullpath(
-            student_id=student_id,
-            file_item_type=file_item_type,
-        )
-        return file_fullpath.exists()
-
-    def list(self, student_id: StudentID) -> list[StudentDynamicFileItemType]:
-        lst = []
-        for file_item_type in (
-                SourceFileItem,
-                ExecutableFileItem,
-        ):
-            try:
-                file_item = self.get(student_id, file_item_type)
-            except FileNotFoundError:
-                pass
-            else:
-                lst.append(file_item)
-        return lst
-
-    def delete(
-            self,
-            student_id: StudentID,
-            file_item_type: type[StudentDynamicFileItemType],
-    ) -> None:
-        file_fullpath = self.__get_file_item_fullpath(
-            student_id=student_id,
-            file_item_type=file_item_type,
-        )
-        if not file_fullpath.exists():
+    def get(self, student_id: StudentID) -> SourceFileItem:
+        self._create_database_if_not_exists()
+        with self._project_database_io.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                """
+                SELECT content_bytes, encoding
+                FROM student_source
+                WHERE student_id = ?
+                """,
+                (str(student_id),),
+            )
+            row = cur.fetchone()
+        if row is None:
             raise FileNotFoundError()
-        self._current_project_core_io.unlink(
-            path=file_fullpath,
+        return SourceFileItem(
+            content_bytes=row["content_bytes"],
+            encoding=row["encoding"],
         )
+
+    def exists(self, student_id: StudentID) -> bool:
+        self._create_database_if_not_exists()
+        with self._project_database_io.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                """
+                SELECT EXISTS (SELECT 1
+                               FROM student_source
+                               WHERE student_id = ?)
+                """,
+                (str(student_id),),
+            )
+            return bool(cur.fetchone()[0])
+
+    def delete(self, student_id: StudentID) -> None:
+        self._create_database_if_not_exists()
+        with self._project_database_io.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                """
+                DELETE
+                FROM student_source
+                WHERE student_id = ?
+                """,
+                (str(student_id),),
+            )
+            if cur.rowcount == 0:
+                raise FileNotFoundError()
+            con.commit()

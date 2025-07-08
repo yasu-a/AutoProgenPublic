@@ -1,6 +1,7 @@
 from functools import cache
 
 from application.dependency.core_io import *
+from application.dependency.external_io import get_project_database_io
 from application.dependency.path_provider import *
 from infra.repositories.app_version import AppVersionRepository
 from infra.repositories.current_project import CurrentProjectRepository
@@ -8,7 +9,7 @@ from infra.repositories.global_settings import GlobalSettingsRepository
 from infra.repositories.project import ProjectRepository
 from infra.repositories.storage import StorageRepository
 from infra.repositories.student import StudentRepository
-from infra.repositories.student_dynamic import StudentDynamicRepository
+from infra.repositories.student_dynamic import StudentExecutableRepository, StudentSourceRepository
 from infra.repositories.student_mark import StudentMarkRepository
 from infra.repositories.student_stage_result import StudentStageResultRepository
 from infra.repositories.test_source import TestSourceRepository
@@ -78,10 +79,16 @@ def get_storage_repository():
     )
 
 
-def get_student_dynamic_repository():
-    return StudentDynamicRepository(
-        student_dynamic_path_provider=get_student_dynamic_path_provider(),
-        current_project_core_io=get_current_project_core_io(),
+# StudentExecutableRepository
+def get_student_executable_repository():
+    return StudentExecutableRepository(
+        project_database_io=get_project_database_io(),
+    )
+
+
+def get_student_source_repository():
+    return StudentSourceRepository(
+        project_database_io=get_project_database_io(),
     )
 
 

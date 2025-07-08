@@ -4,7 +4,7 @@ from pathlib import Path
 
 from domain.models.storage import Storage, StorageFileContentMapper, \
     FileRelativePathListProducerType, FileContentMapperType, FileRelativePathExistsMapperType, \
-    FileRelativePathStatMapperType, StorageStat
+    FileRelativePathStatMapperType, StorageStat, CommandType
 from domain.models.values import StorageID
 from infra.io.files.current_project import CurrentProjectCoreIO
 from infra.path_providers.current_project import StoragePathProvider
@@ -142,11 +142,11 @@ class StorageRepository:
         for file_relative_path, command in storage.files.iter_modifications():
             file_fullpath = base_folder_fullpath / file_relative_path
             command_type, updated_content = command
-            if command_type == "deleted":
+            if command_type == CommandType.DELETED:
                 self._current_project_core_io.unlink(
                     path=file_fullpath,
                 )
-            elif command_type == "updated":
+            elif command_type == CommandType.UPDATED:
                 assert updated_content is not None
                 file_fullpath.parent.mkdir(parents=True, exist_ok=True)
                 self._current_project_core_io.write_file_content_bytes(
