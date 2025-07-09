@@ -67,7 +67,7 @@ class DynamicPathProvider:
             self._current_project_id
         )
 
-    def io_session_fullpath(self) -> Path:
+    def storage_fullpath(self) -> Path:
         return self.base_folder_fullpath() / "storage"
 
     def student_folder_fullpath(self) -> Path:
@@ -96,8 +96,8 @@ class StoragePathProvider:
     ):
         self._dynamic_path_provider = dynamic_path_provider
 
-    def base_folder_fullpath(self, io_session_id: StorageID):
-        return self._dynamic_path_provider.io_session_fullpath() / str(io_session_id)
+    def base_folder_fullpath(self, storage_id: StorageID):
+        return self._dynamic_path_provider.storage_fullpath() / str(storage_id)
 
 
 # 生徒のプロジェクトの処理過程で生成されるデータ
@@ -147,10 +147,6 @@ class ProjectStaticPathProvider:
         return self._project_path_provider.static_data_folder_fullpath(
             project_id=self._current_project_id,
         )
-
-    # 生徒マスタ
-    def student_master_json_fullpath(self) -> Path:
-        return self.base_folder_fullpath() / "student_master.json"
 
     # 展開した提出レポートデータ群
     def report_submission_folder_fullpath(self) -> Path:
