@@ -15,7 +15,7 @@ class AbstractTestResultOutputFileEntry(ABC):
     @property
     @abstractmethod
     def has_actual(self) -> bool:
-        # 実行結果の出力ファイルがあったらFalse
+        # 実行結果の出力ファイルがあったらTrue
         raise NotImplementedError()
 
     @property

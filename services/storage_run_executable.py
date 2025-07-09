@@ -51,7 +51,8 @@ class StorageRunExecutableService:
             )
         except ExecutableIOTimeoutError:
             raise StorageRunExecutableServiceError(
-                reason="実行がタイムアウトしました\nプログラムが入力を待っているか無限ループしている可能性があります",
+                reason="実行がタイムアウトしました\n"
+                       "この環境のスペックに対して並列タスク数が多すぎる・プログラムが入力を待っている・無限ループしているなどの可能性があります",
             )
 
         return StorageExecuteServiceResult(

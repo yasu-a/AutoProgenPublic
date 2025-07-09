@@ -215,9 +215,7 @@ def get_student_stage_path_result_check_rollback_service():
 
 def get_student_stage_result_check_timestamp_query_service():
     return StudentStageResultCheckTimestampQueryService(
-        student_stage_result_path_provider=get_student_stage_result_path_provider(),
-        testcase_config_repo=get_testcase_config_repository(),
-        current_project_core_io=get_current_project_core_io(),
+        student_stage_result_repo=get_student_stage_result_repository(),
     )
 
 

@@ -319,7 +319,7 @@ class ProjectCoreIO:
             sub_hash_entries.append(h)
 
         hash_src = b"".join(sub_hash_entries)
-        return int.from_bytes(hashlib.md5(hash_src).digest(), byteorder="big")
+        return int.from_bytes(hashlib.md5(hash_src).digest(), byteorder="big") % (2 ** 32)
 
     def walk_files(
             self,

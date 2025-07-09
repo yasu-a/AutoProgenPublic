@@ -53,8 +53,14 @@ class AbstractFailureStudentStageResult(AbstractStudentStageResult, ABC):
 class BuildSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生徒ごと
     submission_folder_checksum: int
 
+    # noinspection DuplicatedCode
     def __post_init__(self):
-        assert isinstance(self.stage, BuildStage)
+        assert isinstance(self.student_id, StudentID), \
+            (self.student_id, type(self.student_id))
+        assert isinstance(self.stage, BuildStage), \
+            (self.stage, type(self.stage))
+        assert isinstance(self.submission_folder_checksum, int), \
+            (self.submission_folder_checksum, type(self.submission_folder_checksum))
 
     @classmethod
     def create_instance(cls, *, student_id: StudentID, submission_folder_checksum: int):
@@ -82,8 +88,14 @@ class BuildSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生�
 
 @dataclass(slots=True)
 class BuildFailureStudentStageResult(AbstractFailureStudentStageResult):  # 生徒ごと
+    # noinspection DuplicatedCode
     def __post_init__(self):
-        assert isinstance(self.stage, BuildStage)
+        assert isinstance(self.student_id, StudentID), \
+            (self.student_id, type(self.student_id))
+        assert isinstance(self.stage, BuildStage), \
+            (self.stage, type(self.stage))
+        assert isinstance(self.reason, str), \
+            (self.reason, type(self.reason))
 
     @classmethod
     def create_instance(cls, *, student_id: StudentID, reason: str):
@@ -123,8 +135,14 @@ BuildStageResultType = TypeVar(
 class CompileSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生徒ごと
     output: str
 
+    # noinspection DuplicatedCode
     def __post_init__(self):
-        assert isinstance(self.stage, CompileStage)
+        assert isinstance(self.student_id, StudentID), \
+            (self.student_id, type(self.student_id))
+        assert isinstance(self.stage, CompileStage), \
+            (self.stage, type(self.stage))
+        assert isinstance(self.output, str), \
+            (self.output, type(self.output))
 
     @classmethod
     def create_instance(cls, *, student_id: StudentID, output: str):
@@ -154,8 +172,16 @@ class CompileSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # �
 class CompileFailureStudentStageResult(AbstractFailureStudentStageResult):  # 生徒ごと
     output: str
 
+    # noinspection DuplicatedCode
     def __post_init__(self):
-        assert isinstance(self.stage, CompileStage)
+        assert isinstance(self.student_id, StudentID), \
+            (self.student_id, type(self.student_id))
+        assert isinstance(self.stage, CompileStage), \
+            (self.stage, type(self.stage))
+        assert isinstance(self.reason, str), \
+            (self.reason, type(self.reason))
+        assert isinstance(self.output, str), \
+            (self.output, type(self.output))
 
     @classmethod
     def create_instance(cls, *, student_id: StudentID, reason: str, output: str):
@@ -199,8 +225,16 @@ class ExecuteSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # �
     execute_config_mtime: datetime
     output_files: OutputFileMapping
 
+    # noinspection DuplicatedCode
     def __post_init__(self):
-        assert isinstance(self.stage, ExecuteStage)
+        assert isinstance(self.student_id, StudentID), \
+            (self.student_id, type(self.student_id))
+        assert isinstance(self.stage, ExecuteStage), \
+            (self.stage, type(self.stage))
+        assert isinstance(self.execute_config_mtime, datetime), \
+            (self.execute_config_mtime, type(self.execute_config_mtime))
+        assert isinstance(self.output_files, OutputFileMapping), \
+            (self.output_files, type(self.output_files))
 
     @classmethod
     def create_instance(
@@ -235,11 +269,22 @@ class ExecuteSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # �
             output_files=OutputFileMapping.from_json(body["output_files"]),
         )
 
+    @property
+    def testcase_id(self) -> TestCaseID:
+        assert isinstance(self.stage, ExecuteStage)
+        return self.stage.testcase_id
+
 
 @dataclass(slots=True)
 class ExecuteFailureStudentStageResult(AbstractFailureStudentStageResult):  # 生徒・テストケースごと
+    # noinspection DuplicatedCode
     def __post_init__(self):
-        assert isinstance(self.stage, ExecuteStage)
+        assert isinstance(self.student_id, StudentID), \
+            (self.student_id, type(self.student_id))
+        assert isinstance(self.stage, ExecuteStage), \
+            (self.stage, type(self.stage))
+        assert isinstance(self.reason, str), \
+            (self.reason, type(self.reason))
 
     @classmethod
     def create_instance(
@@ -273,6 +318,11 @@ class ExecuteFailureStudentStageResult(AbstractFailureStudentStageResult):  # �
     @property
     def detailed_text(self) -> str | None:
         return self.reason
+
+    @property
+    def testcase_id(self) -> TestCaseID:
+        assert isinstance(self.stage, ExecuteStage)
+        return self.stage.testcase_id
 
 
 ExecuteStageResultType = TypeVar(
@@ -320,8 +370,16 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生�
     test_config_mtime: datetime
     test_result_output_files: TestResultOutputFileMapping
 
+    # noinspection DuplicatedCode
     def __post_init__(self):
-        assert isinstance(self.stage, TestStage)
+        assert isinstance(self.student_id, StudentID), \
+            (self.student_id, type(self.student_id))
+        assert isinstance(self.stage, TestStage), \
+            (self.stage, type(self.stage))
+        assert isinstance(self.test_config_mtime, datetime), \
+            (self.test_config_mtime, type(self.test_config_mtime))
+        assert isinstance(self.test_result_output_files, TestResultOutputFileMapping), \
+            (self.test_result_output_files, type(self.test_result_output_files))
 
     @classmethod
     def create_instance(
@@ -358,11 +416,22 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生�
             ),
         )
 
+    @property
+    def testcase_id(self) -> TestCaseID:
+        assert isinstance(self.stage, TestStage)
+        return self.stage.testcase_id
+
 
 @dataclass(slots=True)
 class TestFailureStudentStageResult(AbstractFailureStudentStageResult):  # 生徒・テストケースごと
+    # noinspection DuplicatedCode
     def __post_init__(self):
-        assert isinstance(self.stage, TestStage), self.stage
+        assert isinstance(self.student_id, StudentID), \
+            (self.student_id, type(self.student_id))
+        assert isinstance(self.stage, TestStage), \
+            (self.stage, type(self.stage))
+        assert isinstance(self.reason, str), \
+            (self.reason, type(self.reason))
 
     @classmethod
     def create_instance(
@@ -396,6 +465,11 @@ class TestFailureStudentStageResult(AbstractFailureStudentStageResult):  # 生�
     @property
     def detailed_text(self) -> str | None:
         return self.reason
+
+    @property
+    def testcase_id(self) -> TestCaseID:
+        assert isinstance(self.stage, TestStage)
+        return self.stage.testcase_id
 
 
 TestStageResultType = TypeVar(

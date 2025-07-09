@@ -16,6 +16,11 @@ from infra.repositories.test_source import TestSourceRepository
 from infra.repositories.testcase_config import TestCaseConfigRepository
 
 
+# FIXME: @cacheを付けるとテストのときにステートが残ってしまう
+#        invalidate_cached_providersで一つ一つinvalidateすることで対応している
+#        エンティティのキャッシュはアプリケーションで実装すべき？
+#        ロックはどうする？アプリケーション？
+
 @cache  # インスタンス内部にキャッシュを持つのでプロジェクト内ステートフル
 def get_global_settings_repository():
     return GlobalSettingsRepository(
@@ -48,18 +53,23 @@ def get_current_project_repository():
     )
 
 
+@cache  # インスタンス内部にロックを持つのでプロジェクト内ステートフル
 def get_student_repository():
     return StudentRepository(
         project_database_io=get_project_database_io(),
     )
 
 
-@cache  # インスタンス内部にキャッシュを持つのでプロジェクト内ステートフル
+@cache  # プロジェクト内ステートフル
 def get_student_stage_result_repository():
     return StudentStageResultRepository(
-        student_stage_result_path_provider=get_student_stage_result_path_provider(),
-        current_project_core_io=get_current_project_core_io(),
+        project_database_io=get_project_database_io(),
     )
+    # return StudentStageResultRepository(
+    #     student_stage_result_path_provider=get_student_stage_result_path_provider(),
+    #     current_project_core_io=get_current_project_core_io(),
+    #     lru_cache=get_lru_cache(),
+    # )
 
 
 @cache  # インスタンス内部にキャッシュを持つのでプロジェクト内ステートフル

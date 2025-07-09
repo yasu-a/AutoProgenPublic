@@ -11,6 +11,7 @@ class LRUCacheEntry(Generic[V]):
     age: int
 
 
+# FIXME: 効率の悪い実装
 class LRUCache(Generic[K, V]):
     def __init__(self, max_size: int, reduced_size: int):
         assert 0 < reduced_size < max_size
@@ -50,3 +51,17 @@ class LRUCache(Generic[K, V]):
 
     def __delitem__(self, k: K) -> None:
         del self.__cache[k]
+
+
+class NoMemoryLRUCache(Generic[K, V]):
+    def __contains__(self, k: K) -> bool:
+        return False
+
+    def __getitem__(self, k: K) -> V:
+        raise KeyError()
+
+    def __setitem__(self, k: K, v: V) -> None:
+        pass
+
+    def __delitem__(self, k: K) -> None:
+        raise KeyError()

@@ -14,7 +14,6 @@ from application.dependency.usecases import get_student_list_id_usecase, \
     get_student_table_get_student_error_cell_data_usecase, \
     get_student_dynamic_take_diff_snapshot_usecase, get_student_mark_get_usecase
 from controls.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
-from domain.errors import StudentUseCaseError
 from domain.models.stages import BuildStage, CompileStage, ExecuteStage, TestStage
 from domain.models.values import StudentID
 from res.fonts import get_font
@@ -415,12 +414,7 @@ class _StudentObserver(QObject):
         student_id = next(self._student_id_iter)
 
         # スナップショットを取得
-        # TODO: StudentStageResultCheckTimestampQueryServiceのFIXMEを暫定的に解消するためのtry-exceptロジック
-        try:
-            new_snapshot = get_student_dynamic_take_diff_snapshot_usecase().execute(student_id)
-        except StudentUseCaseError:
-            self._logger.warning(f"Failed to get snapshot for student_id={student_id}")
-            return
+        new_snapshot = get_student_dynamic_take_diff_snapshot_usecase().execute(student_id)
 
         # 初めて巡回したとき以外は更新を確認してシグナルを送出
         if student_id in self._student_id_mtime_mapping:

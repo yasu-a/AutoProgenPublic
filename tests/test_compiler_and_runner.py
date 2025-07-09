@@ -1,49 +1,13 @@
 from contextlib import contextmanager
 from pathlib import Path
 
-import pytest
-
 from application.dependency.path_provider import get_global_path_provider
 from application.dependency.repositories import get_storage_repository
 from application.dependency.services import get_storage_create_service, \
     get_storage_load_test_source_service, get_storage_delete_service, \
     get_storage_run_compiler_service, get_storage_run_executable_service
-from application.state.current_project import set_current_project_id, get_current_project_id
-from application.state.debug import set_debug
 from domain.errors import StorageRunCompilerServiceError, StorageRunExecutableServiceError
-from domain.models.values import ProjectID, FileID
-
-
-def override_dependency():
-    import application.dependency.path_provider
-
-    print(f"{Path(__file__).parent=}")
-
-    def get_project_list_folder_fullpath_override():
-        return Path(__file__).parent / "test_project_list"
-
-    application.dependency.path_provider.get_project_list_folder_fullpath \
-        = get_project_list_folder_fullpath_override
-
-    def get_global_base_path_override():
-        return Path(__file__).parent / "test_global"
-
-    application.dependency.path_provider.get_global_base_path \
-        = get_global_base_path_override
-
-    def get_storage_path_provider_override():
-        return Path(__file__).parent / "test_storage"
-
-    application.dependency.path_provider.get_storage_path_provider \
-        = get_storage_path_provider_override
-
-
-@pytest.fixture(autouse=True)
-def setup_test():
-    set_debug(True)  # コンパイラの設定をデバッグ時の設定にするため
-    if get_current_project_id() is None:
-        set_current_project_id(ProjectID("test_project_id"))  # テスト用プロジェクトを設定
-    override_dependency()
+from domain.models.values import FileID
 
 
 def write_test_source(source: str):
@@ -226,7 +190,6 @@ def test_execute_normal_scanf_source_code():
             print(" *** output")
             print(repr(service_result.stdout_text))
             assert service_result.stdout_text == "sum = 58023\n"  # 12345 + 45678
-
 
 # FIXME: NOT WORKING 実行のタイムアウトが再現できない
 # def test_execute_infinite_scanf_blocking_timeout():

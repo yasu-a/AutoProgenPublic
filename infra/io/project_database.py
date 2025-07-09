@@ -10,14 +10,14 @@ from utils.app_logging import create_logger
 
 def adapt_datetime(val):
     assert isinstance(val, datetime.datetime), type(val)
-    return val.timestamp()
+    return val.isoformat(timespec='microseconds')
 
 
 sqlite3.register_adapter(datetime.datetime, adapt_datetime)
 
 
 def convert_datetime(val):
-    return datetime.datetime.fromtimestamp(int(val.decode("latin-1")))
+    return datetime.datetime.fromisoformat(val.decode("latin-1"))
 
 
 sqlite3.register_converter("DATETIME", convert_datetime)

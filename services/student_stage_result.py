@@ -1,13 +1,9 @@
 from datetime import datetime
 
-from domain.errors import CoreIOError, StudentServiceError
 from domain.models.stage_path import StagePath
 from domain.models.stages import AbstractStage
 from domain.models.values import StudentID
-from infra.io.files.current_project import CurrentProjectCoreIO
-from infra.path_providers.current_project import StudentStageResultPathProvider
 from infra.repositories.student_stage_result import StudentStageResultRepository
-from infra.repositories.testcase_config import TestCaseConfigRepository
 from services.stage_path import StagePathListSubService
 
 
@@ -17,37 +13,12 @@ class StudentStageResultCheckTimestampQueryService:
     def __init__(
             self,
             *,
-            student_stage_result_path_provider: StudentStageResultPathProvider,
-            testcase_config_repo: TestCaseConfigRepository,
-            current_project_core_io: CurrentProjectCoreIO,
+            student_stage_result_repo: StudentStageResultRepository,
     ):
-        self._student_stage_result_path_provider = student_stage_result_path_provider
-        self._testcase_config_repo = testcase_config_repo
-        self._current_project_core_io = current_project_core_io
+        self._student_stage_result_repo = student_stage_result_repo
 
     def execute(self, student_id: StudentID) -> datetime | None:  # None if no file exists
-        base_folder_fullpath \
-            = self._student_stage_result_path_provider.base_folder_fullpath(student_id)
-        if not base_folder_fullpath.exists():
-            return None
-
-        latest_timestamp: datetime | None = None
-        for file_fullpath in self._current_project_core_io.walk_files(
-                folder_fullpath=base_folder_fullpath,
-                return_absolute=True,
-        ):
-            # FIXME: transaction導入 ループ中にファイルが消されるとエラー
-            # TODO: このFIXMEを暫定的に解決するためにエラーが起きたらStudentServiceErrorをスローするロジックを実装　ちゃんと対策して書き直す
-            try:
-                timestamp = self._current_project_core_io.get_file_mtime(
-                    file_fullpath=file_fullpath,
-                )
-            except CoreIOError:
-                raise StudentServiceError("failed to obtain timestamp")
-            if latest_timestamp is None or latest_timestamp < timestamp:
-                latest_timestamp = timestamp
-
-        return latest_timestamp
+        return self._student_stage_result_repo.get_timestamp(student_id)
 
 
 class StudentStageResultRollbackService:
