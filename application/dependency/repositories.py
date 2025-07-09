@@ -48,7 +48,6 @@ def get_current_project_repository():
     )
 
 
-@cache  # インスタンス内部にキャッシュを持つのでプロジェクト内ステートフル
 def get_student_repository():
     return StudentRepository(
         project_database_io=get_project_database_io(),

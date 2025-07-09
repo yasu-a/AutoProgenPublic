@@ -115,7 +115,6 @@ class StudentSourceRepository:
                 )
                 """
             )
-            # TODO: create student master table and make student_id as a foreign key
             con.commit()
 
     def put(self, student_id: StudentID, file_item: SourceFileItem) -> None:
@@ -185,3 +184,35 @@ class StudentSourceRepository:
             if cur.rowcount == 0:
                 raise FileNotFoundError()
             con.commit()
+
+# class StudentSourceRepository:
+#     def __init__(
+#             self,
+#             *,
+#             student_source_repo_no_cache: StudentSourceRepositoryNoCache,
+#     ):
+#         self._student_source_repo_no_cache = student_source_repo_no_cache
+# 
+#         self._cache: dict[StudentID, SourceFileItem] = {}
+# 
+#     def put(self, student_id: StudentID, file_item: SourceFileItem) -> None:
+#         self._cache[student_id] = file_item
+#         self._student_source_repo_no_cache.put(student_id, file_item)
+# 
+#     def get(self, student_id: StudentID) -> SourceFileItem:
+#         if student_id not in self._cache:
+#             self._cache[student_id] = self._student_source_repo_no_cache.get(student_id)
+#         return self._cache[student_id]
+# 
+#     def exists(self, student_id: StudentID) -> bool:
+#         if student_id not in self._cache:
+#             try:
+#                 self._cache[student_id] = self._student_source_repo_no_cache.get(student_id)
+#             except FileNotFoundError:
+#                 pass
+#         return student_id in self._cache
+# 
+#     def delete(self, student_id: StudentID) -> None:
+#         self._student_source_repo_no_cache.delete(student_id)
+#         if student_id in self._cache:
+#             del self._cache[student_id]

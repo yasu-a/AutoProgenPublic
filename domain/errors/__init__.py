@@ -9,6 +9,10 @@ class RepositoryError(RuntimeError):
     pass
 
 
+class RepositoryItemNotFoundError(RepositoryError):
+    pass
+
+
 class ServiceError(RuntimeError):
     pass
 

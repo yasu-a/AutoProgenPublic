@@ -425,8 +425,10 @@ class _StudentObserver(QObject):
         # 初めて巡回したとき以外は更新を確認してシグナルを送出
         if student_id in self._student_id_mtime_mapping:
             old_snapshot = self._student_id_mtime_mapping.get(student_id)
-            if new_snapshot.is_different_from(old_snapshot):
+            if new_snapshot.is_modified_from(old_snapshot):
                 # noinspection PyUnresolvedReferences
+                self._logger.debug(
+                    f"Student {student_id} has been modified\n{old_snapshot}\n{new_snapshot}")
                 self.student_modified.emit(student_id)
 
         self._student_id_mtime_mapping[student_id] = new_snapshot

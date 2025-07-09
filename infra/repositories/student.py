@@ -2,6 +2,7 @@ from contextlib import contextmanager
 
 from PyQt5.QtCore import QMutex
 
+from domain.errors import RepositoryItemNotFoundError
 from domain.models.student import Student
 from domain.models.values import StudentID
 from infra.io.project_database import ProjectDatabaseIO
@@ -9,7 +10,6 @@ from infra.io.project_database import ProjectDatabaseIO
 
 class StudentRepository:
     # 生徒マスタから生徒のメタデータ（Studentインスタンス）を読み書きするレポジトリ
-    # FIXME: アクセスが遅い キャッシュを作る
 
     def __init__(
             self,
@@ -106,7 +106,7 @@ class StudentRepository:
                 )
                 row = cur.fetchone()
             if row is None:
-                raise ValueError(f"Student {student_id} not found")
+                raise RepositoryItemNotFoundError(f"Student {student_id} not found")
             return Student(
                 student_id=StudentID(row["student_id"]),
                 name=row["name"],
@@ -143,3 +143,55 @@ class StudentRepository:
                         )
                     )
                 return students
+
+# class StudentRepository:
+#     def __init__(
+#             self,
+#             *,
+#             student_repo_no_cache: StudentRepositoryNoCache,
+#     ):
+#         self._student_repo_no_cache = student_repo_no_cache
+#
+#         self._student_cache: dict[StudentID, Student] | None = None
+#         self._lock = QMutex()
+#
+#     def _invalidate_cache_unlocked(self):
+#         self._student_cache = None
+#
+#     def _get_student_cache_unlocked(self) -> dict[StudentID, Student]:
+#         if self._student_cache is None:
+#             self._student_cache = {}
+#             for student in self._student_repo_no_cache.list():
+#                 self._student_cache[student.student_id] = copy.deepcopy(student)
+#         return self._student_cache
+#
+#     @contextmanager
+#     def __lock(self):
+#         self._lock.lock()
+#         try:
+#             yield
+#         finally:
+#             self._lock.unlock()
+#
+#     def create_all(self, students: list[Student]) -> None:
+#         with self.__lock():
+#             self._student_repo_no_cache.create_all(students)
+#             self._invalidate_cache_unlocked()
+#
+#     def exists_any(self) -> bool:
+#         # 何らかの生徒データが存在する場合にTrueを返す
+#         with self.__lock():
+#             cache = self._get_student_cache_unlocked()
+#             return bool(cache)
+#
+#     def get(self, student_id: StudentID) -> Student:
+#         with self.__lock():
+#             cache = self._get_student_cache_unlocked()
+#             if student_id not in cache:
+#                 raise RepositoryItemNotFoundError(f"Student {student_id} not found")
+#             return copy.deepcopy(cache[student_id])
+#
+#     def list(self) -> list[Student]:
+#         with self.__lock():
+#             cache = self._get_student_cache_unlocked()
+#             return copy.deepcopy(list(cache.values()))

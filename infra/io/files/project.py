@@ -333,7 +333,7 @@ class ProjectCoreIO:
             path=folder_fullpath,
         )
 
-        self._logger.debug(f"walk_files({project_id=}, {folder_fullpath=})")
+        # self._logger.debug(f"walk_files({project_id=}, {folder_fullpath=})")
 
         for root, dirs, files in os.walk(str(folder_fullpath)):
             for filename in files:
@@ -353,7 +353,7 @@ class ProjectCoreIO:
             project_id=project_id,
             path=file_fullpath,
         )
-        self._logger.debug(f"get_file_mtime({project_id=}, {file_fullpath=})")
+        # self._logger.debug(f"get_file_mtime({project_id=}, {file_fullpath=})")
         return datetime.fromtimestamp(file_fullpath.stat().st_mtime)
 
     def get_folder_size(

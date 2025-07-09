@@ -9,7 +9,8 @@ class StudentStageResultDiffSnapshot:
     student_id: StudentID
     timestamp: datetime | None
 
-    def is_different_from(self, other):
+    def is_modified_from(self, other):
         if not isinstance(other, StudentStageResultDiffSnapshot):
             return NotImplemented
-        return self.timestamp == other.timestamp
+        assert self.student_id == other.student_id, (self.student_id, other.student_id)
+        return self.timestamp != other.timestamp

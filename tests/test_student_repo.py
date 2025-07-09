@@ -7,6 +7,7 @@ from application.dependency.path_provider import get_database_path_provider
 from application.dependency.repositories import get_student_repository
 from application.state.current_project import set_current_project_id, get_current_project_id
 from application.state.debug import set_debug
+from domain.errors import RepositoryItemNotFoundError
 from domain.models.student import Student
 from domain.models.values import ProjectID, StudentID
 
@@ -71,6 +72,16 @@ def fake_student_ids(fake_students):
     return [student.student_id for student in fake_students]
 
 
+def _compare_student(s_1: Student, s_2: Student):
+    return s_1.student_id == s_2.student_id \
+        and s_1.name == s_2.name \
+        and s_1.name_en == s_2.name_en \
+        and s_1.email_address == s_2.email_address \
+        and s_1.submitted_at == s_2.submitted_at \
+        and s_1.num_submissions == s_2.num_submissions \
+        and s_1.submission_folder_name == s_2.submission_folder_name
+
+
 def test_no_students():
     repo = get_student_repository()
     assert not repo.exists_any()
@@ -85,25 +96,15 @@ def test_get_not_found(fake_student_ids):
     repo = get_student_repository()
     unknown_student_id = StudentID("00D0000000Z")
     assert unknown_student_id not in fake_student_ids
-    with pytest.raises(ValueError):
+    with pytest.raises(RepositoryItemNotFoundError):
         repo.get(unknown_student_id)
-
-
-def compare_student(s_1: Student, s_2: Student):
-    return s_1.student_id == s_2.student_id \
-        and s_1.name == s_2.name \
-        and s_1.name_en == s_2.name_en \
-        and s_1.email_address == s_2.email_address \
-        and s_1.submitted_at == s_2.submitted_at \
-        and s_1.num_submissions == s_2.num_submissions \
-        and s_1.submission_folder_name == s_2.submission_folder_name
 
 
 def test_get(fake_students):
     repo = get_student_repository()
     student, *_ = fake_students
     student_by_get = repo.get(student.student_id)
-    assert compare_student(student, student_by_get)
+    assert _compare_student(student, student_by_get)
 
 
 def test_list(fake_students):
@@ -111,4 +112,4 @@ def test_list(fake_students):
     students_by_list = repo.list()
     assert len(students_by_list) == len(fake_students)
     for student, student_by_get in zip(fake_students, students_by_list):
-        assert compare_student(student, student_by_get)
+        assert _compare_student(student, student_by_get)
