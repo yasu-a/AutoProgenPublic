@@ -15,6 +15,11 @@ class OutputFile:
         else:
             self._content = content
 
+    def __eq__(self, other):
+        if not isinstance(other, OutputFile):
+            return False
+        return self._file_id == other._file_id and self._content == other._content
+
     def to_json(self) -> dict:
         return dict(
             file_id=self._file_id.to_json(),
