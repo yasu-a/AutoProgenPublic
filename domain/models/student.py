@@ -14,6 +14,7 @@ class Student:
     num_submissions: int
     submission_folder_name: str | None  # None if the student has no submission
 
+    # noinspection DuplicatedCode
     def __post_init__(self):
         assert isinstance(self.student_id, StudentID), \
             (self.student_id, type(self.student_id))
