@@ -2,6 +2,7 @@ from domain.errors import TestServiceError, MatchServiceError
 from domain.models.expected_ouput_file import ExpectedOutputFile
 from domain.models.output_file import OutputFile
 from domain.models.output_file_test_result import OutputFileTestResult
+from domain.models.stage_path import StagePath
 from domain.models.stages import ExecuteStage
 from domain.models.student_stage_result import TestFailureStudentStageResult, \
     TestSuccessStudentStageResult, TestResultOutputFileMapping, ExecuteSuccessStudentStageResult
@@ -9,9 +10,10 @@ from domain.models.test_result_output_file_entry import TestResultTestedOutputFi
     AbstractTestResultOutputFileEntry, TestResultAbsentOutputFileEntry, \
     TestResultUnexpectedOutputFileEntry
 from domain.models.values import FileID
-from domain.models.values import StudentID, TestCaseID
-from infra.repositories.student_stage_result import StudentStageResultRepository
+from domain.models.values import StudentID
 from services.match import MatchGetBestService
+from services.student_stage_path_result import StudentPutStageResultService, \
+    StudentGetStageResultService
 from services.testcase_config import TestCaseConfigGetTestConfigMtimeService, \
     TestCaseConfigGetService
 
@@ -21,29 +23,29 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
             self,
             *,
             testcase_config_get_service: TestCaseConfigGetService,
-            student_stage_result_repo: StudentStageResultRepository,
+            student_put_stage_result_service: StudentPutStageResultService,
+            student_get_stage_result_service: StudentGetStageResultService,
             testcase_config_get_test_config_mtime_service: TestCaseConfigGetTestConfigMtimeService,
             match_get_best_service: MatchGetBestService,
     ):
         self._testcase_config_get_service = testcase_config_get_service
-        self._student_stage_result_repo = student_stage_result_repo
+        self._student_put_stage_result_service = student_put_stage_result_service
+        self._student_get_stage_result_service = student_get_stage_result_service
         self._testcase_config_get_test_config_mtime_service = testcase_config_get_test_config_mtime_service
         self._match_get_best_service = match_get_best_service
 
-    def execute(self, student_id: StudentID, testcase_id: TestCaseID) -> None:
+    def execute(self, student_id: StudentID, stage_path: StagePath) -> None:
         try:
             # 実行結果を取得する
-            if not self._student_stage_result_repo.exists(
-                    student_id=student_id,
-                    stage=ExecuteStage(testcase_id=testcase_id),
-            ):
+            execute_result = self._student_get_stage_result_service.execute(
+                student_id=student_id,
+                stage_path=stage_path,
+                stage=stage_path.get_stage_by_stage_type(ExecuteStage),
+            )
+            if execute_result is None:
                 raise TestServiceError(
                     reason="実行結果が見つかりません",
                 )
-            execute_result = self._student_stage_result_repo.get(
-                student_id=student_id,
-                stage=ExecuteStage(testcase_id=testcase_id),
-            )
             if not execute_result.is_success:
                 raise TestServiceError(
                     reason="失敗した実行のテストはできません",
@@ -52,7 +54,7 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
 
             # テストケースのテスト構成を読み込む
             test_config = self._testcase_config_get_service.execute(
-                testcase_id=testcase_id,
+                testcase_id=stage_path.testcase_id,
             ).test_config
 
             # テストの実行 - それぞれの出力ファイルについてテストを実行する
@@ -112,21 +114,23 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
                 output_file_id_test_result_mapping
             )
         except TestServiceError as e:
-            self._student_stage_result_repo.put(
+            self._student_put_stage_result_service.execute(
+                stage_path=stage_path,
                 result=TestFailureStudentStageResult.create_instance(
                     student_id=student_id,
-                    testcase_id=testcase_id,
+                    testcase_id=stage_path.testcase_id,
                     reason=e.reason,
                 )
             )
         else:
             test_config_mtime = self._testcase_config_get_test_config_mtime_service.execute(
-                testcase_id=testcase_id,
+                testcase_id=stage_path.testcase_id,
             )  # TODO: UoWの導入
-            self._student_stage_result_repo.put(
+            self._student_put_stage_result_service.execute(
+                stage_path=stage_path,
                 result=TestSuccessStudentStageResult.create_instance(
                     student_id=student_id,
-                    testcase_id=testcase_id,
+                    testcase_id=stage_path.testcase_id,
                     test_config_mtime=test_config_mtime,
                     test_result_output_files=test_result_output_files,
                 )

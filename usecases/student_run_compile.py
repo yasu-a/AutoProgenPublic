@@ -1,13 +1,14 @@
 from pathlib import Path
 
 from domain.errors import StorageRunCompilerServiceError
+from domain.models.stage_path import StagePath
 from domain.models.student_stage_result import CompileFailureStudentStageResult, \
     CompileSuccessStudentStageResult
 from domain.models.values import StudentID
-from infra.repositories.student_stage_result import StudentStageResultRepository
 from services.storage import StorageCreateService, \
     StorageDeleteService, StorageLoadStudentSourceService, StorageStoreStudentExecutableService
 from services.storage_run_compiler import StorageRunCompilerService
+from services.student_stage_path_result import StudentPutStageResultService
 
 
 class StudentRunCompileStageUseCase:
@@ -19,19 +20,19 @@ class StudentRunCompileStageUseCase:
             storage_store_student_executable_service: StorageStoreStudentExecutableService,
             storage_run_compiler_service: StorageRunCompilerService,
             storage_delete_service: StorageDeleteService,
-            student_stage_result_repo: StudentStageResultRepository,
+            student_put_stage_result_service: StudentPutStageResultService,
     ):
         self._storage_create_service = storage_create_service
         self._storage_load_student_source_service = storage_load_student_source_service
         self._storage_store_student_executable_service = storage_store_student_executable_service
         self._storage_run_compiler_service = storage_run_compiler_service
         self._storage_delete_service = storage_delete_service
-        self._student_stage_result_repo = student_stage_result_repo
+        self._student_put_stage_result_service = student_put_stage_result_service
 
     __SOURCE_FILE_RELATIVE_PATH = Path("main.c")
     __EXECUTABLE_FILE_RELATIVE_PATH = Path("main.exe")
 
-    def execute(self, student_id: StudentID) -> None:
+    def execute(self, student_id: StudentID, stage_path: StagePath) -> None:
         # ストレージ領域の生成
         storage_id = self._storage_create_service.execute()
 
@@ -50,7 +51,8 @@ class StudentRunCompileStageUseCase:
             )
         except StorageRunCompilerServiceError as e:
             # 失敗したら異常終了の結果を書きこむ
-            self._student_stage_result_repo.put(
+            self._student_put_stage_result_service.execute(
+                stage_path=stage_path,
                 result=CompileFailureStudentStageResult.create_instance(
                     student_id=student_id,
                     reason=f"コンパイルに失敗しました。\n{e.reason}",
@@ -66,7 +68,8 @@ class StudentRunCompileStageUseCase:
             )
 
             # 正常終了の結果を書きこむ
-            self._student_stage_result_repo.put(
+            self._student_put_stage_result_service.execute(
+                stage_path=stage_path,
                 result=CompileSuccessStudentStageResult.create_instance(
                     student_id=student_id,
                     output=service_result.output,

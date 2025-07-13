@@ -1,16 +1,17 @@
 from pathlib import Path
 
 from domain.errors import StorageRunExecutableServiceError
+from domain.models.stage_path import StagePath
 from domain.models.student_stage_result import ExecuteFailureStudentStageResult, \
     ExecuteSuccessStudentStageResult
-from domain.models.values import StudentID, TestCaseID
-from infra.repositories.student_stage_result import StudentStageResultRepository
+from domain.models.values import StudentID
 from services.dto.storage_diff_snapshot import StorageDiff
 from services.storage import StorageCreateService, StorageDeleteService, \
     StorageLoadStudentExecutableService, StorageLoadExecuteConfigInputFilesService, \
     StorageWriteStdoutFileService, StorageCreateOutputFileMappingFromDiffService, \
     StorageTakeSnapshotService
 from services.storage_run_executable import StorageRunExecutableService
+from services.student_stage_path_result import StudentPutStageResultService
 from services.testcase_config import TestCaseConfigGetExecuteConfigMtimeService, \
     TestCaseConfigGetExecuteOptionsService
 
@@ -24,7 +25,7 @@ class StudentRunExecuteStageUseCase:
             storage_load_execute_config_input_files_service: StorageLoadExecuteConfigInputFilesService,
             storage_take_snapshot_service: StorageTakeSnapshotService,
             storage_delete_service: StorageDeleteService,
-            student_stage_result_repo: StudentStageResultRepository,
+            student_put_stage_result_service: StudentPutStageResultService,
             testcase_config_get_execute_config_mtime_service: TestCaseConfigGetExecuteConfigMtimeService,
             storage_run_executable_service: StorageRunExecutableService,
             testcase_config_get_execute_options_service: TestCaseConfigGetExecuteOptionsService,
@@ -41,8 +42,8 @@ class StudentRunExecuteStageUseCase:
             = storage_take_snapshot_service
         self._storage_delete_service \
             = storage_delete_service
-        self._student_stage_result_repo \
-            = student_stage_result_repo
+        self._student_put_stage_result_service \
+            = student_put_stage_result_service
         self._testcase_config_get_execute_config_mtime_service \
             = testcase_config_get_execute_config_mtime_service
         self._storage_run_executable_service \
@@ -56,7 +57,7 @@ class StudentRunExecuteStageUseCase:
 
     __EXECUTABLE_FILE_RELATIVE_PATH = Path("main.exe")
 
-    def execute(self, student_id: StudentID, testcase_id: TestCaseID) -> None:
+    def execute(self, student_id: StudentID, stage_path: StagePath) -> None:
         # ストレージ領域の生成
         storage_id = self._storage_create_service.execute()
 
@@ -75,12 +76,12 @@ class StudentRunExecuteStageUseCase:
         # ストレージ領域に実行構成をロード
         self._storage_load_execute_config_input_files_service.execute(
             storage_id=storage_id,
-            testcase_id=testcase_id,
+            testcase_id=stage_path.testcase_id,
         )
 
         # 実行オプションを取得
         execute_options = self._testcase_config_get_execute_options_service.execute(
-            testcase_id=testcase_id,
+            testcase_id=stage_path.testcase_id,
         )
 
         # 実行
@@ -92,10 +93,11 @@ class StudentRunExecuteStageUseCase:
             )
         except StorageRunExecutableServiceError as e:
             # 失敗したら異常終了の結果を書きこむ
-            self._student_stage_result_repo.put(
+            self._student_put_stage_result_service.execute(
+                stage_path=stage_path,
                 result=ExecuteFailureStudentStageResult.create_instance(
                     student_id=student_id,
-                    testcase_id=testcase_id,
+                    testcase_id=stage_path.testcase_id,
                     reason=e.reason,
                 )
             )
@@ -124,12 +126,13 @@ class StudentRunExecuteStageUseCase:
 
             # 正常終了の結果を書きこむ
             execute_config_mtime = self._testcase_config_get_execute_config_mtime_service.execute(
-                testcase_id=testcase_id,
+                testcase_id=stage_path.testcase_id,
             )
-            self._student_stage_result_repo.put(
+            self._student_put_stage_result_service.execute(
+                stage_path=stage_path,
                 result=ExecuteSuccessStudentStageResult.create_instance(
                     student_id=student_id,
-                    testcase_id=testcase_id,
+                    testcase_id=stage_path.testcase_id,
                     execute_config_mtime=execute_config_mtime,
                     output_files=output_files,
                 )

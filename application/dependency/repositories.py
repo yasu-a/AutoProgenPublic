@@ -11,7 +11,7 @@ from infra.repositories.storage import StorageRepository
 from infra.repositories.student import StudentRepository
 from infra.repositories.student_dynamic import StudentExecutableRepository, StudentSourceRepository
 from infra.repositories.student_mark import StudentMarkRepository
-from infra.repositories.student_stage_result import StudentStageResultRepository
+from infra.repositories.student_stage_path_result import StudentStagePathResultRepository
 from infra.repositories.test_source import TestSourceRepository
 from infra.repositories.testcase_config import TestCaseConfigRepository
 
@@ -61,15 +61,10 @@ def get_student_repository():
 
 
 @cache  # プロジェクト内ステートフル
-def get_student_stage_result_repository():
-    return StudentStageResultRepository(
+def get_student_stage_path_result_repository():
+    return StudentStagePathResultRepository(
         project_database_io=get_project_database_io(),
     )
-    # return StudentStageResultRepository(
-    #     student_stage_result_path_provider=get_student_stage_result_path_provider(),
-    #     current_project_core_io=get_current_project_core_io(),
-    #     lru_cache=get_lru_cache(),
-    # )
 
 
 @cache  # インスタンス内部にキャッシュを持つのでプロジェクト内ステートフル

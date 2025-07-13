@@ -193,10 +193,51 @@ def get_test_test_stage_usecase():
 def get_student_run_build_stage_usecase():
     return StudentRunBuildStageUseCase(
         student_submission_get_source_content_service=get_student_submission_get_source_content_service(),
-        student_stage_result_repo=get_student_stage_result_repository(),
         student_dynamic_clear_service=get_student_dynamic_clear_service(),
         student_dynamic_set_source_content_service=get_student_dynamic_set_source_content_service(),
         student_submission_get_checksum_service=get_student_submission_get_checksum_service(),
+        student_put_stage_result_service=get_student_put_stage_result_service(),
+
+    )
+
+
+# StudentRunCompileStageUseCase
+def get_student_run_compile_stage_usecase():
+    return StudentRunCompileStageUseCase(
+        storage_create_service=get_storage_create_service(),
+        storage_load_student_source_service=get_storage_load_student_source_service(),
+        storage_store_student_executable_service=get_storage_store_student_executable_service(),
+        storage_run_compiler_service=get_storage_run_compiler_service(),
+        storage_delete_service=get_storage_delete_service(),
+        student_put_stage_result_service=get_student_put_stage_result_service(),
+    )
+
+
+# StudentRunExecuteStageUseCase
+def get_student_run_execute_stage_usecase():
+    return StudentRunExecuteStageUseCase(
+        storage_create_service=get_storage_create_service(),
+        storage_load_student_executable_service=get_storage_load_student_executable_service(),
+        storage_load_execute_config_input_files_service=get_storage_load_execute_config_input_files_service(),
+        storage_take_snapshot_service=get_storage_take_snapshot_service(),
+        storage_delete_service=get_storage_delete_service(),
+        testcase_config_get_execute_config_mtime_service=get_testcase_config_get_execute_config_mtime_service(),
+        storage_run_executable_service=get_storage_run_executable_service(),
+        testcase_config_get_execute_options_service=get_testcase_config_get_execute_options_service(),
+        storage_create_output_file_mapping_from_diff_service=get_storage_create_output_file_mapping_from_diff_service(),
+        storage_write_stdout_file_service=get_storage_write_stdout_file_service(),
+        student_put_stage_result_service=get_student_put_stage_result_service(),
+    )
+
+
+# StudentRunTestUseCase
+def get_student_run_test_stage_usecase():
+    return StudentRunTestStageUseCase(
+        testcase_config_get_service=get_testcase_config_get_service(),
+        testcase_config_get_test_config_mtime_service=get_testcase_config_get_test_config_mtime_service(),
+        match_get_best_service=get_match_get_best_service(),
+        student_put_stage_result_service=get_student_put_stage_result_service(),
+        student_get_stage_result_service=get_student_get_stage_result_service(),
     )
 
 
@@ -241,35 +282,6 @@ def get_testcase_list_edit_copy_testcase_usecase():
     )
 
 
-# StudentRunCompileStageUseCase
-def get_student_run_compile_stage_usecase():
-    return StudentRunCompileStageUseCase(
-        storage_create_service=get_storage_create_service(),
-        storage_load_student_source_service=get_storage_load_student_source_service(),
-        storage_store_student_executable_service=get_storage_store_student_executable_service(),
-        storage_run_compiler_service=get_storage_run_compiler_service(),
-        storage_delete_service=get_storage_delete_service(),
-        student_stage_result_repo=get_student_stage_result_repository(),
-    )
-
-
-# StudentRunExecuteStageUseCase
-def get_student_run_execute_stage_usecase():
-    return StudentRunExecuteStageUseCase(
-        storage_create_service=get_storage_create_service(),
-        storage_load_student_executable_service=get_storage_load_student_executable_service(),
-        storage_load_execute_config_input_files_service=get_storage_load_execute_config_input_files_service(),
-        storage_take_snapshot_service=get_storage_take_snapshot_service(),
-        storage_delete_service=get_storage_delete_service(),
-        student_stage_result_repo=get_student_stage_result_repository(),
-        testcase_config_get_execute_config_mtime_service=get_testcase_config_get_execute_config_mtime_service(),
-        storage_run_executable_service=get_storage_run_executable_service(),
-        testcase_config_get_execute_options_service=get_testcase_config_get_execute_options_service(),
-        storage_create_output_file_mapping_from_diff_service=get_storage_create_output_file_mapping_from_diff_service(),
-        storage_write_stdout_file_service=get_storage_write_stdout_file_service(),
-    )
-
-
 # StudentStageResultTakeDiffSnapshotUseCase
 def get_student_dynamic_take_diff_snapshot_usecase():
     return StudentDynamicTakeDiffSnapshotUseCase(
@@ -296,16 +308,6 @@ def get_testcase_config_get_usecase():
 def get_testcase_config_put_usecase():
     return TestCaseConfigPutUseCase(
         testcase_config_put_service=get_testcase_config_put_service(),
-    )
-
-
-# StudentRunTestUseCase
-def get_student_run_test_stage_usecase():
-    return StudentRunTestStageUseCase(
-        testcase_config_get_service=get_testcase_config_get_service(),
-        student_stage_result_repo=get_student_stage_result_repository(),
-        testcase_config_get_test_config_mtime_service=get_testcase_config_get_test_config_mtime_service(),
-        match_get_best_service=get_match_get_best_service(),
     )
 
 

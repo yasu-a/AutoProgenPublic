@@ -1,5 +1,4 @@
 import json
-from datetime import datetime
 
 from domain.models.stages import AbstractStage, TestStage
 from domain.models.student_stage_result import AbstractStudentStageResult, \
@@ -18,7 +17,7 @@ class _TestResultHelper(_AbstractStageResultHelper):
             (
                 student_id                    TEXT,
                 testcase_id                   TEXT,
-                test_config_mtime             TEXT,
+                test_config_mtime DATETIME,
                 test_result_output_files_json TEXT,
                 reason                        TEXT,
                 PRIMARY KEY (student_id, testcase_id),
@@ -48,7 +47,7 @@ class _TestResultHelper(_AbstractStageResultHelper):
             return TestSuccessStudentStageResult.create_instance(
                 student_id=student_id,
                 testcase_id=stage.testcase_id,
-                test_config_mtime=datetime.fromisoformat(row["test_config_mtime"]),
+                test_config_mtime=row["test_config_mtime"],  # 既にdatetimeオブジェクト
                 test_result_output_files=test_result_output_files,
             )
         else:

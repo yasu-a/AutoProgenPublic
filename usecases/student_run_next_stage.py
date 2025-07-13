@@ -7,8 +7,7 @@ from domain.models.student_stage_path_result import StudentStagePathResult
 from domain.models.values import StudentID
 from services.stage_path import StagePathListSubService
 from services.student_stage_path_result import StudentStagePathResultGetService, \
-    StudentStagePathResultCheckRollbackService
-from services.student_stage_result import StudentStageResultRollbackService
+    StudentStagePathResultCheckRollbackService, StudentStageResultRollbackService
 from usecases.student_run_build import StudentRunBuildStageUseCase
 from usecases.student_run_compile import StudentRunCompileStageUseCase
 from usecases.student_run_execute import StudentRunExecuteStageUseCase
@@ -63,7 +62,7 @@ class StudentRunNextStageUseCase:
 
         self._student_stage_result_rollback_service.execute(
             student_id=student_id,
-            stage_path=stage_path_result.get_stage_path(),
+            stage_path=stage_path_result.stage_path,
             stage_type=rollback_stage_type,
         )
         self._logger.info(f"{student_id} rollback {rollback_stage_type}")
@@ -105,7 +104,7 @@ class StudentRunNextStageUseCase:
                                                                               stage_path)
 
                 # このステージパスのすべてのステージが終了しているなら終了
-                if stage_path_result.are_all_stages_done():
+                if stage_path_result.are_all_finished:
                     finished_stage_path_indexes.add(stage_path_index)
                     continue
 
@@ -115,34 +114,36 @@ class StudentRunNextStageUseCase:
                     self._logger.info(f"{student_id} run BUILD {next_stage}")
                     self._student_run_build_stage_usecase.execute(
                         student_id=student_id,
+                        stage_path=stage_path,
                     )
                 elif isinstance(next_stage, CompileStage):
                     self._logger.info(f"{student_id} run COMPILE {next_stage}")
                     self._student_run_compile_stage_usecase.execute(
                         student_id=student_id,
+                        stage_path=stage_path,
                     )
                 elif isinstance(next_stage, ExecuteStage):
                     self._logger.info(f"{student_id} run EXECUTE {next_stage}")
                     self._student_run_execute_stage_usecase.execute(
                         student_id=student_id,
-                        testcase_id=next_stage.testcase_id,
+                        stage_path=stage_path,
                     )
                 elif isinstance(next_stage, TestStage):
                     self._logger.info(f"{student_id} run TEST {next_stage}")
                     self._student_run_test_stage_usecase.execute(
                         student_id=student_id,
-                        testcase_id=next_stage.testcase_id,
+                        stage_path=stage_path,
                     )
                 else:
                     assert False, next_stage
 
                 # 実行前の進捗の状況と実行後の進捗の状況を比較してこのステージパスの実行を終了するかどうかを決定
-                finish_states_before_run = stage_path_result.get_finish_states()
+                finish_states_before_run = stage_path_result.stage_statuses
                 finish_states_after_run = (
                     self._student_stage_path_result_get_service.execute(
                         student_id,
                         stage_path,
-                    ).get_finish_states()
+                    ).stage_statuses
                 )
                 if finish_states_before_run == finish_states_after_run:
                     finished_stage_path_indexes.add(stage_path_index)

@@ -1,6 +1,6 @@
 from domain.models.values import StudentID
 from services.student_mark import StudentMarkCheckTimestampQueryService
-from services.student_stage_result import StudentStageResultCheckTimestampQueryService
+from services.student_stage_path_result import StudentStageResultCheckTimestampQueryService
 from usecases.dto.student_stage_result_diff_snapshot import StudentStageResultDiffSnapshot
 
 

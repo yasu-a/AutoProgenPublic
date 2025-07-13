@@ -1,12 +1,13 @@
-from collections import OrderedDict
+from datetime import datetime
 
 from domain.models.stage_path import StagePath
 from domain.models.stages import AbstractStage, BuildStage, ExecuteStage, TestStage
 from domain.models.student_stage_path_result import StudentStagePathResult
-from domain.models.student_stage_result import AbstractStudentStageResult, \
-    BuildSuccessStudentStageResult, ExecuteSuccessStudentStageResult, TestSuccessStudentStageResult
+from domain.models.student_stage_result import BuildSuccessStudentStageResult, \
+    ExecuteSuccessStudentStageResult, TestSuccessStudentStageResult, AbstractStudentStageResult
 from domain.models.values import StudentID
-from infra.repositories.student_stage_result import StudentStageResultRepository
+from infra.repositories.student_stage_path_result import StudentStagePathResultRepository
+from services.stage_path import StagePathListSubService
 from services.student_submission import StudentSubmissionGetChecksumService
 from services.testcase_config import TestCaseConfigGetExecuteConfigMtimeService, \
     TestCaseConfigGetTestConfigMtimeService
@@ -19,51 +20,13 @@ class StudentStagePathResultGetService:
     def __init__(
             self,
             *,
-            student_stage_result_repo: StudentStageResultRepository,
+            student_stage_path_result_repo: StudentStagePathResultRepository,
     ):
-        self._student_stage_result_repo = student_stage_result_repo
+        self._student_stage_path_result_repo = student_stage_path_result_repo
 
     def execute(self, student_id: StudentID, stage_path: StagePath) \
             -> StudentStagePathResult | None:
-        stage_results: OrderedDict[AbstractStage, AbstractStudentStageResult | None] = OrderedDict()
-        for stage in stage_path:
-            is_finished = self._student_stage_result_repo.exists(
-                student_id=student_id,
-                stage=stage,
-            )
-            if not is_finished:
-                stage_result = None
-            else:
-                stage_result = self._student_stage_result_repo.get(
-                    student_id=student_id,
-                    stage=stage,
-                )
-            stage_results[stage] = stage_result
-        return StudentStagePathResult(
-            stage_results=stage_results,
-        )
-
-
-# TODO: StagePathResultが一つの集約じゃね？？？？
-# class StudentStagePathResultQueryService:
-#     def __init__(
-#             self,
-#             *,
-#             project_database_io: ProjectDatabaseIO,
-#     ):
-#         self._project_database_io = project_database_io
-#
-#     def execute(self, student_id: StudentID, stage_path: StagePath) \
-#             -> StudentStagePathResult | None:
-#         stage_results: OrderedDict[AbstractStage, AbstractStudentStageResult | None] = OrderedDict()
-#         with self._project_database_io.connect() as con:
-#             con.execute(
-#                 """
-#                 SELECT *
-#                 FROM student_build_result AS build
-#
-#                 """
-#             )
+        return self._student_stage_path_result_repo.get(student_id, stage_path)
 
 
 class StudentStagePathResultCheckRollbackService:
@@ -103,7 +66,7 @@ class StudentStagePathResultCheckRollbackService:
         if result is not None and result.is_success:
             assert isinstance(result, ExecuteSuccessStudentStageResult)
             # 現在の実行構成の更新時刻がステージ実行時の実行構成の更新時刻と異なればロールバック
-            stage = stage_path_result.get_result_by_stage_type(ExecuteStage).stage
+            stage = result.stage
             assert isinstance(stage, ExecuteStage)
             mtime = self._testcase_config_get_execute_config_mtime_service.execute(
                 testcase_id=stage.testcase_id,
@@ -116,8 +79,8 @@ class StudentStagePathResultCheckRollbackService:
         result = stage_path_result.get_result_by_stage_type(TestStage)
         if result is not None and result.is_success:
             assert isinstance(result, TestSuccessStudentStageResult)
-            # 現在のテスト構成の更新時刻がステージ実行時の実行構成の更新時刻と異なればロールバック
-            stage = stage_path_result.get_result_by_stage_type(TestStage).stage
+            # 現在のテスト構成の更新時刻がステージ実行時のテスト構成の更新時刻と異なればロールバック
+            stage = result.stage
             assert isinstance(stage, TestStage)
             mtime = self._testcase_config_get_test_config_mtime_service.execute(
                 testcase_id=stage.testcase_id,
@@ -125,5 +88,101 @@ class StudentStagePathResultCheckRollbackService:
             if mtime != result.test_config_mtime:
                 return TestStage
 
-        # ロールバックしてない
         return None
+
+
+class StudentStageResultCheckTimestampQueryService:
+    # 生徒の進捗データの最終更新日時を取得する
+
+    def __init__(
+            self,
+            *,
+            student_stage_path_result_repo: StudentStagePathResultRepository,
+    ):
+        self._student_stage_path_result_repo = student_stage_path_result_repo
+
+    def execute(self, student_id: StudentID) -> datetime | None:  # None if no file exists
+        return self._student_stage_path_result_repo.get_timestamp(student_id)
+
+
+class StudentStageResultRollbackService:
+    # 与えられたステージ以降（与えられたステージ自身を含む）の結果生成をなかったことにする
+
+    def __init__(
+            self,
+            *,
+            student_stage_path_result_repo: StudentStagePathResultRepository,
+    ):
+        self._student_stage_path_result_repo = student_stage_path_result_repo
+
+    def execute(
+            self,
+            *,
+            student_id: StudentID,
+            stage_path: StagePath,
+            stage_type: type[AbstractStage],
+    ) -> None:
+        stage_path_result = self._student_stage_path_result_repo.get(student_id, stage_path)
+        for stage in reversed(stage_path):
+            stage_path_result.delete_result(stage)
+            if isinstance(stage, stage_type):
+                break
+        self._student_stage_path_result_repo.put(stage_path_result)
+
+
+class StudentStageResultClearService:
+    # 生徒の結果データを全削除する
+
+    def __init__(
+            self,
+            *,
+            stage_path_list_sub_service: StagePathListSubService,
+            student_stage_path_result_repo: StudentStagePathResultRepository,
+    ):
+        self._stage_path_list_sub_service = stage_path_list_sub_service
+        self._student_stage_path_result_repo = student_stage_path_result_repo
+
+    def execute(
+            self,
+            *,
+            student_id: StudentID,
+    ) -> None:
+        stage_paths = self._stage_path_list_sub_service.execute()
+        for stage_path in stage_paths:
+            stage_path_result = self._student_stage_path_result_repo.get(student_id, stage_path)
+            stage_path_result.delete_all_results()
+            self._student_stage_path_result_repo.put(stage_path_result)
+
+
+class StudentPutStageResultService:
+    def __init__(
+            self,
+            *,
+            student_stage_path_result_repo: StudentStagePathResultRepository,
+    ):
+        self._student_stage_path_result_repo = student_stage_path_result_repo
+
+    def execute(self, stage_path: StagePath, result: AbstractStudentStageResult) -> None:
+        stage_path_result = self._student_stage_path_result_repo.get(
+            student_id=result.student_id,
+            stage_path=stage_path,
+        )
+        stage_path_result.put_result(result)
+        self._student_stage_path_result_repo.put(stage_path_result)
+
+
+class StudentGetStageResultService:
+    def __init__(
+            self,
+            *,
+            student_stage_path_result_repo: StudentStagePathResultRepository,
+    ):
+        self._student_stage_path_result_repo = student_stage_path_result_repo
+
+    def execute(self, student_id: StudentID, stage_path: StagePath,
+                stage: AbstractStage) -> AbstractStudentStageResult:
+        stage_path_result = self._student_stage_path_result_repo.get(
+            student_id=student_id,
+            stage_path=stage_path,
+        )
+        return stage_path_result.get_result(stage)

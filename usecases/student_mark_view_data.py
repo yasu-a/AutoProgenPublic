@@ -38,7 +38,7 @@ class StudentMarkViewDataGetTestResultUseCase:
         stage_path_result: StudentStagePathResult \
             = self._student_stage_path_result_get_service.execute(student_id, stage_path)
 
-        if stage_path_result.are_all_stages_done():
+        if stage_path_result.are_all_finished:
             # すべてのステージが成功しているとき
             test_stage_result = stage_path_result.get_result_by_stage_type(TestStage)
             assert isinstance(test_stage_result, TestSuccessStudentStageResult), test_stage_result
@@ -56,7 +56,7 @@ class StudentMarkViewDataGetTestResultUseCase:
                 )
         else:
             # 失敗しているとき
-            reason = stage_path_result.get_detailed_reason()
+            reason = stage_path_result.last_stage_detailed_reason
             if reason is None:
                 reason = "処理が未完了です"
             return StudentTestCaseTestResultUntestableViewData(

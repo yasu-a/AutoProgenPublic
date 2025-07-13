@@ -89,7 +89,7 @@ class StudentStagePathResultRepository:
         既存の4つのテーブルから統合的に取得
         """
         with self.__lock(student_id):
-            self._logger.info(f"get: {student_id}, {stage_path}")
+            self._logger.debug(f"get: {student_id}, {stage_path}")
             with self._project_database_io.connect() as con:
                 cur = con.cursor()
                 stage_results: OrderedDict[AbstractStage, AbstractStudentStageResult | None] \
@@ -111,8 +111,9 @@ class StudentStagePathResultRepository:
         既存の4つのテーブルに統合的に保存
         """
         with self.__lock(stage_path_result.student_id):
-            self._logger.info(
-                f"put: {stage_path_result.student_id}, {stage_path_result.stage_path}")
+            self._logger.debug(
+                f"put: {stage_path_result.student_id}, {stage_path_result.stage_path}"
+            )
             with self._project_database_io.connect() as con:
                 cur = con.cursor()
                 for stage, stage_result in stage_path_result.iter_stage_results():
@@ -132,7 +133,6 @@ class StudentStagePathResultRepository:
         記録がない場合は None を返します。
         """
         with self.__lock(student_id):
-            self._logger.info(f"get_timestamp: {student_id}")
             # キャッシュにない場合のみデータベースにアクセス
             with self._project_database_io.connect() as con:
                 cur = con.cursor()

@@ -37,8 +37,12 @@ class ProjectDatabaseIO:
     def _database_fullpath(self) -> Path:
         return self._database_path_provider.fullpath()
 
-    @classmethod
-    def _setup_connection(cls, con: sqlite3.Connection):
+    def _create_connection(self):
+        con = sqlite3.connect(
+            self._database_fullpath,
+            detect_types=sqlite3.PARSE_DECLTYPES,
+            timeout=10,
+        )
         con.row_factory = sqlite3.Row
         con.execute("PRAGMA foreign_keys=ON;")
         return con
@@ -47,8 +51,8 @@ class ProjectDatabaseIO:
     def connect(self) -> Generator[sqlite3.Connection, Any, None]:
         self._logger.debug("Connecting to database: " + str(self._database_fullpath))
         self._database_fullpath.parent.mkdir(parents=True, exist_ok=True)
-        con = sqlite3.connect(self._database_fullpath, detect_types=sqlite3.PARSE_DECLTYPES)
-        con = self._setup_connection(con)
+
+        con = self._create_connection()
         self._logger.debug(f"Connection to database established ({id(con)=})")
         try:
             yield con

@@ -2,7 +2,7 @@ from typing import Callable
 
 from domain.errors import StopTask
 from domain.models.values import StudentID
-from services.student_stage_result import StudentStageResultClearService
+from services.student_stage_path_result import StudentStageResultClearService
 
 
 class StudentStageResultClearUseCase:

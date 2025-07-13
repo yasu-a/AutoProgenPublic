@@ -24,9 +24,9 @@ from services.student_mark import StudentMarkGetSubService, StudentMarkPutServic
     StudentMarkCheckTimestampQueryService, StudentMarkListService
 from services.student_master_create import StudentMasterCreateService
 from services.student_stage_path_result import StudentStagePathResultGetService, \
-    StudentStagePathResultCheckRollbackService
-from services.student_stage_result import StudentStageResultCheckTimestampQueryService, \
-    StudentStageResultRollbackService, StudentStageResultClearService
+    StudentStagePathResultCheckRollbackService, StudentStageResultCheckTimestampQueryService, \
+    StudentStageResultRollbackService, StudentStageResultClearService, StudentPutStageResultService, \
+    StudentGetStageResultService
 from services.student_submission import StudentSubmissionExistService, \
     StudentSubmissionExtractService, StudentSubmissionFolderShowService, \
     StudentSubmissionGetChecksumService, StudentSubmissionListSourceRelativePathQueryService, \
@@ -200,7 +200,7 @@ def get_stage_path_get_by_testcase_id_service():
 # StudentStagePathResultGetService
 def get_student_stage_path_result_get_service():
     return StudentStagePathResultGetService(
-        student_stage_result_repo=get_student_stage_result_repository(),
+        student_stage_path_result_repo=get_student_stage_path_result_repository(),
     )
 
 
@@ -215,7 +215,7 @@ def get_student_stage_path_result_check_rollback_service():
 
 def get_student_stage_result_check_timestamp_query_service():
     return StudentStageResultCheckTimestampQueryService(
-        student_stage_result_repo=get_student_stage_result_repository(),
+        student_stage_path_result_repo=get_student_stage_path_result_repository(),
     )
 
 
@@ -319,7 +319,7 @@ def get_student_submission_get_source_content_service():
 
 def get_student_stage_result_rollback_service():
     return StudentStageResultRollbackService(
-        student_stage_result_repo=get_student_stage_result_repository(),
+        student_stage_path_result_repo=get_student_stage_path_result_repository(),
     )
 
 
@@ -327,7 +327,22 @@ def get_student_stage_result_rollback_service():
 def get_student_stage_result_clear_service():
     return StudentStageResultClearService(
         stage_path_list_sub_service=get_stage_path_list_sub_service(),
-        student_stage_result_repo=get_student_stage_result_repository(),
+        student_stage_path_result_repo=get_student_stage_path_result_repository(),
+    )
+
+
+# StudentPutStageResultService
+def get_student_put_stage_result_service():
+    return StudentPutStageResultService(
+        student_stage_path_result_repo=get_student_stage_path_result_repository(),
+
+    )
+
+
+# StudentGetStageResultService
+def get_student_get_stage_result_service():
+    return StudentGetStageResultService(
+        student_stage_path_result_repo=get_student_stage_path_result_repository(),
     )
 
 

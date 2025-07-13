@@ -1,5 +1,4 @@
 import json
-from datetime import datetime
 
 from domain.models.stages import AbstractStage, ExecuteStage
 from domain.models.student_stage_result import AbstractStudentStageResult, \
@@ -46,7 +45,7 @@ class _ExecuteResultHelper(_AbstractStageResultHelper):
             return ExecuteSuccessStudentStageResult.create_instance(
                 student_id=student_id,
                 testcase_id=stage.testcase_id,
-                execute_config_mtime=datetime.fromisoformat(row["execute_config_mtime"]),
+                execute_config_mtime=row["execute_config_mtime"],  # 既にdatetimeオブジェクト
                 output_files=output_files,
             )
         else:

@@ -99,8 +99,8 @@ class StudentTableGetStudentErrorCellDataUseCase:
                 student_id=student_id,
                 stage_path=stage_path,
             )
-            summary_text = stage_path_result.get_main_reason() or ""
-            detailed_text = stage_path_result.get_detailed_reason() or ""
+            summary_text = stage_path_result.last_stage_main_reason or ""
+            detailed_text = stage_path_result.last_stage_detailed_reason or ""
             if summary_text or detailed_text:
                 text_entries.append(
                     StudentErrorCellDataTextEntry(
