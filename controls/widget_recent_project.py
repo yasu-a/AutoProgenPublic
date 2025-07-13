@@ -136,6 +136,7 @@ class RecentProjectListItemWidget(QWidget):
         menu.addAction(a_delete)
 
         # メニューを表示
+        # noinspection PyTypeChecker
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         menu.exec_(QCursor.pos())  # コンテキストメニューをボタンの下に表示
 

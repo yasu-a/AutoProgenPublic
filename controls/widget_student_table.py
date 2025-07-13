@@ -500,6 +500,7 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
         if not index.isValid():
             return
         if index.column() in (StudentTableColumns.COL_STUDENT_ID, StudentTableColumns.COL_SCORE):
+            # noinspection PyTypeChecker
             self.viewport().setCursor(Qt.PointingHandCursor)
         else:
             self.viewport().unsetCursor()

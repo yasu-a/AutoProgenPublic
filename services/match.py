@@ -24,37 +24,87 @@ class _Matcher:
         self._test_config_options = test_config_options
 
     def get_best_token_matches(self) -> tuple[str, list[MatchedToken], list[NonmatchedToken]]:
-        regex_pattern, flags = self._patterns.to_regex_pattern(
-            ignore_case=self._test_config_options.ignore_case,
-        )
-
-        match_result = re.fullmatch(regex_pattern, self._content_string, flags=flags)
+        # 期待されるパターンと期待されないパターンを分離
+        expected_patterns = self._patterns.expected_patterns
 
         matched_tokens: list[MatchedToken] = []
         nonmatched_tokens: list[NonmatchedToken] = []
-        if match_result is None:
+
+        # 期待されるパターンのマッチング
+        regex_pattern, flags = expected_patterns.to_regex_pattern(
+            ignore_case=self._test_config_options.ignore_case,
+        )
+        expected_pattern_match_result \
+            = re.fullmatch(regex_pattern, self._content_string, flags=flags)
+
+        if expected_pattern_match_result is None:
+            # 期待されるパターンがマッチしない場合
             for pattern in self._patterns:
                 nonmatched_tokens.append(
                     NonmatchedToken(
                         pattern=pattern,
                     )
                 )
-        else:
-            group_dict = match_result.groupdict()
-            for pattern in self._patterns:
-                is_found = group_dict[pattern.regex_group_name]
-                if is_found:
-                    matched_tokens.append(
-                        MatchedToken(
-                            begin=match_result.start(pattern.regex_group_name),
-                            end=match_result.end(pattern.regex_group_name),
-                            pattern=pattern,
-                        )
+            return regex_pattern, matched_tokens, nonmatched_tokens
+
+        # 期待されるパターンがマッチした場合
+        group_dict = expected_pattern_match_result.groupdict()
+        spans: dict[int, tuple[int, int]] = {}  # pattern index -> span
+        for pattern in expected_patterns:
+            is_found = group_dict[pattern.regex_group_name]
+            begin = expected_pattern_match_result.start(pattern.regex_group_name)
+            end = expected_pattern_match_result.end(pattern.regex_group_name)
+            spans[pattern.index] = begin, end
+            if is_found:
+                matched_tokens.append(
+                    MatchedToken(
+                        begin=begin,
+                        end=end,
+                        pattern=pattern,
                     )
-                else:
+                )
+            else:
+                nonmatched_tokens.append(
+                    NonmatchedToken(
+                        pattern=pattern,
+                    )
+                )
+
+        # 期待されないパターンを順序付きでマッチング
+        for unexpected_patterns in self._patterns.iter_unexpected_patterns():
+            if unexpected_patterns.first_pattern_index == self._patterns.first_pattern_index:
+                interval_begin = 0
+            else:
+                interval_begin = spans[unexpected_patterns.first_pattern_index - 1][1]
+
+            if unexpected_patterns.last_pattern_index == self._patterns.last_pattern_index:
+                interval_end = len(self._content_string)
+            else:
+                interval_end = spans[unexpected_patterns.last_pattern_index + 1][0]
+
+            interval_text = self._content_string[interval_begin:interval_end]
+
+            regex_pattern, flags = unexpected_patterns.to_regex_pattern(
+                ignore_case=self._test_config_options.ignore_case,
+            )
+            unexpected_pattern_match_result \
+                = re.search(regex_pattern, interval_text, flags=flags)
+            if unexpected_pattern_match_result is None:
+                for p in unexpected_patterns:
                     nonmatched_tokens.append(
                         NonmatchedToken(
-                            pattern=pattern,
+                            pattern=p,
+                        )
+                    )
+            else:
+                for p in unexpected_patterns:
+                    begin = unexpected_pattern_match_result.start(p.regex_group_name)
+                    end = unexpected_pattern_match_result.end(p.regex_group_name)
+                    matched_tokens.append(
+                        MatchedToken(
+                            begin=interval_begin + begin,
+                            end=interval_begin + end,
+                            pattern=p,
                         )
                     )
 

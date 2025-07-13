@@ -303,7 +303,7 @@ class ExpectedOutputFileTokenListWidget(QListWidget):
         self.setMinimumWidth(self.sizeHintForColumn(0) + 20)
 
     def get_data(self) -> PatternList:
-        patterns = PatternList()
+        patterns: list[AbstractPattern] = []
 
         for i in range(self.count()):
             list_item = self.item(i)
@@ -312,7 +312,7 @@ class ExpectedOutputFileTokenListWidget(QListWidget):
                 item_widget
             patterns.append(item_widget.get_data(index=i))
 
-        return patterns
+        return PatternList(patterns)
 
     def perform_create_text(self):
         # トークンのモデルインスタンスを生成

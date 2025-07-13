@@ -58,6 +58,7 @@ class TestCaseTestConfigTesterWidget(QGroupBox):
 
         layout.addWidget(QLabel("<html><b>生成された正規表現パターン</b></html>", self))
 
+        # noinspection PyTypeChecker
         self._te_regex_pattern = PlainTextEdit(self)
         self._te_regex_pattern.setFont(get_font(monospace=True, small=True))
         self._te_regex_pattern.setReadOnly(True)

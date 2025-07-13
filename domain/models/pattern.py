@@ -1,7 +1,9 @@
+import copy
+import itertools
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import NamedTuple
+from typing import NamedTuple, Iterable
 
 
 class MatchRange(NamedTuple):
@@ -81,7 +83,7 @@ class AbstractPattern(ABC):
         assert False, body
 
     @abstractmethod
-    def _to_regex(self) -> str:
+    def to_regex(self) -> str:
         raise NotImplementedError()
 
     @property
@@ -89,10 +91,7 @@ class AbstractPattern(ABC):
         return f"_{self.index}"
 
     def to_regex_with_group(self):
-        if self.is_expected:
-            return "(?P<" + self.regex_group_name + ">" + self._to_regex() + ")"
-        else:
-            return "(?P<" + self.regex_group_name + ">" + self._to_regex() + ")?"
+        return "(?P<" + self.regex_group_name + ">" + self.to_regex() + ")"
 
 
 @dataclass(frozen=True)
@@ -129,7 +128,7 @@ class RegexPattern(AbstractPattern):
     def create_default(cls, index: int) -> "RegexPattern":
         return cls(index=index, is_expected=True, regex="")
 
-    def _to_regex(self) -> str:
+    def to_regex(self) -> str:
         return self.regex
 
 
@@ -170,7 +169,7 @@ class TextPattern(AbstractPattern):
         return cls(index=index, is_expected=True, text="", is_multiple_space_ignored=True,
                    is_word=False)
 
-    def _to_regex(self) -> str:
+    def to_regex(self) -> str:
         text = self.text
         tokens = re.findall(r"\s+|\S+", text)
         if self.is_multiple_space_ignored:
@@ -211,7 +210,7 @@ class SpacePattern(AbstractPattern):
     def create_default(cls, index: int) -> "SpacePattern":
         return cls(index=index, is_expected=True)
 
-    def _to_regex(self) -> str:
+    def to_regex(self) -> str:
         return r"\s+"
 
 
@@ -238,40 +237,110 @@ class EOLPattern(AbstractPattern):
     def create_default(cls, index: int) -> "EOLPattern":
         return cls(index=index, is_expected=True)
 
-    def _to_regex(self) -> str:
+    def to_regex(self) -> str:
         return r"\n"
 
 
-class PatternList(list[AbstractPattern]):
-    def to_json(self) -> list:
-        assert all(i == pattern.index for i, pattern in enumerate(self))
-        return [
-            pattern.to_json()
-            for pattern in self
-        ]
+class AbstractPatternList(ABC):
+    def __init__(self, patterns: tuple[AbstractPattern, ...]):
+        self._patterns: tuple[AbstractPattern, ...] = patterns
 
-    @classmethod
-    def from_json(cls, body: list):
-        obj = cls([
-            AbstractPattern.from_json(pattern_body)
-            for pattern_body in body
-        ])
-        assert all(i == pattern.index for i, pattern in enumerate(obj))
-        return obj
+    @property
+    def first_pattern_index(self) -> int:
+        if self._patterns:
+            return self._patterns[0].index
+        else:
+            raise ValueError("no patterns")
+
+    @property
+    def last_pattern_index(self) -> int:
+        if self._patterns:
+            return self._patterns[-1].index
+        else:
+            raise ValueError("no patterns")
+
+    def __len__(self):
+        return len(self._patterns)
+
+    def __iter__(self):
+        for pattern in self._patterns:
+            yield copy.deepcopy(pattern)
 
     def __hash__(self) -> int:
-        return hash(tuple(self))
+        return hash((type(self), *self))
 
     def to_regex_pattern(self, *, ignore_case: bool) -> tuple[str, int]:  # pattern and flags
         pattern_regex_lst = []
-        for pattern in self:
+        for pattern in self._patterns:
             regex = pattern.to_regex_with_group()
             pattern_regex_lst.append(regex)
 
-        total_regex = r".*?" + r".*?".join(pattern_regex_lst) + r".*?"
+        if pattern_regex_lst:
+            total_regex = r".*?" + r".*?".join(pattern_regex_lst) + r".*?"
+        else:
+            total_regex = r".*?"
 
         flags = re.DOTALL | re.MULTILINE
         if ignore_case:
             flags |= re.IGNORECASE
 
         return total_regex, flags
+
+
+class PatternList(AbstractPatternList):  # immutable
+    def __init__(self, it: Iterable[AbstractPattern] = ()):
+        super().__init__(tuple(it))
+
+        if self._patterns:
+            for i, pattern in enumerate(self._patterns):
+                assert pattern.index == i, (pattern.index, i)
+
+    def to_json(self):
+        return dict(
+            patterns=[pattern.to_json() for pattern in self._patterns]
+        )
+
+    @classmethod
+    def from_json(cls, body):
+        return cls(AbstractPattern.from_json(p) for p in body["patterns"])
+
+    @property
+    def expected_patterns(self) -> "DiscontinuousSubPatternList":
+        """期待されるパターンで構成されるPatternListを取得"""
+        return DiscontinuousSubPatternList([p for p in self if p.is_expected])
+
+    def iter_unexpected_patterns(self) -> "Iterable[ContinuousSubPatternList]":
+        """期待されないパターンで構成されるPatternListを連番を1グループとしてグループごとに順番に返す"""
+        if not self._patterns:
+            return
+
+        slice_lst = []
+        if self.expected_patterns._patterns[0].index != 0:
+            slice_lst.append(slice(0, self.expected_patterns._patterns[0].index))
+        for p in itertools.pairwise(self.expected_patterns):
+            slice_lst.append(slice(p[0].index + 1, p[1].index))
+        if self.expected_patterns._patterns[-1].index != len(self) - 1:
+            slice_lst.append(slice(self.expected_patterns._patterns[-1].index + 1, len(self)))
+
+        for s in slice_lst:
+            if s.start == s.stop:
+                continue
+            yield ContinuousSubPatternList(self._patterns[s])
+
+
+class DiscontinuousSubPatternList(AbstractPatternList):  # immutable
+    def __init__(self, it: Iterable[AbstractPattern]):
+        super().__init__(tuple(it))
+
+        if self._patterns:
+            for p_1, p_2 in itertools.pairwise(self._patterns):
+                assert p_1.index < p_2.index, (p_1, p_2)
+
+
+class ContinuousSubPatternList(AbstractPatternList):
+    def __init__(self, it: tuple[AbstractPattern, ...]):
+        super().__init__(tuple(it))
+
+        if self._patterns:
+            for p_1, p_2 in itertools.pairwise(self._patterns):
+                assert p_1.index + 1 == p_2.index, (p_1, p_2)
