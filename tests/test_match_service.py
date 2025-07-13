@@ -106,6 +106,32 @@ def test_basic_text_pattern_matching(match_service, test_config_options):
     assert result.is_accepted is True
 
 
+def test_basic_pattern_1(match_service, test_config_options):
+    patterns = PatternList([
+        TextPattern(index=0, is_expected=True, text="Exit", is_multiple_space_ignored=True,
+                    is_word=False),
+        TextPattern(index=1, is_expected=True, text="Small", is_multiple_space_ignored=True,
+                    is_word=False),
+        TextPattern(index=2, is_expected=True, text="3", is_multiple_space_ignored=True,
+                    is_word=False),
+        TextPattern(index=3, is_expected=True, text="Capital", is_multiple_space_ignored=True,
+                    is_word=False),
+        TextPattern(index=4, is_expected=True, text="2", is_multiple_space_ignored=True,
+                    is_word=False),
+        TextPattern(index=5, is_expected=True, text="Numeric", is_multiple_space_ignored=True,
+                    is_word=False),
+        TextPattern(index=6, is_expected=True, text="1", is_multiple_space_ignored=True,
+                    is_word=False),
+    ])
+    result = match_service.execute(
+        content_string="Exit.\nSmall letter:10\nCapital letter:2\nNumeric letter:3\n",
+        patterns=patterns,
+        test_config_options=test_config_options,
+    )
+
+    assert result.is_accepted is False
+
+
 def test_text_pattern_with_multiple_spaces(match_service, test_config_options):
     """複数空白を無視するテキストパターンのテスト"""
     patterns = PatternList([

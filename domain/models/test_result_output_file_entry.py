@@ -70,6 +70,7 @@ class AbstractTestResultOutputFileEntry(ABC):
                 return sub_cls._json_to_instance(body)
         assert False, body["name"]
 
+    @property
     def is_test_result_accepted(self) -> bool:  # テストケースが正解かどうか
         # acceptedならTrue, そうでないならFalse, 判定不可ならValueError
         # 実行結果の出力がない
