@@ -1,1 +1,4 @@
 /tests/__test_data_root__/
+/**/__pycache__
+/settings.json
+/.idea

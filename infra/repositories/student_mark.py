@@ -1,3 +1,4 @@
+from domain.errors import RepositoryItemNotFoundError
 from domain.models.student_mark import StudentMark
 from domain.models.values import StudentID
 from infra.io.files.current_project import CurrentProjectCoreIO
@@ -44,7 +45,7 @@ class StudentMarkRepository:
             student_id=student_id,
         )
         if not json_fullpath.exists():
-            raise ValueError(f"Mark data for student {student_id} not found")
+            raise RepositoryItemNotFoundError(f"Mark data for student {student_id} not found")
 
         body = self._current_project_core_io.read_json(json_fullpath=json_fullpath)
         return StudentMark.from_json(body=body)
