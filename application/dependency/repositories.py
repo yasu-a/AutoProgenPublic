@@ -102,8 +102,8 @@ def get_test_source_repository():
     )
 
 
+@cache  # インスタンス内部にロックを持つのでプロジェクト内ステートフル
 def get_student_mark_repository():
     return StudentMarkRepository(
-        student_mark_path_provider=get_student_mark_path_provider(),
-        current_project_core_io=get_current_project_core_io(),
+        project_database_io=get_project_database_io(),
     )

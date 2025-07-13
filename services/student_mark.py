@@ -2,8 +2,6 @@ from datetime import datetime
 
 from domain.models.student_mark import StudentMark
 from domain.models.values import StudentID
-from infra.io.files.current_project import CurrentProjectCoreIO
-from infra.path_providers.current_project import StudentMarkPathProvider
 from infra.repositories.student_mark import StudentMarkRepository
 from services.student import StudentListSubService
 
@@ -40,21 +38,12 @@ class StudentMarkCheckTimestampQueryService:
     def __init__(
             self,
             *,
-            student_mark_path_provider: StudentMarkPathProvider,
-            current_project_core_io: CurrentProjectCoreIO,
+            student_mark_repo: StudentMarkRepository,
     ):
-        self._student_mark_path_provider = student_mark_path_provider
-        self._current_project_core_io = current_project_core_io
+        self._student_mark_repo = student_mark_repo
 
     def execute(self, student_id: StudentID) -> datetime | None:  # None if no file exists
-        json_fullpath \
-            = self._student_mark_path_provider.student_mark_data_json_fullpath(student_id)
-        if not json_fullpath.exists():
-            return None
-
-        return self._current_project_core_io.get_file_mtime(
-            file_fullpath=json_fullpath,
-        )
+        return self._student_mark_repo.get_timestamp(student_id)
 
 
 class StudentMarkListService:

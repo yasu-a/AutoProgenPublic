@@ -453,8 +453,7 @@ def get_student_mark_put_service():
 # StudentMarkCheckTimestampQueryService
 def get_student_mark_check_timestamp_query_service():
     return StudentMarkCheckTimestampQueryService(
-        student_mark_path_provider=get_student_mark_path_provider(),
-        current_project_core_io=get_current_project_core_io(),
+        student_mark_repo=get_student_mark_repository(),
     )
 
 
