@@ -86,21 +86,122 @@ def test_put_overwrite(repo, student_id_1):
 
 
 def test_timestamp_on_put(repo, student_id_1):
-    """put時のタイムスタンプ更新テスト（従来のJSONファイルベース）"""
-    # 従来の実装ではget_timestampメソッドがないため、スキップ
-    pytest.skip("従来のJSONファイルベースの実装ではget_timestampメソッドが存在しない")
+    """put時のタイムスタンプ更新テスト"""
+    # 初期状態ではタイムスタンプが存在しない
+    assert repo.get_timestamp(student_id_1) is None
+
+    # データをputするとタイムスタンプが設定される
+    mark = StudentMark(student_id=student_id_1, score=85)
+    repo.put(mark)
+
+    timestamp = repo.get_timestamp(student_id_1)
+    assert timestamp is not None
+    # タイムスタンプが現在時刻に近いことを確認（1分以内）
+    from datetime import datetime
+    now = datetime.now()
+    assert abs((timestamp - now).total_seconds()) < 60
 
 
 def test_timestamp_on_overwrite(repo, student_id_1):
-    """上書き時のタイムスタンプ更新テスト（従来のJSONファイルベース）"""
-    # 従来の実装ではget_timestampメソッドがないため、スキップ
-    pytest.skip("従来のJSONファイルベースの実装ではget_timestampメソッドが存在しない")
+    """上書き時のタイムスタンプ更新テスト"""
+    # 最初のデータをput
+    mark1 = StudentMark(student_id=student_id_1, score=85)
+    repo.put(mark1)
+    timestamp1 = repo.get_timestamp(student_id_1)
+
+    # 少し待ってから上書き
+    import time
+    time.sleep(0.1)  # 100ms待機
+
+    # 上書き
+    mark2 = StudentMark(student_id=student_id_1, score=92)
+    repo.put(mark2)
+    timestamp2 = repo.get_timestamp(student_id_1)
+
+    # タイムスタンプが更新されていることを確認
+    assert timestamp2 > timestamp1
 
 
 def test_timestamp_not_update_on_get(repo, student_id_1):
-    """get時のタイムスタンプ変化なしテスト（従来のJSONファイルベース）"""
-    # 従来の実装ではget_timestampメソッドがないため、スキップ
-    pytest.skip("従来のJSONファイルベースの実装ではget_timestampメソッドが存在しない")
+    """get時のタイムスタンプ変化なしテスト"""
+    # データを作成
+    mark = StudentMark(student_id=student_id_1, score=85)
+    repo.put(mark)
+    original_timestamp = repo.get_timestamp(student_id_1)
+
+    # 少し待ってからget
+    import time
+    time.sleep(0.1)  # 100ms待機
+
+    # getを実行
+    retrieved = repo.get(student_id_1)
+    assert retrieved.score == 85
+
+    # タイムスタンプが変化していないことを確認
+    current_timestamp = repo.get_timestamp(student_id_1)
+    assert current_timestamp == original_timestamp
+
+
+def test_timestamp_on_create(repo, student_id_1):
+    """create時のタイムスタンプ設定テスト"""
+    # createを実行
+    _ = repo.create(student_id_1)
+
+    # タイムスタンプが設定されていることを確認
+    timestamp = repo.get_timestamp(student_id_1)
+    assert timestamp is not None
+
+    # タイムスタンプが現在時刻に近いことを確認（1分以内）
+    from datetime import datetime
+    now = datetime.now()
+    assert abs((timestamp - now).total_seconds()) < 60
+
+
+def test_timestamp_for_nonexistent_student(repo, student_id_1):
+    """存在しない学生のタイムスタンプ取得テスト"""
+    # 存在しない学生のタイムスタンプを取得
+    timestamp = repo.get_timestamp(student_id_1)
+    assert timestamp is None
+
+
+def test_timestamp_consistency_with_data(repo, student_id_1, student_id_2):
+    """タイムスタンプとデータの一貫性テスト"""
+    # 学生1のデータを作成
+    mark1 = StudentMark(student_id=student_id_1, score=85)
+    repo.put(mark1)
+    timestamp1 = repo.get_timestamp(student_id_1)
+
+    # 学生2のデータを作成
+    mark2 = StudentMark(student_id=student_id_2, score=92)
+    repo.put(mark2)
+    timestamp2 = repo.get_timestamp(student_id_2)
+
+    # それぞれ独立したタイムスタンプを持っていることを確認
+    assert timestamp1 != timestamp2
+
+    # データを取得して一貫性を確認
+    retrieved1 = repo.get(student_id_1)
+    retrieved2 = repo.get(student_id_2)
+
+    assert retrieved1.score == 85
+    assert retrieved2.score == 92
+
+
+def test_timestamp_format_and_type(repo, student_id_1):
+    """タイムスタンプの形式と型テスト"""
+    # データを作成
+    mark = StudentMark(student_id=student_id_1, score=85)
+    repo.put(mark)
+
+    # タイムスタンプを取得
+    timestamp = repo.get_timestamp(student_id_1)
+
+    # 型と形式を確認
+    from datetime import datetime
+    assert isinstance(timestamp, datetime)
+    assert timestamp.year > 2020  # 妥当な年であることを確認
+    assert timestamp.month >= 1 and timestamp.month <= 12
+    assert timestamp.day >= 1 and timestamp.day <= 31
 
 
 def test_multiple_students_independence(repo, student_id_1, student_id_2):
