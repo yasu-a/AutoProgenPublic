@@ -14,6 +14,7 @@ from services.testcase_config import TestCaseConfigGetExecuteConfigMtimeService,
 
 class StudentStagePathResultGetService:
     # 生徒の指定されたステージパスの各ステージの結果を取得する
+    # テーブル表示におけるHOTSPOT
 
     def __init__(
             self,
@@ -41,6 +42,28 @@ class StudentStagePathResultGetService:
         return StudentStagePathResult(
             stage_results=stage_results,
         )
+
+
+# TODO: StagePathResultが一つの集約じゃね？？？？
+# class StudentStagePathResultQueryService:
+#     def __init__(
+#             self,
+#             *,
+#             project_database_io: ProjectDatabaseIO,
+#     ):
+#         self._project_database_io = project_database_io
+#
+#     def execute(self, student_id: StudentID, stage_path: StagePath) \
+#             -> StudentStagePathResult | None:
+#         stage_results: OrderedDict[AbstractStage, AbstractStudentStageResult | None] = OrderedDict()
+#         with self._project_database_io.connect() as con:
+#             con.execute(
+#                 """
+#                 SELECT *
+#                 FROM student_build_result AS build
+#
+#                 """
+#             )
 
 
 class StudentStagePathResultCheckRollbackService:

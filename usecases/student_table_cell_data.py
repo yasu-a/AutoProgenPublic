@@ -45,6 +45,8 @@ class StudentTableGetStudentNameCellDataUseCase:
 
 
 class StudentTableGetStudentStageStateCellDataUseCase:
+    # テーブル表示におけるHOTSPOT
+
     def __init__(
             self,
             *,

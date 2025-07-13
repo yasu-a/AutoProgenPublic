@@ -27,12 +27,14 @@ class StudentStagePathResult(ABC):
 
     def get_result_by_stage_type(self, stage_type: type[AbstractStage]) \
             -> AbstractStudentStageResult | None:  # None if unprocessed or stage does not exist
+        # 指定されたステージタイプのステージの結果を取得する．未処理またはステージが存在しない場合はNoneを返す
         for stage in self.stage_results:
             if isinstance(stage, stage_type):
                 return self.stage_results[stage]
         return None
 
     def get_latest_stage(self) -> AbstractStage | None:  # None if unstarted
+        # 最後に処理されたステージを取得する．まだ開始されていない場合はNoneを返す
         latest_stage = None
         for stage, stage_result in self.stage_results.items():
             if stage_result is None:
@@ -41,6 +43,7 @@ class StudentStagePathResult(ABC):
         return latest_stage
 
     def get_stage_path(self) -> StagePath:
+        # ステージのパスを取得する
         return StagePath(self.stage_results.keys())
 
     def get_next_stage(self) -> AbstractStage | None:
@@ -59,21 +62,25 @@ class StudentStagePathResult(ABC):
             return None
 
     def are_all_stages_done(self) -> bool:
+        # すべてのステージが完了したかどうかを返す
         return self.get_next_stage() is None
 
     def get_latest_result(self) -> AbstractStudentStageResult | None:  # None if unstarted
+        # 最新の結果を取得する．まだ開始されていない場合はNoneを返す
         last_stage = self.get_latest_stage()
         if last_stage is None:
             return None
         return self.stage_results[last_stage]
 
     def is_success(self) -> bool | None:  # None if unstarted
+        # 成功したかどうかを返す．まだ開始されていない場合はNoneを返す
         last_result = self.get_latest_result()
         if last_result is None:
             return None
         return last_result.is_success
 
     def get_main_reason(self) -> str | None:  # None if unstarted or no error occurred
+        # 主な理由を取得する．まだ開始されていない場合，またはエラーが発生していない場合はNoneを返す
         last_result = self.get_latest_result()
         if last_result is None:
             return None
@@ -83,6 +90,7 @@ class StudentStagePathResult(ABC):
         return last_result.reason
 
     def get_detailed_reason(self) -> str | None:  # None if unstarted or no error occurred
+        # 詳細な理由を取得する．まだ開始されていない場合，またはエラーが発生していない場合はNoneを返す
         last_result = self.get_latest_result()
         if last_result is None:
             return None
@@ -92,6 +100,7 @@ class StudentStagePathResult(ABC):
         return last_result.detailed_text
 
     def __repr__(self) -> str:
+        # オブジェクトの文字列表現を返す
         return (
             f"{type(self).__name__}("
             f"success={self.is_success()}, "
