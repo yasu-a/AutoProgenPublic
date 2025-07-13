@@ -1,7 +1,6 @@
 from domain.errors import MatchServiceError
 from domain.models.expected_ouput_file import ExpectedOutputFile
 from domain.models.output_file import OutputFile
-from domain.models.output_file_test_result import OutputFileTestResult
 from domain.models.test_config_options import TestConfigOptions
 from domain.models.test_result_output_file_entry import TestResultTestedOutputFileEntry
 from services.match import MatchGetBestService
@@ -24,7 +23,7 @@ class TestTestStageUseCase:
             content_text: str,
     ) -> TestTestStageResult:
         try:
-            match_service_result = self._match_get_best_service.execute(
+            match_result = self._match_get_best_service.execute(
                 content_string=content_text,
                 test_config_options=test_config_options,
                 patterns=expected_output_file.patterns,
@@ -40,13 +39,10 @@ class TestTestStageUseCase:
                 content=content_text,
             ),
             expected=expected_output_file,
-            test_result=OutputFileTestResult(
-                matched_tokens=match_service_result.matched_tokens,
-                nonmatched_tokens=match_service_result.nonmatched_tokens,
-            ),
+            test_result=match_result,
         )
         return TestTestStageResult.create_success(
-            regex_pattern=match_service_result.regex_pattern,
+            regex_pattern=match_result.regex_pattern,
             file_test_result=file_test_result,
-            test_execution_timedelta=match_service_result.test_execution_timedelta,
+            test_execution_timedelta=match_result.test_execution_timedelta,
         )

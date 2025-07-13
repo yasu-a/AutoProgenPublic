@@ -1,7 +1,6 @@
 from domain.errors import TestServiceError, MatchServiceError
 from domain.models.expected_ouput_file import ExpectedOutputFile
 from domain.models.output_file import OutputFile
-from domain.models.output_file_test_result import OutputFileTestResult
 from domain.models.stage_path import StagePath
 from domain.models.stages import ExecuteStage
 from domain.models.student_stage_result import TestFailureStudentStageResult, \
@@ -87,7 +86,7 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
                     # 実行結果とテストケースの両方に含まれているファイル
                     #  -> テストを行う
                     try:
-                        match_service_result = self._match_get_best_service.execute(
+                        match_result = self._match_get_best_service.execute(
                             content_string=actual_output_file.content_string,
                             test_config_options=test_config.options,
                             patterns=expected_output_file.patterns,
@@ -100,10 +99,7 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
                         file_id=file_id,
                         actual=actual_output_file,
                         expected=expected_output_file,
-                        test_result=OutputFileTestResult(
-                            matched_tokens=match_service_result.matched_tokens,
-                            nonmatched_tokens=match_service_result.nonmatched_tokens,
-                        ),
+                        test_result=match_result,
                     )
                 else:
                     assert False, "unreachable"

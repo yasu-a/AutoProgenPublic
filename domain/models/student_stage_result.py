@@ -353,15 +353,13 @@ class TestResultOutputFileMapping(
     @property
     def is_accepted(self) -> bool:  # テストケースが正解かどうか
         for file_id, file_entry in self.items():
-            # 実行結果の出力がない
-            if file_entry.has_expected and not file_entry.has_actual:
-                return False
-            # 予期されていない実行結果
-            if not file_entry.has_expected and file_entry.has_actual:
+            try:
+                is_test_result_accepted = file_entry.is_test_result_accepted
+            except ValueError:  # 判定不可
                 continue
-            # 不正解
-            if not file_entry.test_result.is_accepted:
-                return False
+            else:
+                if not is_test_result_accepted:
+                    return False
         return True
 
 
@@ -420,6 +418,10 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生�
     def testcase_id(self) -> TestCaseID:
         assert isinstance(self.stage, TestStage)
         return self.stage.testcase_id
+
+    @property
+    def is_accepted(self) -> bool:
+        return self.test_result_output_files.is_accepted
 
 
 @dataclass(slots=True)

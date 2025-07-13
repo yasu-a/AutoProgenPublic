@@ -2,10 +2,9 @@ import copy
 import re
 from datetime import datetime
 
-from domain.models.output_file_test_result import NonmatchedToken, MatchedToken
+from domain.models.output_file_test_result import NonmatchedToken, MatchedToken, MatchResult
 from domain.models.pattern import PatternList
 from domain.models.test_config_options import TestConfigOptions
-from services.dto.match_result import MatchServiceResult
 from utils.app_logging import create_logger
 from utils.zen_han import zen_to_han
 
@@ -75,7 +74,7 @@ class MatchGetBestService:
             content_string: str,
             patterns: PatternList,
             test_config_options: TestConfigOptions,
-    ) -> MatchServiceResult:
+    ) -> MatchResult:
         # マッチングを実行
         matcher = _Matcher(
             content_string=content_string,
@@ -87,7 +86,7 @@ class MatchGetBestService:
         time_end = datetime.now()
 
         # 結果を生成
-        return MatchServiceResult(
+        return MatchResult(
             regex_pattern=regex_pattern,
             matched_tokens=matched_tokens,
             nonmatched_tokens=nonmatched_tokens,

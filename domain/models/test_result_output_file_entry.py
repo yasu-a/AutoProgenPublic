@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from domain.models.expected_ouput_file import ExpectedOutputFile
 from domain.models.output_file import OutputFile
-from domain.models.output_file_test_result import OutputFileTestResult
+from domain.models.output_file_test_result import MatchResult
 from domain.models.values import FileID
 
 
@@ -38,7 +38,7 @@ class AbstractTestResultOutputFileEntry(ABC):
 
     @property
     @abstractmethod
-    def test_result(self) -> OutputFileTestResult:
+    def test_result(self) -> MatchResult:
         # テスト結果が存在したらそれを返し，なかったらエラーを投げる
         raise NotImplementedError()
 
@@ -69,6 +69,17 @@ class AbstractTestResultOutputFileEntry(ABC):
                 # noinspection PyArgumentList
                 return sub_cls._json_to_instance(body)
         assert False, body["name"]
+
+    def is_test_result_accepted(self) -> bool:  # テストケースが正解かどうか
+        # acceptedならTrue, そうでないならFalse, 判定不可ならValueError
+        # 実行結果の出力がない
+        if self.has_expected and not self.has_actual:
+            return False
+        # 予期されていない実行結果
+        if not self.has_expected and self.has_actual:
+            raise ValueError("unexpected output file")
+        # テスト結果で判定
+        return self.test_result.is_accepted
 
 
 class TestResultAbsentOutputFileEntry(AbstractTestResultOutputFileEntry):
@@ -118,7 +129,7 @@ class TestResultAbsentOutputFileEntry(AbstractTestResultOutputFileEntry):
         return self._expected
 
     @property
-    def test_result(self) -> OutputFileTestResult:
+    def test_result(self) -> MatchResult:
         raise ValueError("result does not have test result")
 
 
@@ -169,7 +180,7 @@ class TestResultUnexpectedOutputFileEntry(AbstractTestResultOutputFileEntry):
         raise ValueError("result does not have expected output file")
 
     @property
-    def test_result(self) -> OutputFileTestResult:
+    def test_result(self) -> MatchResult:
         raise ValueError("result does not have test result")
 
 
@@ -192,7 +203,7 @@ class TestResultTestedOutputFileEntry(AbstractTestResultOutputFileEntry):
             file_id=FileID.from_json(body["file_id"]),
             actual=OutputFile.from_json(body["actual"]),
             expected=ExpectedOutputFile.from_json(body["expected"]),
-            test_result=OutputFileTestResult.from_json(body["test_result"]),
+            test_result=MatchResult.from_json(body["test_result"]),
         )
 
     def __init__(
@@ -200,7 +211,7 @@ class TestResultTestedOutputFileEntry(AbstractTestResultOutputFileEntry):
             file_id: FileID,
             actual: OutputFile,
             expected: ExpectedOutputFile,
-            test_result: OutputFileTestResult,
+            test_result: MatchResult,
     ):
         self._file_id = file_id
         self._actual = actual
@@ -228,5 +239,5 @@ class TestResultTestedOutputFileEntry(AbstractTestResultOutputFileEntry):
         return self._expected
 
     @property
-    def test_result(self) -> OutputFileTestResult:
+    def test_result(self) -> MatchResult:
         return self._test_result

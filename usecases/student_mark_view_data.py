@@ -42,7 +42,7 @@ class StudentMarkViewDataGetTestResultUseCase:
             # すべてのステージが成功しているとき
             test_stage_result = stage_path_result.get_result_by_stage_type(TestStage)
             assert isinstance(test_stage_result, TestSuccessStudentStageResult), test_stage_result
-            if test_stage_result.test_result_output_files.is_accepted:
+            if test_stage_result.is_accepted:
                 return StudentTestCaseTestResultAcceptedViewData(
                     student_id=student_id,
                     testcase_id=testcase_id,
