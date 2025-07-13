@@ -11,7 +11,7 @@ from domain.models.values import FileID, StudentID, TestCaseID
 
 @dataclass(slots=True)
 class AbstractStudentStageResult(ABC):  # 各ステージの結果の基底クラス
-    student_id: StudentID
+    student_id: StudentID  # TODO: remove this  student_idはStudentStagePathResultで管理され、StudentStageResultはStudentStagePathResultの中の値オブジェクトに過ぎない
     stage: AbstractStage
 
     @property
