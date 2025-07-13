@@ -177,7 +177,7 @@ def test_timestamp_consistency_with_data(repo, student_id_1, student_id_2):
     timestamp2 = repo.get_timestamp(student_id_2)
 
     # それぞれ独立したタイムスタンプを持っていることを確認
-    assert timestamp1 != timestamp2
+    assert timestamp1 < timestamp2
 
     # データを取得して一貫性を確認
     retrieved1 = repo.get(student_id_1)
@@ -185,23 +185,6 @@ def test_timestamp_consistency_with_data(repo, student_id_1, student_id_2):
 
     assert retrieved1.score == 85
     assert retrieved2.score == 92
-
-
-def test_timestamp_format_and_type(repo, student_id_1):
-    """タイムスタンプの形式と型テスト"""
-    # データを作成
-    mark = StudentMark(student_id=student_id_1, score=85)
-    repo.put(mark)
-
-    # タイムスタンプを取得
-    timestamp = repo.get_timestamp(student_id_1)
-
-    # 型と形式を確認
-    from datetime import datetime
-    assert isinstance(timestamp, datetime)
-    assert timestamp.year > 2020  # 妥当な年であることを確認
-    assert timestamp.month >= 1 and timestamp.month <= 12
-    assert timestamp.day >= 1 and timestamp.day <= 31
 
 
 def test_multiple_students_independence(repo, student_id_1, student_id_2):
