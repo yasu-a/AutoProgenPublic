@@ -253,6 +253,7 @@ class ExpectedOutputFileTokenListWidget(QListWidget):
     def _init_signals(self):
         pass
 
+    # noinspection DuplicatedCode
     def __insert_item(self, i: int, pattern: AbstractPattern):
         # 項目のウィジェットを初期化
         item_widget = (

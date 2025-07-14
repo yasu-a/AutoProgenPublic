@@ -434,6 +434,7 @@ def test_put_get_stage_path_result(
 
 
 # --- 複雑な操作シーケンス ---
+# noinspection DuplicatedCode
 @pytest.mark.parametrize(
     "result_fixture",
     ALL_RESULT_MAPPERS,
@@ -513,6 +514,7 @@ def test_student_isolation(
 
 
 # --- BUILD, COMPILEの共有確認テスト ---
+# noinspection DuplicatedCode
 @pytest.mark.parametrize(
     "result_fixture",
     ["build_success_result", "build_failure_result", "compile_success_result",
@@ -550,6 +552,7 @@ def test_stage_sharing_across_testcases_build_compile_shared(
 
 
 # --- EXECUTE, TESTの独立性確認テスト ---
+# noinspection DuplicatedCode
 @pytest.mark.parametrize(
     "result_fixture",
     ["execute_success_result", "execute_failure_result", "test_success_result",
@@ -589,6 +592,7 @@ def test_stage_sharing_across_testcases_execute_test_independent(
 
 
 # --- success/failureの片方を他方が上書きする挙動の確認 ---
+# noinspection DuplicatedCode
 @pytest.mark.parametrize(
     ("success_result_fixture", "failure_result_fixture"),
     [
@@ -706,6 +710,7 @@ def test_timestamp_not_update_on_get(
 
 
 # --- 集約単位での操作テスト ---
+# noinspection DuplicatedCode
 def test_aggregate_operations(
         repo,
         get_single_result,
@@ -750,6 +755,7 @@ def test_aggregate_operations(
     _assert_stage_results_are_equal(compile_result, retrieved.get_result(CompileStage()))
 
 
+# noinspection DuplicatedCode
 def test_stage_path_result_methods(
         repo,
         get_single_result,

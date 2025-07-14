@@ -215,6 +215,7 @@ class RecentProjectListWidget(QListWidget):
     def _init_signals(self):
         pass
 
+    # noinspection DuplicatedCode
     def __insert_item(self, i: int, project_summary: AbstractProjectSummary):
         # 項目のウィジェットを初期化
         # noinspection PyTypeChecker

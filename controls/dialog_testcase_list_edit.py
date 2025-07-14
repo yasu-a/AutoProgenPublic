@@ -99,7 +99,7 @@ class TestCaseListEditWidget(QWidget):
                 get_testcase_list_edit_create_testcase_usecase().execute(testcase_name)
             except UseCaseError:
                 QMessageBox.critical(
-                    self,
+                    self,  # type: ignore
                     "新しいテストケース",
                     f"{testcase_name}と同じ名前のテストケースが既に存在します",
                     buttons=QMessageBox.Ok,
@@ -113,7 +113,7 @@ class TestCaseListEditWidget(QWidget):
     def dispatch_action_copy(self, testcase_id: TestCaseID):
         while True:
             new_testcase_name, ok = QInputDialog.getText(
-                self,
+                self,  # type: ignore
                 f"{testcase_id!s}のコピー",
                 "新しいテストケースの名前を入力してください",
                 text=get_testcase_list_edit_create_new_name_usecase().execute(),
@@ -130,7 +130,7 @@ class TestCaseListEditWidget(QWidget):
                 )
             except UseCaseError:
                 QMessageBox.critical(
-                    self,
+                    self,  # type: ignore
                     f"{testcase_id!s}のコピー",
                     f"{new_testcase_name}と同じ名前のテストケースが既に存在します",
                     buttons=QMessageBox.Ok,

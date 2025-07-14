@@ -297,6 +297,7 @@ def test_unexpected_pattern_matching(match_service, test_config_options):
     assert result.is_accepted is False
 
 
+# noinspection DuplicatedCode
 def test_multiple_unexpected_patterns_continuous(match_service, test_config_options):
     """複数の期待されないパターンが連続で存在する場合のテスト"""
     patterns = PatternList([
@@ -358,6 +359,7 @@ def test_multiple_unexpected_patterns_continuous(match_service, test_config_opti
     assert result.is_accepted is True
 
 
+# noinspection DuplicatedCode
 def test_multiple_unexpected_patterns_discontinuous(match_service, test_config_options):
     """複数の期待されないパターンが非連続で存在する場合のテスト"""
     patterns = PatternList([
@@ -426,6 +428,7 @@ def test_multiple_unexpected_patterns_discontinuous(match_service, test_config_o
     assert result.is_accepted is True
 
 
+# noinspection DuplicatedCode
 def test_multiple_unexpected_patterns_mixed(match_service, test_config_options):
     """複数の期待されないパターンが混在する場合のテスト"""
     patterns = PatternList([
@@ -636,6 +639,7 @@ def test_case_insensitive_matching(match_service, case_insensitive_test_config_o
     assert result.is_accepted is True
 
 
+# noinspection DuplicatedCode
 def test_asterisk_pattern_matching_1(match_service, test_config_options):
     """アスタリスクパターンのマッチングテスト"""
     patterns = PatternList([
@@ -671,6 +675,7 @@ def test_asterisk_pattern_matching_1(match_service, test_config_options):
     assert result.is_accepted is True
 
 
+# noinspection DuplicatedCode
 def test_asterisk_pattern_matching_2(match_service, test_config_options):
     """アスタリスクパターンのマッチングテスト"""
     patterns = PatternList([
