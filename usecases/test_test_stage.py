@@ -1,5 +1,5 @@
 from domain.errors import MatchServiceError
-from domain.models.expected_ouput_file import ExpectedOutputFile
+from domain.models.expected_output_file import ExpectedOutputFile
 from domain.models.output_file import OutputFile
 from domain.models.test_config_options import TestConfigOptions
 from domain.models.test_result_output_file_entry import TestResultTestedOutputFileEntry

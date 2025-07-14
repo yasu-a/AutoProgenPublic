@@ -3,7 +3,7 @@ import itertools
 from domain.errors import UseCaseError, ServiceError
 from domain.models.execute_config import TestCaseExecuteConfig
 from domain.models.execute_config_options import ExecuteConfigOptions
-from domain.models.expected_ouput_file import ExpectedOutputFileMapping
+from domain.models.expected_output_file import ExpectedOutputFileMapping
 from domain.models.input_file import InputFileMapping
 from domain.models.test_config import TestCaseTestConfig
 from domain.models.test_config_options import TestConfigOptions

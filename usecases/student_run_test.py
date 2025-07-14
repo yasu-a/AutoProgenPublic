@@ -1,5 +1,5 @@
 from domain.errors import TestServiceError, MatchServiceError
-from domain.models.expected_ouput_file import ExpectedOutputFile
+from domain.models.expected_output_file import ExpectedOutputFile
 from domain.models.output_file import OutputFile
 from domain.models.stage_path import StagePath
 from domain.models.stages import ExecuteStage

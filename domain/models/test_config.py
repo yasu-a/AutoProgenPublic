@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from domain.models.expected_ouput_file import ExpectedOutputFileMapping
+from domain.models.expected_output_file import ExpectedOutputFileMapping
 from domain.models.test_config_options import TestConfigOptions
 
 

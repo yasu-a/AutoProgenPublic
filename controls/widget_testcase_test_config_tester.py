@@ -6,7 +6,7 @@ from controls.widget_horizontal_line import HorizontalLineWidget
 from controls.widget_plain_text_edit import PlainTextEdit
 from controls.widget_test_summary_indicator import TestCaseTestSummaryIndicatorWidget
 from controls.widget_testcase_result_output_file_text_view import TestCaseResultOutputFileTextView
-from domain.models.expected_ouput_file import ExpectedOutputFile
+from domain.models.expected_output_file import ExpectedOutputFile
 from domain.models.test_config_options import TestConfigOptions
 from domain.models.test_result_output_file_entry import AbstractTestResultOutputFileEntry
 from res.fonts import get_font

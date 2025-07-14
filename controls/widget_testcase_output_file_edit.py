@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QLineEdit, QListWidget
     QVBoxLayout, QBoxLayout, QPushButton
 
 from controls.widget_button_box import ButtonBox
-from domain.models.expected_ouput_file import ExpectedOutputFile
+from domain.models.expected_output_file import ExpectedOutputFile
 from domain.models.pattern import AbstractPattern, TextPattern, PatternList, SpacePattern, \
     EOLPattern
 from domain.models.values import FileID

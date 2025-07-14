@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from domain.models.expected_ouput_file import ExpectedOutputFile
+from domain.models.expected_output_file import ExpectedOutputFile
 from domain.models.output_file import OutputFile
 from domain.models.output_file_test_result import MatchResult
 from domain.models.values import FileID
