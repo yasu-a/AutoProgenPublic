@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QMessageBox, QWidget
 from controls.delegator_testcase_files_edit import AbstractTestCaseFilesEditWidgetDelegator
 from controls.widget_file_tab import FileTabWidget
 from controls.widget_testcase_input_file_text_edit import TestCaseInputFileTextEdit
-from domain.models.input_file import InputFileMapping, InputFile
+from domain.models.input_file import InputFileCollection, InputFile
 from domain.models.values import FileID
 from res.icons import get_icon
 
@@ -62,9 +62,9 @@ class TestCaseInputFilesEditWidget(FileTabWidget):
         self.__delegator = TestCaseInputFilesEditWidgetDelegator()
         super().__init__(parent, delegator=self.__delegator)
 
-    def set_data(self, input_files: InputFileMapping) -> None:
+    def set_data(self, input_file_collection: InputFileCollection) -> None:
         self.item_clear()
-        for file_id, input_file in input_files.items():
+        for file_id, input_file in input_file_collection.items():
             self.item_append(
                 file_id=file_id,
                 widget=self.__delegator.create_widget(
@@ -75,19 +75,18 @@ class TestCaseInputFilesEditWidget(FileTabWidget):
             )
 
     @pyqtSlot()
-    def get_data(self) -> InputFileMapping:
-        input_files = InputFileMapping()
+    def get_data(self) -> InputFileCollection:
+        input_file_collection = InputFileCollection()
         for index in range(self.item_count()):  # 各タブに対して
-            # タイトル
             file_id = self.item_get_file_id(index)
             # 内容
             widget = self.item_widget(index)
             assert isinstance(widget, TestCaseInputFileTextEdit)
-            content_string = widget.get_data()
-            assert content_string is not None
             # データに設定
-            input_files[file_id] = InputFile(
-                file_id=file_id,
-                content=content_string,
+            input_file_collection.put(
+                InputFile(
+                    file_id=file_id,
+                    content=widget.get_data(),
+                )
             )
-        return input_files
+        return input_file_collection

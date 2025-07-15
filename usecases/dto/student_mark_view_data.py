@@ -4,7 +4,7 @@ from enum import Enum
 
 from domain.models.student import Student
 from domain.models.student_mark import StudentMark
-from domain.models.student_stage_result import TestResultOutputFileMapping
+from domain.models.student_stage_result import TestResultOutputFileCollection
 from domain.models.values import StudentID, TestCaseID
 
 
@@ -54,7 +54,7 @@ class AbstractStudentTestCaseTestResultViewData(ABC):
 
     @property
     @abstractmethod
-    def output_and_results(self) -> TestResultOutputFileMapping:
+    def output_and_results(self) -> TestResultOutputFileCollection:
         raise NotImplementedError()
 
 
@@ -64,7 +64,7 @@ class StudentTestCaseTestResultAcceptedViewData(AbstractStudentTestCaseTestResul
             *,
             student_id: StudentID,
             testcase_id: TestCaseID,
-            output_and_results: TestResultOutputFileMapping,
+            output_and_results: TestResultOutputFileCollection,
     ):
         super().__init__(
             student_id=student_id,
@@ -89,7 +89,7 @@ class StudentTestCaseTestResultAcceptedViewData(AbstractStudentTestCaseTestResul
         raise ValueError("detailed reason not provided")
 
     @property
-    def output_and_results(self) -> TestResultOutputFileMapping:
+    def output_and_results(self) -> TestResultOutputFileCollection:
         return self._output_and_results
 
 
@@ -99,7 +99,7 @@ class StudentTestCaseTestResultWrongAnswerViewData(AbstractStudentTestCaseTestRe
             *,
             student_id: StudentID,
             testcase_id: TestCaseID,
-            output_and_results: TestResultOutputFileMapping,
+            output_and_results: TestResultOutputFileCollection,
     ):
         super().__init__(
             student_id=student_id,
@@ -124,7 +124,7 @@ class StudentTestCaseTestResultWrongAnswerViewData(AbstractStudentTestCaseTestRe
         raise ValueError("detailed reason not provided")
 
     @property
-    def output_and_results(self) -> TestResultOutputFileMapping:
+    def output_and_results(self) -> TestResultOutputFileCollection:
         return self._output_and_results
 
 
@@ -159,7 +159,7 @@ class StudentTestCaseTestResultUntestableViewData(AbstractStudentTestCaseTestRes
         return self._reason
 
     @property
-    def output_and_results(self) -> TestResultOutputFileMapping:
+    def output_and_results(self) -> TestResultOutputFileCollection:
         raise ValueError("output and results not provided")
 
 

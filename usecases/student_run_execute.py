@@ -8,7 +8,7 @@ from domain.models.values import StudentID
 from services.dto.storage_diff_snapshot import StorageDiff
 from services.storage import StorageCreateService, StorageDeleteService, \
     StorageLoadStudentExecutableService, StorageLoadExecuteConfigInputFilesService, \
-    StorageWriteStdoutFileService, StorageCreateOutputFileMappingFromDiffService, \
+    StorageWriteStdoutFileService, StorageCreateOutputFileCollectionFromDiffService, \
     StorageTakeSnapshotService
 from services.storage_run_executable import StorageRunExecutableService
 from services.student_stage_path_result import StudentPutStageResultService
@@ -29,7 +29,7 @@ class StudentRunExecuteStageUseCase:
             testcase_config_get_execute_config_mtime_service: TestCaseConfigGetExecuteConfigMtimeService,
             storage_run_executable_service: StorageRunExecutableService,
             testcase_config_get_execute_options_service: TestCaseConfigGetExecuteOptionsService,
-            storage_create_output_file_mapping_from_diff_service: StorageCreateOutputFileMappingFromDiffService,
+            storage_create_output_file_mapping_from_diff_service: StorageCreateOutputFileCollectionFromDiffService,
             storage_write_stdout_file_service: StorageWriteStdoutFileService,
     ):
         self._storage_create_service \
@@ -119,7 +119,7 @@ class StudentRunExecuteStageUseCase:
                 old_snapshot=storage_snapshot_before_run,
                 new_snapshot=storage_snapshot_after_run,
             )
-            output_files = self._storage_create_output_file_mapping_from_diff_service.execute(
+            output_file_collection = self._storage_create_output_file_mapping_from_diff_service.execute(
                 storage_id=storage_id,
                 storage_diff=storage_diff,
             )
@@ -134,7 +134,7 @@ class StudentRunExecuteStageUseCase:
                     student_id=student_id,
                     testcase_id=stage_path.testcase_id,
                     execute_config_mtime=execute_config_mtime,
-                    output_files=output_files,
+                    output_file_collection=output_file_collection,
                 )
             )
         finally:

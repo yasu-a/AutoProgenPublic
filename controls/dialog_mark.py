@@ -166,7 +166,7 @@ class MarkDialogStateCreator:
                 testcase_id=self._state.testcase_id,
             )
             if view_data.is_success:
-                file_ids_by_testcase[testcase_id] = list(view_data.output_and_results)
+                file_ids_by_testcase[testcase_id] = list(view_data.output_and_results.file_ids)
             else:
                 file_ids_by_testcase[testcase_id] = []
         return file_ids_by_testcase

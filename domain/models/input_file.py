@@ -1,7 +1,11 @@
+from collections import OrderedDict
+from typing import Iterable
+
 from domain.models.values import FileID
 from utils.json_util import bytes_to_jsonable, jsonable_to_bytes
 
 
+# immutable
 class InputFile:
     def __init__(
             self,
@@ -28,8 +32,8 @@ class InputFile:
             content=jsonable_to_bytes(body["content_bytes"]),
         )
 
-    def __hash__(self) -> int:
-        return hash((self._file_id, self._content))
+    def __hash__(self):
+        return hash((InputFile, self._file_id, self._content))
 
     def __eq__(self, other):
         if other is None:
@@ -53,44 +57,49 @@ class InputFile:
             return None
 
 
-class InputFileMapping(dict[FileID, InputFile]):
-    # TODO: frozendictを導入してこのクラスのインスタンスを持つクラスをすべてdataclass(frozen=True)にする
+class InputFileCollection:
+    def __init__(self, it: Iterable[InputFile] = ()):  # デフォルト空
+        self._mapping: OrderedDict[FileID, InputFile] = OrderedDict()
+        for item in it:
+            self.put(item)
 
-    def __validate(self):
-        for file_id, input_file in self.items():
-            # キーとしてのFileIDと値の中のFileIDは一致する
-            assert file_id == input_file.file_id, (file_id, input_file)
-            # 特殊ファイルは標準入力しかありえない
-            if file_id.is_special:
-                assert file_id in [FileID.STDIN], file_id
+    def put(self, item: InputFile) -> None:
+        self._mapping[item.file_id] = item
 
-    def to_json(self) -> dict[str, dict]:
-        self.__validate()
+    def find(self, file_id: FileID) -> InputFile:
+        return self._mapping[file_id]
+
+    def has(self, file_id: FileID) -> bool:
+        return file_id in self._mapping
+
+    @property
+    def file_ids(self) -> list[FileID]:
+        return list(self._mapping.keys())
+
+    def items(self):
+        return self._mapping.items()
+
+    def to_json(self) -> dict:
         return {
             file_id.to_json(): input_file.to_json()
-            for file_id, input_file in self.items()
+            for file_id, input_file in self._mapping.items()
         }
 
     @classmethod
     def from_json(cls, body: dict):
-        obj = cls({
-            FileID.from_json(file_id_str): InputFile.from_json(input_file_body)
+        return cls(
+            InputFile.from_json(input_file_body)
             for file_id_str, input_file_body in body.items()
-        })
-        obj.__validate()
-        return obj
-
-    def __hash__(self) -> int:
-        return hash(tuple(sorted(self.items(), key=lambda x: x[0])))
+        )
 
     @property
     def has_stdin(self) -> bool:
-        return FileID.STDIN in self
+        return FileID.STDIN in self._mapping
 
     @property
     def special_file_count(self) -> int:
-        return sum(1 for file_id in self if file_id.is_special)
+        return sum(1 for file_id in self._mapping if file_id.is_special)
 
     @property
     def normal_file_count(self) -> int:
-        return sum(1 for file_id in self if not file_id.is_special)
+        return sum(1 for file_id in self._mapping if not file_id.is_special)

@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TypeVar
 
-from domain.models.output_file import OutputFileMapping
+from domain.models.output_file import OutputFileCollection
 from domain.models.stages import AbstractStage, BuildStage, CompileStage, ExecuteStage, TestStage
 from domain.models.test_result_output_file_entry import AbstractTestResultOutputFileEntry
 from domain.models.values import FileID, StudentID, TestCaseID
@@ -223,7 +224,7 @@ CompileStageResultType = TypeVar(
 @dataclass(slots=True)
 class ExecuteSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生徒・テストケースごと
     execute_config_mtime: datetime
-    output_files: OutputFileMapping
+    output_file_collection: OutputFileCollection
 
     # noinspection DuplicatedCode
     def __post_init__(self):
@@ -233,8 +234,8 @@ class ExecuteSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # �
             (self.stage, type(self.stage))
         assert isinstance(self.execute_config_mtime, datetime), \
             (self.execute_config_mtime, type(self.execute_config_mtime))
-        assert isinstance(self.output_files, OutputFileMapping), \
-            (self.output_files, type(self.output_files))
+        assert isinstance(self.output_file_collection, OutputFileCollection), \
+            (self.output_file_collection, type(self.output_file_collection))
 
     @classmethod
     def create_instance(
@@ -243,13 +244,13 @@ class ExecuteSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # �
             student_id: StudentID,
             testcase_id: TestCaseID,
             execute_config_mtime: datetime,
-            output_files: OutputFileMapping,
+            output_file_collection: OutputFileCollection,
     ):
         return cls(
             student_id=student_id,
             stage=ExecuteStage(testcase_id=testcase_id),
             execute_config_mtime=execute_config_mtime,
-            output_files=output_files,
+            output_file_collection=output_file_collection,
         )
 
     def to_json(self):
@@ -257,7 +258,7 @@ class ExecuteSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # �
             "student_id": self.student_id.to_json(),
             "stage": self.stage.to_json(),
             "execute_config_mtime": self.execute_config_mtime.isoformat(),
-            "output_files": self.output_files.to_json(),
+            "output_file_collection": self.output_file_collection.to_json(),
         }
 
     @classmethod
@@ -266,7 +267,7 @@ class ExecuteSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # �
             student_id=StudentID.from_json(body["student_id"]),
             stage=AbstractStage.from_json(body["stage"]),
             execute_config_mtime=datetime.fromisoformat(body["execute_config_mtime"]),
-            output_files=OutputFileMapping.from_json(body["output_files"]),
+            output_file_collection=OutputFileCollection.from_json(body["output_file_collection"]),
         )
 
     @property
@@ -331,28 +332,44 @@ ExecuteStageResultType = TypeVar(
 )
 
 
-class TestResultOutputFileMapping(
-    dict[FileID, AbstractTestResultOutputFileEntry],
-):
-    def to_json(self) -> dict[str, dict]:
+class TestResultOutputFileCollection:
+    def __init__(self, it=()):
+        self._mapping: OrderedDict[FileID, AbstractTestResultOutputFileEntry] = OrderedDict()
+        for item in it:
+            self.put(item)
+
+    def put(self, item: AbstractTestResultOutputFileEntry) -> None:
+        self._mapping[item.file_id] = item
+
+    def find(self, file_id: FileID) -> AbstractTestResultOutputFileEntry:
+        return self._mapping[file_id]
+
+    def has(self, file_id: FileID) -> bool:
+        return file_id in self._mapping
+
+    @property
+    def file_ids(self) -> list[FileID]:
+        return list(self._mapping.keys())
+
+    def items(self):
+        return self._mapping.items()
+
+    def to_json(self) -> dict:
         return {
             file_id.to_json(): result.to_json()
-            for file_id, result in self.items()
+            for file_id, result in self._mapping.items()
         }
 
     @classmethod
-    def from_json(cls, body: dict) -> "TestResultOutputFileMapping":
-        file_ids = [FileID.from_json(file_id_str) for file_id_str in body.keys()]
-        file_ids.sort()
-        dct = {}
-        for file_id in file_ids:
-            dct[file_id] = AbstractTestResultOutputFileEntry.from_json(body[file_id.to_json()])
-        obj = cls(dct)
-        return obj
+    def from_json(cls, body: dict) -> "TestResultOutputFileCollection":
+        return cls(
+            AbstractTestResultOutputFileEntry.from_json(result_body)
+            for file_id_str, result_body in body.items()
+        )
 
     @property
     def is_accepted(self) -> bool:  # テストケースが正解かどうか
-        for file_id, file_entry in self.items():
+        for file_id, file_entry in self._mapping.items():
             try:
                 is_test_result_accepted = file_entry.is_test_result_accepted
             except ValueError:  # 判定不可
@@ -366,7 +383,7 @@ class TestResultOutputFileMapping(
 @dataclass(slots=True)
 class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生徒・テストケースごと
     test_config_mtime: datetime
-    test_result_output_files: TestResultOutputFileMapping
+    test_result_output_file_collection: TestResultOutputFileCollection
 
     # noinspection DuplicatedCode
     def __post_init__(self):
@@ -376,8 +393,8 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生�
             (self.stage, type(self.stage))
         assert isinstance(self.test_config_mtime, datetime), \
             (self.test_config_mtime, type(self.test_config_mtime))
-        assert isinstance(self.test_result_output_files, TestResultOutputFileMapping), \
-            (self.test_result_output_files, type(self.test_result_output_files))
+        assert isinstance(self.test_result_output_file_collection, TestResultOutputFileCollection), \
+            (self.test_result_output_file_collection, type(self.test_result_output_file_collection))
 
     @classmethod
     def create_instance(
@@ -386,13 +403,13 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生�
             student_id: StudentID,
             testcase_id: TestCaseID,
             test_config_mtime: datetime,
-            test_result_output_files: TestResultOutputFileMapping,
+            test_result_output_file_collection: TestResultOutputFileCollection,
     ):
         return cls(
             student_id=student_id,
             stage=TestStage(testcase_id=testcase_id),
             test_config_mtime=test_config_mtime,
-            test_result_output_files=test_result_output_files,
+            test_result_output_file_collection=test_result_output_file_collection,
         )
 
     def to_json(self) -> dict:
@@ -400,7 +417,7 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生�
             "student_id": self.student_id.to_json(),
             "stage": self.stage.to_json(),
             "test_config_mtime": self.test_config_mtime.isoformat(),
-            "test_result_output_files": self.test_result_output_files.to_json(),
+            "test_result_output_file_collection": self.test_result_output_file_collection.to_json(),
         }
 
     @classmethod
@@ -409,8 +426,8 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生�
             student_id=StudentID.from_json(body["student_id"]),
             stage=AbstractStage.from_json(body["stage"]),
             test_config_mtime=datetime.fromisoformat(body["test_config_mtime"]),
-            test_result_output_files=TestResultOutputFileMapping.from_json(
-                body["test_result_output_files"],
+            test_result_output_file_collection=TestResultOutputFileCollection.from_json(
+                body["test_result_output_file_collection"],
             ),
         )
 
@@ -421,7 +438,7 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生�
 
     @property
     def is_accepted(self) -> bool:
-        return self.test_result_output_files.is_accepted
+        return self.test_result_output_file_collection.is_accepted
 
 
 @dataclass(slots=True)

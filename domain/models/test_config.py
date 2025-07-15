@@ -1,24 +1,26 @@
 from datetime import datetime
 
-from domain.models.expected_output_file import ExpectedOutputFileMapping
+from domain.models.expected_output_file import ExpectedOutputFileCollection
 from domain.models.test_config_options import TestConfigOptions
 
 
 class TestCaseTestConfig:
+    # テストケースの構成のうち、テストに関する構成
+
     def __init__(
             self,
             *,
-            expected_output_files: ExpectedOutputFileMapping,
+            expected_output_file_collection: ExpectedOutputFileCollection,
             options: TestConfigOptions,
             mtime: datetime = None,
     ):
-        self._expected_output_files = expected_output_files
+        self._expected_output_file_collection = expected_output_file_collection
         self._options = options
         self._mtime = mtime or datetime.now().isoformat()
 
     @property
-    def expected_output_files(self) -> ExpectedOutputFileMapping:
-        return self._expected_output_files
+    def expected_output_file_collection(self) -> ExpectedOutputFileCollection:
+        return self._expected_output_file_collection
 
     @property
     def options(self):
@@ -30,7 +32,7 @@ class TestCaseTestConfig:
 
     def to_json(self):
         return dict(
-            expected_output_files=self._expected_output_files.to_json(),
+            expected_output_file_collection=self._expected_output_file_collection.to_json(),
             options=self._options.to_json(),
             mtime=datetime.now().isoformat(),
         )
@@ -38,21 +40,18 @@ class TestCaseTestConfig:
     @classmethod
     def from_json(cls, body):
         return cls(
-            expected_output_files=ExpectedOutputFileMapping.from_json(
-                body['expected_output_files']
+            expected_output_file_collection=ExpectedOutputFileCollection.from_json(
+                body['expected_output_file_collection']
             ),
             options=TestConfigOptions.from_json(body['options']),
             mtime=datetime.fromisoformat(body["mtime"]),
         )
-
-    def __hash__(self) -> int:
-        return hash((self._expected_output_files, self._options))
 
     def __eq__(self, other):
         if other is None:
             return False
         assert isinstance(other, type(self))
         return (
-                self._expected_output_files == other._expected_output_files
+                self._expected_output_file_collection == other._expected_output_file_collection
                 and self._options == other._options
         )

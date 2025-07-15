@@ -3,8 +3,8 @@ import itertools
 from domain.errors import UseCaseError, ServiceError
 from domain.models.execute_config import TestCaseExecuteConfig
 from domain.models.execute_config_options import ExecuteConfigOptions
-from domain.models.expected_output_file import ExpectedOutputFileMapping
-from domain.models.input_file import InputFileMapping
+from domain.models.expected_output_file import ExpectedOutputFileCollection
+from domain.models.input_file import InputFileCollection
 from domain.models.test_config import TestCaseTestConfig
 from domain.models.test_config_options import TestConfigOptions
 from domain.models.testcase_config import TestCaseConfig
@@ -27,8 +27,8 @@ class TestCaseListEditListSummaryUseCase:
             TestCaseListEditTestCaseSummary(
                 testcase_id=testcase_config.testcase_id,
                 name=str(testcase_config.testcase_id),
-                has_stdin=testcase_config.execute_config.input_files.has_stdin,
-                num_normal_files=testcase_config.execute_config.input_files.normal_file_count,
+                has_stdin=testcase_config.execute_config.input_file_collection.has_stdin,
+                num_normal_files=testcase_config.execute_config.input_file_collection.normal_file_count,
             )
             for testcase_config in self._testcase_config_repo.list()
         ]
@@ -68,13 +68,13 @@ class TestCaseListEditCreateTestCaseUseCase:
         config = TestCaseConfig(
             testcase_id=TestCaseID(testcase_name),
             execute_config=TestCaseExecuteConfig(
-                input_files=InputFileMapping(),
+                input_file_collection=InputFileCollection(),
                 options=ExecuteConfigOptions(
                     timeout=5.0,
                 ),
             ),
             test_config=TestCaseTestConfig(
-                expected_output_files=ExpectedOutputFileMapping(),
+                expected_output_file_collection=ExpectedOutputFileCollection(),
                 options=TestConfigOptions(
                     ignore_case=True,
                 ),

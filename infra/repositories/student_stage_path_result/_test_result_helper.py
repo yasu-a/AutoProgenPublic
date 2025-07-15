@@ -15,11 +15,11 @@ class _TestResultHelper(_AbstractStageResultHelper):
             """
             CREATE TABLE IF NOT EXISTS student_test_result
             (
-                student_id                    TEXT,
-                testcase_id                   TEXT,
-                test_config_mtime DATETIME,
-                test_result_output_files_json TEXT,
-                reason                        TEXT,
+                student_id                         TEXT,
+                testcase_id                        TEXT,
+                test_config_mtime                  DATETIME,
+                test_result_output_file_collection TEXT,
+                reason                             TEXT,
                 PRIMARY KEY (student_id, testcase_id),
                 FOREIGN KEY (student_id) REFERENCES student (student_id)
             )
@@ -40,15 +40,15 @@ class _TestResultHelper(_AbstractStageResultHelper):
             return None
 
         if row["reason"] is None:
-            from domain.models.student_stage_result import TestResultOutputFileMapping
-            test_result_output_files = TestResultOutputFileMapping.from_json(
-                json.loads(row["test_result_output_files_json"])
+            from domain.models.student_stage_result import TestResultOutputFileCollection
+            test_result_output_file_collection = TestResultOutputFileCollection.from_json(
+                json.loads(row["test_result_output_file_collection"])
             )
             return TestSuccessStudentStageResult.create_instance(
                 student_id=student_id,
                 testcase_id=stage.testcase_id,
                 test_config_mtime=row["test_config_mtime"],  # 既にdatetimeオブジェクト
-                test_result_output_files=test_result_output_files,
+                test_result_output_file_collection=test_result_output_file_collection,
             )
         else:
             return TestFailureStudentStageResult.create_instance(
@@ -60,14 +60,18 @@ class _TestResultHelper(_AbstractStageResultHelper):
     def put_stage_result(self, cursor, result: AbstractStudentStageResult) -> None:
         if isinstance(result, TestSuccessStudentStageResult):
             cursor.execute(
-                "INSERT OR REPLACE INTO student_test_result (student_id, testcase_id, test_config_mtime, test_result_output_files_json, reason) VALUES (?, ?, ?, ?, NULL)",
+                "INSERT OR REPLACE INTO student_test_result"
+                "(student_id, testcase_id, test_config_mtime, test_result_output_file_collection, reason)"
+                "VALUES (?, ?, ?, ?, NULL)",
                 (str(result.student_id), str(result.testcase_id),
                  result.test_config_mtime.isoformat(),
-                 json.dumps(result.test_result_output_files.to_json()))
+                 json.dumps(result.test_result_output_file_collection.to_json()))
             )
         elif isinstance(result, TestFailureStudentStageResult):
             cursor.execute(
-                "INSERT OR REPLACE INTO student_test_result (student_id, testcase_id, test_config_mtime, test_result_output_files_json, reason) VALUES (?, ?, NULL, NULL, ?)",
+                "INSERT OR REPLACE INTO student_test_result"
+                "(student_id, testcase_id, test_config_mtime, test_result_output_file_collection, reason)"
+                "VALUES (?, ?, NULL, NULL, ?)",
                 (str(result.student_id), str(result.testcase_id), result.reason)
             )
         else:

@@ -5,7 +5,7 @@ from typing import Optional
 import pytest
 
 from application.dependency.repositories import get_student_stage_path_result_repository
-from domain.models.output_file import OutputFileMapping, OutputFile
+from domain.models.output_file import OutputFileCollection, OutputFile
 from domain.models.stage_path import StagePath
 from domain.models.stages import BuildStage, CompileStage, ExecuteStage, TestStage
 from domain.models.student_stage_path_result import StudentStagePathResult
@@ -18,7 +18,7 @@ from domain.models.student_stage_result import (
     ExecuteFailureStudentStageResult,
     TestSuccessStudentStageResult,
     TestFailureStudentStageResult,
-    TestResultOutputFileMapping,
+    TestResultOutputFileCollection,
 )
 from domain.models.values import (
     StudentID,
@@ -209,13 +209,14 @@ def execute_success_result(student_id_1, student_id_2, testcase_id_1, testcase_i
         except KeyError:
             raise AssertionError(
                 f"unexpected student_id or testcase_id: {student_id}, {testcase_id}")
-        files = OutputFileMapping(
-            {FileID.STDOUT: OutputFile(file_id=FileID.STDOUT, content=content)})
+        files = OutputFileCollection([
+            OutputFile(file_id=FileID.STDOUT, content=content)
+        ])
         return ExecuteSuccessStudentStageResult.create_instance(
             student_id=student_id,
             testcase_id=testcase_id,
             execute_config_mtime=mtime,
-            output_files=files,
+            output_file_collection=files,
         )
 
     return _mapper
@@ -269,7 +270,7 @@ def test_success_result(student_id_1, student_id_2, testcase_id_1, testcase_id_2
             student_id=student_id,
             testcase_id=testcase_id,
             test_config_mtime=mtime,
-            test_result_output_files=TestResultOutputFileMapping(),
+            test_result_output_file_collection=TestResultOutputFileCollection(),
         )
 
     return _mapper
@@ -363,12 +364,12 @@ def _assert_stage_results_are_equal(r1, r2):
         assert r1.output == r2.output
     if hasattr(r1, "execute_config_mtime"):
         assert r1.execute_config_mtime == r2.execute_config_mtime
-    if hasattr(r1, "output_files"):
-        assert r1.output_files.to_json() == r2.output_files.to_json()
+    if hasattr(r1, "output_file_collection"):
+        assert r1.output_file_collection.to_json() == r2.output_file_collection.to_json()
     if hasattr(r1, "test_config_mtime"):
         assert r1.test_config_mtime == r2.test_config_mtime
-    if hasattr(r1, "test_result_output_files"):
-        assert r1.test_result_output_files.to_json() == r2.test_result_output_files.to_json()
+    if hasattr(r1, "test_result_output_file_collection"):
+        assert r1.test_result_output_file_collection.to_json() == r2.test_result_output_file_collection.to_json()
 
 
 def _are_results_equal(r1, r2):

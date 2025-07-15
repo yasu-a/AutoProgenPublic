@@ -1,24 +1,26 @@
 from datetime import datetime
 
 from domain.models.execute_config_options import ExecuteConfigOptions
-from domain.models.input_file import InputFileMapping
+from domain.models.input_file import InputFileCollection
 
 
 class TestCaseExecuteConfig:
+    # テストケースの構成のうち、実行に関する構成
+
     def __init__(
             self,
             *,
-            input_files: InputFileMapping,
+            input_file_collection: InputFileCollection,
             options: ExecuteConfigOptions,
             mtime: datetime = None,
     ):
-        self._input_files = input_files
+        self._input_file_collection = input_file_collection
         self._options = options
         self._mtime = mtime or datetime.now().isoformat()
 
     @property
-    def input_files(self) -> InputFileMapping:
-        return self._input_files
+    def input_file_collection(self) -> InputFileCollection:
+        return self._input_file_collection
 
     @property
     def options(self) -> ExecuteConfigOptions:
@@ -30,7 +32,7 @@ class TestCaseExecuteConfig:
 
     def to_json(self):
         return dict(
-            input_files=self._input_files.to_json(),
+            input_file_collection=self._input_file_collection.to_json(),
             options=self._options.to_json(),
             mtime=datetime.now().isoformat(),
         )
@@ -38,19 +40,19 @@ class TestCaseExecuteConfig:
     @classmethod
     def from_json(cls, body):
         return cls(
-            input_files=InputFileMapping.from_json(body["input_files"]),
+            input_file_collection=InputFileCollection.from_json(body["input_file_collection"]),
             options=ExecuteConfigOptions.from_json(body["options"]),
             mtime=datetime.fromisoformat(body["mtime"]),
         )
 
     def __hash__(self) -> int:
-        return hash((self._input_files, self._options))
+        return hash((self._input_file_collection, self._options))
 
     def __eq__(self, other):
         if other is None:
             return False
         assert isinstance(other, type(self))
         return (
-                self._input_files == other._input_files
+                self._input_file_collection == other._input_file_collection
                 and self._options == other._options
         )

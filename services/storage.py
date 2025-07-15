@@ -2,8 +2,8 @@ import uuid
 from pathlib import Path
 
 from domain.models.file_item import ExecutableFileItem
-from domain.models.input_file import InputFileMapping
-from domain.models.output_file import OutputFileMapping, OutputFile
+from domain.models.input_file import InputFileCollection
+from domain.models.output_file import OutputFileCollection, OutputFile
 from domain.models.values import StorageID, StudentID, TestCaseID, FileID
 from infra.repositories.storage import StorageRepository
 from infra.repositories.student_dynamic import StudentSourceRepository, \
@@ -172,11 +172,11 @@ class StorageLoadExecuteConfigInputFilesService:
         storage = self._storage_repo.get(storage_id)
 
         # テストケースの実行構成から入力ファイルを取得
-        input_files: InputFileMapping \
-            = self._testcase_config_repo.get(testcase_id).execute_config.input_files
+        input_file_collection: InputFileCollection \
+            = self._testcase_config_repo.get(testcase_id).execute_config.input_file_collection
 
         # ストレージ領域に各入力ファイルを配置
-        for file_id, input_file in input_files.items():
+        for file_id, input_file in input_file_collection.items():
             storage.files[file_id.deployment_relative_path] = input_file.content_bytes
 
         # ストレージ領域をコミット
@@ -205,7 +205,7 @@ class StorageWriteStdoutFileService:
         self._storage_repo.put(storage)
 
 
-class StorageCreateOutputFileMappingFromDiffService:
+class StorageCreateOutputFileCollectionFromDiffService:
     def __init__(
             self,
             *,
@@ -218,10 +218,10 @@ class StorageCreateOutputFileMappingFromDiffService:
             *,
             storage_id: StorageID,
             storage_diff: StorageDiff,
-    ) -> OutputFileMapping:
+    ) -> OutputFileCollection:
         storage = self._storage_repo.get(storage_id)
 
-        output_file_mapping: dict[FileID, OutputFile] = {}
+        output_file_collection = OutputFileCollection()
         for file_relative_path in storage_diff.created:
             if file_relative_path == FileID.STDOUT.deployment_relative_path:
                 file_id = FileID.STDOUT
@@ -229,12 +229,14 @@ class StorageCreateOutputFileMappingFromDiffService:
                 file_id = FileID.STDIN
             else:
                 file_id = FileID(file_relative_path)
-            output_file_mapping[file_id] = OutputFile(
-                file_id=file_id,
-                content=storage.files[file_relative_path]
+            output_file_collection.put(
+                OutputFile(
+                    file_id=file_id,
+                    content=storage.files[file_relative_path]
+                )
             )
 
-        return OutputFileMapping(output_file_mapping)
+        return output_file_collection
 
 
 class StorageTakeSnapshotService:

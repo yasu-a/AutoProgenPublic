@@ -83,7 +83,7 @@ class RecentProjectListItemWidget(QWidget):
 
             if "bottom":
                 self._l_error_message = QLabel(self)
-                self._l_error_message.setStyleSheet("color: red")
+                self._l_error_message.setStyleSheet("color: red")  # type: ignore
                 layout_left.addWidget(self._l_error_message)
 
         if "right":
@@ -173,7 +173,7 @@ class RecentProjectListItemWidget(QWidget):
             self._l_size.setText("--")
             self._b_actions.setEnabled(True)
             self._l_project_name.setCursor(QCursor(Qt.ForbiddenCursor))
-            self._l_error_message.show()
+            self._l_error_message.show()  # type: ignore
             self._l_error_message.setText(project_summary.error_message)
         else:
             assert isinstance(project_summary, NormalProjectSummary), project_summary

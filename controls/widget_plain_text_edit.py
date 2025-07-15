@@ -28,10 +28,10 @@ class PlainTextEdit(QPlainTextEdit, HorizontalScrollWithShiftAndWheelMixin):
 
     def set_line_wrap(self, v: bool):
         if v:
-            self.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+            self.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)  # type: ignore
             self.setWordWrapMode(QTextOption.WrapAnywhere)
         else:
-            self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+            self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)  # type: ignore
             self.setWordWrapMode(QTextOption.NoWrap)
 
     def _init_signals(self):

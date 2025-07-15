@@ -46,13 +46,13 @@ class StudentMarkViewDataGetTestResultUseCase:
                 return StudentTestCaseTestResultAcceptedViewData(
                     student_id=student_id,
                     testcase_id=testcase_id,
-                    output_and_results=test_stage_result.test_result_output_files,
+                    output_and_results=test_stage_result.test_result_output_file_collection,
                 )
             else:
                 return StudentTestCaseTestResultWrongAnswerViewData(
                     student_id=student_id,
                     testcase_id=testcase_id,
-                    output_and_results=test_stage_result.test_result_output_files,
+                    output_and_results=test_stage_result.test_result_output_file_collection,
                 )
         else:
             # 失敗しているとき

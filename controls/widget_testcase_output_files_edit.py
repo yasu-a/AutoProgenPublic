@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QMessageBox, QWidget
 from controls.delegator_testcase_files_edit import AbstractTestCaseFilesEditWidgetDelegator
 from controls.widget_file_tab import FileTabWidget
 from controls.widget_testcase_output_file_edit import ExpectedOutputFileEditWidget
-from domain.models.expected_output_file import ExpectedOutputFile, ExpectedOutputFileMapping
+from domain.models.expected_output_file import ExpectedOutputFile, ExpectedOutputFileCollection
 from domain.models.values import FileID
 from res.icons import get_icon
 
@@ -62,21 +62,21 @@ class TestCaseExpectedOutputFilesEditWidget(FileTabWidget):
         self.__delegator = TestCaseOutputFilesEditWidgetDelegator()
         super().__init__(parent, delegator=self.__delegator)
 
-    def set_data(self, output_files: ExpectedOutputFileMapping) -> None:
+    def set_data(self, expected_output_file_collection: ExpectedOutputFileCollection) -> None:
         self.item_clear()
-        for file_id, output_file in output_files.items():
+        for file_id, output_file in expected_output_file_collection.items():
             self.item_append(
                 file_id=file_id,
                 widget=self.__delegator.create_widget(file_id, self, output_file),
             )
 
-    def get_data(self) -> ExpectedOutputFileMapping:
-        output_files = ExpectedOutputFileMapping()
+    def get_data(self) -> ExpectedOutputFileCollection:
+        expected_output_file_collection = ExpectedOutputFileCollection()
         for index in range(self.item_count()):  # 各タブに対して
             file_id = self.item_get_file_id(index)
             # 内容
             widget = self.item_widget(index)
             assert isinstance(widget, ExpectedOutputFileEditWidget)
             # データに設定
-            output_files[file_id] = widget.get_data(file_id)
-        return output_files
+            expected_output_file_collection.put(widget.get_data(file_id))
+        return expected_output_file_collection

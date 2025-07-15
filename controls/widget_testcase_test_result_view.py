@@ -2,7 +2,7 @@ from PyQt5.QtCore import pyqtSignal, QObject, pyqtSlot
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTabWidget, QLabel, QPlainTextEdit
 
 from controls.widget_testcase_result_otuput_file_view import TestCaseResultOutputFileViewWidget
-from domain.models.student_stage_result import TestResultOutputFileMapping
+from domain.models.student_stage_result import TestResultOutputFileCollection
 from domain.models.values import FileID, SpecialFileType
 from res.fonts import get_font
 from res.icons import get_icon
@@ -31,7 +31,7 @@ class TestCaseValidTestResultViewWidget(QWidget):
         # noinspection PyUnresolvedReferences
         self._w_file_tab.currentChanged.connect(self.__w_file_tab_current_changed)
 
-    def set_data(self, test_result_output_files: TestResultOutputFileMapping) -> None:
+    def set_data(self, test_result_output_files: TestResultOutputFileCollection) -> None:
         self._w_file_tab.blockSignals(True)
         self._w_file_tab.clear()
         self._file_ids.clear()

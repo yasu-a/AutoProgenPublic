@@ -1,13 +1,11 @@
 from domain.errors import TestServiceError, MatchServiceError
-from domain.models.expected_output_file import ExpectedOutputFile
 from domain.models.output_file import OutputFile
 from domain.models.stage_path import StagePath
 from domain.models.stages import ExecuteStage
 from domain.models.student_stage_result import TestFailureStudentStageResult, \
-    TestSuccessStudentStageResult, TestResultOutputFileMapping, ExecuteSuccessStudentStageResult
+    TestSuccessStudentStageResult, TestResultOutputFileCollection, ExecuteSuccessStudentStageResult
 from domain.models.test_result_output_file_entry import TestResultTestedOutputFileEntry, \
-    AbstractTestResultOutputFileEntry, TestResultAbsentOutputFileEntry, \
-    TestResultUnexpectedOutputFileEntry
+    TestResultAbsentOutputFileEntry, TestResultUnexpectedOutputFileEntry
 from domain.models.values import FileID
 from domain.models.values import StudentID
 from services.match import MatchGetBestService
@@ -57,17 +55,26 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
             ).test_config
 
             # テストの実行 - それぞれの出力ファイルについてテストを実行する
-            output_file_id_test_result_mapping: dict[FileID, AbstractTestResultOutputFileEntry] = {}
+            test_result_output_file_collection = TestResultOutputFileCollection()
             # v 正解
-            expected_output_file_ids: set[FileID] = set(test_config.expected_output_files.keys())
+            expected_output_file_ids: set[FileID] \
+                = set(test_config.expected_output_file_collection.file_ids)
             # v 実行結果
-            actual_output_file_ids: set[FileID] = set(execute_result.output_files.keys())
+            actual_output_file_ids: set[FileID] \
+                = set(execute_result.output_file_collection.file_ids)
+
             for file_id in expected_output_file_ids | actual_output_file_ids:
-                expected_output_file: ExpectedOutputFile | None \
-                    = test_config.expected_output_files.get(file_id)
+                if test_config.expected_output_file_collection.has(file_id):
+                    expected_output_file = test_config.expected_output_file_collection.find(file_id)
+                else:
+                    expected_output_file = None
                 # ^ None if not found
-                actual_output_file: OutputFile | None \
-                    = execute_result.output_files.get(file_id)
+
+                actual_output_file: OutputFile | None
+                if execute_result.output_file_collection.has(file_id):
+                    actual_output_file = execute_result.output_file_collection.find(file_id)
+                else:
+                    actual_output_file = None
                 # ^ None if not found
 
                 if actual_output_file is not None and expected_output_file is None:
@@ -103,12 +110,7 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
                     )
                 else:
                     assert False, "unreachable"
-                output_file_id_test_result_mapping[file_id] = file_test_result
-
-            # すべての出力ファイルの結果を生成
-            test_result_output_files = TestResultOutputFileMapping(
-                output_file_id_test_result_mapping
-            )
+                test_result_output_file_collection.put(file_test_result)
         except TestServiceError as e:
             self._student_put_stage_result_service.execute(
                 stage_path=stage_path,
@@ -128,6 +130,6 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
                     student_id=student_id,
                     testcase_id=stage_path.testcase_id,
                     test_config_mtime=test_config_mtime,
-                    test_result_output_files=test_result_output_files,
+                    test_result_output_file_collection=test_result_output_file_collection,
                 )
             )

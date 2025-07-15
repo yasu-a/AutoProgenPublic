@@ -1,3 +1,6 @@
+from collections import OrderedDict
+from typing import Iterable
+
 from domain.models.values import FileID
 from utils.json_util import bytes_to_jsonable, jsonable_to_bytes
 
@@ -49,28 +52,37 @@ class OutputFile:
             return None
 
 
-class OutputFileMapping(dict[FileID, OutputFile]):
-    # TODO: frozendictを導入してこのクラスのインスタンスを持つクラスをすべてdataclass(frozen=True)にする
+class OutputFileCollection:
+    def __init__(self, it: Iterable[OutputFile] = ()):
+        self._mapping: OrderedDict[FileID, OutputFile] = OrderedDict()
+        for item in it:
+            self.put(item)
 
-    def __validate(self):
-        # キーとしてのFileIDと値の中のFileIDは一致する
-        for file_id, output_file in self.items():
-            assert file_id == output_file.file_id, (file_id, output_file)
+    def put(self, item: OutputFile) -> None:
+        self._mapping[item.file_id] = item
 
-    def to_json(self) -> dict[str, dict]:
-        self.__validate()
+    def find(self, file_id: FileID) -> OutputFile:
+        return self._mapping[file_id]
+
+    def has(self, file_id: FileID) -> bool:
+        return file_id in self._mapping
+
+    @property
+    def file_ids(self) -> list[FileID]:
+        return list(self._mapping.keys())
+
+    def items(self):
+        return self._mapping.items()
+
+    def to_json(self) -> dict:
         return {
             file_id.to_json(): output_file.to_json()
-            for file_id, output_file in self.items()
+            for file_id, output_file in self._mapping.items()
         }
 
     @classmethod
     def from_json(cls, body: dict):
-        file_ids = [FileID.from_json(file_id_str) for file_id_str in body.keys()]
-        file_ids.sort()
-        dct = {}
-        for file_id in file_ids:
-            dct[file_id] = OutputFile.from_json(body[file_id.to_json()])
-        obj = cls(dct)
-        obj.__validate()
-        return obj
+        return cls(
+            OutputFile.from_json(output_file_body)
+            for file_id_str, output_file_body in body.items()
+        )

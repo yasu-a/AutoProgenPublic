@@ -14,7 +14,7 @@ from services.storage import StorageLoadTestSourceService, \
     StorageCreateService, StorageDeleteService, StorageLoadStudentSourceService, \
     StorageLoadStudentExecutableService, StorageStoreStudentExecutableService, \
     StorageLoadExecuteConfigInputFilesService, StorageWriteStdoutFileService, \
-    StorageCreateOutputFileMappingFromDiffService, StorageTakeSnapshotService
+    StorageCreateOutputFileCollectionFromDiffService, StorageTakeSnapshotService
 from services.storage_run_compiler import StorageRunCompilerService
 from services.storage_run_executable import StorageRunExecutableService
 from services.student import StudentGetService, StudentListSubService
@@ -431,7 +431,7 @@ def get_storage_run_executable_service():
 
 # OutputFilesCreateFromStorageDiffService
 def get_storage_create_output_file_mapping_from_diff_service():
-    return StorageCreateOutputFileMappingFromDiffService(
+    return StorageCreateOutputFileCollectionFromDiffService(
         storage_repo=get_storage_repository(),
     )
 

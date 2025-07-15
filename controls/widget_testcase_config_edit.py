@@ -100,7 +100,8 @@ class TestCaseConfigEditWidget(QTabWidget):
         if current_file_id is None:  # ファイルタブが選択されていなかったら
             return
         self._w_test_config_tester.run_and_update(
-            expected_output_file=self._w_expected_output_files_edit.get_data()[current_file_id],
+            expected_output_file=self._w_expected_output_files_edit.get_data().find(
+                current_file_id),
             test_config_options=self._w_test_config_options_edit.get_data(),
         )
 
@@ -108,13 +109,13 @@ class TestCaseConfigEditWidget(QTabWidget):
     def set_data(self, config: TestCaseConfig):
         self._testcase_id = config.testcase_id
         self._w_input_files_edit.set_data(
-            config.execute_config._input_files,
+            config.execute_config.input_file_collection,
         )
         self._w_execute_config_options_edit.set_data(
-            config.execute_config._options,
+            config.execute_config.options,
         )
         self._w_expected_output_files_edit.set_data(
-            config.test_config.expected_output_files,
+            config.test_config.expected_output_file_collection,
         )
         self._w_test_config_options_edit.set_data(
             config.test_config.options,
@@ -126,11 +127,11 @@ class TestCaseConfigEditWidget(QTabWidget):
         config = TestCaseConfig(
             testcase_id=self._testcase_id,
             execute_config=TestCaseExecuteConfig(
-                input_files=self._w_input_files_edit.get_data(),
+                input_file_collection=self._w_input_files_edit.get_data(),
                 options=self._w_execute_config_options_edit.get_data(),
             ),
             test_config=TestCaseTestConfig(
-                expected_output_files=self._w_expected_output_files_edit.get_data(),
+                expected_output_file_collection=self._w_expected_output_files_edit.get_data(),
                 options=self._w_test_config_options_edit.get_data(),
             ),
         )

@@ -1,7 +1,11 @@
+from collections import OrderedDict
+from typing import Iterable
+
 from domain.models.pattern import PatternList
 from domain.models.values import FileID
 
 
+# immutable
 class ExpectedOutputFile:
     def __init__(
             self,
@@ -11,6 +15,13 @@ class ExpectedOutputFile:
     ):
         self._file_id = file_id
         self._patterns = patterns
+
+    @classmethod
+    def create_default(cls, file_id: FileID) -> "ExpectedOutputFile":
+        return cls(
+            file_id=file_id,
+            patterns=PatternList(),
+        )
 
     def to_json(self) -> dict:
         return dict(
@@ -42,34 +53,40 @@ class ExpectedOutputFile:
     def patterns(self) -> PatternList:
         return self._patterns
 
-    @classmethod
-    def create_default(cls, file_id: FileID) -> "ExpectedOutputFile":
-        return cls(
-            file_id=file_id,
-            patterns=PatternList(),
-        )
 
+class ExpectedOutputFileCollection:
+    def __init__(self, it: Iterable[ExpectedOutputFile] = ()):
+        self._mapping: OrderedDict[FileID, ExpectedOutputFile] = OrderedDict()
+        for item in it:
+            self.put(item)
 
-class ExpectedOutputFileMapping(dict[FileID, ExpectedOutputFile]):
-    def __validate_mapping_key_and_item_id(self):
-        for file_id, expected_output_file in self.items():
-            assert file_id == expected_output_file.file_id, (file_id, expected_output_file)
+    def put(self, item: ExpectedOutputFile) -> None:
+        self._mapping[item.file_id] = item
 
-    def to_json(self) -> dict[str, dict]:
-        self.__validate_mapping_key_and_item_id()
+    def find(self, file_id: FileID) -> ExpectedOutputFile:
+        return self._mapping[file_id]
+
+    def has(self, file_id: FileID) -> bool:
+        return file_id in self._mapping
+
+    @property
+    def file_ids(self) -> list[FileID]:
+        return list(self._mapping.keys())
+
+    def items(self):
+        return self._mapping.items()
+
+    def to_json(self) -> dict:
+        # {file_id_str: expected_output_file_json, ...}
         return {
             file_id.to_json(): expected_output_file.to_json()
-            for file_id, expected_output_file in self.items()
+            for file_id, expected_output_file in self._mapping.items()
         }
 
     @classmethod
     def from_json(cls, body: dict):
-        obj = cls({
-            FileID.from_json(file_id_str): ExpectedOutputFile.from_json(expected_output_file_body)
+        # body: {file_id_str: expected_output_file_json, ...}
+        return cls(
+            ExpectedOutputFile.from_json(expected_output_file_body)
             for file_id_str, expected_output_file_body in body.items()
-        })
-        obj.__validate_mapping_key_and_item_id()
-        return obj
-
-    def __hash__(self) -> int:
-        return hash(tuple(sorted(self.items(), key=lambda x: x[0])))
+        )

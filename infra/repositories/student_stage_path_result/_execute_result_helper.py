@@ -1,5 +1,6 @@
 import json
 
+from domain.models.output_file import OutputFileCollection
 from domain.models.stages import AbstractStage, ExecuteStage
 from domain.models.student_stage_result import AbstractStudentStageResult, \
     ExecuteSuccessStudentStageResult, ExecuteFailureStudentStageResult
@@ -15,11 +16,11 @@ class _ExecuteResultHelper(_AbstractStageResultHelper):
             """
             CREATE TABLE IF NOT EXISTS student_execute_result
             (
-                student_id           TEXT,
-                testcase_id          TEXT,
-                execute_config_mtime DATETIME,
-                output_files_json    TEXT,
-                reason               TEXT,
+                student_id                  TEXT,
+                testcase_id                 TEXT,
+                execute_config_mtime        DATETIME,
+                output_file_collection_json TEXT,
+                reason                      TEXT,
                 PRIMARY KEY (student_id, testcase_id),
                 FOREIGN KEY (student_id) REFERENCES student (student_id)
             )
@@ -40,13 +41,13 @@ class _ExecuteResultHelper(_AbstractStageResultHelper):
             return None
 
         if row["reason"] is None:
-            from domain.models.output_file import OutputFileMapping
-            output_files = OutputFileMapping.from_json(json.loads(row["output_files_json"]))
+            output_file_collection = OutputFileCollection.from_json(
+                json.loads(row["output_file_collection_json"]))
             return ExecuteSuccessStudentStageResult.create_instance(
                 student_id=student_id,
                 testcase_id=stage.testcase_id,
                 execute_config_mtime=row["execute_config_mtime"],  # 既にdatetimeオブジェクト
-                output_files=output_files,
+                output_file_collection=output_file_collection,
             )
         else:
             return ExecuteFailureStudentStageResult.create_instance(
@@ -58,13 +59,18 @@ class _ExecuteResultHelper(_AbstractStageResultHelper):
     def put_stage_result(self, cursor, result: AbstractStudentStageResult) -> None:
         if isinstance(result, ExecuteSuccessStudentStageResult):
             cursor.execute(
-                "INSERT OR REPLACE INTO student_execute_result (student_id, testcase_id, execute_config_mtime, output_files_json, reason) VALUES (?, ?, ?, ?, NULL)",
+                "INSERT OR REPLACE INTO student_execute_result"
+                "(student_id, testcase_id, execute_config_mtime, output_file_collection_json, reason)"
+                "VALUES (?, ?, ?, ?, NULL)",
                 (str(result.student_id), str(result.testcase_id),
-                 result.execute_config_mtime.isoformat(), json.dumps(result.output_files.to_json()))
+                 result.execute_config_mtime.isoformat(),
+                 json.dumps(result.output_file_collection.to_json()))
             )
         elif isinstance(result, ExecuteFailureStudentStageResult):
             cursor.execute(
-                "INSERT OR REPLACE INTO student_execute_result (student_id, testcase_id, execute_config_mtime, output_files_json, reason) VALUES (?, ?, NULL, NULL, ?)",
+                "INSERT OR REPLACE INTO student_execute_result"
+                "(student_id, testcase_id, execute_config_mtime, output_file_collection_json, reason)"
+                "VALUES (?, ?, NULL, NULL, ?)",
                 (str(result.student_id), str(result.testcase_id), result.reason)
             )
         else:
