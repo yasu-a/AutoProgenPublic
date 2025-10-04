@@ -18,10 +18,10 @@ def invalidate_cached_providers():
         core_io,
         external_io,
         path_provider,
-        repositories,
-        services,
-        tasks,
-        usecases,
+        repository,
+        service,
+        task,
+        usecase,
     ]
 
     cached_providers = []
