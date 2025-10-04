@@ -7,10 +7,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Any, Iterable
 
-from domain.errors import CoreIOError
-from domain.models.values import ProjectID
-from infra.path_providers.project import ProjectPathProvider
-from utils.app_logging import create_logger
+from domain.error import CoreIOError
+from domain.model.value import ProjectID
+from infra.path_provider.project import ProjectPathProvider
+from util.app_logging import create_logger
 
 
 class ProjectCoreIO:
@@ -319,7 +319,7 @@ class ProjectCoreIO:
             sub_hash_entries.append(h)
 
         hash_src = b"".join(sub_hash_entries)
-        return int.from_bytes(hashlib.md5(hash_src).digest(), byteorder="big")
+        return int.from_bytes(hashlib.md5(hash_src).digest(), byteorder="big") % (2 ** 32)
 
     def walk_files(
             self,
@@ -333,7 +333,7 @@ class ProjectCoreIO:
             path=folder_fullpath,
         )
 
-        self._logger.debug(f"walk_files({project_id=}, {folder_fullpath=})")
+        # self._logger.debug(f"walk_files({project_id=}, {folder_fullpath=})")
 
         for root, dirs, files in os.walk(str(folder_fullpath)):
             for filename in files:
@@ -353,7 +353,7 @@ class ProjectCoreIO:
             project_id=project_id,
             path=file_fullpath,
         )
-        self._logger.debug(f"get_file_mtime({project_id=}, {file_fullpath=})")
+        # self._logger.debug(f"get_file_mtime({project_id=}, {file_fullpath=})")
         return datetime.fromtimestamp(file_fullpath.stat().st_mtime)
 
     def get_folder_size(

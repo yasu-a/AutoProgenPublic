@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Optional, Any
 
-from utils.app_logging import create_logger
+from util.app_logging import create_logger
 
 
 class GlobalCoreIO:

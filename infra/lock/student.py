@@ -2,7 +2,7 @@ from contextlib import contextmanager
 
 from PyQt5.QtCore import QMutex
 
-from domain.models.values import StudentID
+from domain.model.value import StudentID
 
 
 class StudentLockServer:

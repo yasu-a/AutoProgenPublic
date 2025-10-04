@@ -2,6 +2,7 @@ from application.dependency.path_provider import *
 from infra.io.compile_tool import CompileToolIO
 from infra.io.executable import ExecutableIO
 from infra.io.project_base_folder_show_in_explorer import ProjectFolderShowInExplorerIO
+from infra.io.project_database import ProjectDatabaseIO
 from infra.io.report_archive import ManabaReportArchiveIO
 from infra.io.resource_usage import ResourceUsageIO
 from infra.io.score_excel import ScoreExcelIO
@@ -37,6 +38,12 @@ def get_student_folder_show_in_explorer_io():
 def get_project_folder_show_in_explorer_io():
     return ProjectFolderShowInExplorerIO(
         project_list_path_provider=get_project_list_path_provider(),
+    )
+
+
+def get_project_database_io():
+    return ProjectDatabaseIO(
+        database_path_provider=get_database_path_provider(),
     )
 
 

@@ -1,14 +1,14 @@
 import os
 from typing import TYPE_CHECKING
 
-from utils import app_logging
-from utils.app_logging import create_logger
+from util import app_logging
+from util.app_logging import create_logger
 
 if TYPE_CHECKING:
     from PyQt5.QtWidgets import QApplication
-    from controls.window_main import MainWindow
-    from domain.models.values import ProjectID
-    from controls.dto.new_project_config import NewProjectConfig
+    from control.window_main import MainWindow
+    from domain.model.value import ProjectID
+    from control.dto.new_project_config import NewProjectConfig
 
 if __name__ == '__main__':
     import sys
@@ -30,9 +30,9 @@ _logger = create_logger()
 
 def create_app() -> "QApplication":
     from PyQt5.QtWidgets import QApplication, QProxyStyle, QStyle
-    from application.dependency.usecases import get_app_version_get_text_usecase
-    from res.icons import get_icon
-    from res.fonts import get_font
+    from application.dependency.usecase import get_app_version_get_text_usecase
+    from res.icon import get_icon
+    from res.font import get_font
 
     class CustomStyle(QProxyStyle):
         # noinspection PyMethodOverriding
@@ -53,8 +53,8 @@ def create_app() -> "QApplication":
 
 
 def launch_existing_project(project_id: "ProjectID") -> "MainWindow":
-    from application.dependency.usecases import get_project_open_usecase
-    from controls.window_main import MainWindow
+    from application.dependency.usecase import get_project_open_usecase
+    from control.window_main import MainWindow
 
     # 現在のプロジェクトを設定
     get_project_open_usecase().execute(project_id)
@@ -67,10 +67,10 @@ def launch_existing_project(project_id: "ProjectID") -> "MainWindow":
 
 
 def launch_new_project(new_project_config: "NewProjectConfig") -> "MainWindow":
-    from application.dependency.usecases import get_project_create_usecase
-    from application.dependency.usecases import get_project_open_usecase
-    from controls.dialog_project_initialize import ProjectInitializeProgressDialog
-    from controls.window_main import MainWindow
+    from application.dependency.usecase import get_project_create_usecase
+    from application.dependency.usecase import get_project_open_usecase
+    from control.dialog_project_initialize import ProjectInitializeProgressDialog
+    from control.window_main import MainWindow
     from PyQt5.QtWidgets import QDialog, QMessageBox
 
     # 新規にプロジェクトを生成
@@ -105,10 +105,10 @@ def launch_new_project(new_project_config: "NewProjectConfig") -> "MainWindow":
 
 def main():
     from application.state.debug import set_debug
-    from controls.dialog_welcome import WelcomeDialog
+    from control.dialog_welcome import WelcomeDialog
     from PyQt5.QtWidgets import QDialog
-    from domain.models.values import ProjectID
-    from controls.dto.new_project_config import NewProjectConfig
+    from domain.model.value import ProjectID
+    from control.dto.new_project_config import NewProjectConfig
 
     # 環境変数からデバッグ用の構成を用意
     app_logging.set_level(app_logging.INFO)

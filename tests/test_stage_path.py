@@ -1,14 +1,14 @@
 from pytest_mock import MockerFixture
 
-from application.dependency.services import get_stage_path_list_sub_service
-from domain.models.stage_path import StagePath
-from domain.models.stages import BuildStage, CompileStage, ExecuteStage, TestStage
-from domain.models.values import TestCaseID
+from application.dependency.service import get_stage_path_list_sub_service
+from domain.model.stage_path import StagePath
+from domain.model.stage import BuildStage, CompileStage, ExecuteStage, TestStage
+from domain.model.value import TestCaseID
 
 
 def test_stage_path_no_testcase_ids(mocker: MockerFixture):
     mocker.patch(
-        "services.testcase_config.TestCaseConfigListIDSubService.execute",
+        "service.testcase_config.TestCaseConfigListIDSubService.execute",
         return_value=[],
     )
     stage_path_lst: list[StagePath] = get_stage_path_list_sub_service().execute()
@@ -22,7 +22,7 @@ def test_stage_path_no_testcase_ids(mocker: MockerFixture):
 
 def test_stage_path_with_testcase_ids(mocker: MockerFixture):
     mocker.patch(
-        "services.testcase_config.TestCaseConfigListIDSubService.execute",
+        "service.testcase_config.TestCaseConfigListIDSubService.execute",
         return_value=[TestCaseID("testcase-1"), TestCaseID("testcase-2")],
     )
     stage_path_lst: list[StagePath] = get_stage_path_list_sub_service().execute()
