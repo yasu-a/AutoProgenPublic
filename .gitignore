@@ -1,5 +1,5 @@
-/tests/__test_data_root__/
+/.*
 /**/__pycache__
+/tests/__test_data_root__/
 /settings.json
-/.idea
 /db.sqlite3
