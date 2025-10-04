@@ -7,10 +7,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Any, Iterable
 
-from domain.errors import CoreIOError
-from domain.models.values import ProjectID
-from infra.path_providers.project import ProjectPathProvider
-from utils.app_logging import create_logger
+from domain.error import CoreIOError
+from domain.model.value import ProjectID
+from infra.path_provider.project import ProjectPathProvider
+from util.app_logging import create_logger
 
 
 class ProjectCoreIO:

@@ -3,9 +3,9 @@ from datetime import timedelta
 
 import pytest
 
-from application.dependency.services import get_match_get_best_service
-from domain.models.pattern import PatternList, TextPattern, SpacePattern, EOLPattern, RegexPattern
-from domain.models.test_config_options import TestConfigOptions
+from application.dependency.service import get_match_get_best_service
+from domain.model.pattern import PatternList, TextPattern, SpacePattern, EOLPattern, RegexPattern
+from domain.model.test_config_options import TestConfigOptions
 
 r"""
 パターンマッチ機能の仕様:

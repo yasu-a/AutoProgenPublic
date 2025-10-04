@@ -1,7 +1,7 @@
 import pytest
 
-from application.dependency.repositories import get_student_executable_repository
-from domain.models.file_item import ExecutableFileItem
+from application.dependency.repository import get_student_executable_repository
+from domain.model.file_item import ExecutableFileItem
 
 
 def test_get_not_found(sample_student_ids):

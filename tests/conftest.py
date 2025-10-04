@@ -33,7 +33,7 @@ def setup_test():
     set_debug(True)
     from application.state.current_project import get_current_project_id
     if get_current_project_id() is None:
-        from domain.models.values import ProjectID
+        from domain.model.value import ProjectID
         from application.state.current_project import set_current_project_id
         set_current_project_id(ProjectID("test_project_id"))
     override_dependency()
@@ -59,9 +59,9 @@ def setup_test():
 
 @pytest.fixture
 def sample_students():
-    from application.dependency.repositories import get_student_repository
-    from domain.models.values import StudentID
-    from domain.models.student import Student
+    from application.dependency.repository import get_student_repository
+    from domain.model.value import StudentID
+    from domain.model.student import Student
     from datetime import datetime
 
     repo = get_student_repository()

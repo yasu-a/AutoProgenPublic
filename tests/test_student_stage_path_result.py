@@ -4,12 +4,12 @@ from typing import Optional
 
 import pytest
 
-from application.dependency.repositories import get_student_stage_path_result_repository
-from domain.models.output_file import OutputFileCollection, OutputFile
-from domain.models.stage_path import StagePath
-from domain.models.stages import BuildStage, CompileStage, ExecuteStage, TestStage
-from domain.models.student_stage_path_result import StudentStagePathResult
-from domain.models.student_stage_result import (
+from application.dependency.repository import get_student_stage_path_result_repository
+from domain.model.output_file import OutputFileCollection, OutputFile
+from domain.model.stage_path import StagePath
+from domain.model.stage import BuildStage, CompileStage, ExecuteStage, TestStage
+from domain.model.student_stage_path_result import StudentStagePathResult
+from domain.model.student_stage_result import (
     BuildSuccessStudentStageResult,
     BuildFailureStudentStageResult,
     CompileSuccessStudentStageResult,
@@ -20,7 +20,7 @@ from domain.models.student_stage_result import (
     TestFailureStudentStageResult,
     TestResultOutputFileCollection,
 )
-from domain.models.values import (
+from domain.model.value import (
     StudentID,
     TestCaseID,
     FileID,
@@ -385,8 +385,8 @@ def _create_stage_path_result(student_id: StudentID, stage_path: StagePath,
                               result) -> StudentStagePathResult:
     """単一のステージ結果からStudentStagePathResultを作成"""
     from collections import OrderedDict
-    from domain.models.stages import AbstractStage
-    from domain.models.student_stage_result import AbstractStudentStageResult
+    from domain.model.stage import AbstractStage
+    from domain.model.student_stage_result import AbstractStudentStageResult
 
     stage_results: OrderedDict[AbstractStage, AbstractStudentStageResult | None] = OrderedDict()
 
@@ -724,8 +724,8 @@ def test_aggregate_operations(
     compile_result = get_single_result("compile_success_result", student_id=student_id_1)
 
     from collections import OrderedDict
-    from domain.models.stages import AbstractStage
-    from domain.models.student_stage_result import AbstractStudentStageResult
+    from domain.model.stage import AbstractStage
+    from domain.model.student_stage_result import AbstractStudentStageResult
 
     stage_results: OrderedDict[AbstractStage, AbstractStudentStageResult | None] = OrderedDict([
         (BuildStage(), build_result),
@@ -768,8 +768,8 @@ def test_stage_path_result_methods(
     compile_result = get_single_result("compile_success_result", student_id=student_id_1)
 
     from collections import OrderedDict
-    from domain.models.stages import AbstractStage
-    from domain.models.student_stage_result import AbstractStudentStageResult
+    from domain.model.stage import AbstractStage
+    from domain.model.student_stage_result import AbstractStudentStageResult
 
     stage_results: OrderedDict[AbstractStage, AbstractStudentStageResult | None] = OrderedDict([
         (BuildStage(), build_result),

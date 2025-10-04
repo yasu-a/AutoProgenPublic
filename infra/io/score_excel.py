@@ -10,9 +10,9 @@ import openpyxl
 from openpyxl.workbook import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 
-from domain.models.student_mark import StudentMark
-from domain.models.values import StudentID, TargetID
-from utils.app_logging import create_logger
+from domain.model.student_mark import StudentMark
+from domain.model.value import StudentID, TargetID
+from util.app_logging import create_logger
 
 
 class ScoreExcelError(RuntimeError):

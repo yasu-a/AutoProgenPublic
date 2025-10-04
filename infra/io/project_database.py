@@ -4,8 +4,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Generator
 
-from infra.path_providers.current_project import DatabasePathProvider
-from utils.app_logging import create_logger
+from infra.path_provider.current_project import DatabasePathProvider
+from util.app_logging import create_logger
 
 
 def adapt_datetime(val):

@@ -2,11 +2,11 @@ import sys
 from pathlib import Path
 
 from application.state.current_project import get_current_project_id
-from infra.path_providers.current_project import DynamicPathProvider, StudentDynamicPathProvider, \
+from infra.path_provider.current_project import DynamicPathProvider, StudentDynamicPathProvider, \
     StudentStageResultPathProvider, ProjectStaticPathProvider, StudentSubmissionPathProvider, \
     TestCaseConfigPathProvider, StudentMarkPathProvider, StoragePathProvider, DatabasePathProvider
-from infra.path_providers.global_ import GlobalPathProvider
-from infra.path_providers.project import ProjectListPathProvider, ProjectPathProvider
+from infra.path_provider.global_ import GlobalPathProvider
+from infra.path_provider.project import ProjectListPathProvider, ProjectPathProvider
 
 
 def get_global_base_path() -> Path:

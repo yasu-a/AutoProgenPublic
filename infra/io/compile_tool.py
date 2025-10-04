@@ -1,8 +1,8 @@
 import subprocess
 from pathlib import Path
 
-from domain.errors import CompileToolIOError
-from utils.app_logging import create_logger
+from domain.error import CompileToolIOError
+from util.app_logging import create_logger
 
 
 class _VSDevToolError(RuntimeError):

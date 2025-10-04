@@ -1,7 +1,7 @@
 import os
 
-from domain.models.values import ProjectID
-from infra.path_providers.project import ProjectListPathProvider
+from domain.model.value import ProjectID
+from infra.path_provider.project import ProjectListPathProvider
 
 
 class ProjectFolderShowInExplorerIO:

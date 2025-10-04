@@ -1,4 +1,4 @@
-from utils.app_logging import create_logger
+from util.app_logging import create_logger
 
 _logger = create_logger()
 
@@ -8,10 +8,10 @@ def invalidate_cached_providers():
     from . import core_io
     from . import external_io
     from . import path_provider
-    from . import repositories
-    from . import services
-    from . import tasks
-    from . import usecases
+    from . import repository
+    from . import service
+    from . import task
+    from . import usecase
 
     modules = [
         cache,

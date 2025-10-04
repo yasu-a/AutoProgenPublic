@@ -1,7 +1,7 @@
 import pytest
 
-from application.dependency.repositories import get_student_source_repository
-from domain.models.file_item import SourceFileItem
+from application.dependency.repository import get_student_source_repository
+from domain.model.file_item import SourceFileItem
 
 
 def test_get_not_found(sample_student_ids):

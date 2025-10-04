@@ -1,8 +1,8 @@
 import pytest
 
-from application.dependency.repositories import get_student_mark_repository
-from domain.errors import RepositoryItemNotFoundError
-from domain.models.student_mark import StudentMark
+from application.dependency.repository import get_student_mark_repository
+from domain.error import RepositoryItemNotFoundError
+from domain.model.student_mark import StudentMark
 
 
 @pytest.fixture

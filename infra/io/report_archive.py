@@ -3,9 +3,9 @@ from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
 from typing import Iterable, Generator, IO
 
-from domain.errors import ManabaReportArchiveIOError
-from domain.models.values import StudentID
-from utils.app_logging import create_logger
+from domain.error import ManabaReportArchiveIOError
+from domain.model.value import StudentID
+from util.app_logging import create_logger
 
 
 class ManabaReportArchiveIO:

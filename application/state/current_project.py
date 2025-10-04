@@ -1,4 +1,4 @@
-from domain.models.values import ProjectID
+from domain.model.value import ProjectID
 
 _project_id: ProjectID | None = None
 

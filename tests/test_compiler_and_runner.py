@@ -2,12 +2,12 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from application.dependency.path_provider import get_global_path_provider
-from application.dependency.repositories import get_storage_repository
-from application.dependency.services import get_storage_create_service, \
+from application.dependency.repository import get_storage_repository
+from application.dependency.service import get_storage_create_service, \
     get_storage_load_test_source_service, get_storage_delete_service, \
     get_storage_run_compiler_service, get_storage_run_executable_service
-from domain.errors import StorageRunCompilerServiceError, StorageRunExecutableServiceError
-from domain.models.values import FileID
+from domain.error import StorageRunCompilerServiceError, StorageRunExecutableServiceError
+from domain.model.value import FileID
 
 
 def write_test_source(source: str):
