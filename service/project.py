@@ -51,11 +51,12 @@ class ProjectGetConfigStateQueryService:
         except (KeyError, IndexError, ValueError):
             return ProjectConfigState.META_BROKEN
 
-        # 現在のバージョンを取得
-        current_app_version: AppVersion = self._app_version_get_service.execute()
-
         # バージョンに互換性があるかどうか確認
-        if config_app_version != current_app_version:  # 完全に一致す場合のみ互換性あり
+        current_app_version = self._app_version_get_service.execute()
+        if not AppVersion.is_compatible(
+                current_version=current_app_version,
+                target_version=config_app_version,
+        ):  # 完全に一致す場合のみ互換性あり
             return ProjectConfigState.INCOMPATIBLE_APP_VERSION
 
         # JSONのすべての内容を読み出す

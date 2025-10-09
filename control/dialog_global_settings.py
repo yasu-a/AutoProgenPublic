@@ -279,7 +279,7 @@ class GlobalSettingsEditWidget(QWidget):
         result = get_test_compile_stage_usecase().execute(
             compiler_tool_fullpath=Path(compiler_tool_fullpath),
         )
-        if result.is_last_stage_success:
+        if result.is_success:
             QMessageBox.information(
                 self,  # type: ignore
                 "コンパイルテスト",
