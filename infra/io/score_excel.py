@@ -124,7 +124,7 @@ class _ScoreExcelWorksheetReader:
         if len(worksheet_student_id_set) != len(worksheet_student_id_lst):
             duplicated_student_ids = [
                 student_id
-                for student_id, count in Counter(worksheet_student_id_lst)
+                for student_id, count in Counter(worksheet_student_id_lst).items()
                 if count >= 2
             ]
             raise ScoreExcelMalformedWorksheetError(
