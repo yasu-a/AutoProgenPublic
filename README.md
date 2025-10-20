@@ -1,7 +1,7 @@
 <!-- このファイルは main_generate_readme.py で自動生成されています -->
 <!-- 編集する場合はテンプレート static/readme/README.md を編集して再生成します --> 
 
-# AutoProgen 1.1-beta.0
+# AutoProgen 1.1-beta.1
 
 ![image_filename](static/img/screenshot.jpg)
 
@@ -24,7 +24,7 @@
 - Windows 11
 - Python 3.10
 
-# 1.1-beta.0
+# 1.1-beta.1
 
   
 
@@ -42,6 +42,7 @@
 - 起動方法を簡素化（install-requirements.batが不要になり、run.batで自動的に仮想環境を作成・管理）
 - 学生データと採点データの保存方式をSQLiteデータベースに変更（パフォーマンス向上）
 - コンパイラのテストでエラーが出るバグを修正
+- エクスポート時に重複した学生IDがあるとクラッシュするバグを修正
 
 ## 既知のバグ
 
