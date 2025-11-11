@@ -2,7 +2,8 @@ from pathlib import Path
 
 from domain.error import StorageRunExecutableServiceError
 from domain.model.value import StorageID, FileID
-from infra.io.executable import ExecutableIOTimeoutError, ExecutableIO
+from infra.io.executable import ExecutableIOTimeoutError, ExecutableIO, \
+    ExecutableIOStdoutNeverReturned
 from infra.repository.storage import StorageRepository
 from service.dto.storage_run_executable import StorageExecuteServiceResult
 
@@ -53,6 +54,11 @@ class StorageRunExecutableService:
             raise StorageRunExecutableServiceError(
                 reason="実行がタイムアウトしました\n"
                        "この環境のスペックに対して並列タスク数が多すぎる・プログラムが入力を待っている・無限ループしているなどの可能性があります",
+            )
+        except ExecutableIOStdoutNeverReturned:
+            raise StorageRunExecutableServiceError(
+                reason="実行の結果、標準出力の返却値を受け取るのに失敗しました。"
+                       "なんらかの原因で標準出力との通信に失敗しました。再度実行してください。"
             )
 
         return StorageExecuteServiceResult(

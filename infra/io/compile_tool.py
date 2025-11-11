@@ -71,6 +71,11 @@ class _VSDevTool:
             output = self._run_and_get_output()
         except subprocess.CalledProcessError as e:
             output = e.stdout
+            if output is None:
+                raise _VSDevToolError(
+                    reason="コンパイラから応答を受け取るのに失敗しました。再実行してください。",
+                    output=output,
+                )
             self._logger.info(f"Compiler exist with error\n{output}")
             if self._is_output_from_compiler(output):
                 raise _VSDevToolError(
@@ -78,7 +83,7 @@ class _VSDevTool:
                     output=output,
                 )
             else:
-                raise CompileToolIOError(
+                raise _VSDevToolError(
                     reason="コンパイラを実行できません",
                     output=output,
                 )

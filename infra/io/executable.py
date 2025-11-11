@@ -9,6 +9,11 @@ class ExecutableIOTimeoutError(ValueError):
     pass
 
 
+class ExecutableIOStdoutNeverReturned(ValueError):
+    # p.communicateのstdoutがNoneだった時に発生
+    pass
+
+
 class ExecutableIO:
     _logger = create_logger()
 
@@ -52,6 +57,8 @@ class ExecutableIO:
                     p.terminate()
                     raise ExecutableIOTimeoutError()
                 else:
+                    if stdout_text is None:
+                        raise ExecutableIOStdoutNeverReturned()
                     assert stderr_text is None, stderr_text
                     return stdout_text.replace("\r\n", "\n")
         finally:
