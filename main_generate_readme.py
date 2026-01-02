@@ -4,10 +4,10 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from application.dependency.path_provider import get_static_resource_base_path, get_icon_fullpath, \
+from app.di.path_config import get_static_resource_base_path, get_icon_fullpath, \
     get_global_base_path, get_image_fullpath
-from application.dependency.service import get_app_version_get_service
-from domain.model.app_version import ReleaseType, AppVersion
+from app.di.service import get_app_version_get_service
+from shared.domain.value.app_version import ReleaseType, AppVersion
 
 
 class VariableFactory(ABC):
