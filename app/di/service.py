@@ -198,3 +198,9 @@ def get_student_mark_list_service():
 
 def get_match_get_best_service():
     return MatchGetBestService()
+
+
+# ExcelScoreUpdatePlanningService
+def get_excel_score_update_planning_service():
+    from feature.export.domain.service.excel_score_update_planning import ExcelScoreUpdatePlanningService
+    return ExcelScoreUpdatePlanningService()

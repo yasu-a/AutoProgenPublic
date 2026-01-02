@@ -4,6 +4,7 @@ from typing import Iterable
 from PyQt5.QtCore import QMutex
 
 from shared.domain.entity.testcase_config import TestCaseConfigEntity
+from shared.domain.interface.repository import ITestCaseConfigRepository
 from shared.domain.value.execute_config import TestCaseExecuteConfig
 from shared.domain.value.identifier import TestCaseID
 from shared.domain.value.test_config import TestCaseTestConfig
@@ -11,7 +12,7 @@ from shared.infra.path_provider.current_project import TestCaseConfigPathProvide
 from shared.infra.system.current_project_core_io import CurrentProjectCoreIO
 
 
-class TestCaseConfigRepository:
+class TestCaseConfigRepository(ITestCaseConfigRepository):
     def __init__(
             self,
             *,

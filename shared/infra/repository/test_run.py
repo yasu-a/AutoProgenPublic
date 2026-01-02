@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from shared.domain.interface.repository import ITestRunRepository
 from shared.domain.value.identifier import StorageID
 from shared.infra.path_provider.current_project import StoragePathProvider
 from shared.infra.path_provider.global_ import GlobalPathProvider
@@ -7,7 +8,7 @@ from shared.infra.system.current_project_core_io import CurrentProjectCoreIO
 from util.app_logging import create_logger
 
 
-class TestRunRepository:
+class TestRunRepository(ITestRunRepository):
     _logger = create_logger()
 
     def __init__(

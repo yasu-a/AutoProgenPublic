@@ -5,7 +5,8 @@ if TYPE_CHECKING:
 
 import app.di.usecase as di_usecase
 from feature.about.handler.about_dialog import AboutDialogHandler
-from feature.export.handler.score_export_dialog import ScoreExportDialogHandler
+from feature.export.handler.simple_score_export_tab import SimpleScoreExportTabHandler
+from feature.export.handler.excel_score_export_tab import ExcelScoreExportTabHandler
 from feature.projman.handler.launcher_handler import ProjectLauncherHandler
 from feature.projman.handler.project_create import ProjectCreateHandler
 from feature.projman.handler.project_list import ProjectListHandler
@@ -102,16 +103,30 @@ def get_about_dialog_handler() -> AboutDialogHandler:
     )
 
 
-def get_score_export_dialog_handler(
+def get_simple_score_export_tab_handler(
     *,
+    view=None,
+) -> SimpleScoreExportTabHandler:
+    """SimpleScoreExportTabHandlerを生成"""
+    return SimpleScoreExportTabHandler(
+        view=view,
+        get_simple_export_data_usecase=di_usecase.get_simple_score_export_data_usecase(),
+        execute_simple_export_usecase=di_usecase.get_execute_simple_score_export_usecase(),
+        current_project_summary_get_usecase=di_usecase.get_current_project_summary_get_usecase(),
+    )
+
+
+def get_excel_score_export_tab_handler(
+    *,
+    view=None,
     target_id,
-) -> ScoreExportDialogHandler:
-    """ScoreExportDialogHandlerを生成"""
-    return ScoreExportDialogHandler(
-        view=None,  # Dialog内で生成されるViewが設定される
-        score_export_usecase=di_usecase.get_score_export_usecase(),
-        student_list_id_usecase=di_usecase.get_student_list_id_usecase(),
-        student_mark_list_usecase=di_usecase.get_student_mark_list_usecase(),
-        setting_get_usecase=di_usecase.get_setting_get_usecase(),
+) -> ExcelScoreExportTabHandler:
+    """ExcelScoreExportTabHandlerを生成"""
+    return ExcelScoreExportTabHandler(
+        view=view,
+        list_excel_worksheet_usecase=di_usecase.get_list_excel_worksheet_usecase(),
+        get_excel_sheet_preview_usecase=di_usecase.get_excel_sheet_preview_usecase(),
+        auto_detect_excel_layout_usecase=di_usecase.get_auto_detect_excel_layout_usecase(),
+        execute_excel_score_update_usecase=di_usecase.get_execute_excel_score_update_usecase(),
         target_id=target_id,
     )

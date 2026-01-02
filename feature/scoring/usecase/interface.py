@@ -24,7 +24,7 @@ class IStudentMarkPutUseCase(ABC):
         raise NotImplementedError()
 
 
-class IStudentMarkListUseCase(ABC):
+class IStudentScoreListUseCase(ABC):
     """採点データ一覧取得UseCaseのインターフェース"""
 
     @abstractmethod

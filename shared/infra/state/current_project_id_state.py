@@ -27,3 +27,4 @@ class CurrentProjectIDState(ICurrentProjectIDState):
 
     def clear(self) -> None:
         self._project_id = None
+        _logger.info("Current ProjectID is cleared.")

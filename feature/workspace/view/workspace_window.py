@@ -81,7 +81,7 @@ class WorkspaceWindow(QMainWindow, IWorkspaceWindowView):
     @pyqtSlot(str)
     def __tool_bar_triggered(self, name: str):
         """ツールバーのアクションがトリガーされたとき"""
-        self._controller.on_toolbar_action_triggered(name)
+        self._handler.on_toolbar_action_triggered(name)
 
     @pyqtSlot(StudentID)
     def __w_student_table_student_id_cell_triggered(self, student_id: StudentID):

@@ -2,12 +2,13 @@ from json import JSONDecodeError
 
 from shared.domain.entity.project import ProjectEntity
 from shared.domain.error import ProjectIOError
+from shared.domain.interface.repository import IProjectRepository
 from shared.domain.value.identifier import ProjectID
 from shared.infra.path_provider.project import ProjectListPathProvider, ProjectPathProvider
 from shared.infra.system.project_core_io import ProjectCoreIO
 
 
-class ProjectRepository:
+class ProjectRepository(IProjectRepository):
     def __init__(
             self,
             *,

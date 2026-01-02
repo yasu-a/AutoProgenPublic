@@ -88,3 +88,24 @@ def get_find_compiler_path_gateway():
     return VSFindCompilerPathGateway(
         start_locations=[Path(r"C:\Program Files\Microsoft Visual Studio")],
     )
+
+
+# Export Gateways
+def get_json_score_export_gateway():
+    from feature.export.infra.gateway.json_export import JsonScoreExportGateway
+    return JsonScoreExportGateway()
+
+
+def get_csv_score_export_gateway():
+    from feature.export.infra.gateway.csv_export import CsvScoreExportGateway
+    return CsvScoreExportGateway()
+
+
+def get_excel_gateway():
+    from shared.infra.gateway.excel_gateway import ExcelGateway
+    return ExcelGateway()
+
+
+def get_excel_backup_gateway():
+    from feature.export.infra.gateway.excel_backup import ExcelBackupGateway
+    return ExcelBackupGateway()

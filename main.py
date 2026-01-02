@@ -25,25 +25,11 @@ _logger = create_logger()
 
 
 def create_app() -> "QApplication":
-    from PyQt5.QtWidgets import QApplication, QProxyStyle, QStyle
-    from app.di.provider import get_app_name_provider, get_app_version_provider
-    from shared.view.style.icon import get_icon
-    from shared.view.style.font import get_font
-
-    class CustomStyle(QProxyStyle):
-        # noinspection PyMethodOverriding
-        def styleHint(self, hint, option, widget, return_data):
-            if hint == QStyle.SH_ToolTip_WakeUpDelay:
-                return 0  # ツールチップの表示遅延を0にする
-            return super().styleHint(hint, option, widget, return_data)
+    from PyQt5.QtWidgets import QApplication
+    from app.qt_style import apply_qt_style
 
     app = QApplication(sys.argv)
-    app.setApplicationName(get_app_name_provider().provide())
-    app.setApplicationVersion(str(get_app_version_provider().provide()))
-    app.setWindowIcon(get_icon("app"))
-    # noinspection PyArgumentList
-    app.setFont(get_font())
-    app.setStyle(CustomStyle("Fusion"))
+    apply_qt_style(app, set_app_info=True)
 
     return app
 

@@ -4,11 +4,12 @@ from PyQt5.QtCore import QMutex
 
 from shared.domain.entity.project import ProjectEntity
 from shared.domain.error import ProjectIOError
+from shared.domain.interface.repository import ICurrentProjectRepository
 from shared.domain.value.identifier import ProjectID
 from shared.infra.repository.project import ProjectRepository
 
 
-class CurrentProjectRepository:
+class CurrentProjectRepository(ICurrentProjectRepository):
     # TODO: cacheの実装
     def __init__(
             self,

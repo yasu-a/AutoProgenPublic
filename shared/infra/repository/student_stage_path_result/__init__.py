@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from datetime import datetime
 
 from shared.domain.entity.student_stage_path_result import StudentStagePathResultEntity
+from shared.domain.interface.repository import IStudentStagePathResultRepository
 from shared.domain.value.identifier import StudentID
 from shared.domain.value.stage import AbstractStage, BuildStage, CompileStage, ExecuteStage, \
     TestStage
@@ -25,7 +26,7 @@ from ._test_result_helper import _TestResultHelper
 #  - 各Helperが_create_table_if_not_existsをインスタンス生成時に実行するため
 #  - student_lock_serverを保持するため
 #  - timestamp_repo_helperがキャッシュを持つため
-class StudentStagePathResultEntityRepository:
+class StudentStagePathResultEntityRepository(IStudentStagePathResultRepository):
     """
     StudentStagePathResultEntityを集約単位として管理するリポジトリ
     既存の4つのテーブルを使用して、集約の一貫性を保証する

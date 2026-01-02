@@ -320,24 +320,33 @@ class Navigator(INavigator):
     def open_score_export_dialog(self, parent: QObject, target_id: TargetID) -> None:
         """点数エクスポートダイアログを開く"""
         from feature.export.view.dialog_score_export import ScoreExportDialog
+        from feature.export.view.component.tab_simple import SimpleScoreExportTab
+        from feature.export.view.component.tab_excel import ExcelScoreExportTab
+
+        # View（タブ）を生成
+        simple_tab = SimpleScoreExportTab(parent)
+        excel_tab = ExcelScoreExportTab(parent)
 
         # Handlerを生成（Viewは後で設定される）
-        handler = di_handler.get_score_export_dialog_handler(
+        simple_handler = di_handler.get_simple_score_export_tab_handler(view=None)
+        excel_handler = di_handler.get_excel_score_export_tab_handler(
+            view=None,
             target_id=target_id,
         )
 
         # Dialogを生成（Handlerを注入）
         dialog = ScoreExportDialog(
             parent,
-            handler=handler,
+            simple_tab=simple_tab,
+            excel_tab=excel_tab,
+            simple_handler=simple_handler,
+            excel_handler=excel_handler,
         )
-        
-        # Navigatorがset_viewを呼ぶ（循環参照を避けるため、View生成後に設定）
-        handler.set_view(dialog)
-        
-        # 追加の設定（既存のロジックを保持）
-        dialog.set_target_id(target_id)
-        
+
+        # HandlerにViewを設定
+        simple_handler.set_view(dialog)
+        excel_handler.set_view(dialog)
+
         dialog.exec_()
 
     def open_scoring_dialog(self, parent: QObject) -> None:

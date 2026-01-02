@@ -1,5 +1,5 @@
 from feature.scoring.usecase.interface import IStudentMarkGetUseCase, IStudentMarkPutUseCase, \
-    IStudentMarkListUseCase
+    IStudentScoreListUseCase
 from shared.domain.entity.student_mark import StudentMarkEntity
 from shared.domain.service.student_mark_get import StudentMarkEntityGetSubService
 from shared.domain.service.student_mark_list import StudentMarkEntityListService
@@ -31,7 +31,7 @@ class StudentMarkPutUseCase(IStudentMarkPutUseCase):
         self._student_mark_repo.put(student_mark)
 
 
-class StudentMarkListUseCase(IStudentMarkListUseCase):
+class StudentScoreListUseCase(IStudentScoreListUseCase):
     def __init__(
             self,
             *,

@@ -5,11 +5,57 @@ from PyQt5.QtCore import QMutex
 
 from shared.domain.entity.student_mark import StudentMarkEntity
 from shared.domain.error import RepositoryItemNotFoundError
+from shared.domain.interface.repository import IStudentScoreRepository
 from shared.domain.value.identifier import StudentID
 from shared.infra.system.project_database import ProjectDatabaseIO
 
 
-class StudentMarkEntityRepository:
+class InMemoryStudentScoreRepository(IStudentScoreRepository):
+    """メモリ上で動作するStudentScoreRepositoryの実装"""
+    
+    def __init__(self, marks: list[StudentMarkEntity] | None = None):
+        """
+        初期化
+        
+        Args:
+            marks: 初期データとして設定する点数データのリスト（省略可）
+        """
+        self._marks: dict[StudentID, StudentMarkEntity] = {}
+        if marks is not None:
+            for mark in marks:
+                self._marks[mark.student_id] = mark
+    
+    def create(self, student_id: StudentID) -> StudentMarkEntity:
+        """未採点の点数データを作成"""
+        mark = StudentMarkEntity(
+            student_id=student_id,
+            score=None,
+        )
+        self.put(mark)
+        return mark
+    
+    def put(self, mark: StudentMarkEntity) -> StudentMarkEntity:
+        """点数データをメモリに保存"""
+        self._marks[mark.student_id] = mark
+        return mark
+    
+    def exists(self, student_id: StudentID) -> bool:
+        """点数データが存在するか"""
+        return student_id in self._marks
+    
+    def get(self, student_id: StudentID) -> StudentMarkEntity:
+        """点数データを取得"""
+        if student_id not in self._marks:
+            raise RepositoryItemNotFoundError(
+                f"Mark data for StudentEntity {student_id} not found")
+        return self._marks[student_id]
+    
+    def list(self) -> list[StudentMarkEntity]:
+        """すべての点数データを取得"""
+        return list(self._marks.values())
+
+
+class StudentMarkEntityRepository(IStudentScoreRepository):
     def __init__(
             self,
             *,

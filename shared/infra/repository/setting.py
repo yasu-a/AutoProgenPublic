@@ -3,11 +3,12 @@ from pathlib import Path
 
 from PyQt5.QtCore import QMutex
 
+from shared.domain.interface.repository import ISettingRepository
 from shared.domain.value.setting import Setting
 from shared.infra.system.global_core_io import GlobalCoreIO
 
 
-class SettingRepository:
+class SettingRepository(ISettingRepository):
     def __init__(
             self,
             *,

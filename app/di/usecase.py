@@ -5,7 +5,12 @@ from app.di.repository import *
 from app.di.service import *
 from app.di.system import get_manaba_report_archive_io, get_current_project_core_io
 from feature.about.usecase.get_about_info import GetAboutInfoUseCase
-from feature.export.usecase.score_export import ScoreExportUseCase
+from feature.export.usecase.simple.get_data import GetSimpleScoreExportDataUseCase
+from feature.export.usecase.simple.execute import ExecuteSimpleScoreExportUseCase
+from feature.export.usecase.excel.get_preview import ListExcelWorksheetUseCase, GetExcelSheetPreviewUseCase
+from feature.export.usecase.excel.detect_layout import AutoDetectExcelLayoutUseCase
+from feature.export.usecase.excel.execute import ExecuteExcelScoreUpdateUseCase
+from feature.export.usecase.setting import ExportSettingGetUseCase
 from feature.projman.usecase.current_project import CurrentProjectSummaryGetUseCase, \
     CurrentProjectInitializeStaticUseCase
 from feature.projman.usecase.project import ProjectCheckExistByNameUseCase, ProjectCreateUseCase, \
@@ -15,7 +20,7 @@ from feature.projman.usecase.project import ProjectCheckExistByNameUseCase, Proj
 from feature.projman.usecase.student_master_create import StudentMasterCreateUseCase
 from feature.projman.usecase.student_submission_extract import StudentSubmissionExtractUseCase
 from feature.scoring.usecase.student_mark import StudentMarkGetUseCase, StudentMarkPutUseCase, \
-    StudentMarkListUseCase
+    StudentScoreListUseCase
 from feature.scoring.usecase.student_mark_view_data import StudentMarkViewDataGetTestResultUseCase, \
     StudentMarkViewDataGetMarkSummaryUseCase
 from feature.scoring.usecase.student_source_code import StudentSourceCodeGetUseCase
@@ -376,18 +381,79 @@ def get_student_mark_put_usecase():
     )
 
 
-# StudentMarkListUseCase
-def get_student_mark_list_usecase():
-    return StudentMarkListUseCase(
+# StudentScoreListUseCase
+def get_student_score_list_usecase():
+    return StudentScoreListUseCase(
         student_mark_list_service=get_student_mark_list_service(),
     )
 
 
-# ScoreExportUseCase
-def get_score_export_usecase():
-    from app.di.system import get_score_excel_io
-    return ScoreExportUseCase(
-        score_excel_io_factory=get_score_excel_io,
+# GetSimpleScoreExportDataUseCase
+def get_simple_score_export_data_usecase():
+    from app.di.repository import get_student_repository
+    from app.di.service import get_student_mark_get_sub_service
+    return GetSimpleScoreExportDataUseCase(
+        student_repo=get_student_repository(),
+        student_mark_get_sub_service=get_student_mark_get_sub_service(),
+    )
+
+
+# ExecuteSimpleScoreExportUseCase
+def get_execute_simple_score_export_usecase():
+    from app.di.gateway import get_json_score_export_gateway, get_csv_score_export_gateway
+    return ExecuteSimpleScoreExportUseCase(
+        json_export_gateway=get_json_score_export_gateway(),
+        csv_export_gateway=get_csv_score_export_gateway(),
+    )
+
+
+# ListExcelWorksheetUseCase
+def get_list_excel_worksheet_usecase():
+    from app.di.gateway import get_excel_gateway
+    return ListExcelWorksheetUseCase(
+        excel_gateway=get_excel_gateway(),
+    )
+
+
+# GetExcelSheetPreviewUseCase
+def get_excel_sheet_preview_usecase():
+    from app.di.gateway import get_excel_gateway
+    return GetExcelSheetPreviewUseCase(
+        excel_gateway=get_excel_gateway(),
+    )
+
+
+# AutoDetectExcelLayoutUseCase
+def get_auto_detect_excel_layout_usecase():
+    from feature.export.domain.service.excel_layout_detection import ExcelLayoutDetectionService
+    return AutoDetectExcelLayoutUseCase(
+        excel_layout_detection_service=ExcelLayoutDetectionService(),
+    )
+
+
+# ExecuteExcelScoreUpdateUseCase
+def get_execute_excel_score_update_usecase():
+    from app.di.gateway import get_excel_gateway, get_excel_backup_gateway
+    from app.di.repository import get_student_repository
+    from app.di.service import (
+        get_student_mark_get_sub_service,
+        get_excel_score_update_planning_service,
+    )
+    return ExecuteExcelScoreUpdateUseCase(
+        excel_gateway=get_excel_gateway(),
+        excel_backup_gateway=get_excel_backup_gateway(),
+        student_repo=get_student_repository(),
+        student_mark_get_sub_service=get_student_mark_get_sub_service(),
+        export_setting_get_usecase=get_export_setting_get_usecase(),
+        excel_score_update_planning_service=get_excel_score_update_planning_service(),
+    )
+
+
+# ExportSettingGetUseCase
+def get_export_setting_get_usecase():
+    from app.di.repository import get_setting_repository
+    return ExportSettingGetUseCase(
+        setting_repo=get_setting_repository(),
     )
 
 

@@ -1,8 +1,9 @@
+from shared.domain.interface.repository import ITestSourceRepository
 from shared.infra.path_provider.global_ import GlobalPathProvider
 from shared.infra.system.global_core_io import GlobalCoreIO
 
 
-class TestSourceRepository:
+class TestSourceRepository(ITestSourceRepository):
     # コンパイルテスト用のソースコードを取得するレポジトリ
 
     def __init__(

@@ -6,6 +6,7 @@ import openpyxl
 import pandas as pd
 
 from feature.projman.usecase.interface import IStudentMasterCreateUseCase
+from shared.domain.entity.student import StudentEntity
 from shared.domain.error import ManabaReportArchiveIOError, StudentMasterServiceError
 from shared.domain.value.identifier import StudentID
 from shared.infra.system.report_archive import ManabaReportArchiveIO
@@ -194,7 +195,7 @@ class StudentMasterCreateUseCase(IStudentMasterCreateUseCase):
                 students: list[StudentEntity] = []
                 for _, row in df.iterrows():
                     has_submission = row["submission_folder_name"] is not None
-                    StudentEntity = StudentEntity(
+                    student = StudentEntity(
                         student_id=StudentID(row["student_id"]),
                         name=row["name"],
                         name_en=row["name_en"],
@@ -211,7 +212,7 @@ class StudentMasterCreateUseCase(IStudentMasterCreateUseCase):
                         ),
                         submission_folder_name=row["submission_folder_name"],
                     )
-                    students.append(StudentEntity)
+                    students.append(student)
         except (_UnexpectedStudentMasterExcelError, ManabaReportArchiveIOError) as e:
             raise StudentMasterServiceError(
                 reason=f"マスターデータの構成中にエラーが発生しました。\n{e.reason}",

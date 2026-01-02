@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 
 from shared.domain.entity.storage import StorageEntity
+from shared.domain.interface.repository import IStorageRepository
 from shared.domain.value.identifier import StorageID
 from shared.domain.value.storage_item import StorageFileContentMapper, \
     FileRelativePathListProducerType, FileContentMapperType, FileRelativePathExistsMapperType, \
@@ -12,7 +13,7 @@ from shared.infra.system.current_project_core_io import CurrentProjectCoreIO
 from util.app_logging import create_logger
 
 
-class StorageRepository:
+class StorageRepository(IStorageRepository):
     _logger = create_logger()
 
     def __init__(

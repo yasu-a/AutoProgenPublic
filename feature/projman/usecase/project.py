@@ -64,7 +64,7 @@ class ProjectCreateUseCase(IProjectCreateUseCase):
             open_at=datetime.now(),
             is_initialized=False,
         )
-        self._project_repo.put(ProjectEntity)
+        self._project_repo.put(project_entity)
         return project_id
 
 

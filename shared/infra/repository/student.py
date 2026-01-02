@@ -4,8 +4,44 @@ from PyQt5.QtCore import QMutex
 
 from shared.domain.entity.student import StudentEntity
 from shared.domain.error import RepositoryItemNotFoundError
+from shared.domain.interface.repository import IStudentRepository
 from shared.domain.value.identifier import StudentID
 from shared.infra.system.project_database import ProjectDatabaseIO
+
+
+class InMemoryStudentRepository(IStudentRepository):
+    """メモリ上で動作するStudentRepositoryの実装"""
+    
+    def __init__(self, students: list[StudentEntity] | None = None):
+        """
+        初期化
+        
+        Args:
+            students: 初期データとして設定する生徒のリスト（省略可）
+        """
+        self._students: dict[StudentID, StudentEntity] = {}
+        if students is not None:
+            for student in students:
+                self._students[student.student_id] = student
+    
+    def create_all(self, students: list[StudentEntity]) -> None:
+        """すべての生徒をメモリに保存"""
+        for student in students:
+            self._students[student.student_id] = student
+    
+    def exists_any(self) -> bool:
+        """生徒データが存在するか"""
+        return len(self._students) > 0
+    
+    def get(self, student_id: StudentID) -> StudentEntity:
+        """生徒を取得"""
+        if student_id not in self._students:
+            raise RepositoryItemNotFoundError(f"StudentEntity {student_id} not found")
+        return self._students[student_id]
+    
+    def list(self) -> list[StudentEntity]:
+        """すべての生徒を取得"""
+        return list(self._students.values())
 
 
 class StudentRepository:
@@ -65,14 +101,14 @@ class StudentRepository:
                     """,
                     [
                         (
-                            str(StudentEntity.student_id),
-                            StudentEntity.name,
-                            StudentEntity.name_en,
-                            StudentEntity.email_address,
-                            StudentEntity.submitted_at,
-                            StudentEntity.num_submissions,
-                            StudentEntity.submission_folder_name,
-                        ) for StudentEntity in students
+                            str(student.student_id),
+                            student.name,
+                            student.name_en,
+                            student.email_address,
+                            student.submitted_at,
+                            student.num_submissions,
+                            student.submission_folder_name,
+                        ) for student in students
                     ]
                 )
                 con.commit()
