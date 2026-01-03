@@ -5,12 +5,12 @@ from PyQt5.QtCore import pyqtSignal, QObject, Qt, pyqtSlot
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, \
     QVBoxLayout, QBoxLayout, QPushButton
 
-from shared.view.style.font import get_font
-from shared.view.style.icon import get_icon
 from shared.domain.value.expected_output_file import ExpectedOutputFile
 from shared.domain.value.identifier import FileID
 from shared.domain.value.pattern import AbstractPattern, TextPattern, PatternList, SpacePattern, \
     EOLPattern
+from shared.view.style.font import get_font
+from shared.view.style.icon import get_icon
 from shared.view.widget_button_box import ButtonBox
 
 

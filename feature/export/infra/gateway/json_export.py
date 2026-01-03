@@ -5,13 +5,13 @@ from feature.export.domain.interface.gateway import (
     ISimpleScoreExportGateway,
     SimpleScoreExportGatewayError,
 )
-from feature.export.domain.model.data import SimpleScoreExportRow
+from feature.export.usecase.interface import SimpleScoreExportRowDto
 
 
 class JsonScoreExportGateway(ISimpleScoreExportGateway):
     """JSONエクスポートGatewayの実装"""
     
-    def save(self, path: Path, data: list[SimpleScoreExportRow]) -> None:
+    def save(self, path: Path, data: list[SimpleScoreExportRowDto]) -> None:
         """
         JSON形式でデータを保存
         

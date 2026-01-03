@@ -6,9 +6,9 @@ from feature.testcase.view.delegator_testcase_files_edit import \
     AbstractTestCaseFilesEditWidgetDelegator
 from feature.testcase.view.widget_file_tab import FileTabWidget
 from feature.testcase.view.widget_testcase_input_file_text_edit import TestCaseInputFileTextEdit
-from shared.view.style.icon import get_icon
-from shared.domain.value.input_file import InputFileCollection, InputFile
 from shared.domain.value.identifier import FileID
+from shared.domain.value.input_file import InputFileCollection, InputFile
+from shared.view.style.icon import get_icon
 
 
 class TestCaseInputFilesEditWidgetDelegator(AbstractTestCaseFilesEditWidgetDelegator):

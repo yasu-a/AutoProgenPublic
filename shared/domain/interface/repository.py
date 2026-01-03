@@ -8,7 +8,6 @@ from shared.domain.entity.student import StudentEntity
 from shared.domain.entity.student_mark import StudentMarkEntity
 from shared.domain.entity.student_stage_path_result import StudentStagePathResultEntity
 from shared.domain.entity.testcase_config import TestCaseConfigEntity
-from shared.domain.error import RepositoryItemNotFoundError
 from shared.domain.value.app_version import AppVersion
 from shared.domain.value.file_item import ExecutableFileItem, SourceFileItem
 from shared.domain.value.identifier import (

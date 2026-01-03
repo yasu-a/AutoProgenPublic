@@ -3,15 +3,16 @@ CompilerSearchHandlerの統合テスト
 テスト範囲: Handler層（CompilerSearchHandler）+ UseCase層（CompilerSearchUseCase）+ Gateway層（VSFindCompilerPathGateway）+ ファイルシステム
 依存関係: PyQt5（QThread、シグナル）、ファイルシステム
 """
-import pytest
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
+
+from feature.setting.domain.interface.gateway import IFindCompilerPathGateway
 from feature.setting.handler.compiler_search_handler import CompilerSearchHandler
 from feature.setting.handler.interface import ICompilerSearchView
-from feature.setting.usecase.compiler_search import CompilerSearchUseCase
 from feature.setting.infra.gateway.compiler_location import VSFindCompilerPathGateway
-from feature.setting.domain.interface.gateway import IFindCompilerPathGateway
+from feature.setting.usecase.compiler_search import CompilerSearchUseCase
 
 
 def create_fake_environment(tmp_path, has_correct_files: bool = True) -> list[Path]:

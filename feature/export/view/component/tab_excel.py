@@ -2,11 +2,11 @@ from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QSplitter, QListWidget, QTableWidget, QTableWidgetItem, QGridLayout,
-    QSpinBox, QFileDialog, QAbstractItemView, QHeaderView, QSizePolicy,
+    QSplitter, QListWidget, QTableWidget, QTableWidgetItem, QSpinBox, QFileDialog,
+    QAbstractItemView, QHeaderView, QSizePolicy,
 )
 
-from feature.export.domain.model.excel_layout import ExcelColumnMapping, ExcelRowRange
+from feature.export.domain.value import ExcelColumnMapping, ExcelRowRange
 from shared.view.style.font import get_font
 
 
@@ -18,12 +18,12 @@ class ExcelPreviewColors:
     STUDENT_NAME = QColor("#E8F5E9")  # 薄い緑
     SCORE_WRITE = QColor("#FFF3E0")  # 薄いオレンジ
     QUESTION_HEADER = QColor("#F3E5F5")  # 薄い紫
-    
+
     # ラベル用の色（テーブル背景色に対応）
     STUDENT_ID_LABEL = QColor("#2196F3")  # 青（学籍番号列ラベル用）
     STUDENT_NAME_LABEL = QColor("#4CAF50")  # 緑（氏名列ラベル用）
     SCORE_WRITE_LABEL = QColor("#FF9800")  # オレンジ（書き込み列ラベル用）
-    
+
     # メッセージ欄用の色
     MESSAGE_SUCCESS_BG = QColor("#E8F5E9")  # 成功メッセージ背景色（薄い緑）
     MESSAGE_SUCCESS_FG = QColor("#2E7D32")  # 成功メッセージ文字色（濃い緑）
@@ -99,10 +99,10 @@ class ExcelScoreExportTab(QWidget):
         layout_row1 = QHBoxLayout()
         layout_row1.setSpacing(5)  # ラベルとスピンボックスの間の隙間を最小化
         layout_settings.addLayout(layout_row1)
-        
+
         # 等間隔配置のため、先頭にStretchを追加
         layout_row1.addStretch()
-        
+
         # 学籍番号列
         self._lbl_student_id = QLabel(self)
         self._lbl_student_id.setTextFormat(Qt.RichText)
@@ -114,13 +114,14 @@ class ExcelScoreExportTab(QWidget):
         self._sb_student_id_col.setRange(0, 1000)  # 0=未設定、1-1000=1-based表示
         self._sb_student_id_col.setSpecialValueText("列 未設定")
         self._sb_student_id_col.setValue(0)  # 初期値は未設定
+        # noinspection PyUnresolvedReferences
         self._sb_student_id_col.valueChanged.connect(
             self.__on_mapping_value_changed)
         layout_row1.addWidget(self._sb_student_id_col)
-        
+
         # 等間隔配置のため、セット間にStretchを追加
         layout_row1.addStretch()
-        
+
         # 氏名列
         self._lbl_student_name = QLabel(self)
         self._lbl_student_name.setTextFormat(Qt.RichText)
@@ -132,13 +133,14 @@ class ExcelScoreExportTab(QWidget):
         self._sb_student_name_col.setRange(0, 1000)  # 0=未設定、1-1000=1-based表示
         self._sb_student_name_col.setSpecialValueText("列 未設定")
         self._sb_student_name_col.setValue(0)  # 初期値は未設定
+        # noinspection PyUnresolvedReferences
         self._sb_student_name_col.valueChanged.connect(
             self.__on_mapping_value_changed)
         layout_row1.addWidget(self._sb_student_name_col)
-        
+
         # 等間隔配置のため、セット間にStretchを追加
         layout_row1.addStretch()
-        
+
         # 書き込み列
         self._lbl_score = QLabel(self)
         self._lbl_score.setTextFormat(Qt.RichText)
@@ -150,26 +152,28 @@ class ExcelScoreExportTab(QWidget):
         self._sb_score_col.setRange(0, 1000)  # 0=未設定、1-1000=1-based表示
         self._sb_score_col.setSpecialValueText("列 未設定")
         self._sb_score_col.setValue(0)  # 初期値は未設定
+        # noinspection PyUnresolvedReferences
         self._sb_score_col.valueChanged.connect(
             self.__on_mapping_value_changed)
         layout_row1.addWidget(self._sb_score_col)
-        
+
         # 等間隔配置のため、末尾にStretchを追加
         layout_row1.addStretch()
-        
+
         # 2行目：行番号（開始 ～ 終了）
         layout_row2 = QHBoxLayout()
         layout_row2.setSpacing(5)  # ラベルとスピンボックスの間の隙間を最小化
         layout_settings.addLayout(layout_row2)
-        
+
         # 水平中央配置のため、先頭にStretchを追加
         layout_row2.addStretch()
-        
+
         layout_row2.addWidget(QLabel("行番号:", self))
         self._sb_start_row = QSpinBox(self)
         self._sb_start_row.setRange(0, 9999)  # 0=未設定、1-9999=1-based表示
         self._sb_start_row.setSpecialValueText("開始行 未設定")
         self._sb_start_row.setValue(0)  # 初期値は未設定
+        # noinspection PyUnresolvedReferences
         self._sb_start_row.valueChanged.connect(
             self.__on_mapping_value_changed)
         layout_row2.addWidget(self._sb_start_row)
@@ -178,9 +182,10 @@ class ExcelScoreExportTab(QWidget):
         self._sb_end_row.setRange(0, 9999)  # 0=未設定、1-9999=1-based表示
         self._sb_end_row.setSpecialValueText("終了行 未設定")
         self._sb_end_row.setValue(0)  # 初期値は未設定
+        # noinspection PyUnresolvedReferences
         self._sb_end_row.valueChanged.connect(self.__on_mapping_value_changed)
         layout_row2.addWidget(self._sb_end_row)
-        
+
         # 水平中央配置のため、末尾にStretchを追加
         layout_row2.addStretch()
 
@@ -209,11 +214,13 @@ class ExcelScoreExportTab(QWidget):
         )
         if file_path:
             self._le_excel_path.setText(file_path)
+            # noinspection PyUnresolvedReferences
             self.file_path_changed.emit(file_path)
 
     @pyqtSlot()
     def __list_sheets_selection_changed(self):
         """シート選択が変更されたとき"""
+        # noinspection PyUnresolvedReferences
         self.sheet_selection_changed.emit()
 
     @pyqtSlot()
@@ -244,9 +251,9 @@ class ExcelScoreExportTab(QWidget):
         return current_item.text()
 
     def set_sheet_preview_data(
-        self,
-        data: dict[tuple[int, int], str],
-        target_id_col: int | None = None,
+            self,
+            data: dict[tuple[int, int], str],
+            target_id_col: int | None = None,
     ) -> None:
         """シートプレビューデータを設定"""
         self._current_sheet_data = data
@@ -292,8 +299,11 @@ class ExcelScoreExportTab(QWidget):
         start_row_val = self._sb_start_row.value()
         end_row_val = self._sb_end_row.value()
 
-        if (student_id_val == 0 or student_name_val == 0 or score_write_val == 0 or
-            start_row_val == 0 or end_row_val == 0):
+        if (student_id_val == 0
+                or student_name_val == 0
+                or score_write_val == 0
+                or start_row_val == 0
+                or end_row_val == 0):
             # 未設定の場合は色をつけない（すべて白にリセット）
             for row in range(self._table_preview.rowCount()):
                 for col in range(self._table_preview.columnCount()):
@@ -379,7 +389,7 @@ class ExcelScoreExportTab(QWidget):
             fg_color = ExcelPreviewColors.MESSAGE_ERROR_FG.name()
             self._lbl_message.setStyleSheet(
                 f"padding: 4px; background-color: {bg_color}; color: {fg_color};")
-    
+
     def clear_message(self) -> None:
         """メッセージをクリア"""
         self._lbl_message.setText("")
@@ -395,7 +405,7 @@ class ExcelScoreExportTab(QWidget):
 
         # 未設定（0）の場合はエラー
         if (student_id_val == 0 or student_name_val == 0 or score_write_val == 0 or
-            start_row_val == 0 or end_row_val == 0):
+                start_row_val == 0 or end_row_val == 0):
             raise ValueError("マッピング設定が未設定です。")
 
         mapping = ExcelColumnMapping(
@@ -409,13 +419,13 @@ class ExcelScoreExportTab(QWidget):
             end_row_index=end_row_val - 1,  # 1-basedから0-basedに変換
         )
 
-        return (mapping, row_range)
+        return mapping, row_range
 
     def set_mapping_settings(
-        self,
-        mapping: ExcelColumnMapping | None = None,
-        row_range: ExcelRowRange | None = None,
-        target_id_col: int | None = None,
+            self,
+            mapping: ExcelColumnMapping | None = None,
+            row_range: ExcelRowRange | None = None,
+            target_id_col: int | None = None,
     ) -> None:
         """マッピング設定を設定（Noneの場合は未設定にする）"""
         if mapping is None or row_range is None:

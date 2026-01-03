@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-from feature.export.view.component.tab_simple import SimpleScoreExportTab
 from feature.export.view.component.tab_excel import ExcelScoreExportTab
+from feature.export.view.component.tab_simple import SimpleScoreExportTab
 
 
 # ===== Handler Interfaces (Viewから見たHandlerのインターフェース) =====
@@ -68,6 +68,7 @@ class IExcelScoreExportTabHandler(ABC):
 # ===== View Interfaces (Handlerから見たViewのインターフェース) =====
 
 # Not inheriting from ABC to avoid metaclass conflict with Qt classes
+# noinspection PyAbstractClass
 class ISimpleScoreExportTabView:
     """Handlerから見たSimpleScoreExportTabのインターフェース"""
 
@@ -88,6 +89,8 @@ class ISimpleScoreExportTabView:
         raise NotImplementedError()
 
 
+# Not inheriting from ABC to avoid metaclass conflict with Qt classes
+# noinspection PyAbstractClass
 class IExcelScoreExportTabView:
     """Handlerから見たExcelScoreExportTabのインターフェース"""
 

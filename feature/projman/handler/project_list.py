@@ -1,7 +1,7 @@
 import time
 from collections import deque
 from contextlib import contextmanager
-from typing import List
+from typing import Callable
 
 from PyQt5.QtCore import QThread, QMutex, pyqtSignal
 
@@ -16,7 +16,6 @@ from feature.projman.usecase.interface import (
     IProjectGetSizeQueryUseCase,
 )
 from shared.domain.value.identifier import ProjectID
-from shared.view.dialog_progress import AbstractProgressDialog, AbstractProgressDialogWorker
 from shared.handler.interface import INavigator
 
 
@@ -46,7 +45,7 @@ class _ProjectSizeGetWorker(QThread):
         with self.__lock():
             self._q.clear()
 
-    def set_queue(self, project_ids: List[ProjectID]) -> None:
+    def set_queue(self, project_ids: list[ProjectID]) -> None:
         with self.__lock():
             self._q.extend(project_ids)
 
@@ -60,39 +59,9 @@ class _ProjectSizeGetWorker(QThread):
                     continue
                 project_id = self._q.popleft()
             size = self._project_get_size_usecase.execute(project_id=project_id)
+            # noinspection PyUnresolvedReferences
             self.size_acquired.emit(project_id, size)
             time.sleep(0.05)
-
-
-class _ProjectDeleteWorker(AbstractProgressDialogWorker):
-    """プロジェクト削除用Worker"""
-
-    def __init__(self, parent=None, *, project_id: ProjectID,
-                 project_delete_usecase: IProjectDeleteUseCase):
-        super().__init__(parent)
-        self._project_delete_usecase = project_delete_usecase
-        self._project_id = project_id
-
-    def run(self):
-        self._callback("プロジェクトを削除しています・・・")
-        self._project_delete_usecase.execute(self._project_id)
-        time.sleep(0.5)  # プロジェクトのサイズが小さいとUIが一瞬で消えるので少し待つ
-
-
-class ProjectDeleteProgressDialog(AbstractProgressDialog):
-    """プロジェクト削除プログレスダイアログ"""
-
-    def __init__(self, parent=None, *, project_id: ProjectID,
-                 project_delete_usecase: IProjectDeleteUseCase):
-        super().__init__(
-            parent,
-            title="プロジェクトの削除",
-            worker_producer=lambda: _ProjectDeleteWorker(
-                self,  # type: ignore
-                project_id=project_id,
-                project_delete_usecase=project_delete_usecase,
-            ),
-        )
 
 
 class ProjectListHandler(IProjectListHandler):
@@ -129,6 +98,7 @@ class ProjectListHandler(IProjectListHandler):
             project_get_size_usecase=project_get_size_usecase,
         )
         # Workerのシグナル接続
+        # noinspection PyUnresolvedReferences
         self._size_worker.size_acquired.connect(self.__on_size_acquired)
 
     def __on_size_acquired(self, project_id: ProjectID, size: int) -> None:
@@ -165,11 +135,16 @@ class ProjectListHandler(IProjectListHandler):
             return
 
         # 削除実行
-        dialog = ProjectDeleteProgressDialog(
-            project_id=project_id,
-            project_delete_usecase=self._project_delete_usecase,
+        def task_func(progress_callback: Callable[[str], None]):
+            _ = progress_callback
+            self._project_delete_usecase.execute(project_id)
+
+        self._navigator.run_blocking_task(
+            parent=self._view.get_parent_widget(),
+            title="プロジェクト削除",
+            initial_message="プロジェクトを削除しています・・・",
+            task_func=task_func,
         )
-        dialog.exec_()
 
         # リストを再読み込み
         self._load_project_list()
@@ -199,13 +174,7 @@ class ProjectListHandler(IProjectListHandler):
         # Viewから取得する必要があるが、インターフェースに追加するか、別の方法を検討
         # 暫定的に、WorkerキューはView側で設定する前提
 
-    def stop_size_loading(self) -> None:
-        """サイズ取得Workerを停止"""
-        self._size_worker.stop()
-        self._size_worker.wait()
-        self._view.stop_size_loading()
-
-    def set_size_queue(self, project_ids: List[ProjectID]) -> None:
+    def set_size_queue(self, project_ids: list[ProjectID]) -> None:
         """サイズ取得キューを設定（Viewから呼ばれる）"""
         self._size_worker.clear_queue()
         self._size_worker.set_queue(project_ids)
@@ -213,8 +182,7 @@ class ProjectListHandler(IProjectListHandler):
             self._size_worker.start()
 
     def stop_size_loading(self) -> None:
-        """サイズ取得Workerを停止（ViewのhideEventから呼ばれる）"""
+        """サイズ取得Workerを停止"""
         self._size_worker.stop()
-        if self._size_worker.isRunning():
-            self._size_worker.wait()
+        self._size_worker.wait()
         self._view.stop_size_loading()

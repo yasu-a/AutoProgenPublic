@@ -4,19 +4,21 @@ from typing import TypeVar, Callable
 from PyQt5.QtCore import QEventLoop, QThread, pyqtSignal, QObject
 from PyQt5.QtWidgets import QMainWindow
 
-T = TypeVar('T')
-
 import app.di.handler as di_handler
 import app.di.state as di_state
 import app.di.system as di_system
+from app.di.usecase import get_project_list_recent_summary_usecase
+from feature.projman.handler.project_launcher import ProjectLauncherHandler
 from feature.projman.view.project_create_view import ProjectCreateView
+from feature.projman.view.project_launcher import ProjectLauncherDialog
 from feature.projman.view.project_list_view import ProjectListView
-# Import specific features only here to act as Composition Root
-from feature.projman.view.window_launcher import ProjectLauncherWindow
-from shared.view.style.icon import get_icon
 from shared.domain.value.identifier import ProjectID, TargetID
 from shared.handler.interface import INavigator
 from shared.view.dialog_wait import WaitDialog
+# Import specific features only here to act as Composition Root
+from shared.view.style.icon import get_icon
+
+T = TypeVar('T')
 
 
 class Navigator(INavigator):
@@ -69,24 +71,26 @@ class Navigator(INavigator):
 
     def _create_launcher_window(self) -> QMainWindow:
         """ランチャーウィンドウを作成"""
-        from app.di import app as di_app
-        
-        window = ProjectLauncherWindow()
+        # 古い window_launcher.py ではなく新しい dialog を使用
+        window = ProjectLauncherDialog()  # TODO: use container
 
         # --- (DIとHandlerの設定) ---
-        launcher_handler = di_handler.get_project_launcher_handler(
+        launcher_handler = ProjectLauncherHandler(  # TODO: use container
             view=window,
-            navigator=di_app.get_navigator(),
+            navigator=self,  # selfを渡す
+            project_list_usecase=get_project_list_recent_summary_usecase(),
         )
         window.set_handler(launcher_handler)
 
-        # Create Tab
+        # Create Tab (中身のView/Handlerは既存のものを再利用)
         create_view = ProjectCreateView()
         create_handler = di_handler.get_project_create_handler(
             view=create_view,
-            navigator=di_app.get_navigator(),
+            navigator=self,
         )
         create_view.set_handler(create_handler)
+
+        # 新しいインターフェースメソッド add_tab を使用
         window.add_tab(
             create_view,
             "新しいプロジェクト",
@@ -97,12 +101,14 @@ class Navigator(INavigator):
         list_view = ProjectListView()
         list_handler = di_handler.get_project_list_handler(
             view=list_view,
-            navigator=di_app.get_navigator(),
+            navigator=self,
         )
         list_view.set_handler(list_handler)
-        # 設定ボタンのシグナルを接続
-        # noinspection PyUnresolvedReferences
+
+        # 設定ボタンのシグナル接続
+        # list_view内の設定ボタンが押されたら、launcher_handlerの設定処理を呼ぶ
         list_view.settings_requested.connect(launcher_handler.on_setting_requested)
+
         window.add_tab(
             list_view,
             "最近のプロジェクト",
@@ -110,7 +116,6 @@ class Navigator(INavigator):
         )
         # ---------------------------------------
 
-        # ランチャーの「×」ボタンはアプリ終了を意味する
         window.closed.connect(self._on_launcher_closed)
         return window
 
@@ -182,16 +187,20 @@ class Navigator(INavigator):
 
             def run(self):
                 def callback(msg: str):
+                    # noinspection PyUnresolvedReferences
                     self.message_signal.emit(msg)
 
                 self._task_manager.terminate(callback)
+                # noinspection PyUnresolvedReferences
                 self.finished_signal.emit()
 
         worker = TerminateWorker(task_manager)
+        # noinspection PyUnresolvedReferences
         worker.message_signal.connect(dialog.set_message)
 
         # 3. EventLoopで待機
         loop = QEventLoop()
+        # noinspection PyUnresolvedReferences
         worker.finished_signal.connect(loop.quit)
         worker.start()
 
@@ -217,22 +226,22 @@ class Navigator(INavigator):
             parent,
             handler=handler,
         )
-        
+
         # Navigatorがset_viewを呼ぶ（循環参照を避けるため、View生成後に設定）
         handler.set_view(dialog)
-        
+
         dialog.exec_()
 
         # Handlerから結果を取得
         return handler.result_path
 
     def run_blocking_task(
-        self,
-        parent: QObject,
-        title: str,
-        initial_message: str,
-        task_func: Callable[..., T],
-        **task_kwargs
+            self,
+            parent: QObject,
+            title: str,
+            initial_message: str,
+            task_func: Callable[..., T],
+            **task_kwargs
     ) -> T:
         """
         ブロッキングタスクを実行する（WaitDialogで進捗表示）
@@ -256,6 +265,7 @@ class Navigator(INavigator):
         from shared.view.dialog_wait import WaitDialog
         from shared.view.task_runner import BlockingTaskWorker
 
+        # noinspection PyTypeChecker
         dialog = WaitDialog(parent, title=title, message=initial_message)
         dialog.show()
 
@@ -275,7 +285,6 @@ class Navigator(INavigator):
             raise error
 
         result = worker.get_result()
-        assert result is not None, "Task completed but result is None"
         return result
 
     def open_setting_dialog(self, parent: QObject) -> None:
@@ -293,10 +302,10 @@ class Navigator(INavigator):
             parent,
             handler=handler,
         )
-        
+
         # Navigatorがset_viewを呼ぶ（循環参照を避けるため、View生成後に設定）
         handler.set_view(dialog.settings_edit_widget)
-        
+
         dialog.exec_()
 
     def open_about_dialog(self, parent: QObject) -> None:
@@ -311,10 +320,10 @@ class Navigator(INavigator):
             parent,
             handler=handler,
         )
-        
+
         # Navigatorがset_viewを呼ぶ（循環参照を避けるため、View生成後に設定）
         handler.set_view(dialog)
-        
+
         dialog.exec_()
 
     def open_score_export_dialog(self, parent: QObject, target_id: TargetID) -> None:
@@ -355,10 +364,10 @@ class Navigator(INavigator):
 
         # Dialogを生成（Handlerは使用しない）
         dialog = ScoringDialog(parent)
-        
+
         # 最初の生徒の状態を設定
         dialog.set_state(dialog.states.create_state_of_first_student())
-        
+
         dialog.exec_()
 
     def open_scoring_dialog_with_student(self, parent: QObject, student_id) -> None:
@@ -367,10 +376,10 @@ class Navigator(INavigator):
 
         # Dialogを生成（Handlerは使用しない）
         dialog = ScoringDialog(parent)
-        
+
         # 指定された生徒の状態を設定
         dialog.set_state(dialog.states.create_state_by_student_id(student_id))
-        
+
         dialog.exec_()
 
     def open_testcase_list_edit_dialog(self, parent: QObject) -> None:

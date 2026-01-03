@@ -13,6 +13,7 @@ class ITestCaseConfigEditHandler(ABC):
 
 
 # QtのmetaclassとABCのmetaclassが競合するため、ABCを継承しない（@abstractmethodは残す）
+# noinspection PyAbstractClass
 class ITestCaseConfigEditView:
     """Viewのインターフェース - 子ウィジェットへのアクセサを提供"""
 

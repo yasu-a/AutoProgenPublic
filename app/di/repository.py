@@ -5,11 +5,12 @@ from app.di.state import get_current_project_id_state
 from app.di.system import get_project_database_io, get_global_core_io, get_project_core_io, \
     get_current_project_core_io
 from shared.infra.repository.current_project import CurrentProjectRepository
-from shared.infra.repository.setting import SettingRepository
 from shared.infra.repository.project import ProjectRepository
+from shared.infra.repository.setting import SettingRepository
 from shared.infra.repository.storage import StorageRepository
-from shared.infra.repository.student_dynamic import StudentExecutableRepository, StudentSourceRepository
 from shared.infra.repository.student import StudentRepository
+from shared.infra.repository.student_dynamic import StudentExecutableRepository, \
+    StudentSourceRepository
 from shared.infra.repository.student_mark import StudentMarkEntityRepository
 from shared.infra.repository.student_stage_path_result import StudentStagePathResultEntityRepository
 from shared.infra.repository.test_source import TestSourceRepository

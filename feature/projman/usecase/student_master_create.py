@@ -9,8 +9,8 @@ from feature.projman.usecase.interface import IStudentMasterCreateUseCase
 from shared.domain.entity.student import StudentEntity
 from shared.domain.error import ManabaReportArchiveIOError, StudentMasterServiceError
 from shared.domain.value.identifier import StudentID
-from shared.infra.system.report_archive import ManabaReportArchiveIO
 from shared.infra.repository.student import StudentRepository
+from shared.infra.system.report_archive import ManabaReportArchiveIO
 
 
 class _UnexpectedStudentMasterExcelError(RuntimeError):

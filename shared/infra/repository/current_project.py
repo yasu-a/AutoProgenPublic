@@ -37,9 +37,9 @@ class CurrentProjectRepository(ICurrentProjectRepository):
                 self.__cache = self._project_repo.get(self._current_project_id)
             return self.__cache
 
-    def put(self, ProjectEntity: ProjectEntity) -> None:
-        if ProjectEntity.project_id != self._current_project_id:
-            raise ProjectIOError("`ProjectEntity` must be the current ProjectEntity")
+    def put(self, project: ProjectEntity) -> None:
+        if project.project_id != self._current_project_id:
+            raise ProjectIOError("`project` must be the current project")
         with self._lock():
-            self._project_repo.put(ProjectEntity)
-            self.__cache = ProjectEntity
+            self._project_repo.put(project)
+            self.__cache = project

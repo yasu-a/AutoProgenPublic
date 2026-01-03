@@ -1,5 +1,4 @@
-from feature.about.usecase.dto import AboutInfo
-from feature.about.usecase.interface import IGetAboutInfoUseCase
+from feature.about.usecase.interface import IGetAboutInfoUseCase, AboutInfoDto
 from shared.domain.interface.repository import IAppNameProvider, IAppVersionProvider
 
 
@@ -15,13 +14,13 @@ class GetAboutInfoUseCase(IGetAboutInfoUseCase):
         self._name_provider = name_provider
         self._version_provider = version_provider
 
-    def execute(self) -> AboutInfo:
+    def execute(self) -> AboutInfoDto:
         """About情報を取得"""
         app_name = self._name_provider.provide()
         app_version = self._version_provider.provide()
         version_text = str(app_version)
 
-        return AboutInfo(
+        return AboutInfoDto(
             app_name=app_name,
             version_text=version_text,
             repo_url="https://github.com/yasu-a/AutoProgenPublic",

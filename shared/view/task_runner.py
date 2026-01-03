@@ -1,4 +1,5 @@
 from typing import TypeVar, Callable
+
 from PyQt5.QtCore import QThread, pyqtSignal, QObject
 
 T = TypeVar('T')
@@ -35,10 +36,12 @@ class BlockingTaskWorker(QThread):
         except Exception as e:
             self._error = e
         finally:
+            # noinspection PyUnresolvedReferences
             self.finished.emit()
 
     def _progress_callback(self, message: str):
         """進捗メッセージを受信してシグナルを発行"""
+        # noinspection PyUnresolvedReferences
         self.progress_updated.emit(message)
 
     def get_result(self) -> T | None:

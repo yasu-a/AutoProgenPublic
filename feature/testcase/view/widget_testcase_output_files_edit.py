@@ -6,10 +6,10 @@ from feature.testcase.view.delegator_testcase_files_edit import \
     AbstractTestCaseFilesEditWidgetDelegator
 from feature.testcase.view.widget_file_tab import FileTabWidget
 from feature.testcase.view.widget_testcase_output_file_edit import ExpectedOutputFileEditWidget
-from shared.view.style.icon import get_icon
 from shared.domain.value.expected_output_file import ExpectedOutputFile, \
     ExpectedOutputFileCollection
 from shared.domain.value.identifier import FileID
+from shared.view.style.icon import get_icon
 
 
 class TestCaseOutputFilesEditWidgetDelegator(AbstractTestCaseFilesEditWidgetDelegator):

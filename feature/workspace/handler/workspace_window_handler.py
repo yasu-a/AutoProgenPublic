@@ -1,9 +1,10 @@
+from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QMessageBox
 
-from app.di.repository import get_current_project_repository
 from app.di.system import get_task_manager
 from app.di.usecase import (
     get_current_project_summary_get_usecase,
+    get_resource_usage_get_usecase,
     get_student_list_id_usecase,
     get_student_submission_folder_show_usecase,
 )
@@ -31,12 +32,39 @@ class WorkspaceWindowHandler(IWorkspaceWindowHandler):
         self._view = view
         self._navigator = navigator
 
+        # リソース使用状況の更新タイマー
+        self._resource_usage_timer = QTimer()
+        self._resource_usage_timer.setInterval(1000)
+        # noinspection PyUnresolvedReferences
+        self._resource_usage_timer.timeout.connect(self._update_resource_usage)
+        self._resource_usage_timer.start()
+
     def on_view_initialized(self) -> None:
         """Viewが初期化されたときに呼ばれる"""
         # ウィンドウタイトルを設定
         project_summary = get_current_project_summary_get_usecase().execute()
         self._view.set_window_title(
             f"{project_summary.project_name} 設問{project_summary.target_number}"
+        )
+
+        # リソース使用状況の初回更新
+        self._update_resource_usage()
+
+    def on_view_closed(self) -> None:
+        """Viewが閉じられるときの処理"""
+        if self._resource_usage_timer.isActive():
+            self._resource_usage_timer.stop()
+            self._logger.debug("Resource usage timer stopped.")
+
+    def _update_resource_usage(self) -> None:
+        """リソース使用状況を更新"""
+        result = get_resource_usage_get_usecase().execute()
+        resource_usage_view = self._view.get_process_resource_usage_status_bar_view()
+        resource_usage_view.set_resource_usage(
+            cpu_percent=result.cpu_percent,
+            memory_mega_bytes=result.memory_mega_bytes,
+            disk_read_count=result.disk_read_count,
+            disk_write_count=result.disk_write_count,
         )
 
     def on_toolbar_action_triggered(self, action_name: str) -> None:

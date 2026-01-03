@@ -1,12 +1,11 @@
 from feature.export.domain.interface.service import (
     IExcelLayoutDetectionService,
-    ExcelLayoutDetectionError,
     HeaderRowNotFoundError,
     StudentNameColumnNotFoundError,
     ScoreColumnNotFoundError,
     DataRowNotFoundError,
 )
-from feature.export.domain.model.excel_layout import ExcelColumnMapping, ExcelRowRange
+from feature.export.domain.value import ExcelColumnMapping, ExcelRowRange
 from shared.domain.value.excel_cell_table import ExcelCellTable
 from shared.domain.value.identifier import TargetID, StudentID
 
@@ -15,10 +14,10 @@ class ExcelLayoutDetectionService(IExcelLayoutDetectionService):
     """Excelレイアウト検出サービスの実装"""
 
     def execute(
-        self,
-        *,
-        excel_cell_table: ExcelCellTable,
-        target_id: TargetID,
+            self,
+            *,
+            excel_cell_table: ExcelCellTable,
+            target_id: TargetID,
     ) -> tuple[ExcelColumnMapping, ExcelRowRange]:
         """
         単純なヒューリスティックで列を特定する。
@@ -58,7 +57,8 @@ class ExcelLayoutDetectionService(IExcelLayoutDetectionService):
 
         # 4. データ終了行を検出
         start_row = header_row_index + 1
-        end_row_index = self._detect_end_row_index(excel_cell_table, rows, start_row, student_id_col)
+        end_row_index = self._detect_end_row_index(excel_cell_table, rows, start_row,
+                                                   student_id_col)
         if end_row_index < start_row:
             raise DataRowNotFoundError()
 
@@ -74,10 +74,10 @@ class ExcelLayoutDetectionService(IExcelLayoutDetectionService):
             )
         )
 
+    @staticmethod
     def _detect_header_and_student_id_column(
-        self,
-        excel_cell_table: ExcelCellTable,
-        rows: list[int],
+            excel_cell_table: ExcelCellTable,
+            rows: list[int],
     ) -> tuple[int, int] | None:
         """
         ヘッダー行と学籍番号列を検出
@@ -91,13 +91,13 @@ class ExcelLayoutDetectionService(IExcelLayoutDetectionService):
                 val = excel_cell_table.get_cell(r, c).strip()
                 # 「学籍番号」が含まれているセルを検出
                 if "学籍番号" in val:
-                    return (r, c)
+                    return r, c
         return None
 
+    @staticmethod
     def _detect_student_name_column(
-        self,
-        excel_cell_table: ExcelCellTable,
-        header_row_index: int,
+            excel_cell_table: ExcelCellTable,
+            header_row_index: int,
     ) -> int:
         """
         氏名列を検出
@@ -113,11 +113,11 @@ class ExcelLayoutDetectionService(IExcelLayoutDetectionService):
                 return c
         return -1
 
+    @staticmethod
     def _detect_score_column(
-        self,
-        excel_cell_table: ExcelCellTable,
-        header_row_index: int,
-        target_id: TargetID,
+            excel_cell_table: ExcelCellTable,
+            header_row_index: int,
+            target_id: TargetID,
     ) -> int:
         """
         設問番号列を検出
@@ -130,16 +130,17 @@ class ExcelLayoutDetectionService(IExcelLayoutDetectionService):
         for c in cols:
             val = excel_cell_table.get_cell(header_row_index, c).strip()
             # "問1" や "問1(10点)" などにヒットさせる
-            if val == target_str or val.startswith(target_str + "(") or val.startswith(target_str + " "):
+            if val == target_str or val.startswith(target_str + "(") or val.startswith(
+                    target_str + " "):
                 return c
         return -1
 
+    @staticmethod
     def _detect_end_row_index(
-        self,
-        excel_cell_table: ExcelCellTable,
-        rows: list[int],
-        start_row: int,
-        student_id_col: int,
+            excel_cell_table: ExcelCellTable,
+            rows: list[int],
+            start_row: int,
+            student_id_col: int,
     ) -> int:
         """
         データ終了行を検出（学籍番号で埋まっている最後の行）
@@ -148,18 +149,18 @@ class ExcelLayoutDetectionService(IExcelLayoutDetectionService):
             終了行のインデックス（データがない場合はstart_row - 1）
         """
         end_row_index = start_row - 1  # デフォルトは開始行の前（データなし）
-        
+
         # 学籍番号列が存在する行を探す
         for r in rows:
             if r < start_row:
                 continue
-            
+
             # 学籍番号列のセル値を取得
             cell_val = excel_cell_table.get_cell(r, student_id_col).strip()
             if not cell_val:
                 # 空のセルが見つかったら、その前の行が終了行
                 break
-            
+
             # StudentIDに変換できるか試す
             try:
                 StudentID(cell_val)

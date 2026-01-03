@@ -1,6 +1,4 @@
 from feature.workspace.usecase.interface import IStudentRunBuildStageUseCase
-from shared.domain.value.student_stage_result import BuildSuccessStudentStageResult, \
-    BuildFailureStudentStageResult
 from shared.domain.interface.gateway import (
     IStudentSubmissionGetSourceContentGateway,
     IStudentSubmissionGetChecksumGateway,
@@ -10,6 +8,8 @@ from shared.domain.service.student_dynamic import StudentDynamicSetSourceContent
 from shared.domain.service.student_stage_path_result import StudentPutStagePathResultEntityService
 from shared.domain.value.identifier import StudentID
 from shared.domain.value.stage_path import StagePath
+from shared.domain.value.student_stage_result import BuildSuccessStudentStageResult, \
+    BuildFailureStudentStageResult
 from shared.infra.gateway.student_submission import StudentSubmissionGetSourceFileGatewayError
 
 

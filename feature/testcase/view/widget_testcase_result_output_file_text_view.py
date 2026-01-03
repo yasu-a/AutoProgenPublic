@@ -2,8 +2,8 @@ from PyQt5.QtCore import QObject
 from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor
 
 from app.di.usecase import get_setting_get_usecase
-from shared.view.style.font import get_font
 from shared.domain.value.output_file_test_result import MatchedToken
+from shared.view.style.font import get_font
 from shared.view.widget_plain_text_edit import PlainTextEdit
 
 

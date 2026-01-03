@@ -1,7 +1,8 @@
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from feature.workspace.handler.interface import IWorkspaceWindowView, IWorkspaceWindowHandler
+from feature.workspace.handler.interface import IWorkspaceWindowView, IWorkspaceWindowHandler, \
+    IProcessResourceUsageStatusBarView
 from feature.workspace.view.widget_status_process_resource_usage import \
     ProcessResourceUsageStatusBarWidget
 from feature.workspace.view.widget_status_task_state import TaskStateStatusBarWidget
@@ -26,12 +27,13 @@ class WorkspaceWindow(QMainWindow, IWorkspaceWindowView):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self._handler: IWorkspaceWindowHandler | None = None
+        self._handler: IWorkspaceWindowHandler
 
         self._init_ui()
 
     def set_handler(self, handler: IWorkspaceWindowHandler) -> None:
         """Handlerを注入（DI）"""
+        # noinspection PyAttributeOutsideInit
         self._handler = handler
         # Handlerに初期化を通知
         self._handler.on_view_initialized()
@@ -95,6 +97,8 @@ class WorkspaceWindow(QMainWindow, IWorkspaceWindowView):
 
     def closeEvent(self, evt, **kwargs):
         """ウィンドウが閉じられたとき"""
+        self._handler.on_view_closed()
+
         # 閉じる処理の前にシグナルを送る
         self.closed.emit()
 
@@ -111,3 +115,7 @@ class WorkspaceWindow(QMainWindow, IWorkspaceWindowView):
     def get_parent_widget(self):
         """親ウィジェットを取得（ダイアログの親として使用）"""
         return self
+
+    def get_process_resource_usage_status_bar_view(self) -> IProcessResourceUsageStatusBarView:
+        """リソース使用状況ステータスバーのViewを取得"""
+        return self._sb_process_resource_usage

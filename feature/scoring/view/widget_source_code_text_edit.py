@@ -5,8 +5,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
-from shared.view.style.font import get_font
 from shared.view.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
+from shared.view.style.font import get_font
 from shared.view.widget_plain_text_edit import PlainTextEdit
 
 
@@ -44,6 +44,7 @@ class _CHighlighter(QSyntaxHighlighter):
         super().__init__(parent)
 
         keyword_format = QTextCharFormat()
+        # noinspection PyTypeChecker
         keyword_format.setForeground(Qt.darkBlue)
         keyword_format.setFontWeight(QFont.Bold)
 
@@ -53,21 +54,26 @@ class _CHighlighter(QSyntaxHighlighter):
         ]
 
         preprocessor_format = QTextCharFormat()
+        # noinspection PyTypeChecker
         preprocessor_format.setForeground(Qt.darkMagenta)
         self.highlighting_rules.append((QRegExp("#.*"), preprocessor_format))
 
         single_line_comment_format = QTextCharFormat()
+        # noinspection PyTypeChecker
         single_line_comment_format.setForeground(Qt.red)
         self.highlighting_rules.append((QRegExp("//[^\n]*"), single_line_comment_format))
 
         self.multi_line_comment_format = QTextCharFormat()
+        # noinspection PyTypeChecker
         self.multi_line_comment_format.setForeground(Qt.red)
 
         quotation_format = QTextCharFormat()
+        # noinspection PyTypeChecker
         quotation_format.setForeground(Qt.darkGreen)
         self.highlighting_rules.append((QRegExp("\".*\""), quotation_format))
 
         function_format = QTextCharFormat()
+        # noinspection PyTypeChecker
         function_format.setForeground(Qt.blue)
         self.highlighting_rules.append((QRegExp("\\b[A-Za-z0-9_]+(?=\\()"), function_format))
 

@@ -1,9 +1,15 @@
 from dataclasses import dataclass
+from enum import Enum
+
+
+class ScoreExportFormat(Enum):
+    CSV = "csv"
+    JSON = "json"
 
 
 @dataclass(frozen=True)
 class ExcelColumnMapping:
-    """Excelの列インデックス（0-based）を保持する設定値"""
+    """Excelの列インデックス（0-based）を保持する設定値DTO"""
     student_id_column_index: int
     student_name_column_index: int  # 氏名列
     score_write_column_index: int  # 書き込み対象の列
@@ -11,6 +17,6 @@ class ExcelColumnMapping:
 
 @dataclass(frozen=True)
 class ExcelRowRange:
-    """処理対象の行範囲（0-based）"""
+    """処理対象の行範囲（0-based）DTO"""
     start_row_index: int
     end_row_index: int  # 学籍番号で埋まっている最後の行（0-based）

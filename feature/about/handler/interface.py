@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
-from abc import abstractmethod as view_abstractmethod
 
-from feature.about.usecase.dto import AboutInfo
+from feature.about.usecase.interface import AboutInfoDto
 
 
 class IAboutDialogHandler(ABC):
@@ -19,10 +18,11 @@ class IAboutDialogHandler(ABC):
 
 
 # QtのmetaclassとABCのmetaclassが競合するため、ABCを継承しない
+# noinspection PyAbstractClass
 class IAboutDialogView:
     """Handlerから見たViewのインターフェース"""
 
-    @view_abstractmethod
-    def set_about_info(self, about_info: AboutInfo) -> None:
+    @abstractmethod
+    def set_about_info(self, about_info: AboutInfoDto) -> None:
         """About情報を設定"""
         raise NotImplementedError()

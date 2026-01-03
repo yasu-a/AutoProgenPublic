@@ -38,15 +38,15 @@ class StorageRunCompilerService:
             )
 
         # コンパイル対象の検証
-        StorageEntity = self._storage_repo.get(storage_id)
-        if source_file_relative_path not in StorageEntity.files:
+        storage = self._storage_repo.get(storage_id)
+        if source_file_relative_path not in storage.files:
             raise StorageRunCompilerServiceError(
                 reason="コンパイル対象が存在しません",
                 output=None,
             )
 
         # コンパイルのための引数の生成
-        source_file_fullpath = StorageEntity.base_folder_fullpath / source_file_relative_path
+        source_file_fullpath = storage.base_folder_fullpath / source_file_relative_path
         kwargs = dict(
             # コンパイラのパス
             compiler_tool_fullpath=compiler_tool_fullpath,

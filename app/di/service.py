@@ -1,14 +1,15 @@
 from app.di.gateway import get_student_submission_get_checksum_gateway
 from app.di.repository import *
 from app.di.system import *
-from shared.domain.service.stage_path import StagePathListSubService, StagePathGetByTestCaseIDService
+from shared.domain.service.match import MatchGetBestService
+from shared.domain.service.stage_path import StagePathListSubService, \
+    StagePathGetByTestCaseIDService
 from shared.domain.service.storage import StorageLoadTestSourceService, \
     StorageCreateService, StorageDeleteService, StorageLoadStudentSourceService, \
     StorageLoadStudentExecutableService, StorageStoreStudentExecutableService, \
     StorageLoadExecuteConfigInputFilesService, StorageWriteStdoutFileService, \
     StorageCreateOutputFileCollectionFromDiffService, StorageTakeSnapshotService
 from shared.domain.service.storage_run_compiler import StorageRunCompilerService
-from shared.domain.service.match import MatchGetBestService
 from shared.domain.service.storage_run_executable import StorageRunExecutableService
 from shared.domain.service.student_dynamic import StudentDynamicClearService, \
     StudentDynamicSetSourceContentService
@@ -147,7 +148,7 @@ def get_student_get_stage_path_result_entity_service():
 
 # TestCaseConfigCopyService
 def get_testcase_config_copy_service():
-    from shared.domain import TestCaseConfigCopyService
+    from shared.domain.service.testcase_config_copy import TestCaseConfigCopyService
     return TestCaseConfigCopyService(
         testcase_config_repo=get_testcase_config_repository(),
     )

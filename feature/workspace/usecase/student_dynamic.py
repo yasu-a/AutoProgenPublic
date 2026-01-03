@@ -1,5 +1,4 @@
-from feature.workspace.usecase.dto import StudentStageResultDiffSnapshot
-from feature.workspace.usecase.interface import IStudentDynamicTakeDiffSnapshotUseCase
+from feature.workspace.usecase.interface import IStudentDynamicTakeDiffSnapshotUseCase, StudentStageResultDiffSnapshotDto
 from shared.domain.service.student_stage_path_result import \
     StudentStagePathResultEntityCheckTimestampQueryService
 from shared.domain.value.identifier import StudentID
@@ -18,7 +17,7 @@ class StudentDynamicTakeDiffSnapshotUseCase(IStudentDynamicTakeDiffSnapshotUseCa
         self._student_mark_repo \
             = student_mark_repo
 
-    def execute(self, student_id: StudentID) -> StudentStageResultDiffSnapshot:
+    def execute(self, student_id: StudentID) -> StudentStageResultDiffSnapshotDto:
         timestamp_stage_result \
             = self._student_stage_result_check_timestamp_query_service.execute(student_id)
 
@@ -36,7 +35,7 @@ class StudentDynamicTakeDiffSnapshotUseCase(IStudentDynamicTakeDiffSnapshotUseCa
         else:
             latest_timestamp = None
 
-        return StudentStageResultDiffSnapshot(
+        return StudentStageResultDiffSnapshotDto(
             student_id=student_id,
             timestamp=latest_timestamp,
         )

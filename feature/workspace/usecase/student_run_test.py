@@ -1,8 +1,4 @@
 from feature.workspace.usecase.interface import IStudentRunTestStageUseCase
-from shared.domain.value.student_stage_result import TestFailureStudentStageResult, \
-    TestSuccessStudentStageResult, TestResultOutputFileCollection, ExecuteSuccessStudentStageResult
-from shared.domain.value.test_result_output_file_entry import TestResultTestedOutputFileEntry, \
-    TestResultAbsentOutputFileEntry, TestResultUnexpectedOutputFileEntry
 from shared.domain.error import TestServiceError, MatchServiceError
 from shared.domain.service.match import MatchGetBestService
 from shared.domain.service.student_stage_path_result import StudentPutStagePathResultEntityService, \
@@ -12,6 +8,10 @@ from shared.domain.value.identifier import StudentID
 from shared.domain.value.output_file import OutputFile
 from shared.domain.value.stage import ExecuteStage
 from shared.domain.value.stage_path import StagePath
+from shared.domain.value.student_stage_result import TestFailureStudentStageResult, \
+    TestSuccessStudentStageResult, TestResultOutputFileCollection, ExecuteSuccessStudentStageResult
+from shared.domain.value.test_result_output_file_entry import TestResultTestedOutputFileEntry, \
+    TestResultAbsentOutputFileEntry, TestResultUnexpectedOutputFileEntry
 from shared.infra.repository.testcase_config import TestCaseConfigRepository
 
 
@@ -35,8 +35,7 @@ class StudentRunTestStageUseCase(IStudentRunTestStageUseCase):  # TODO: ロジ�
             execute_result = self._student_get_stage_result_service.execute(
                 student_id=student_id,
                 stage_path=stage_path,
-                stage=stage_path.get_stage_by_stage_type(ExecuteStage),
-            )
+            ).get_result_by_stage_type(ExecuteStage)
             if execute_result is None:
                 raise TestServiceError(
                     reason="実行結果が見つかりません",

@@ -4,17 +4,12 @@ from app.di.path_config import *
 from app.di.state import get_current_project_id_state
 from shared.infra.system.compile_tool import CompileToolIO
 from shared.infra.system.current_project_core_io import CurrentProjectCoreIO
+from shared.infra.system.executable import ExecutableIO
 from shared.infra.system.global_core_io import GlobalCoreIO
-from shared.infra.system.report_archive import ManabaReportArchiveIO
 from shared.infra.system.project_core_io import ProjectCoreIO
 from shared.infra.system.project_database import ProjectDatabaseIO
-from shared.infra.system.project_base_folder_show_in_explorer import ProjectFolderShowInExplorerIO
-from shared.infra.system.resource_usage import ResourceUsageIO
+from shared.infra.system.report_archive import ManabaReportArchiveIO
 from shared.infra.system.task_manager import TaskManager
-from shared.infra.cache.lru import LRUCache
-from shared.infra.system.executable import ExecutableIO
-from feature.export.infra.system.score_excel import ScoreExcelIO
-from shared.infra.system.student_folder_show_in_explorer import StudentFolderShowInExplorerIO
 
 
 def get_global_core_io():
@@ -48,32 +43,10 @@ def get_executable_io():
     return ExecutableIO()
 
 
-def get_score_excel_io(excel_fullpath: Path):
-    return ScoreExcelIO(
-        excel_fullpath=excel_fullpath,
-    )
-
-
-def get_student_folder_show_in_explorer_io():
-    return StudentFolderShowInExplorerIO(
-        student_submission_path_provider=get_student_submission_path_provider(),
-    )
-
-
-def get_project_folder_show_in_explorer_io():
-    return ProjectFolderShowInExplorerIO(
-        project_list_path_provider=get_project_list_path_provider(),
-    )
-
-
 def get_project_database_io():
     return ProjectDatabaseIO(
         database_path_provider=get_database_path_provider(),
     )
-
-
-def get_resource_usage_io():
-    return ResourceUsageIO()
 
 
 @cache  # プロジェクト内共通インスタンス
@@ -82,7 +55,3 @@ def get_task_manager() -> TaskManager:
     return TaskManager(
         max_workers=get_setting_repository().get().max_workers,
     )
-
-
-def get_lru_cache():
-    return LRUCache(max_size=1 << 12, reduced_size=1 << 11)

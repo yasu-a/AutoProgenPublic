@@ -6,7 +6,7 @@ from typing import Any
 
 from app.di.path_config import get_static_resource_base_path, get_icon_fullpath, \
     get_global_base_path, get_image_fullpath
-from app.di.service import get_app_version_get_service
+from app.di.provider import get_app_version_provider
 from shared.domain.value.app_version import ReleaseType, AppVersion
 
 
@@ -35,7 +35,7 @@ class ResourceImageVariableFactory(VariableFactory):
 
 
 def _get_app_version() -> AppVersion:
-    return get_app_version_get_service().execute()
+    return get_app_version_provider().provide()
 
 
 class AppInfoVariableFactory(VariableFactory):

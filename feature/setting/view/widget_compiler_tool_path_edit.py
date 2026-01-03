@@ -86,4 +86,5 @@ class CompilerToolPathEditWidget(QWidget):
     def __b_test_clicked(self):
         path = self.get_value()
         if path:
+            # noinspection PyUnresolvedReferences
             self.compile_test_requested.emit(path)

@@ -3,8 +3,9 @@ SettingRepositoryのテスト
 テスト範囲: Domain層（Setting Value Object）+ Repository層（SettingRepository）
 依存関係: GlobalCoreIO、ファイルシステム
 """
-import pytest
 from pathlib import Path
+
+import pytest
 
 from shared.domain.value.setting import Setting
 from shared.infra.repository.setting import SettingRepository

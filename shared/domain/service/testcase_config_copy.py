@@ -1,5 +1,6 @@
 import copy
 
+from shared.domain.entity.testcase_config import TestCaseConfigEntity
 from shared.domain.error import ServiceError
 from shared.domain.value.identifier import TestCaseID
 from shared.infra.repository.testcase_config import TestCaseConfigRepository
@@ -16,7 +17,10 @@ class TestCaseConfigCopyService:
     def execute(self, testcase_id: TestCaseID, new_testcase_id: TestCaseID) -> None:
         if self._testcase_config_repo.exists(new_testcase_id):
             raise ServiceError(f"testcase_id {new_testcase_id} already exists")
-        testcase_config = copy.deepcopy(
-            self._testcase_config_repo.get(testcase_id))
-        testcase_config.testcase_id = new_testcase_id
-        self._testcase_config_repo.put(testcase_config)
+        entity: TestCaseConfigEntity = self._testcase_config_repo.get(testcase_id)
+        entity_copy = TestCaseConfigEntity(
+            testcase_id=new_testcase_id,
+            execute_config=copy.deepcopy(entity.execute_config),
+            test_config=copy.deepcopy(entity.test_config),
+        )
+        self._testcase_config_repo.put(entity_copy)

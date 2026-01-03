@@ -3,7 +3,7 @@ from PyQt5.QtGui import QShowEvent
 from PyQt5.QtWidgets import QDialog, QHBoxLayout, QLabel, QVBoxLayout, qApp
 
 from feature.about.handler.interface import IAboutDialogHandler, IAboutDialogView
-from feature.about.usecase.dto import AboutInfo
+from feature.about.usecase.interface import AboutInfoDto
 from shared.view.style.font import get_font
 
 
@@ -76,7 +76,7 @@ class AboutDialog(QDialog, IAboutDialogView):
         self._handler.on_view_initialized()
 
     # ===== IAboutDialogView実装 =====
-    def set_about_info(self, about_info: AboutInfo) -> None:
+    def set_about_info(self, about_info: AboutInfoDto) -> None:
         """About情報を設定"""
         self._l_title.setText(f"{about_info.app_name} {about_info.version_text}")
         self._l_url.setText(

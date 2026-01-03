@@ -1,8 +1,9 @@
 from PyQt5.QtCore import QObject
 from PyQt5.QtWidgets import QVBoxLayout, QLabel, QWidget
 
+from feature.testcase.view.widget_testcase_result_output_file_text_view import \
+    TestCaseResultOutputFileTextView
 from shared.domain.value.test_result_output_file_entry import AbstractTestResultOutputFileEntry
-from shared.view.widget_testcase_result_output_file_text_view import TestCaseResultOutputFileTextView
 
 
 class TestCaseResultOutputFileViewWidget(QWidget):
@@ -102,7 +103,7 @@ class TestCaseResultOutputFileViewWidget(QWidget):
         if of.has_actual and of.has_expected and pure_text_shown:
             self._te.set_data(
                 source_code_text=content_text,
-                matched_tokens=of.test_result.matched_tokens,
+                matched_tokens=list(of.test_result.matched_tokens),
             )
         else:
             self._te.set_data(

@@ -2,13 +2,13 @@
 Excel点数更新計画サービスの実装
 """
 from feature.export.domain.interface.service import (
+    StudentScoreDataDto,
     IExcelScoreUpdatePlanningService,
     ExcelScoreUpdatePlanningError,
     StudentNameMismatchError,
     InvalidStudentIdError,
 )
-from feature.export.domain.model.excel_layout import ExcelColumnMapping, ExcelRowRange
-from feature.export.domain.model.data import StudentScoreData
+from feature.export.domain.value import ExcelColumnMapping, ExcelRowRange
 from shared.domain.value.excel_cell_table import ExcelCellTable
 from shared.domain.value.identifier import StudentID
 
@@ -17,12 +17,12 @@ class ExcelScoreUpdatePlanningService(IExcelScoreUpdatePlanningService):
     """Excel点数更新計画サービスの実装"""
 
     def execute(
-        self,
-        *,
-        excel_cell_table: ExcelCellTable,
-        student_score_map: dict[StudentID, StudentScoreData],
-        column_mapping: ExcelColumnMapping,
-        row_range: ExcelRowRange,
+            self,
+            *,
+            excel_cell_table: ExcelCellTable,
+            student_score_map: dict[StudentID, StudentScoreDataDto],
+            column_mapping: ExcelColumnMapping,
+            row_range: ExcelRowRange,
     ) -> dict[tuple[int, int], int | None]:
         """
         Excelの現状データと正解データを突き合わせ、更新内容を計算する
@@ -81,4 +81,3 @@ class ExcelScoreUpdatePlanningService(IExcelScoreUpdatePlanningService):
                 raise ExcelScoreUpdatePlanningError(error_message) from errors[0]
 
         return update_values
-

@@ -1,4 +1,5 @@
 import json
+
 from PyQt5.QtCore import QObject, pyqtSlot
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
@@ -6,8 +7,8 @@ from PyQt5.QtWidgets import (
     QFileDialog, QAbstractItemView,
 )
 
-from feature.export.domain.model.data import SimpleScoreExportRow
-from feature.export.domain.model.format import ScoreExportFormat
+from feature.export.domain.value import ScoreExportFormat
+from feature.export.usecase.interface import SimpleScoreExportRowDto
 
 
 class SimpleScoreExportTab(QWidget):
@@ -93,7 +94,7 @@ class SimpleScoreExportTab(QWidget):
         if hasattr(self, '_current_preview_data'):
             self._update_preview(self._current_preview_data)
 
-    def _update_preview(self, data: list[SimpleScoreExportRow]):
+    def _update_preview(self, data: list[SimpleScoreExportRowDto]):
         """プレビューを更新"""
         format_enum = self.get_selected_format()
 
@@ -140,7 +141,7 @@ class SimpleScoreExportTab(QWidget):
         """選択された形式を取得"""
         return self._cb_format.currentData()
 
-    def set_preview_data(self, data: list[SimpleScoreExportRow]) -> None:
+    def set_preview_data(self, data: list[SimpleScoreExportRowDto]) -> None:
         """プレビューデータを設定"""
         self._current_preview_data = data
         self._update_preview(data)

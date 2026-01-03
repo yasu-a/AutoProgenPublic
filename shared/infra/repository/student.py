@@ -44,7 +44,7 @@ class InMemoryStudentRepository(IStudentRepository):
         return list(self._students.values())
 
 
-class StudentRepository:
+class StudentRepository(IStudentRepository):
     # 生徒マスタから生徒のメタデータ（Studentインスタンス）を読み書きするレポジトリ
 
     def __init__(

@@ -1,10 +1,7 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any
 
-from feature.export.domain.model.data import SimpleScoreExportRow
-from feature.export.domain.model.excel_layout import ExcelColumnMapping, ExcelRowRange
-from shared.domain.value.identifier import StudentID
+from feature.export.usecase.interface import SimpleScoreExportRowDto
 
 
 class SimpleScoreExportGatewayError(Exception):
@@ -16,7 +13,7 @@ class ISimpleScoreExportGateway(ABC):
     """単純エクスポート（CSV/JSON）用のGatewayインターフェース"""
 
     @abstractmethod
-    def save(self, path: Path, data: list[SimpleScoreExportRow]) -> None:
+    def save(self, path: Path, data: list[SimpleScoreExportRowDto]) -> None:
         """データを保存"""
         raise NotImplementedError()
 

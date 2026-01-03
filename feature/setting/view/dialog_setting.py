@@ -1,9 +1,9 @@
-from PyQt5.QtCore import QObject, Qt
+from PyQt5.QtCore import QObject
 from PyQt5.QtGui import QCloseEvent, QShowEvent
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QPushButton
 
 from feature.setting.handler.interface import ISettingEditHandler
-from feature.setting.view.widget_settings_edit import SettingEditWidget
+from feature.setting.view.widget_setting_edit import SettingEditWidget
 
 
 class SettingEditDialog(QDialog):

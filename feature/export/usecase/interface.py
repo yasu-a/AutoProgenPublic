@@ -3,49 +3,47 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from feature.export.domain.model.data import SimpleScoreExportRow
-from feature.export.domain.model.excel_layout import ExcelColumnMapping, ExcelRowRange
-from feature.export.domain.model.format import ScoreExportFormat
-from shared.domain.value.identifier import TargetID
+from feature.export.domain.value import ScoreExportFormat, ExcelColumnMapping, ExcelRowRange
+from shared.domain.value.identifier import TargetID, StudentID
 
 if TYPE_CHECKING:
     from shared.domain.value.excel_cell_table import ExcelCellTable
 
 
 @dataclass(frozen=True)
-class ExportSettingDto:
-    """エクスポート設定DTO"""
-    backup_before_export: bool
+class SimpleScoreExportRowDto:
+    """単純エクスポート（JSON/CSV）用の1行分のデータ構造DTO"""
+    student_id: StudentID
+    student_name: str
+    score: int | None  # 未採点はNone
 
-
-# UseCaseインターフェース
 
 class IGetSimpleScoreExportDataUseCase(ABC):
     """単純エクスポートデータ取得UseCase"""
-    
+
     @abstractmethod
-    def execute(self) -> list[SimpleScoreExportRow]:
+    def execute(self) -> list[SimpleScoreExportRowDto]:
         raise NotImplementedError()
 
 
 class IExecuteSimpleScoreExportUseCase(ABC):
     """単純エクスポート実行UseCase"""
-    
+
     @abstractmethod
     def execute(
-        self,
-        *,
-        folder: Path,
-        filename_no_ext: str,
-        format: ScoreExportFormat,
-        data: list[SimpleScoreExportRow],
+            self,
+            *,
+            folder: Path,
+            filename_no_ext: str,
+            export_format: ScoreExportFormat,
+            data: list[SimpleScoreExportRowDto],
     ) -> Path:
         raise NotImplementedError()
 
 
 class IListExcelWorksheetUseCase(ABC):
     """Excelワークシート一覧取得UseCase"""
-    
+
     @abstractmethod
     def execute(self, *, excel_path: Path) -> list[str]:
         raise NotImplementedError()
@@ -53,13 +51,13 @@ class IListExcelWorksheetUseCase(ABC):
 
 class IGetExcelSheetPreviewUseCase(ABC):
     """Excelシートプレビュー取得UseCase"""
-    
+
     @abstractmethod
     def execute(
-        self,
-        *,
-        excel_path: Path,
-        sheet_name: str,
+            self,
+            *,
+            excel_path: Path,
+            sheet_name: str,
     ) -> dict[tuple[int, int], str]:
         """
         Args:
@@ -71,13 +69,13 @@ class IGetExcelSheetPreviewUseCase(ABC):
 
 class IAutoDetectExcelLayoutUseCase(ABC):
     """Excelレイアウト自動検出UseCase"""
-    
+
     @abstractmethod
     def execute(
-        self,
-        *,
-        excel_cell_table: "ExcelCellTable",
-        target_id: TargetID,
+            self,
+            *,
+            excel_cell_table: "ExcelCellTable",
+            target_id: TargetID,
     ) -> tuple[ExcelColumnMapping, ExcelRowRange]:
         """
         Raises:
@@ -93,28 +91,34 @@ class ExecuteExcelScoreUpdateError(Exception):
 
 class IExecuteExcelScoreUpdateUseCase(ABC):
     """Excel点数更新実行UseCase"""
-    
+
     @abstractmethod
     def execute(
-        self,
-        *,
-        excel_path: Path,
-        sheet_name: str,
-        mapping: ExcelColumnMapping,
-        row_range: ExcelRowRange,
+            self,
+            *,
+            excel_path: Path,
+            sheet_name: str,
+            mapping: ExcelColumnMapping,
+            row_range: ExcelRowRange,
     ) -> Path | None:
         """
         戻り値はバックアップパス
-        
+
         Raises:
             ExecuteExcelScoreUpdateError: エクスポート処理でエラーが発生した場合
         """
         raise NotImplementedError()
 
 
+@dataclass(frozen=True)
+class ExportSettingDto:
+    """エクスポート設定DTO"""
+    backup_before_export: bool
+
+
 class IExportSettingGetUseCase(ABC):
     """エクスポート設定取得UseCase"""
-    
+
     @abstractmethod
     def execute(self) -> ExportSettingDto:
         raise NotImplementedError()

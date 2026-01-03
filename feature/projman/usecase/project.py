@@ -1,7 +1,8 @@
 from datetime import datetime
 
-from feature.projman.usecase.dto import NormalProjectSummary, ErrorProjectSummary
-from feature.projman.usecase.dto import ProjectConfigState
+from feature.projman.domain.interface.gateway import IProjectListGateway, \
+    IProjectConfigStateGateway, \
+    IProjectFileSystemGateway, ProjectConfigState
 from feature.projman.usecase.interface import (
     IProjectCheckExistByNameUseCase,
     IProjectCreateUseCase,
@@ -10,13 +11,10 @@ from feature.projman.usecase.interface import (
     IProjectUpdateLastOpenedUseCase,
     IProjectListRecentSummaryUseCase,
     IProjectBaseFolderShowUseCase,
-    IProjectFolderShowUseCase,
-    IProjectListGateway,
-    IProjectConfigStateGateway,
-    IProjectFileSystemGateway,
+    IProjectFolderShowUseCase, ErrorProjectSummary, NormalProjectSummary, AbstractProjectSummary,
 )
-from shared.domain.interface.repository import IAppVersionProvider
 from shared.domain.entity.project import ProjectEntity
+from shared.domain.interface.repository import IAppVersionProvider
 from shared.domain.value.identifier import ProjectID, TargetID
 from shared.infra.repository.project import ProjectRepository
 
@@ -125,9 +123,9 @@ class ProjectListRecentSummaryUseCase(IProjectListRecentSummaryUseCase):
         self._project_config_state_gateway = project_config_state_gateway
         self._project_repo = project_repo
 
-    def execute(self) -> list[NormalProjectSummary]:
+    def execute(self) -> list[AbstractProjectSummary]:
         project_ids = self._project_list_gateway.execute()
-        project_summaries = []
+        project_summaries: list[AbstractProjectSummary] = []
         for project_id in project_ids:
             project_config_state = self._project_config_state_gateway.execute(project_id)
             if project_config_state == ProjectConfigState.NORMAL:

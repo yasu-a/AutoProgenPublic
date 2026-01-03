@@ -5,9 +5,9 @@ from feature.workspace.usecase.student_run_build import StudentRunBuildStageUseC
 from feature.workspace.usecase.student_run_compile import StudentRunCompileStageUseCase
 from feature.workspace.usecase.student_run_execute import StudentRunExecuteStageUseCase
 from feature.workspace.usecase.student_run_test import StudentRunTestStageUseCase
-from shared.domain.service.stage_path import StagePathListSubService
-from shared.domain.error import StopTask
 from shared.domain.entity.student_stage_path_result import StudentStagePathResultEntity
+from shared.domain.error import StopTask
+from shared.domain.service.stage_path import StagePathListSubService
 from shared.domain.service.student_stage_path_result import StudentGetStagePathResultEntityService, \
     StudentStagePathResultEntityCheckRollbackService, StudentStagePathResultEntityRollbackService
 from shared.domain.value.identifier import StudentID
@@ -103,8 +103,8 @@ class StudentRunNextStageUseCase(IStudentRunNextStageUseCase):
                 if is_rollback_dispatched:
                     # ロールバックが実行されたらもう一度このステージパスの結果を取得
                     stage_path_result: StudentStagePathResultEntity \
-                        = self._student_stage_path_result_get_service.execute(student_id,
-                                                                              stage_path)
+                        = self._student_get_stage_path_result_entity_service.execute(student_id,
+                                                                                     stage_path)
 
                 # このステージパスのすべてのステージが終了しているなら終了
                 if stage_path_result.are_all_finished:
@@ -143,7 +143,7 @@ class StudentRunNextStageUseCase(IStudentRunNextStageUseCase):
                 # 実行前の進捗の状況と実行後の進捗の状況を比較してこのステージパスの実行を終了するかどうかを決定
                 finish_states_before_run = stage_path_result.stage_statuses
                 finish_states_after_run = (
-                    self._student_stage_path_result_get_service.execute(
+                    self._student_get_stage_path_result_entity_service.execute(
                         student_id,
                         stage_path,
                     ).stage_statuses

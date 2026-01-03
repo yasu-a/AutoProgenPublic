@@ -1,16 +1,15 @@
 from app.di.gateway import *
-from app.di.path_config import get_student_submission_path_provider
 from app.di.provider import get_app_name_provider, get_app_version_provider
-from app.di.repository import *
 from app.di.service import *
 from app.di.system import get_manaba_report_archive_io, get_current_project_core_io
 from feature.about.usecase.get_about_info import GetAboutInfoUseCase
-from feature.export.usecase.simple.get_data import GetSimpleScoreExportDataUseCase
-from feature.export.usecase.simple.execute import ExecuteSimpleScoreExportUseCase
-from feature.export.usecase.excel.get_preview import ListExcelWorksheetUseCase, GetExcelSheetPreviewUseCase
 from feature.export.usecase.excel.detect_layout import AutoDetectExcelLayoutUseCase
 from feature.export.usecase.excel.execute import ExecuteExcelScoreUpdateUseCase
+from feature.export.usecase.excel.get_preview import ListExcelWorksheetUseCase, \
+    GetExcelSheetPreviewUseCase
 from feature.export.usecase.setting import ExportSettingGetUseCase
+from feature.export.usecase.simple.execute import ExecuteSimpleScoreExportUseCase
+from feature.export.usecase.simple.get_data import GetSimpleScoreExportDataUseCase
 from feature.projman.usecase.current_project import CurrentProjectSummaryGetUseCase, \
     CurrentProjectInitializeStaticUseCase
 from feature.projman.usecase.project import ProjectCheckExistByNameUseCase, ProjectCreateUseCase, \
@@ -460,5 +459,5 @@ def get_export_setting_get_usecase():
 # ResourceUsageGetUseCase
 def get_resource_usage_get_usecase():
     return ResourceUsageGetUseCase(
-        resource_usage_io=get_resource_usage_io(),
+        resource_usage_gateway=get_resource_usage_gateway(),
     )

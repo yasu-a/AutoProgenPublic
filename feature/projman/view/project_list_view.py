@@ -5,11 +5,11 @@ from PyQt5.QtGui import QCursor, QShowEvent
 from PyQt5.QtWidgets import *
 
 from feature.projman.handler.interface import IProjectListView, IProjectListHandler
-from feature.projman.usecase.dto import NormalProjectSummary, AbstractProjectSummary, \
-    ErrorProjectSummary
+from feature.projman.usecase.interface import AbstractProjectSummary, ErrorProjectSummary, \
+    NormalProjectSummary
+from shared.domain.value.identifier import ProjectID
 from shared.view.style.font import get_font
 from shared.view.style.icon import get_icon
-from shared.domain.value.identifier import ProjectID
 from shared.view.widget_clickable_label import ClickableLabel
 
 
@@ -227,8 +227,10 @@ class ProjectListWidget(QListWidget):
         item_widget.open_folder_requested.connect(self.open_folder_requested)
         item_widget.delete_project_requested.connect(self.delete_project_requested)
 
-    def set_data(self, project_summary_lst: List[
-        Union[NormalProjectSummary, ErrorProjectSummary]]) -> None:
+    def set_data(
+            self,
+            project_summary_lst: List[NormalProjectSummary | ErrorProjectSummary],
+    ) -> None:
         self.clear()
         for i, project_summary in enumerate(project_summary_lst):
             self.__insert_item(i, project_summary)
@@ -257,6 +259,7 @@ class ProjectListView(QWidget, IProjectListView):
 
     def set_handler(self, handler: IProjectListHandler) -> None:
         """Handlerを注入（DI）"""
+        # noinspection PyAttributeOutsideInit
         self._handler = handler
 
     def _init_ui(self):
@@ -378,3 +381,7 @@ class ProjectListView(QWidget, IProjectListView):
     def stop_size_loading(self) -> None:
         """Handlerから呼ばれる：サイズ取得の終了"""
         pass  # HandlerがWorkerを管理するため、ここでは何もしない
+
+    def get_parent_widget(self):
+        """親ウィジェットを取得（QObjectのparent用）"""
+        return self

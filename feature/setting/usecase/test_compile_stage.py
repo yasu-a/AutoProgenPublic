@@ -1,11 +1,11 @@
 from pathlib import Path
 
-from feature.setting.usecase.dto import TestCompileStageResult
 from feature.setting.usecase.interface import ITestCompileStageUseCase
+from feature.setting.usecase.interface import TestCompileStageResultDto
+from shared.domain.error import StorageRunCompilerServiceError
 from shared.domain.service.storage import StorageCreateService, StorageLoadTestSourceService, \
     StorageDeleteService
 from shared.domain.service.storage_run_compiler import StorageRunCompilerService
-from shared.domain.error import StorageRunCompilerServiceError
 
 
 class TestCompileStageUseCase(ITestCompileStageUseCase):
@@ -24,7 +24,7 @@ class TestCompileStageUseCase(ITestCompileStageUseCase):
 
     __SOURCE_FILE_RELATIVE_PATH = Path("main.c")
 
-    def execute(self, compiler_tool_fullpath: Path) -> TestCompileStageResult:
+    def execute(self, compiler_tool_fullpath: Path) -> TestCompileStageResultDto:
         # ストレージ領域の生成
         storage_id = self._storage_create_service.execute()
 
@@ -42,7 +42,7 @@ class TestCompileStageUseCase(ITestCompileStageUseCase):
                 compiler_tool_fullpath=compiler_tool_fullpath,
             )
         except StorageRunCompilerServiceError as e:
-            result = TestCompileStageResult(
+            result = TestCompileStageResultDto(
                 is_success=False,
                 output=(
                     f"コンパイルテストに失敗しました\n"
@@ -54,7 +54,7 @@ class TestCompileStageUseCase(ITestCompileStageUseCase):
                 ),
             )
         else:
-            result = TestCompileStageResult(
+            result = TestCompileStageResultDto(
                 is_success=True,
                 output=(
                     f"コンパイルテストに成功しました。\n"

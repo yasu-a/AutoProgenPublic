@@ -6,8 +6,8 @@ from PyQt5.QtWidgets import (
 )
 
 from feature.testcase.view.widget_file_tab import AbstractFileTabWidgetDelegator, FileTabWidget
-from shared.view.style.icon import get_icon
 from shared.domain.value.identifier import FileID, SpecialFileType
+from shared.view.style.icon import get_icon
 
 
 class AbstractTestCaseFilesEditWidgetDelegator(AbstractFileTabWidgetDelegator, ABC):

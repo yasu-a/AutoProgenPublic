@@ -1,9 +1,17 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from feature.setting.usecase.dto import TestCompileStageResult
 from shared.domain.value.setting import Setting
+
+
+# DTOはinterfaceの直上に定義
+@dataclass(frozen=True)
+class TestCompileStageResultDto:
+    """テストコンパイルステージ実行UseCaseの結果を表すDTO"""
+    is_success: bool
+    output: str
 
 
 class ISettingGetUseCase(ABC):
@@ -31,5 +39,5 @@ class ICompilerSearchUseCase(ABC):
 
 class ITestCompileStageUseCase(ABC):
     @abstractmethod
-    def execute(self, compiler_tool_fullpath: Path) -> "TestCompileStageResult":
+    def execute(self, compiler_tool_fullpath: Path) -> "TestCompileStageResultDto":
         raise NotImplementedError()

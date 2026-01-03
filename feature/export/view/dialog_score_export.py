@@ -3,7 +3,8 @@ from typing import TYPE_CHECKING
 
 from PyQt5.QtCore import QObject, pyqtSlot
 from PyQt5.QtGui import QShowEvent
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog, QMessageBox, QTabWidget
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog, \
+    QMessageBox, QTabWidget
 
 from feature.export.handler.interface import (
     ISimpleScoreExportTabHandler,
@@ -11,8 +12,8 @@ from feature.export.handler.interface import (
     ISimpleScoreExportTabView,
     IExcelScoreExportTabView,
 )
-from feature.export.view.component.tab_simple import SimpleScoreExportTab
 from feature.export.view.component.tab_excel import ExcelScoreExportTab
+from feature.export.view.component.tab_simple import SimpleScoreExportTab
 
 if TYPE_CHECKING:
     pass

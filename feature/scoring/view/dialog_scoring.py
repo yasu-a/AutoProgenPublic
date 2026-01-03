@@ -7,20 +7,20 @@ from app.di.usecase import get_student_list_id_usecase, \
     get_student_mark_view_data_get_test_result_usecase, \
     get_student_mark_view_data_get_mark_summary_usecase, get_student_source_code_get_usecase, \
     get_testcase_config_list_id_usecase, get_student_mark_get_usecase, get_student_mark_put_usecase
-from feature.scoring.dto import ScoringDialogState
-from feature.scoring.usecase.dto import AbstractStudentTestCaseTestResultViewData, \
-    StudentMarkEntitySummaryViewData
+from feature.scoring.handler.interface import ScoringDialogStateDto
+from feature.scoring.usecase.interface import StudentMarkEntitySummaryViewDataDto, \
+    AbstractStudentTestCaseTestResultViewData
 from feature.scoring.view.dialog_scoring_help import ScoringHelpDialog
 from feature.scoring.view.widget_page_button import PageButton
 from feature.scoring.view.widget_scoring_score_edit import ScoringScoreEditWidget
 from feature.scoring.view.widget_student_source_code_view import StudentSourceCodeView
 from feature.scoring.view.widget_testcase_test_result_list import TestCaseTestResultListWidget
 from feature.scoring.view.widget_testcase_test_result_view import TestCaseTestResultViewWidget
-from shared.view.style.font import get_font
-from shared.view.style.icon import get_icon
 from shared.domain.entity.student import StudentEntity
 from shared.domain.entity.student_mark import StudentMarkEntity
 from shared.domain.value.identifier import StudentID, TestCaseID, FileID
+from shared.view.style.font import get_font
+from shared.view.style.icon import get_icon
 from util.app_logging import create_logger
 
 
@@ -68,13 +68,13 @@ class ScoringStudentControlWidget(QWidget):
         # noinspection PyUnresolvedReferences
         self._b_next.clicked.connect(self.next_student_triggered)
 
-    def set_data(self, StudentEntity: StudentEntity | None) -> None:
-        if StudentEntity is None:
+    def set_data(self, student: StudentEntity | None) -> None:
+        if student is None:
             self._l_student_id.setText("")
             self._l_student_name.setText("")
         else:
-            self._l_student_id.setText(str(StudentEntity.student_id))
-            self._l_student_name.setText(StudentEntity.name)
+            self._l_student_id.setText(str(student.student_id))
+            self._l_student_name.setText(student.name)
 
 
 class ScoringTestCaseControlWidget(QWidget):
@@ -127,13 +127,13 @@ class ScoringTestCaseControlWidget(QWidget):
 
 # TODO: アルゴリズム改善 アクション入力と現在の状態から次の状態を生成するステートマシンを表現するとわかりやすい？
 # noinspection DuplicatedCode
-class ScoringDialogStateCreator:
+class ScoringDialogStateDtoCreator:
     # アクションに応じて呼ばれたメソッド内でダイアログの現在の状態から次の状態を生成する
 
     def __init__(
             self,
             *,
-            state: ScoringDialogState,
+            state: ScoringDialogStateDto,
             student_ids: list[StudentID],
             testcase_ids: list[TestCaseID],
     ):
@@ -180,7 +180,7 @@ class ScoringDialogStateCreator:
                 return file_ids[0]
         return self._state.file_id
 
-    def create_state_by_testcase_id(self, testcase_id: TestCaseID) -> ScoringDialogState:
+    def create_state_by_testcase_id(self, testcase_id: TestCaseID) -> ScoringDialogStateDto:
         if self._state.student_id is None:
             if self._student_ids:
                 new_student_id = self._student_ids[0]
@@ -188,14 +188,14 @@ class ScoringDialogStateCreator:
                 new_student_id = None
         else:
             new_student_id = self._state.student_id
-        new_state = ScoringDialogState(
+        new_state = ScoringDialogStateDto(
             student_id=new_student_id,
             testcase_id=testcase_id,
             file_id=self.__create_file_id_field(testcase_id),
         )
         return new_state
 
-    def create_state_by_student_id(self, student_id: StudentID) -> ScoringDialogState:
+    def create_state_by_student_id(self, student_id: StudentID) -> ScoringDialogStateDto:
         if self._state.testcase_id is None:
             if self._testcase_ids:
                 new_testcase_id = self._testcase_ids[0]
@@ -203,14 +203,14 @@ class ScoringDialogStateCreator:
                 new_testcase_id = None
         else:
             new_testcase_id = self._state.testcase_id
-        new_state = ScoringDialogState(
+        new_state = ScoringDialogStateDto(
             student_id=student_id,
             testcase_id=new_testcase_id,
             file_id=self.__create_file_id_field(new_testcase_id),
         )
         return new_state
 
-    def create_state_of_next_testcase(self, *, delta=1) -> ScoringDialogState:
+    def create_state_of_next_testcase(self, *, delta=1) -> ScoringDialogStateDto:
         if not self._testcase_ids:
             new_testcase_id = None
         elif self._state.testcase_id is None:
@@ -222,16 +222,16 @@ class ScoringDialogStateCreator:
                 new_testcase_id = self._testcase_ids[i]
             else:
                 new_testcase_id = self._state.testcase_id
-        return ScoringDialogState(
+        return ScoringDialogStateDto(
             student_id=self._state.student_id,
             testcase_id=new_testcase_id,
             file_id=self.__create_file_id_field(new_testcase_id),
         )
 
-    def create_state_of_prev_testcase(self) -> ScoringDialogState:
+    def create_state_of_prev_testcase(self) -> ScoringDialogStateDto:
         return self.create_state_of_next_testcase(delta=-1)
 
-    def create_state_of_first_student(self) -> ScoringDialogState:
+    def create_state_of_first_student(self) -> ScoringDialogStateDto:
         if self._student_ids:
             new_student_id = self._student_ids[0]
         else:
@@ -245,13 +245,13 @@ class ScoringDialogStateCreator:
         else:
             new_testcase_id = self._state.testcase_id
 
-        return ScoringDialogState(
+        return ScoringDialogStateDto(
             student_id=new_student_id,
             testcase_id=new_testcase_id,
             file_id=self.__create_file_id_field(new_testcase_id),
         )
 
-    def create_state_of_next_student(self, *, delta=1) -> ScoringDialogState:
+    def create_state_of_next_student(self, *, delta=1) -> ScoringDialogStateDto:
         if self._state.student_id is None:
             return self.create_state_of_first_student()
 
@@ -273,16 +273,16 @@ class ScoringDialogStateCreator:
         else:
             new_testcase_id = self._state.testcase_id
 
-        return ScoringDialogState(
+        return ScoringDialogStateDto(
             student_id=new_student_id,
             testcase_id=new_testcase_id,
             file_id=self.__create_file_id_field(new_testcase_id),
         )
 
-    def create_state_of_prev_student(self) -> ScoringDialogState:
+    def create_state_of_prev_student(self) -> ScoringDialogStateDto:
         return self.create_state_of_next_student(delta=-1)
 
-    def create_state_of_next_file(self, *, delta=1) -> ScoringDialogState:
+    def create_state_of_next_file(self, *, delta=1) -> ScoringDialogStateDto:
         if self._state.testcase_id is None:
             new_file_id = None
         else:
@@ -299,13 +299,13 @@ class ScoringDialogStateCreator:
                 else:
                     new_file_id = self._state.file_id
 
-        return ScoringDialogState(
+        return ScoringDialogStateDto(
             student_id=self._state.student_id,
             testcase_id=self._state.testcase_id,
             file_id=new_file_id,
         )
 
-    def create_state_of_prev_file(self) -> ScoringDialogState:
+    def create_state_of_prev_file(self) -> ScoringDialogStateDto:
         return self.create_state_of_next_file(delta=-1)
 
 
@@ -320,7 +320,7 @@ class ScoringDialog(QDialog):
         self._student_ids: list[StudentID] = get_student_list_id_usecase().execute()
         # ^ get_student_id_list_usecase
         self._testcase_ids: list[TestCaseID] = get_testcase_config_list_id_usecase().execute()
-        self._state = ScoringDialogState()
+        self._state = ScoringDialogStateDto()
 
         self._init_ui()
 
@@ -428,7 +428,7 @@ class ScoringDialog(QDialog):
     def __get_student_mark_summary_view_data(
             cls,
             student_id: StudentID,
-    ) -> StudentMarkEntitySummaryViewData:
+    ) -> StudentMarkEntitySummaryViewDataDto:
         # ユースケースの使用
         return get_student_mark_view_data_get_mark_summary_usecase().execute(student_id)
 
@@ -466,8 +466,8 @@ class ScoringDialog(QDialog):
         get_student_mark_put_usecase().execute(student_mark)
 
     @property
-    def states(self) -> ScoringDialogStateCreator:
-        return ScoringDialogStateCreator(
+    def states(self) -> ScoringDialogStateDtoCreator:
+        return ScoringDialogStateDtoCreator(
             state=self._state,
             student_ids=self._student_ids,
             testcase_ids=self._testcase_ids,
@@ -556,7 +556,7 @@ class ScoringDialog(QDialog):
             assert student_mark.student_id == self._state.student_id
             self.__put_student_mark(student_mark)
 
-    def set_state(self, state: ScoringDialogState):
+    def set_state(self, state: ScoringDialogStateDto):
         if self._state == state:
             return
         self.__save_data()

@@ -26,8 +26,8 @@ class StorageRunExecutableService:
             timeout: float,
     ) -> StorageExecuteServiceResult:
         # 実行対象の検証
-        StorageEntity = self._storage_repo.get(storage_id)
-        if executable_file_relative_path not in StorageEntity.files:
+        storage = self._storage_repo.get(storage_id)
+        if executable_file_relative_path not in storage.files:
             raise StorageRunExecutableServiceError(
                 reason="実行対象が存在しません",
             )
@@ -35,12 +35,12 @@ class StorageRunExecutableService:
         # 実行のための引数の生成
         kwargs = dict(
             # 実行ファイルのパス
-            executable_fullpath=StorageEntity.base_folder_fullpath / executable_file_relative_path,
+            executable_fullpath=storage.base_folder_fullpath / executable_file_relative_path,
             # タイムアウト
             timeout=timeout,
         )
         # 標準入力にリダイレクトするファイルのパス
-        input_file_fullpath = StorageEntity.base_folder_fullpath / FileID.STDIN.deployment_relative_path
+        input_file_fullpath = storage.base_folder_fullpath / FileID.STDIN.deployment_relative_path
         if not input_file_fullpath.exists():
             input_file_fullpath = None
 

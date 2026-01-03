@@ -1,18 +1,19 @@
-from feature.scoring.usecase.dto import AbstractStudentTestCaseTestResultViewData, \
-    StudentTestCaseTestResultAcceptedViewData, \
-    StudentTestCaseTestResultWrongAnswerViewData, StudentTestCaseTestResultUntestableViewData, \
-    StudentMarkEntitySummaryViewData, StudentMarkEntityState
 from feature.scoring.usecase.interface import IStudentMarkViewDataGetTestResultUseCase, \
-    IStudentMarkViewDataGetMarkSummaryUseCase
-from shared.domain.service.stage_path import StagePathListSubService, StagePathGetByTestCaseIDService
-from shared.domain.value.student_stage_result import TestSuccessStudentStageResult
+    IStudentMarkViewDataGetMarkSummaryUseCase, AbstractStudentTestCaseTestResultViewData, \
+    StudentTestCaseTestResultAcceptedViewData, StudentTestCaseTestResultWrongAnswerViewData, \
+    StudentTestCaseTestResultUntestableViewData
+from feature.scoring.usecase.interface import StudentMarkEntitySummaryViewDataDto, \
+    StudentMarkEntityState
 from shared.domain.entity.student_stage_path_result import StudentStagePathResultEntity
+from shared.domain.service.stage_path import StagePathListSubService, \
+    StagePathGetByTestCaseIDService
 from shared.domain.service.student_mark_get import StudentMarkEntityGetSubService
 from shared.domain.service.student_stage_path_result import StudentGetStagePathResultEntityService, \
     StudentStagePathResultEntityCheckRollbackService
 from shared.domain.value.identifier import StudentID, TestCaseID
 from shared.domain.value.stage import TestStage
 from shared.domain.value.stage_path import StagePath
+from shared.domain.value.student_stage_result import TestSuccessStudentStageResult
 from shared.infra.repository.student import StudentRepository
 
 
@@ -92,7 +93,7 @@ class StudentMarkViewDataGetMarkSummaryUseCase(IStudentMarkViewDataGetMarkSummar
         self._student_stage_path_result_check_rollback_service \
             = student_stage_path_result_check_rollback_service
 
-    def execute(self, student_id: StudentID) -> StudentMarkEntitySummaryViewData:
+    def execute(self, student_id: StudentID) -> StudentMarkEntitySummaryViewDataDto:
         stage_path_lst: list[StagePath] = self._stage_path_list_sub_service.execute(
         )
 
@@ -119,7 +120,7 @@ class StudentMarkViewDataGetMarkSummaryUseCase(IStudentMarkViewDataGetMarkSummar
 
             state = StudentMarkEntityState.READY
 
-        return StudentMarkEntitySummaryViewData(
+        return StudentMarkEntitySummaryViewDataDto(
             StudentEntity=self._student_repo.get(student_id),
             mark=self._student_mark_get_sub_service.execute(student_id),
             state=state,

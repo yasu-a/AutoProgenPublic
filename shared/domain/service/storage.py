@@ -62,9 +62,9 @@ class StorageLoadTestSourceService:
         content_bytes = self._test_source_repo.get()
 
         # ストレージ領域に配置する
-        StorageEntity = self._storage_repo.get(storage_id)
-        StorageEntity.files[file_relative_path] = content_bytes
-        self._storage_repo.put(StorageEntity)
+        storage = self._storage_repo.get(storage_id)
+        storage.files[file_relative_path] = content_bytes
+        self._storage_repo.put(storage)
 
 
 class StorageLoadStudentSourceService:
@@ -90,9 +90,9 @@ class StorageLoadStudentSourceService:
         content_bytes = self._student_source_repo.get(student_id).content_bytes
 
         # ストレージ領域に配置する
-        StorageEntity = self._storage_repo.get(storage_id)
-        StorageEntity.files[file_relative_path] = content_bytes
-        self._storage_repo.put(StorageEntity)
+        storage = self._storage_repo.get(storage_id)
+        storage.files[file_relative_path] = content_bytes
+        self._storage_repo.put(storage)
 
 
 class StorageLoadStudentExecutableService:
@@ -118,9 +118,9 @@ class StorageLoadStudentExecutableService:
         content_bytes = self._student_executable_repo.get(student_id).content_bytes
 
         # ストレージ領域に配置する
-        StorageEntity = self._storage_repo.get(storage_id)
-        StorageEntity.files[file_relative_path] = content_bytes
-        self._storage_repo.put(StorageEntity)
+        storage = self._storage_repo.get(storage_id)
+        storage.files[file_relative_path] = content_bytes
+        self._storage_repo.put(storage)
 
 
 class StorageStoreStudentExecutableService:
@@ -142,11 +142,11 @@ class StorageStoreStudentExecutableService:
             storage_id: StorageID,
             file_relative_path: Path,
     ) -> None:
-        StorageEntity = self._storage_repo.get(storage_id)
-        if file_relative_path not in StorageEntity.files:
+        storage = self._storage_repo.get(storage_id)
+        if file_relative_path not in storage.files:
             raise FileNotFoundError(
                 f"指定された実行ファイルが見つかりません。: {file_relative_path}")
-        content_bytes = StorageEntity.files[file_relative_path]
+        content_bytes = storage.files[file_relative_path]
         self._student_executable_repo.put(
             student_id=student_id,
             file_item=ExecutableFileItem(
@@ -169,7 +169,7 @@ class StorageLoadExecuteConfigInputFilesService:
 
     def execute(self, *, storage_id: StorageID, testcase_id: TestCaseID) -> None:
         # ストレージ領域を取得
-        StorageEntity = self._storage_repo.get(storage_id)
+        storage = self._storage_repo.get(storage_id)
 
         # テストケースの実行構成から入力ファイルを取得
         input_file_collection: InputFileCollection \
@@ -177,10 +177,10 @@ class StorageLoadExecuteConfigInputFilesService:
 
         # ストレージ領域に各入力ファイルを配置
         for file_id, input_file in input_file_collection.items():
-            StorageEntity.files[file_id.deployment_relative_path] = input_file.content_bytes
+            storage.files[file_id.deployment_relative_path] = input_file.content_bytes
 
         # ストレージ領域をコミット
-        self._storage_repo.put(StorageEntity)
+        self._storage_repo.put(storage)
 
 
 class StorageWriteStdoutFileService:
@@ -195,14 +195,14 @@ class StorageWriteStdoutFileService:
 
     def execute(self, *, storage_id: StorageID, stdout_text: str) -> None:
         # ストレージ領域を取得
-        StorageEntity = self._storage_repo.get(storage_id)
+        storage = self._storage_repo.get(storage_id)
 
         # 生徒の標準出力ファイルを生成
         file_relative_path = FileID.STDOUT.deployment_relative_path
-        StorageEntity.files[file_relative_path] = stdout_text.encode("utf-8")
+        storage.files[file_relative_path] = stdout_text.encode("utf-8")
 
         # ストレージ領域をコミット
-        self._storage_repo.put(StorageEntity)
+        self._storage_repo.put(storage)
 
 
 class StorageCreateOutputFileCollectionFromDiffService:
@@ -219,7 +219,7 @@ class StorageCreateOutputFileCollectionFromDiffService:
             storage_id: StorageID,
             storage_diff: StorageDiff,
     ) -> OutputFileCollection:
-        StorageEntity = self._storage_repo.get(storage_id)
+        storage = self._storage_repo.get(storage_id)
 
         output_file_collection = OutputFileCollection()
         for file_relative_path in storage_diff.created:
@@ -232,7 +232,7 @@ class StorageCreateOutputFileCollectionFromDiffService:
             output_file_collection.put(
                 OutputFile(
                     file_id=file_id,
-                    content=StorageEntity.files[file_relative_path]
+                    content=storage.files[file_relative_path]
                 )
             )
 
@@ -248,14 +248,14 @@ class StorageTakeSnapshotService:
         self._storage_repo = storage_repo
 
     def execute(self, storage_id: StorageID) -> StorageFileSnapshot:
-        StorageEntity = self._storage_repo.get(storage_id)
+        storage = self._storage_repo.get(storage_id)
 
         snapshot_file_entries: list[StorageDiffSnapshotFileEntry] = []
-        for file_relative_path in StorageEntity.files:
+        for file_relative_path in storage.files:
             snapshot_file_entries.append(
                 StorageDiffSnapshotFileEntry(
                     relative_path=file_relative_path,
-                    mtime=StorageEntity.files.stat(file_relative_path).mtime
+                    mtime=storage.files.stat(file_relative_path).mtime
                 )
             )
 

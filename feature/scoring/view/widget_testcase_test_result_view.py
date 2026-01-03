@@ -1,13 +1,13 @@
 from PyQt5.QtCore import pyqtSignal, QObject, pyqtSlot
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTabWidget, QLabel, QPlainTextEdit
 
-from feature.scoring.usecase.dto import AbstractStudentTestCaseTestResultViewData
-from feature.scoring.view.widget_testcase_result_otuput_file_view import \
+from feature.scoring.usecase.interface import AbstractStudentTestCaseTestResultViewData
+from feature.scoring.view.widget_testcase_result_output_file_view import \
     TestCaseResultOutputFileViewWidget
+from shared.domain.value.identifier import FileID, SpecialFileType
+from shared.domain.value.student_stage_result import TestResultOutputFileCollection
 from shared.view.style.font import get_font
 from shared.view.style.icon import get_icon
-from shared.domain.value.student_stage_result import TestResultOutputFileCollection
-from shared.domain.value.identifier import FileID, SpecialFileType
 
 
 class TestCaseValidTestResultViewWidget(QWidget):

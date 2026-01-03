@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
-from abc import abstractmethod as view_abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 
-from feature.setting.usecase.dto import TestCompileStageResult
+from feature.setting.usecase.interface import TestCompileStageResultDto
 from shared.domain.value.setting import Setting
 
 
@@ -39,30 +38,31 @@ class ICompilerSearchHandler(ABC):
 
 
 # Not inheriting from ABC to avoid metaclass conflict with Qt classes
+# noinspection PyAbstractClass
 class ICompilerSearchView:
     """Handlerから見たコンパイラ検索のインターフェース"""
 
-    @view_abstractmethod
+    @abstractmethod
     def set_progress_text(self, text: str) -> None:
         """進捗テキストを設定"""
         raise NotImplementedError()
 
-    @view_abstractmethod
+    @abstractmethod
     def show_path_selection(self, paths: list[Path]) -> Path | None:
         """パス選択を表示（戻り値: 選択されたパス、キャンセル時はNone）"""
         raise NotImplementedError()
 
-    @view_abstractmethod
+    @abstractmethod
     def show_not_found_message(self) -> None:
         """パスが見つからなかったメッセージを表示"""
         raise NotImplementedError()
 
-    @view_abstractmethod
+    @abstractmethod
     def accept_dialog(self) -> None:
         """ダイアログをAcceptして閉じる"""
         raise NotImplementedError()
 
-    @view_abstractmethod
+    @abstractmethod
     def get_parent_widget(self):
         """親ウィジェットを取得（QObjectのparent用）"""
         raise NotImplementedError()
@@ -164,6 +164,7 @@ class ISettingEditHandler(ABC):
 
 
 # QtのmetaclassとABCのmetaclassが競合するため、ABCを継承しない
+# noinspection PyAbstractClass
 class ISettingEditView:
     """Handlerから見たViewのインターフェース"""
 
@@ -183,7 +184,7 @@ class ISettingEditView:
         raise NotImplementedError()
 
     @abstractmethod
-    def show_test_result(self, result: TestCompileStageResult) -> None:
+    def show_test_result(self, result: TestCompileStageResultDto) -> None:
         """コンパイルテスト結果を表示"""
         raise NotImplementedError()
 
@@ -192,12 +193,12 @@ class ISettingEditView:
         """親ウィジェットを取得（QMessageBoxのparent用）"""
         raise NotImplementedError()
 
-    @view_abstractmethod
+    @abstractmethod
     def show_validation_error(self, error_message: str) -> None:
         """バリデーションエラーを表示"""
         raise NotImplementedError()
 
-    @view_abstractmethod
+    @abstractmethod
     def confirm_discard_changes(self) -> bool:
         """
         変更内容を破棄するか確認

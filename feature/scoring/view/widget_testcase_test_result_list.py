@@ -1,9 +1,9 @@
 from PyQt5.QtCore import QObject, pyqtSlot, pyqtSignal
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget, QListWidgetItem
 
-from feature.scoring.usecase.dto import AbstractStudentTestCaseTestResultViewData
-from shared.view.style.font import get_font
+from feature.scoring.usecase.interface import AbstractStudentTestCaseTestResultViewData
 from shared.domain.value.identifier import TestCaseID
+from shared.view.style.font import get_font
 from shared.view.widget_test_summary_indicator import TestCaseTestSummaryIndicatorWidget
 
 

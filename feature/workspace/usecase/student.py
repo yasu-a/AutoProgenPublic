@@ -1,7 +1,7 @@
+from feature.workspace.usecase.interface import IStudentListIDUseCase
 from shared.domain.entity.student import StudentEntity
 from shared.domain.value.identifier import StudentID
 from shared.infra.repository.student import StudentRepository
-from feature.workspace.usecase.interface import IStudentListIDUseCase
 
 
 class StudentListIDUseCase(IStudentListIDUseCase):

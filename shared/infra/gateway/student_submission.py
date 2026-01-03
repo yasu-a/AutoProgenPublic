@@ -1,21 +1,19 @@
 import re
 
-from feature.projman.usecase.interface import (
-    IStudentSubmissionListSourceRelativePathGateway,
-    IStudentSubmissionGetFileContentGateway,
-    StudentSubmissionListSourceRelativePathGatewayError,
-)
+from feature.projman.domain.interface.gateway import \
+    StudentSubmissionListSourceRelativePathGatewayError, \
+    IStudentSubmissionListSourceRelativePathGateway, IStudentSubmissionGetFileContentGateway
 from shared.domain.error import ServiceError
 from shared.domain.interface.gateway import (
     IStudentSubmissionGetSourceContentGateway,
     IStudentSubmissionGetChecksumGateway,
     IStudentSubmissionFolderShowGateway,
+    IFolderShowInExplorerGateway,
 )
 from shared.domain.value.identifier import StudentID
 from shared.infra.path_provider.current_project import StudentSubmissionPathProvider
 from shared.infra.repository.student import StudentRepository
 from shared.infra.system.current_project_core_io import CurrentProjectCoreIO
-from shared.infra.system.student_folder_show_in_explorer import StudentFolderShowInExplorerIO
 
 
 class StudentSubmissionGetSourceFileGatewayError(ServiceError):
@@ -116,9 +114,14 @@ class StudentSubmissionFolderShowGateway(IStudentSubmissionFolderShowGateway):
     def __init__(
             self,
             *,
-            student_folder_show_in_explorer_io: StudentFolderShowInExplorerIO,
+            student_submission_path_provider: StudentSubmissionPathProvider,
+            folder_show_in_explorer_gateway: IFolderShowInExplorerGateway,
     ):
-        self._student_folder_open_in_explorer_io = student_folder_show_in_explorer_io
+        self._student_submission_path_provider = student_submission_path_provider
+        self._folder_show_in_explorer_gateway = folder_show_in_explorer_gateway
 
     def execute(self, student_id: StudentID) -> None:
-        self._student_folder_open_in_explorer_io.show_submission_folder(student_id)
+        submission_folder_fullpath = (
+            self._student_submission_path_provider.student_submission_folder_fullpath(student_id)
+        )
+        self._folder_show_in_explorer_gateway.execute(submission_folder_fullpath)

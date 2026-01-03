@@ -2,6 +2,7 @@ import os
 import sys
 from typing import TYPE_CHECKING
 
+from app.di.state import get_debug_mode_state
 from util import app_logging
 from util.app_logging import create_logger
 
@@ -35,13 +36,12 @@ def create_app() -> "QApplication":
 
 
 def main():
-    from app.state.debug import set_debug
     from app.di.app import get_navigator
 
     # 環境変数からデバッグ用の構成を用意
     app_logging.set_level(app_logging.INFO)
     if os.getenv("APP_DEBUG"):
-        set_debug(True)
+        get_debug_mode_state().update(True)
         _logger.info("STARTING WITH DEBUG MODE")
         if os.getenv("APP_VERBOSE_LOG"):
             app_logging.set_level(app_logging.DEBUG)

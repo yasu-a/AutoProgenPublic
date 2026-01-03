@@ -1,24 +1,14 @@
-from PyQt5.QtCore import QObject, QTimer, pyqtSlot
+from PyQt5.QtCore import QObject
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel
 
-from app.di.usecase import get_resource_usage_get_usecase
-from feature.workspace.usecase.dto import ResourceUsageGetResult
+from feature.workspace.handler.interface import IProcessResourceUsageStatusBarView
 
 
-class ProcessResourceUsageStatusBarWidget(QWidget):
+class ProcessResourceUsageStatusBarWidget(QWidget, IProcessResourceUsageStatusBarView):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self._timer = QTimer(self)
-        self._timer.setInterval(1000)
-
         self._init_ui()
-
-        # シグナル接続
-        # noinspection PyUnresolvedReferences
-        self._timer.timeout.connect(self.__timer_timeout)
-
-        self._timer.start()
 
     def _init_ui(self):
         # noinspection PyUnresolvedReferences
@@ -47,10 +37,11 @@ class ProcessResourceUsageStatusBarWidget(QWidget):
         self._l_memory = QLabel(self)
         layout.addWidget(self._l_memory)
 
-    @pyqtSlot()
-    def __timer_timeout(self):
-        result: ResourceUsageGetResult = get_resource_usage_get_usecase().execute()
-        self._l_cpu_percent.setText(f"CPU: {result.cpu_percent}%")
-        self._l_memory.setText(f"RAM: {result.memory_mega_bytes:,} MB")
-        self._l_disk_read_count.setText(f"Disk read: {result.disk_read_count:,}")
-        self._l_disk_write_count.setText(f"Disk write: {result.disk_write_count:,}")
+    # ===== IProcessResourceUsageStatusBarView実装 =====
+
+    def set_resource_usage(self, cpu_percent: int, memory_mega_bytes: int, disk_read_count: int, disk_write_count: int) -> None:
+        """リソース使用状況を設定"""
+        self._l_cpu_percent.setText(f"CPU: {cpu_percent}%")
+        self._l_memory.setText(f"RAM: {memory_mega_bytes:,} MB")
+        self._l_disk_read_count.setText(f"Disk read: {disk_read_count:,}")
+        self._l_disk_write_count.setText(f"Disk write: {disk_write_count:,}")

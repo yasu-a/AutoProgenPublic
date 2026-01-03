@@ -1,5 +1,8 @@
 from typing import TYPE_CHECKING
 
+from app.di.state import get_debug_mode_state
+from feature.projman.handler.project_launcher import ProjectLauncherHandler
+
 if TYPE_CHECKING:
     from shared.handler.interface import INavigator
 
@@ -7,18 +10,17 @@ import app.di.usecase as di_usecase
 from feature.about.handler.about_dialog import AboutDialogHandler
 from feature.export.handler.simple_score_export_tab import SimpleScoreExportTabHandler
 from feature.export.handler.excel_score_export_tab import ExcelScoreExportTabHandler
-from feature.projman.handler.launcher_handler import ProjectLauncherHandler
 from feature.projman.handler.project_create import ProjectCreateHandler
 from feature.projman.handler.project_list import ProjectListHandler
 from feature.setting.handler.compiler_search_handler import CompilerSearchHandler
-from feature.setting.handler.settings_edit import SettingEditHandler
+from feature.setting.handler.setting_edit import SettingEditHandler
 from feature.workspace.handler.workspace_window_handler import WorkspaceWindowHandler
 
 
 def get_project_launcher_handler(
-    *,
-    view,
-    navigator: "INavigator",
+        *,
+        view,
+        navigator: "INavigator",
 ) -> ProjectLauncherHandler:
     """ProjectLauncherHandlerを生成"""
     return ProjectLauncherHandler(
@@ -29,9 +31,9 @@ def get_project_launcher_handler(
 
 
 def get_project_create_handler(
-    *,
-    view,
-    navigator: "INavigator",
+        *,
+        view,
+        navigator: "INavigator",
 ) -> ProjectCreateHandler:
     """ProjectCreateHandlerを生成"""
     return ProjectCreateHandler(
@@ -39,13 +41,14 @@ def get_project_create_handler(
         navigator=navigator,
         project_check_exist_usecase=di_usecase.get_project_check_exist_by_name_usecase(),
         project_create_usecase=di_usecase.get_project_create_usecase(),
+        debug_mode_state=get_debug_mode_state(),
     )
 
 
 def get_project_list_handler(
-    *,
-    view,
-    navigator: "INavigator",
+        *,
+        view,
+        navigator: "INavigator",
 ) -> ProjectListHandler:
     """ProjectListHandlerを生成"""
     return ProjectListHandler(
@@ -61,9 +64,9 @@ def get_project_list_handler(
 
 
 def get_workspace_window_handler(
-    *,
-    view,
-    navigator: "INavigator",
+        *,
+        view,
+        navigator: "INavigator",
 ) -> WorkspaceWindowHandler:
     """WorkspaceWindowHandlerを生成"""
     return WorkspaceWindowHandler(
@@ -81,8 +84,8 @@ def get_compiler_search_handler() -> CompilerSearchHandler:
 
 
 def get_setting_edit_handler(
-    *,
-    navigator: "INavigator",
+        *,
+        navigator: "INavigator",
 ) -> SettingEditHandler:
     """SettingEditHandlerを生成"""
     return SettingEditHandler(
@@ -104,8 +107,8 @@ def get_about_dialog_handler() -> AboutDialogHandler:
 
 
 def get_simple_score_export_tab_handler(
-    *,
-    view=None,
+        *,
+        view=None,
 ) -> SimpleScoreExportTabHandler:
     """SimpleScoreExportTabHandlerを生成"""
     return SimpleScoreExportTabHandler(
@@ -117,9 +120,9 @@ def get_simple_score_export_tab_handler(
 
 
 def get_excel_score_export_tab_handler(
-    *,
-    view=None,
-    target_id,
+        *,
+        view=None,
+        target_id,
 ) -> ExcelScoreExportTabHandler:
     """ExcelScoreExportTabHandlerを生成"""
     return ExcelScoreExportTabHandler(

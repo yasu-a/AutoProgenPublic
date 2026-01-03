@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from app.state.debug import is_debug
-
 
 @dataclass(frozen=True)
 class Setting:
@@ -18,9 +16,7 @@ class Setting:
     @classmethod
     def create_default(cls) -> "Setting":
         return cls(
-            compiler_tool_fullpath=Path(
-                r"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat",
-            ) if is_debug() else None,
+            compiler_tool_fullpath=None,
             compile_timeout=60,
             max_workers=4,
             backup_before_export=True,

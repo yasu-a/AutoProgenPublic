@@ -1,16 +1,14 @@
 from json import JSONDecodeError
+from pathlib import Path
 
-from feature.projman.usecase.dto import ProjectConfigState
-from feature.projman.usecase.interface import (
-    IProjectListGateway,
-    IProjectConfigStateGateway,
-    IProjectFileSystemGateway,
-)
+from feature.projman.domain.interface.gateway import IProjectListGateway, \
+    IProjectConfigStateGateway, \
+    ProjectConfigState, IProjectFileSystemGateway
+from shared.domain.interface.gateway import IFolderShowInExplorerGateway
 from shared.domain.interface.repository import IAppVersionProvider
 from shared.domain.value.app_version import AppVersion
 from shared.domain.value.identifier import ProjectID
-from shared.infra.path_provider.project import ProjectListPathProvider, ProjectPathProvider
-from shared.infra.system.project_base_folder_show_in_explorer import ProjectFolderShowInExplorerIO
+from shared.infra.path_provider import ProjectPathProvider, ProjectListPathProvider
 from shared.infra.system.project_core_io import ProjectCoreIO
 
 
@@ -18,12 +16,12 @@ class ProjectListGateway(IProjectListGateway):
     def __init__(
             self,
             *,
-            project_list_path_provider: ProjectListPathProvider,
+            project_list_folder_fullpath: Path,
     ):
-        self._project_list_path_provider = project_list_path_provider
+        self._project_list_folder_fullpath = project_list_folder_fullpath
 
     def execute(self) -> list[ProjectID]:
-        project_list_folder_fullpath = self._project_list_path_provider.base_folder_fullpath()
+        project_list_folder_fullpath = self._project_list_folder_fullpath
 
         project_list_folder_fullpath.mkdir(parents=True, exist_ok=True)
 
@@ -109,11 +107,13 @@ class ProjectFileSystemGateway(IProjectFileSystemGateway):
             *,
             project_path_provider: ProjectPathProvider,
             project_core_io: ProjectCoreIO,
-            project_folder_show_in_explorer_io: ProjectFolderShowInExplorerIO,
+            project_list_path_provider: ProjectListPathProvider,
+            folder_show_in_explorer_gateway: IFolderShowInExplorerGateway,
     ):
         self._project_path_provider = project_path_provider
         self._project_core_io = project_core_io
-        self._project_folder_show_in_explorer_io = project_folder_show_in_explorer_io
+        self._project_list_path_provider = project_list_path_provider
+        self._folder_show_in_explorer_gateway = folder_show_in_explorer_gateway
 
     def get_size(self, project_id: ProjectID) -> int:
         project_folder_fullpath = self._project_path_provider.base_folder_fullpath(project_id)
@@ -124,7 +124,10 @@ class ProjectFileSystemGateway(IProjectFileSystemGateway):
         return size
 
     def show_base_folder(self) -> None:
-        self._project_folder_show_in_explorer_io.show_base_folder()
+        base_folder_fullpath = self._project_list_path_provider.base_folder_fullpath()
+        self._folder_show_in_explorer_gateway.execute(base_folder_fullpath)
 
     def show_folder(self, project_id: ProjectID) -> None:
-        self._project_folder_show_in_explorer_io.show_folder(project_id)
+        project_folder_fullpath = self._project_list_path_provider.project_folder_fullpath(
+            project_id)
+        self._folder_show_in_explorer_gateway.execute(project_folder_fullpath)

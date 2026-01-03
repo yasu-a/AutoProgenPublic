@@ -1,18 +1,12 @@
 from app.di.path_config import *
 from app.di.repository import get_current_project_repository, get_student_repository
-from app.di.system import get_current_project_core_io, get_project_core_io, \
-    get_project_folder_show_in_explorer_io, get_student_folder_show_in_explorer_io
-from shared.infra.gateway.student_submission_projman import (
-    StudentSubmissionListSourceRelativePathGateway,
-    StudentSubmissionGetFileContentGateway,
-)
+from app.di.system import get_current_project_core_io, get_project_core_io
+from feature.projman.infra.gateway.project import ProjectListGateway, ProjectConfigStateGateway, \
+    ProjectFileSystemGateway
+from feature.projman.infra.gateway.student_submission import \
+    StudentSubmissionListSourceRelativePathGateway, StudentSubmissionGetFileContentGateway
 from feature.setting.infra.gateway.compiler_location import VSFindCompilerPathGateway
 from shared.infra.gateway.current_datetime import CurrentDatetimeGateway
-from shared.infra.gateway.project import (
-    ProjectListGateway,
-    ProjectConfigStateGateway,
-    ProjectFileSystemGateway,
-)
 from shared.infra.gateway.student_submission import (
     StudentSubmissionGetSourceContentGateway,
     StudentSubmissionGetChecksumGateway,
@@ -22,7 +16,7 @@ from shared.infra.gateway.student_submission import (
 
 def get_project_list_gateway():
     return ProjectListGateway(
-        project_list_path_provider=get_project_list_path_provider(),
+        project_list_folder_fullpath=get_project_list_folder_fullpath(),
     )
 
 
@@ -39,7 +33,8 @@ def get_project_file_system_gateway():
     return ProjectFileSystemGateway(
         project_path_provider=get_project_path_provider(),
         project_core_io=get_project_core_io(),
-        project_folder_show_in_explorer_io=get_project_folder_show_in_explorer_io(),
+        project_list_path_provider=get_project_list_path_provider(),
+        folder_show_in_explorer_gateway=get_folder_show_in_explorer_gateway(),
     )
 
 
@@ -75,12 +70,23 @@ def get_student_submission_get_checksum_gateway():
 
 def get_student_submission_folder_show_gateway():
     return StudentSubmissionFolderShowGateway(
-        student_folder_show_in_explorer_io=get_student_folder_show_in_explorer_io(),
+        student_submission_path_provider=get_student_submission_path_provider(),
+        folder_show_in_explorer_gateway=get_folder_show_in_explorer_gateway(),
     )
 
 
 def get_current_datetime_gateway():
     return CurrentDatetimeGateway()
+
+
+def get_resource_usage_gateway():
+    from shared.infra.gateway.resource_usage import ResourceUsageGateway
+    return ResourceUsageGateway()
+
+
+def get_folder_show_in_explorer_gateway():
+    from shared.infra.gateway.folder_show_in_explorer import FolderShowInExplorerGateway
+    return FolderShowInExplorerGateway()
 
 
 def get_find_compiler_path_gateway():

@@ -2,9 +2,9 @@ from PyQt5.QtCore import pyqtSignal, QObject, QRegExp, Qt, QEvent, pyqtSlot
 from PyQt5.QtGui import QKeyEvent, QRegExpValidator
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QVBoxLayout, QPushButton, QLabel
 
-from shared.view.style.font import get_font
 from shared.domain.entity.student_mark import StudentMarkEntity
 from shared.domain.value.identifier import StudentID
+from shared.view.style.font import get_font
 
 
 class ScoringScoreEditWidget(QWidget):

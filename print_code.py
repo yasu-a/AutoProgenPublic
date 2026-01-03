@@ -19,10 +19,11 @@ def wildcard_to_regex(pattern: str) -> str:
     return f'^{regex}$'
 
 
-def should_ignore_file(file_path: str, include_patterns: list[str], exclude_patterns: list[str]) -> bool:
+def should_ignore_file(file_path: str, include_patterns: list[str],
+                       exclude_patterns: list[str]) -> bool:
     """ファイルが無視されるべきかチェック（include/excludeパターンを考慮）"""
     file_name = os.path.basename(file_path)
-    
+
     # includeパターンが指定されている場合、一致しないものは除外
     if include_patterns:
         matched = False
@@ -33,7 +34,7 @@ def should_ignore_file(file_path: str, include_patterns: list[str], exclude_patt
                 break
         if not matched:
             return True
-    
+
     # excludeパターンに一致するものは除外
     for pattern in exclude_patterns:
         regex_pattern = wildcard_to_regex(pattern)
@@ -47,7 +48,7 @@ class FileInfo:
     """ファイル情報を保持するdataclass"""
     file_path: str
     file_normalized: str
-    
+
     @cached_property
     def content(self) -> str:
         """ファイルの内容を遅延評価で取得"""
@@ -56,20 +57,21 @@ class FileInfo:
                 return f.read()
         except Exception:
             return ""
-    
+
     @property
     def is_empty(self) -> bool:
         """内容が空（空白文字のみ）かどうかをチェック"""
         return not self.content.strip()
 
 
-def should_ignore_folder(folder_path: str, include_patterns: list[str], exclude_patterns: list[str]) -> bool:
+def should_ignore_folder(folder_path: str, include_patterns: list[str],
+                         exclude_patterns: list[str]) -> bool:
     """フォルダが無視されるべきかチェック（include/excludeパターンを考慮）"""
     folder_name = os.path.basename(folder_path)
     # __pycache__をデフォルトで除外
     if folder_name == '__pycache__':
         return True
-    
+
     # includeパターンが指定されている場合、一致しないものは除外
     if include_patterns:
         matched = False
@@ -79,16 +81,22 @@ def should_ignore_folder(folder_path: str, include_patterns: list[str], exclude_
                 break
         if not matched:
             return True
-    
+
     # excludeパターンに一致するものは除外
     for pattern in exclude_patterns:
         if re.match(pattern, folder_name):
             return True
+
     return False
 
 
-def walk_files(base_folder: str, file_include_patterns: list[str], file_exclude_patterns: list[str],
-               folder_include_patterns: list[str], folder_exclude_patterns: list[str]):
+def walk_files(
+        base_folder: str,
+        file_include_patterns: list[str],
+        file_exclude_patterns: list[str],
+        folder_include_patterns: list[str],
+        folder_exclude_patterns: list[str],
+):
     """検索対象のファイルを走査するジェネレータ"""
     for file in glob.glob(f"{base_folder}/**/*.py", recursive=True):
         # パス区切りを/に統一
@@ -161,11 +169,11 @@ def print_tree(base_folder: str, file_include_patterns: list[str], file_exclude_
     """ディレクトリ構造をツリー形式で表示"""
     files = list(walk_files(base_folder, file_include_patterns, file_exclude_patterns,
                             folder_include_patterns, folder_exclude_patterns))
-    
+
     # 空ファイルを除外するオプション
     if hide_empty:
         files = [f for f in files if not f.is_empty]
-    
+
     tree = build_tree_structure(files, base_folder)
     print_tree_structure(tree)
 
@@ -211,12 +219,43 @@ def compress_python_code(content: str) -> str:
     return '\n'.join(compressed_lines)
 
 
-def print_code(base_folder: str, file_include_patterns: list[str], file_exclude_patterns: list[str],
-               folder_include_patterns: list[str], folder_exclude_patterns: list[str],
-               compress: bool = False, hide_empty: bool = False):
+def extract_def_only(content: str) -> str:
+    """Pythonコードから行末の#コメントを削除"""
+    if not content.strip():
+        return content
+
+    new_contents = []
+
+    for m in re.finditer(r"^class\s+\w+(\s*\(.*?\))?:|^def\s+\w+\s*\([^)]*\):", content,
+                         flags=re.DOTALL | re.MULTILINE):
+        new_contents.append(m.group(0) + " ...")
+
+    if new_contents:
+        return "...\n\n" + "\n\n...\n\n".join(new_contents) + "\n\n..."
+    else:
+        return "..."
+
+
+def print_code(
+        base_folder: str,
+        file_include_patterns: list[str],
+        file_exclude_patterns: list[str],
+        folder_include_patterns: list[str],
+        folder_exclude_patterns: list[str],
+        compress: bool = False,
+        hide_empty: bool = False,
+        def_only: bool = False,
+):
     """Pythonファイルのコードを表示"""
-    files = list(walk_files(base_folder, file_include_patterns, file_exclude_patterns,
-                            folder_include_patterns, folder_exclude_patterns))
+    files = list(
+        walk_files(
+            base_folder=base_folder,
+            file_include_patterns=file_include_patterns,
+            file_exclude_patterns=file_exclude_patterns,
+            folder_include_patterns=folder_include_patterns,
+            folder_exclude_patterns=folder_exclude_patterns,
+        )
+    )
 
     for file_info in sorted(files, key=lambda x: x.file_normalized):
         # 空ファイルを非表示にするオプション
@@ -226,6 +265,8 @@ def print_code(base_folder: str, file_include_patterns: list[str], file_exclude_
         content = file_info.content
         if compress:
             content = compress_python_code(content)
+        if def_only:
+            content = extract_def_only(content)
 
         print(
             f"[{file_info.file_normalized}] ({len(content.splitlines())} lines)")
@@ -302,6 +343,11 @@ def main():
         action='store_true',
         help='行末の#コメントを削除してコードを圧縮'
     )
+    parser.add_argument(
+        "--def-only",
+        action="store_true",
+        help="定義文のみを表示する"
+    )
 
     args = parser.parse_args()
 
@@ -326,7 +372,8 @@ def main():
 
     if args.show:
         print_code(args.folder, args.file_includes, args.file_excludes,
-                   args.folder_includes, args.folder_excludes, args.compress, args.hide_empty)
+                   args.folder_includes, args.folder_excludes, args.compress, args.hide_empty,
+                   args.def_only)
 
 
 if __name__ == "__main__":

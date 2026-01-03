@@ -1,23 +1,23 @@
 import itertools
 
-from feature.testcase.usecase.dto import TestCaseSummary
 from feature.testcase.usecase.interface import (
     ITestCaseListSummaryUseCase,
     ITestCaseCreateNewNameUseCase,
     ITestCaseCreateUseCase,
     ITestCaseCopyUseCase,
 )
-from shared.domain.value.execute_config_options import ExecuteConfigOptions
-from shared.domain.value.input_file import InputFileCollection
-from shared.domain.error import UseCaseError, ServiceError
+from feature.testcase.usecase.interface import TestCaseSummaryDto
 from shared.domain.entity.testcase_config import TestCaseConfigEntity
+from shared.domain.error import UseCaseError, ServiceError
 from shared.domain.interface.gateway import ICurrentDatetimeGateway
 from shared.domain.interface.service import (
     ITestCaseConfigCopyService,
 )
 from shared.domain.value.execute_config import TestCaseExecuteConfig
+from shared.domain.value.execute_config_options import ExecuteConfigOptions
 from shared.domain.value.expected_output_file import ExpectedOutputFileCollection
 from shared.domain.value.identifier import TestCaseID
+from shared.domain.value.input_file import InputFileCollection
 from shared.domain.value.test_config import TestCaseTestConfig
 from shared.domain.value.test_config_options import TestConfigOptions
 from shared.infra.repository.testcase_config import TestCaseConfigRepository
@@ -31,9 +31,9 @@ class TestCaseListSummaryUseCase(ITestCaseListSummaryUseCase):
     ):
         self._testcase_config_repo = testcase_config_repo
 
-    def execute(self) -> list[TestCaseSummary]:
+    def execute(self) -> list[TestCaseSummaryDto]:
         return [
-            TestCaseSummary(
+            TestCaseSummaryDto(
                 testcase_id=testcase_config.testcase_id,
                 name=str(testcase_config.testcase_id),
                 has_stdin=testcase_config.execute_config.input_file_collection.has_stdin,

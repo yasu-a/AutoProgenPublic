@@ -13,12 +13,12 @@ from app.di.usecase import get_student_list_id_usecase, \
     get_student_table_get_student_stage_state_cell_data_usecase, \
     get_student_table_get_student_error_cell_data_usecase, \
     get_student_mark_get_usecase
-from feature.workspace.usecase.dto import StudentStageResultDiffSnapshot, \
+from feature.workspace.usecase.interface import StudentStageResultDiffSnapshotDto, \
     StudentStageStateCellDataStageState
-from shared.view.style.font import get_font
 from shared.domain.value.identifier import StudentID
 from shared.domain.value.stage import BuildStage, CompileStage, ExecuteStage, TestStage
 from shared.view.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
+from shared.view.style.font import get_font
 from util.app_logging import create_logger
 
 
@@ -405,7 +405,7 @@ class _StudentObserver(QObject):
         self._timer.timeout.connect(self._on_timer_timeout)  # type: ignore
         self._timer.start()
 
-        self._student_id_mtime_mapping: dict[StudentID, StudentStageResultDiffSnapshot] = {}
+        self._student_id_mtime_mapping: dict[StudentID, StudentStageResultDiffSnapshotDto] = {}
         self._current_student_index = 0
 
     @pyqtSlot()

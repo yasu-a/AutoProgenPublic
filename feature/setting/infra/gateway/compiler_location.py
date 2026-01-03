@@ -19,11 +19,12 @@ class VSFindCompilerPathGateway(IFindCompilerPathGateway):
         self._is_reset = False  # reset()が呼ばれたかどうか
         self._is_finished = False  # 検索が終了したかどうか
 
-    @classmethod
-    def _is_compiler_location(cls, path: Path) -> bool:
+    @staticmethod
+    def _is_compiler_location(path: Path) -> bool:
         return path.is_file() and path.name == "VsDevCmd.bat"
 
-    def _walk_file_in_location(self, location: Path) -> Iterable[Path]:
+    @staticmethod
+    def _walk_file_in_location(location: Path) -> Iterable[Path]:
         for root, _, filenames in os.walk(str(location)):
             for filename in filenames:
                 yield Path(root) / filename

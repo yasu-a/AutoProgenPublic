@@ -262,7 +262,7 @@ class AbstractPatternList(ABC):
     def __len__(self):
         return len(self._patterns)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[AbstractPattern]:
         for pattern in self._patterns:
             yield copy.deepcopy(pattern)
 

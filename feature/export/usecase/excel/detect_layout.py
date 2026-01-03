@@ -1,6 +1,6 @@
-from feature.export.usecase.interface import IAutoDetectExcelLayoutUseCase
 from feature.export.domain.interface.service import IExcelLayoutDetectionService
-from feature.export.domain.model.excel_layout import ExcelColumnMapping, ExcelRowRange
+from feature.export.domain.value import ExcelColumnMapping, ExcelRowRange
+from feature.export.usecase.interface import IAutoDetectExcelLayoutUseCase
 from shared.domain.value.excel_cell_table import ExcelCellTable
 from shared.domain.value.identifier import TargetID
 

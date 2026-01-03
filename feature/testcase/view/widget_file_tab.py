@@ -4,8 +4,8 @@ from PyQt5.QtCore import pyqtSignal, QObject, pyqtSlot, Qt, QPoint
 from PyQt5.QtGui import QIcon, QPaintEvent, QPainter, QMouseEvent
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QToolButton, QMenu, QTabWidget
 
-from shared.view.style.icon import get_icon
 from shared.domain.value.identifier import FileID
+from shared.view.style.icon import get_icon
 
 
 class AbstractFileTabWidgetDelegator(ABC):

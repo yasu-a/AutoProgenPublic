@@ -3,6 +3,13 @@ from pathlib import Path
 
 from PyQt5.QtCore import QStandardPaths
 
+from feature.export.domain.interface.service import (
+    ExcelLayoutDetectionError,
+    HeaderRowNotFoundError,
+    StudentNameColumnNotFoundError,
+    ScoreColumnNotFoundError,
+    DataRowNotFoundError,
+)
 from feature.export.handler.interface import (
     IExcelScoreExportTabHandler,
     IExcelScoreExportTabView,
@@ -13,13 +20,6 @@ from feature.export.usecase.interface import (
     IAutoDetectExcelLayoutUseCase,
     IExecuteExcelScoreUpdateUseCase,
 )
-from feature.export.domain.interface.service import (
-    ExcelLayoutDetectionError,
-    HeaderRowNotFoundError,
-    StudentNameColumnNotFoundError,
-    ScoreColumnNotFoundError,
-    DataRowNotFoundError,
-)
 from shared.domain.value.excel_cell_table import ExcelCellTable
 from shared.domain.value.identifier import TargetID
 
@@ -28,14 +28,14 @@ class ExcelScoreExportTabHandler(IExcelScoreExportTabHandler):
     """ExcelScoreExportTab専任のHandler"""
 
     def __init__(
-        self,
-        *,
-        view: IExcelScoreExportTabView | None,
-        list_excel_worksheet_usecase: IListExcelWorksheetUseCase,
-        get_excel_sheet_preview_usecase: IGetExcelSheetPreviewUseCase,
-        auto_detect_excel_layout_usecase: IAutoDetectExcelLayoutUseCase,
-        execute_excel_score_update_usecase: IExecuteExcelScoreUpdateUseCase,
-        target_id: TargetID,
+            self,
+            *,
+            view: IExcelScoreExportTabView | None,
+            list_excel_worksheet_usecase: IListExcelWorksheetUseCase,
+            get_excel_sheet_preview_usecase: IGetExcelSheetPreviewUseCase,
+            auto_detect_excel_layout_usecase: IAutoDetectExcelLayoutUseCase,
+            execute_excel_score_update_usecase: IExecuteExcelScoreUpdateUseCase,
+            target_id: TargetID,
     ):
         self._view: IExcelScoreExportTabView | None = view
         self._list_excel_worksheet_usecase = list_excel_worksheet_usecase
@@ -76,7 +76,7 @@ class ExcelScoreExportTabHandler(IExcelScoreExportTabHandler):
             # シート名一覧を取得
             sheet_names = self._list_excel_worksheet_usecase.execute(excel_path=excel_fullpath)
             self._view.excel_tab.set_sheet_names(sheet_names)
-            
+
             # 最初のシートを選択してプレビューを表示
             if sheet_names:
                 self._view.excel_tab._list_sheets.setCurrentRow(0)
@@ -90,7 +90,7 @@ class ExcelScoreExportTabHandler(IExcelScoreExportTabHandler):
         if not excel_path:
             self._view.excel_tab.clear_message()
             return
-        
+
         excel_fullpath = Path(excel_path)
         sheet_name = self._view.excel_tab.get_selected_sheet_name()
         if not sheet_name:
@@ -108,17 +108,19 @@ class ExcelScoreExportTabHandler(IExcelScoreExportTabHandler):
             excel_cell_table = ExcelCellTable(preview_data)
             self._current_excel_cell_table = excel_cell_table
             self._view.excel_tab.set_sheet_preview_data(preview_data)
-            
+
             # 自動検出を実行
             self._auto_detect_and_update_message()
         except Exception as e:
-            self._view.excel_tab.show_message(f"シートの読み込みに失敗しました: {e}", is_success=False)
+            self._view.excel_tab.show_message(f"シートの読み込みに失敗しました: {e}",
+                                              is_success=False)
             self._view.show_export_error(f"シートの読み込みに失敗しました: {e}")
 
     def _auto_detect_and_update_message(self) -> None:
         """自動検出を実行してメッセージを更新"""
         if self._current_excel_cell_table is None:
-            self._view.excel_tab.show_message("シートデータが読み込まれていません。", is_success=False)
+            self._view.excel_tab.show_message("シートデータが読み込まれていません。",
+                                              is_success=False)
             return
 
         try:
@@ -127,14 +129,14 @@ class ExcelScoreExportTabHandler(IExcelScoreExportTabHandler):
                 excel_cell_table=self._current_excel_cell_table,
                 target_id=self._target_id,
             )
-            
+
             # プレビュー用に問X列のインデックスを渡す（書き込み列が問X列）
             self._view.excel_tab.set_mapping_settings(
                 mapping,
                 row_range,
                 target_id_col=mapping.score_write_column_index,
             )
-            
+
             # 成功メッセージ
             self._view.excel_tab.show_message(
                 f"レイアウトを自動検出しました。学籍番号列: {mapping.student_id_column_index}, "
@@ -181,11 +183,11 @@ class ExcelScoreExportTabHandler(IExcelScoreExportTabHandler):
         """エクスポート要求"""
         excel_path = self._view.excel_tab.get_excel_path()
         sheet_name = self._view.excel_tab.get_selected_sheet_name()
-        
+
         if not excel_path:
             self._view.show_export_error("Excelファイルを選択してください。")
             return
-        
+
         if not sheet_name:
             self._view.show_export_error("シートを選択してください。")
             return
@@ -200,16 +202,15 @@ class ExcelScoreExportTabHandler(IExcelScoreExportTabHandler):
                 mapping=mapping,
                 row_range=row_range,
             )
-            
+
             backup_message = (
                 f"Excelファイルのバックアップを取りました：\n{backup_path!s}\n\n"
                 if backup_path
                 else ""
             )
             message = backup_message + "エクスポートが完了しました。ワークブックを開いて確認しますか？"
-            
+
             if self._view.show_export_success(backup_path, message):
                 os.startfile(excel_fullpath)
         except Exception as e:
             self._view.show_export_error(f"エクスポートに失敗しました: {e}")
-

@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from feature.export.usecase.interface import IExecuteSimpleScoreExportUseCase
 from feature.export.domain.interface.gateway import ISimpleScoreExportGateway
-from feature.export.domain.model.data import SimpleScoreExportRow
-from feature.export.domain.model.format import ScoreExportFormat
+from feature.export.domain.value import ScoreExportFormat
+from feature.export.usecase.interface import IExecuteSimpleScoreExportUseCase
+from feature.export.usecase.interface import SimpleScoreExportRowDto
 
 
 class ExecuteSimpleScoreExportUseCase(IExecuteSimpleScoreExportUseCase):
@@ -21,14 +21,14 @@ class ExecuteSimpleScoreExportUseCase(IExecuteSimpleScoreExportUseCase):
         *,
         folder: Path,
         filename_no_ext: str,
-        format: ScoreExportFormat,
-        data: list[SimpleScoreExportRow],
+        export_format: ScoreExportFormat,
+        data: list[SimpleScoreExportRowDto],
     ) -> Path:
         """単純エクスポートを実行"""
-        ext = ".csv" if format == ScoreExportFormat.CSV else ".json"
+        ext = ".csv" if export_format == ScoreExportFormat.CSV else ".json"
         fullpath = folder / (filename_no_ext + ext)
         
-        if format == ScoreExportFormat.CSV:
+        if export_format == ScoreExportFormat.CSV:
             self._csv_export_gateway.save(fullpath, data)
         else:
             self._json_export_gateway.save(fullpath, data)

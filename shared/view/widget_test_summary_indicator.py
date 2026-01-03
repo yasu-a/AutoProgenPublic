@@ -3,7 +3,7 @@ import sys
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from feature.scoring.usecase.dto import StudentTestCaseSummaryState
+from feature.scoring.usecase.interface import StudentTestCaseSummaryState
 from shared.view.style.font import get_font
 
 

@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from abc import abstractmethod as view_abstractmethod
 
 from shared.domain.value.identifier import StudentID
 
@@ -12,6 +11,11 @@ class IWorkspaceWindowHandler(ABC):
     @abstractmethod
     def on_view_initialized(self) -> None:
         """Viewが初期化されたときに呼ばれる"""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def on_view_closed(self) -> None:
+        """Viewが閉じられるときに呼ばれる（クリーンアップ処理）"""
         raise NotImplementedError()
 
     @abstractmethod
@@ -33,15 +37,33 @@ class IWorkspaceWindowHandler(ABC):
 # ===== View Interfaces (Handlerから見たViewのインターフェース) =====
 
 # Not inheriting from ABC to avoid metaclass conflict with Qt classes
+# noinspection PyAbstractClass
+class IProcessResourceUsageStatusBarView:
+    """Handlerから見たリソース使用状況ステータスバーのインターフェース"""
+
+    @abstractmethod
+    def set_resource_usage(self, cpu_percent: int, memory_mega_bytes: int, disk_read_count: int,
+                           disk_write_count: int) -> None:
+        """リソース使用状況を設定"""
+        raise NotImplementedError()
+
+
+# Not inheriting from ABC to avoid metaclass conflict with Qt classes
+# noinspection PyAbstractClass
 class IWorkspaceWindowView:
     """Handlerから見たワークスペースウィンドウのインターフェース"""
 
-    @view_abstractmethod
+    @abstractmethod
     def set_window_title(self, title: str) -> None:
         """ウィンドウタイトルを設定"""
         raise NotImplementedError()
 
-    @view_abstractmethod
+    @abstractmethod
     def get_parent_widget(self):
         """親ウィジェットを取得（ダイアログの親として使用）"""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_process_resource_usage_status_bar_view(self) -> IProcessResourceUsageStatusBarView:
+        """リソース使用状況ステータスバーのViewを取得"""
         raise NotImplementedError()

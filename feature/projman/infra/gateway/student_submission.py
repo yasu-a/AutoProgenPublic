@@ -1,11 +1,9 @@
 import re
 from pathlib import Path
 
-from feature.projman.usecase.interface import (
-    IStudentSubmissionListSourceRelativePathGateway,
-    IStudentSubmissionGetFileContentGateway,
-    StudentSubmissionListSourceRelativePathGatewayError,
-)
+from feature.projman.domain.interface.gateway import \
+    IStudentSubmissionListSourceRelativePathGateway, \
+    StudentSubmissionListSourceRelativePathGatewayError, IStudentSubmissionGetFileContentGateway
 from shared.domain.value.identifier import StudentID, TargetID
 from shared.infra.path_provider.current_project import StudentSubmissionPathProvider
 from shared.infra.repository.current_project import CurrentProjectRepository
@@ -13,7 +11,8 @@ from shared.infra.system.current_project_core_io import CurrentProjectCoreIO
 
 
 class StudentSubmissionListSourceRelativePathGateway(
-    IStudentSubmissionListSourceRelativePathGateway):
+    IStudentSubmissionListSourceRelativePathGateway
+):
     def __init__(
             self,
             *,

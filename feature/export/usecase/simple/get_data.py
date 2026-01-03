@@ -1,7 +1,7 @@
 from feature.export.usecase.interface import IGetSimpleScoreExportDataUseCase
-from feature.export.domain.model.data import SimpleScoreExportRow
-from shared.infra.repository.student import StudentRepository
+from feature.export.usecase.interface import SimpleScoreExportRowDto
 from shared.domain.service.student_mark_get import StudentMarkEntityGetSubService
+from shared.infra.repository.student import StudentRepository
 
 
 class GetSimpleScoreExportDataUseCase(IGetSimpleScoreExportDataUseCase):
@@ -14,9 +14,9 @@ class GetSimpleScoreExportDataUseCase(IGetSimpleScoreExportDataUseCase):
         self._student_repo = student_repo
         self._student_mark_get_sub_service = student_mark_get_sub_service
     
-    def execute(self) -> list[SimpleScoreExportRow]:
+    def execute(self) -> list[SimpleScoreExportRowDto]:
         """単純エクスポート用のデータを取得"""
-        rows: list[SimpleScoreExportRow] = []
+        rows: list[SimpleScoreExportRowDto] = []
         
         # 全生徒を取得
         students = self._student_repo.list()
@@ -25,7 +25,7 @@ class GetSimpleScoreExportDataUseCase(IGetSimpleScoreExportDataUseCase):
         for student in students:
             student_mark = self._student_mark_get_sub_service.execute(student.student_id)
             
-            row = SimpleScoreExportRow(
+            row = SimpleScoreExportRowDto(
                 student_id=student.student_id,
                 student_name=student.name,
                 score=student_mark.score if student_mark.is_marked else None,

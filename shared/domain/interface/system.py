@@ -91,8 +91,8 @@ class IProjectCoreIO(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def walk_files(self, *, project_id: ProjectID, folder_fullpath: Path, return_absolute: bool) -> \
-    Iterable[Path]:
+    def walk_files(self, *, project_id: ProjectID, folder_fullpath: Path, return_absolute: bool) \
+            -> Iterable[Path]:
         raise NotImplementedError()
 
     @abstractmethod

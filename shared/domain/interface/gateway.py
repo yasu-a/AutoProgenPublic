@@ -1,13 +1,29 @@
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 from shared.domain.value.identifier import StudentID
 
 if TYPE_CHECKING:
     from shared.domain.value.excel_cell_table import ExcelCellTable
+
+
+class ResourceUsageDto(NamedTuple):
+    """リソース使用状況を表すDTO"""
+    disk_read_count: int
+    disk_write_count: int
+    cpu_percent: int
+    memory: int
+
+
+class IResourceUsageGateway(ABC):
+    """リソース使用状況を取得するGatewayインターフェース"""
+    
+    @abstractmethod
+    def execute(self) -> ResourceUsageDto:
+        """リソース使用状況を取得"""
+        raise NotImplementedError()
 
 
 class ICurrentDatetimeGateway(ABC):
@@ -31,6 +47,15 @@ class IStudentSubmissionGetChecksumGateway(ABC):
 class IStudentSubmissionFolderShowGateway(ABC):
     @abstractmethod
     def execute(self, student_id: StudentID) -> None:
+        raise NotImplementedError()
+
+
+class IFolderShowInExplorerGateway(ABC):
+    """フォルダをエクスプローラで開くGatewayインターフェース"""
+    
+    @abstractmethod
+    def execute(self, folder_path: Path) -> None:
+        """フォルダをエクスプローラで開く"""
         raise NotImplementedError()
 
 

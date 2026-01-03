@@ -2,14 +2,14 @@ from PyQt5.QtCore import QObject, pyqtSignal, QEvent, Qt
 from PyQt5.QtWidgets import QVBoxLayout, QLabel, QGroupBox, QPlainTextEdit, QHBoxLayout, QPushButton
 
 from app.di.usecase import get_test_test_stage_usecase
-from feature.scoring.usecase.dto import StudentTestCaseSummaryState
-from feature.testcase.usecase.dto import TestTestStageResult
+from feature.scoring.usecase.interface import StudentTestCaseSummaryState
+from feature.testcase.usecase.interface import TestTestStageResultDto
 from feature.testcase.view.widget_testcase_result_output_file_text_view import \
     TestCaseResultOutputFileTextView
-from shared.view.style.font import get_font
-from shared.domain.value.test_result_output_file_entry import AbstractTestResultOutputFileEntry
 from shared.domain.value.expected_output_file import ExpectedOutputFile
 from shared.domain.value.test_config_options import TestConfigOptions
+from shared.domain.value.test_result_output_file_entry import AbstractTestResultOutputFileEntry
+from shared.view.style.font import get_font
 from shared.view.widget_horizontal_line import HorizontalLineWidget
 from shared.view.widget_plain_text_edit import PlainTextEdit
 from shared.view.widget_test_summary_indicator import TestCaseTestSummaryIndicatorWidget
@@ -84,7 +84,7 @@ class TestCaseTestConfigTesterWidget(QGroupBox):
             expected_output_file: ExpectedOutputFile,
             test_config_options: TestConfigOptions,
     ):
-        test_result: TestTestStageResult = get_test_test_stage_usecase().execute(
+        test_result: TestTestStageResultDto = get_test_test_stage_usecase().execute(
             expected_output_file=expected_output_file,
             test_config_options=test_config_options,
             content_text=self._editor.toPlainText(),
@@ -106,7 +106,7 @@ class TestCaseTestConfigTesterWidget(QGroupBox):
                 = test_result.file_test_result
             self._result_view.set_data(
                 source_code_text=test_result_output_file_entry.actual.content_string,
-                matched_tokens=test_result_output_file_entry.test_result.matched_tokens,
+                matched_tokens=list(test_result_output_file_entry.test_result.matched_tokens),
             )
 
             if test_result_output_file_entry.has_actual \

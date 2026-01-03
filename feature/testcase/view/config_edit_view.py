@@ -21,12 +21,13 @@ class TestCaseConfigEditView(QTabWidget, ITestCaseConfigEditView):
 
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
-        self._handler: ITestCaseConfigEditHandler | None = None
+        self._handler: ITestCaseConfigEditHandler
 
         self._init_ui()
 
     def set_handler(self, handler: ITestCaseConfigEditHandler) -> None:
         """Handlerを注入（DI）"""
+        # noinspection PyAttributeOutsideInit
         self._handler = handler
 
     def _init_ui(self):

@@ -72,7 +72,7 @@ class SimpleScoreExportTabHandler(ISimpleScoreExportTabHandler):
             exported_path = self._execute_simple_export_usecase.execute(
                 folder=folder,
                 filename_no_ext=filename,
-                format=format_enum,
+                export_format=format_enum,
                 data=data,
             )
             

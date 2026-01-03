@@ -2,8 +2,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
-from shared.view.style.font import get_font
 from shared.view.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
+from shared.view.style.font import get_font
 
 
 class PlainTextEdit(QPlainTextEdit, HorizontalScrollWithShiftAndWheelMixin):

@@ -5,7 +5,7 @@ from app.di.repository import get_testcase_config_repository
 from app.di.usecase import get_testcase_list_summary_usecase, \
     get_testcase_create_new_name_usecase, get_testcase_create_usecase, \
     get_testcase_copy_usecase
-from feature.testcase.usecase.dto import TestCaseSummary
+from feature.testcase.usecase.interface import TestCaseSummaryDto
 from feature.testcase.view.dialog_testcase_config_edit import TestCaseConfigEditDialog
 from shared.domain.error import UseCaseError
 from shared.domain.value.identifier import TestCaseID
@@ -18,7 +18,7 @@ class TestCaseListWidget(QListWidget):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self._testcase_config_summary_lst: list[TestCaseSummary] = []
+        self._testcase_config_summary_lst: list[TestCaseSummaryDto] = []
 
         self._init_ui()
 

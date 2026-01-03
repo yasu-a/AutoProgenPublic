@@ -131,17 +131,17 @@ class StorageRepository(IStorageRepository):
         )
         return storage_entity
 
-    def put(self, StorageEntity: StorageEntity) -> None:
+    def put(self, storage: StorageEntity) -> None:
         # ストレージの変更をコミットする
         # ストレージにコミットした後のストレージインスタンスを操作してはならない！！！
 
         base_folder_fullpath = self._storage_path_provider.base_folder_fullpath(
-            StorageEntity.storage_id,
+            storage.storage_id,
         )
         if not base_folder_fullpath.exists():
-            raise ValueError(f"IO session {StorageEntity.storage_id} not found")
+            raise ValueError(f"IO session {storage.storage_id} not found")
 
-        for file_relative_path, command in StorageEntity.files.iter_modifications():
+        for file_relative_path, command in storage.files.iter_modifications():
             file_fullpath = base_folder_fullpath / file_relative_path
             command_type, updated_content = command
             if command_type == CommandType.DELETED:

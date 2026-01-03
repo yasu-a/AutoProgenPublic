@@ -1,11 +1,15 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, TypeVar
+
+from PyQt5.QtCore import QObject
 
 from shared.domain.value.identifier import ProjectID, TargetID
 
 if TYPE_CHECKING:
     from shared.domain.value.identifier import StudentID
+
+T = TypeVar('T')
 
 
 class INavigator(ABC):
@@ -35,6 +39,35 @@ class INavigator(ABC):
         """
         コンパイラ検索ダイアログを開く
         戻り値: 選択されたパス、キャンセル時はNone
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def run_blocking_task(
+            self,
+            parent: QObject,
+            title: str,
+            initial_message: str,
+            task_func: Callable[..., T],
+            **task_kwargs
+    ) -> T:
+        """
+        ブロッキングタスクを実行する（WaitDialogで進捗表示）
+
+        Args:
+            parent: 親ウィジェット
+            title: ダイアログタイトル
+            initial_message: 初期メッセージ
+            task_func: 実行する関数
+                - 必ずprogress_callback: Callable[[str], None]をキーワード引数として受け取ること
+                - progress_callbackは進捗メッセージ（str）を受け取り、何も返さない
+            **task_kwargs: task_funcに渡す追加のキーワード引数
+
+        Returns:
+            task_funcの戻り値
+
+        Raises:
+            task_func内で発生した例外
         """
         raise NotImplementedError()
 

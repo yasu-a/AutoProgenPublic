@@ -3,11 +3,10 @@ from pathlib import Path
 from PyQt5.QtCore import QObject, pyqtSlot
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QLabel, QCheckBox, QMessageBox
 
-from feature.setting.handler.interface import ISettingEditHandler, ISettingEditView
+from feature.setting.handler.interface import ISettingEditHandler, ISettingEditView, SettingEditDTO
 from feature.setting.view.widget_compiler_timeout import CompilerTimeoutWidget
 from feature.setting.view.widget_compiler_tool_path_edit import CompilerToolPathEditWidget
 from feature.setting.view.widget_max_workers import MaxWorkersWidget
-from shared.domain.value.setting import Setting
 
 
 class SettingEditWidget(QWidget, ISettingEditView):
@@ -22,6 +21,7 @@ class SettingEditWidget(QWidget, ISettingEditView):
 
     def set_handler(self, handler: ISettingEditHandler) -> None:
         """Handlerを注入（DI）"""
+        # noinspection PyAttributeOutsideInit
         self._handler = handler
 
     def _init_ui(self):
@@ -140,76 +140,44 @@ class SettingEditWidget(QWidget, ISettingEditView):
         self._handler.on_compiler_search_requested()
 
     # ===== ISettingEditView実装 =====
-    def set_settings(self, setting: Setting) -> None:
+    def set_settings(self, dto: SettingEditDTO) -> None:
         """設定をViewに設定"""
+        from pathlib import Path
+        
         self._w_compiler_tool_path.set_value(
-            setting.compiler_tool_fullpath,
+            Path(dto.compiler_tool_fullpath) if dto.compiler_tool_fullpath else None,
         )
-        self._w_compiler_timeout.set_value(
-            int(setting.compile_timeout),
-        )
-        self._w_max_workers.set_value(
-            setting.max_workers,
-        )
-        self._w_backup_before_export.setChecked(
-            setting.backup_before_export,
-        )
+        self._w_compiler_timeout.set_value(int(dto.compile_timeout))
+        self._w_max_workers.set_value(dto.max_workers)
+        self._w_backup_before_export.setChecked(dto.backup_before_export)
         self._w_show_editing_symbols_in_stream_content.setChecked(
-            setting.show_editing_symbols_in_stream_content,
+            dto.show_editing_symbols_in_stream_content
         )
         self._w_show_editing_symbols_in_source_code.setChecked(
-            setting.show_editing_symbols_in_source_code,
+            dto.show_editing_symbols_in_source_code
         )
         self._w_enable_line_wrap_in_stream_content.setChecked(
-            setting.enable_line_wrap_in_stream_content,
+            dto.enable_line_wrap_in_stream_content
         )
         self._w_enable_line_wrap_in_source_code.setChecked(
-            setting.enable_line_wrap_in_source_code,
+            dto.enable_line_wrap_in_source_code
         )
 
-    def get_compiler_tool_fullpath(self) -> Path | None:
-        """コンパイラツールのパスを取得"""
-        return self._w_compiler_tool_path.get_value()
-
-    def get_compile_timeout(self) -> float:
-        """コンパイルタイムアウトを取得"""
-        return float(self._w_compiler_timeout.get_value())
-
-    def get_max_workers(self) -> int:
-        """最大ワーカー数を取得"""
-        return self._w_max_workers.get_value()
-
-    def get_backup_before_export(self) -> bool:
-        """エクスポート前のバックアップ設定を取得"""
-        return self._w_backup_before_export.isChecked()
-
-    def get_show_editing_symbols_in_stream_content(self) -> bool:
-        """ストリームコンテンツの編集記号表示設定を取得"""
-        return self._w_show_editing_symbols_in_stream_content.isChecked()
-
-    def get_show_editing_symbols_in_source_code(self) -> bool:
-        """ソースコードの編集記号表示設定を取得"""
-        return self._w_show_editing_symbols_in_source_code.isChecked()
-
-    def get_enable_line_wrap_in_stream_content(self) -> bool:
-        """ストリームコンテンツの行折り返し設定を取得"""
-        return self._w_enable_line_wrap_in_stream_content.isChecked()
-
-    def get_enable_line_wrap_in_source_code(self) -> bool:
-        """ソースコードの行折り返し設定を取得"""
-        return self._w_enable_line_wrap_in_source_code.isChecked()
-
-    def get_compiler_tool_path_validation_error(self) -> str | None:
-        """コンパイラツールパスのバリデーションエラーを取得（エラーがない場合はNone）"""
-        return self._w_compiler_tool_path.validate_and_get_reason()
-
-    def get_compile_timeout_validation_error(self) -> str | None:
-        """コンパイルタイムアウトのバリデーションエラーを取得（エラーがない場合はNone）"""
-        return self._w_compiler_timeout.validate_and_get_reason()
-
-    def get_max_workers_validation_error(self) -> str | None:
-        """最大ワーカー数のバリデーションエラーを取得（エラーがない場合はNone）"""
-        return self._w_max_workers.validate_and_get_reason()
+    def get_settings_dto(self) -> SettingEditDTO:
+        """Viewから設定を取得（DTO形式）"""
+        compiler_tool_path_value = self._w_compiler_tool_path.get_value()
+        compiler_tool_fullpath_str = str(compiler_tool_path_value) if compiler_tool_path_value else None
+        
+        return SettingEditDTO(
+            compiler_tool_fullpath=compiler_tool_fullpath_str,
+            compile_timeout=float(self._w_compiler_timeout.get_value()),
+            max_workers=self._w_max_workers.get_value(),
+            backup_before_export=self._w_backup_before_export.isChecked(),
+            show_editing_symbols_in_stream_content=self._w_show_editing_symbols_in_stream_content.isChecked(),
+            show_editing_symbols_in_source_code=self._w_show_editing_symbols_in_source_code.isChecked(),
+            enable_line_wrap_in_stream_content=self._w_enable_line_wrap_in_stream_content.isChecked(),
+            enable_line_wrap_in_source_code=self._w_enable_line_wrap_in_source_code.isChecked(),
+        )
 
     def show_test_result(self, result) -> None:
         """コンパイルテスト結果を表示"""
@@ -235,3 +203,25 @@ class SettingEditWidget(QWidget, ISettingEditView):
     def get_parent_widget(self):
         """親ウィジェットを取得（QMessageBoxのparent用）"""
         return self
+
+    def show_validation_error(self, error_message: str) -> None:
+        """バリデーションエラーを表示"""
+        QMessageBox.warning(
+            self,  # type: ignore
+            "設定",
+            f"設定内容にエラーがあります。\n\n{error_message}",
+        )
+
+    def confirm_discard_changes(self) -> bool:
+        """
+        変更内容を破棄するか確認
+        戻り値: 破棄するか（True=破棄、False=キャンセル）
+        """
+        res = QMessageBox.question(
+            self,  # type: ignore
+            "設定",
+            "変更内容が破棄されます。よろしいですか？",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        return res == QMessageBox.Yes
