@@ -1,5 +1,6 @@
 from contextlib import contextmanager
-from typing import Iterable
+from pathlib import Path
+from typing import Iterable, Callable
 
 from PyQt5.QtCore import QMutex
 
@@ -8,7 +9,6 @@ from shared.domain.interface.repository import ITestCaseConfigRepository
 from shared.domain.value.execute_config import TestCaseExecuteConfig
 from shared.domain.value.identifier import TestCaseID
 from shared.domain.value.test_config import TestCaseTestConfig
-from shared.infra.path_provider.current_project import TestCaseConfigPathProvider
 from shared.infra.system.current_project_core_io import CurrentProjectCoreIO
 
 
@@ -16,10 +16,16 @@ class TestCaseConfigRepository(ITestCaseConfigRepository):
     def __init__(
             self,
             *,
-            testcase_config_path_provider: TestCaseConfigPathProvider,
+            testcase_config_base_folder: Path,
+            testcase_folder_fullpath: Callable[[TestCaseID], Path],
+            testcase_execute_config_json_fullpath: Callable[[TestCaseID], Path],
+            testcase_test_config_json_fullpath: Callable[[TestCaseID], Path],
             current_project_core_io: CurrentProjectCoreIO,
     ):
-        self._testcase_config_path_provider = testcase_config_path_provider
+        self._testcase_config_base_folder = testcase_config_base_folder
+        self._testcase_folder_fullpath = testcase_folder_fullpath
+        self._testcase_execute_config_json_fullpath = testcase_execute_config_json_fullpath
+        self._testcase_test_config_json_fullpath = testcase_test_config_json_fullpath
         self._current_project_core_io = current_project_core_io
 
         self._lock = QMutex()
@@ -34,12 +40,11 @@ class TestCaseConfigRepository(ITestCaseConfigRepository):
             self._lock.unlock()
 
     def __ensure_testcase_folder_exists(self, testcase_id: TestCaseID) -> None:
-        testcase_folder_fullpath = self._testcase_config_path_provider.testcase_folder_fullpath(
-            testcase_id)
+        testcase_folder_fullpath = self._testcase_folder_fullpath(testcase_id)
         testcase_folder_fullpath.mkdir(parents=True, exist_ok=True)
 
     def __iter_testcase_folder_names(self) -> Iterable[str]:
-        base_folder_fullpath = self._testcase_config_path_provider.base_folder_fullpath()
+        base_folder_fullpath = self._testcase_config_base_folder
         base_folder_fullpath.mkdir(parents=True, exist_ok=True)
         for testcase_folder_fullpath in base_folder_fullpath.iterdir():
             if not testcase_folder_fullpath.is_dir():
@@ -58,9 +63,7 @@ class TestCaseConfigRepository(ITestCaseConfigRepository):
         except FileNotFoundError:
             pass
         self.__ensure_testcase_folder_exists(testcase_id)
-        json_fullpath = self._testcase_config_path_provider.execute_config_json_fullpath(
-            testcase_id=testcase_id,
-        )
+        json_fullpath = self._testcase_execute_config_json_fullpath(testcase_id)
         self._current_project_core_io.write_json(
             json_fullpath=json_fullpath,
             body=execute_config.to_json(),
@@ -77,9 +80,7 @@ class TestCaseConfigRepository(ITestCaseConfigRepository):
         except FileNotFoundError:
             pass
         self.__ensure_testcase_folder_exists(testcase_id)
-        json_fullpath = self._testcase_config_path_provider.test_config_json_fullpath(
-            testcase_id=testcase_id,
-        )
+        json_fullpath = self._testcase_test_config_json_fullpath(testcase_id)
         self._current_project_core_io.write_json(
             json_fullpath=json_fullpath,
             body=test_config.to_json(),
@@ -100,18 +101,14 @@ class TestCaseConfigRepository(ITestCaseConfigRepository):
             )
 
     def __read_execute_config(self, testcase_id: TestCaseID) -> TestCaseExecuteConfig:
-        json_fullpath = self._testcase_config_path_provider.execute_config_json_fullpath(
-            testcase_id=testcase_id,
-        )
+        json_fullpath = self._testcase_execute_config_json_fullpath(testcase_id)
         if not json_fullpath.exists():
             raise FileNotFoundError("Execute config file does not exist")
         json_body = self._current_project_core_io.read_json(json_fullpath=json_fullpath)
         return TestCaseExecuteConfig.from_json(json_body)
 
     def __read_test_config(self, testcase_id: TestCaseID) -> TestCaseTestConfig:
-        json_fullpath = self._testcase_config_path_provider.test_config_json_fullpath(
-            testcase_id=testcase_id,
-        )
+        json_fullpath = self._testcase_test_config_json_fullpath(testcase_id)
         if not json_fullpath.exists():
             raise FileNotFoundError("Test config file does not exist")
         json_body = self._current_project_core_io.read_json(json_fullpath=json_fullpath)
@@ -166,9 +163,7 @@ class TestCaseConfigRepository(ITestCaseConfigRepository):
         with self.__lock():
             del self._testcase_cache[testcase_id]
 
-            base_folder_fullpath = self._testcase_config_path_provider.testcase_folder_fullpath(
-                testcase_id=testcase_id,
-            )
+            base_folder_fullpath = self._testcase_folder_fullpath(testcase_id)
             if not base_folder_fullpath.exists():
                 raise FileNotFoundError("Test case does not exist")
             self._current_project_core_io.rmtree_folder(

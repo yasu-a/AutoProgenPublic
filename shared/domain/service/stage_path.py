@@ -1,11 +1,12 @@
+from shared.domain.interface.service import IStagePathGetByTestCaseIDService, \
+    IStagePathListSubService
+from shared.domain.model.stage import StageElement, Stage
 from shared.domain.value.identifier import TestCaseID
-from shared.domain.value.stage import TestStage
-from shared.domain.value.stage_path import StagePath
 from shared.infra.repository.testcase_config import TestCaseConfigRepository
 
 
-class StagePathListSubService:
-    # ステージツリーのルートノードからそれぞれの終端ノードに至るまでのパスのリストを取得する
+class StagePathListSubService(IStagePathListSubService):
+    """ステージ階層のすべてのパスを列挙して返すサービス。"""
 
     def __init__(
             self,
@@ -14,36 +15,49 @@ class StagePathListSubService:
     ):
         self._testcase_config_repo = testcase_config_repo
 
-    def execute(self) -> list[StagePath]:
+    def execute(self) -> list[list[StageElement]]:
         # コンテキストが出揃っていない場合，ステージがリストに含まれない場合もある
         # 例えばテストケースがない場合はExecuteStageとTestStageが含まれない
         testcase_ids = [
             testcase_config.testcase_id
             for testcase_config in self._testcase_config_repo.list()
         ]
-        return StagePath.list_paths(testcase_ids=testcase_ids)
+        
+        paths: list[list[StageElement]] = []
+        if testcase_ids:
+            for testcase_id in testcase_ids:
+                paths.append([
+                    StageElement(Stage.BUILD),
+                    StageElement(Stage.COMPILE),
+                    StageElement(Stage.EXECUTE, testcase_id),
+                    StageElement(Stage.TEST, testcase_id),
+                ])
+        else:
+            paths.append([
+                StageElement(Stage.BUILD),
+                StageElement(Stage.COMPILE),
+            ])
+        return paths
 
 
-class StagePathGetByTestCaseIDService:
-    # ステージパスのうちから特定のテストケースIDに関連するステージパスを見つける
+class StagePathGetByTestCaseIDService(IStagePathGetByTestCaseIDService):
+    """指定したテストケースIDに関連するステージパスを抽出するサービス。"""
     def __init__(
             self,
             *,
-            stage_path_list_sub_service: StagePathListSubService,
+            stage_path_list_sub_service: IStagePathListSubService,
     ):
         self._stage_path_list_sub_service = stage_path_list_sub_service
 
-    def execute(self, testcase_id: TestCaseID) -> StagePath:
-        stage_path_lst: list[StagePath] = self._stage_path_list_sub_service.execute(
-        )
+    def execute(self, testcase_id: TestCaseID) -> list[StageElement]:
+        stage_path_lst: list[list[StageElement]] = self._stage_path_list_sub_service.execute()
 
         for stage_path in stage_path_lst:
             # ステージパスと関連づいているテストケースIDを取得
-            test_stage = stage_path.get_stage_by_stage_type(TestStage)
+            test_stage = next((s for s in stage_path if s.stage == Stage.TEST), None)
             if test_stage is None:
                 # ステージパスにTestStageがない（テストケースが定義されていない）
                 continue
-            assert isinstance(test_stage, TestStage)
             stage_path_testcase_id = test_stage.testcase_id
 
             if stage_path_testcase_id == testcase_id:

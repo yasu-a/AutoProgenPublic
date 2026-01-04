@@ -5,19 +5,18 @@ import os
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Any, Iterable
+from typing import Optional, Any, Iterable, Callable
 
 from shared.domain.error import CoreIOError
 from shared.domain.value.identifier import ProjectID
-from shared.infra.path_provider.project import ProjectPathProvider
 from util.app_logging import create_logger
 
 
 class ProjectCoreIO:
     _logger = create_logger()
 
-    def __init__(self, *, project_path_provider: ProjectPathProvider):
-        self._project_path_provider = project_path_provider
+    def __init__(self, *, project_folder_fullpath: Callable[[ProjectID], Path]):
+        self._project_folder_fullpath = project_folder_fullpath
 
     def __check_file_location(
             self,
@@ -32,7 +31,7 @@ class ProjectCoreIO:
             raise CoreIOError(f"path must be a file: {path}")
         if not external_ok:
             assert path.is_relative_to(
-                self._project_path_provider.base_folder_fullpath(project_id)
+                self._project_folder_fullpath(project_id)
             ), path
 
     def __check_folder_location(
@@ -48,7 +47,7 @@ class ProjectCoreIO:
             raise CoreIOError(f"path must be a directory: {path}")
         if not external_ok:
             assert path.is_relative_to(
-                self._project_path_provider.base_folder_fullpath(project_id)
+                self._project_folder_fullpath(project_id)
             ), path
 
     def __check_path_may_not_exist(
@@ -63,7 +62,7 @@ class ProjectCoreIO:
             raise CoreIOError(f"path must be absolute: {path}")
         if not external_ok:
             if not path.is_relative_to(
-                    self._project_path_provider.base_folder_fullpath(project_id)):
+                    self._project_folder_fullpath(project_id)):
                 raise CoreIOError(f"path must be within ProjectEntity: {path}")
 
     def rmtree_folder(

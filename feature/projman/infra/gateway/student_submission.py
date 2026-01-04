@@ -1,11 +1,11 @@
 import re
 from pathlib import Path
+from typing import Callable
 
 from feature.projman.domain.interface.gateway import \
     IStudentSubmissionListSourceRelativePathGateway, \
     StudentSubmissionListSourceRelativePathGatewayError, IStudentSubmissionGetFileContentGateway
 from shared.domain.value.identifier import StudentID, TargetID
-from shared.infra.path_provider.current_project import StudentSubmissionPathProvider
 from shared.infra.repository.current_project import CurrentProjectRepository
 from shared.infra.system.current_project_core_io import CurrentProjectCoreIO
 
@@ -16,11 +16,11 @@ class StudentSubmissionListSourceRelativePathGateway(
     def __init__(
             self,
             *,
-            student_submission_path_provider: StudentSubmissionPathProvider,
+            student_submission_folder_fullpath: Callable[[StudentID], Path],
             current_project_core_io: CurrentProjectCoreIO,
             current_project_repo: CurrentProjectRepository,
     ):
-        self._student_submission_path_provider = student_submission_path_provider
+        self._student_submission_folder_fullpath = student_submission_folder_fullpath
         self._current_project_core_io = current_project_core_io
         self._current_project_repo = current_project_repo
 
@@ -31,8 +31,7 @@ class StudentSubmissionListSourceRelativePathGateway(
     ) -> list[Path]:  # returns paths relative to StudentEntity submission folder
         target_id = self._current_project_repo.get().target_id
 
-        student_submission_folder_fullpath \
-            = self._student_submission_path_provider.student_submission_folder_fullpath(student_id)
+        student_submission_folder_fullpath = self._student_submission_folder_fullpath(student_id)
 
         source_file_fullpath_lst = []
         # 生徒の提出フォルダのソースコードと思われるファイルパスをイテレートする
@@ -78,10 +77,10 @@ class StudentSubmissionGetFileContentGateway(IStudentSubmissionGetFileContentGat
     def __init__(
             self,
             *,
-            student_submission_path_provider: StudentSubmissionPathProvider,
+            student_submission_folder_fullpath: Callable[[StudentID], Path],
             current_project_core_io: CurrentProjectCoreIO,
     ):
-        self._student_submission_path_provider = student_submission_path_provider
+        self._student_submission_folder_fullpath = student_submission_folder_fullpath
         self._current_project_core_io = current_project_core_io
 
     def execute(
@@ -90,8 +89,7 @@ class StudentSubmissionGetFileContentGateway(IStudentSubmissionGetFileContentGat
             student_id: StudentID,
             file_relative_path: Path,
     ) -> bytes:
-        student_submission_folder_fullpath \
-            = self._student_submission_path_provider.student_submission_folder_fullpath(student_id)
+        student_submission_folder_fullpath = self._student_submission_folder_fullpath(student_id)
 
         file_fullpath = student_submission_folder_fullpath / file_relative_path
         if not file_fullpath.exists():

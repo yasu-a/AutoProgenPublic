@@ -4,7 +4,6 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Generator
 
-from shared.infra.path_provider.current_project import DatabasePathProvider
 from util.app_logging import create_logger
 
 
@@ -29,13 +28,9 @@ class ProjectDatabaseIO:
     def __init__(
             self,
             *,
-            database_path_provider: DatabasePathProvider,
+            database_fullpath: Path,
     ):
-        self._database_path_provider = database_path_provider
-
-    @property
-    def _database_fullpath(self) -> Path:
-        return self._database_path_provider.fullpath()
+        self._database_fullpath = database_fullpath
 
     def _create_connection(self):
         con = sqlite3.connect(

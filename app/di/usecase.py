@@ -1,7 +1,9 @@
 from app.di.event import get_event_bus
 from app.di.gateway import *
+from app.di.path_config import get_path_config
 from app.di.provider import get_app_name_provider, get_app_version_provider
 from app.di.service import *
+from app.di.state import get_current_project_id_state
 from app.di.system import get_manaba_report_archive_io, get_current_project_core_io
 from feature.about.usecase.get_about_info import GetAboutInfoUseCase
 from feature.export.usecase.excel.detect_layout import AutoDetectExcelLayoutUseCase
@@ -129,7 +131,8 @@ def get_current_project_initialize_static_usecase(manaba_report_archive_fullpath
                 manaba_report_archive_fullpath=manaba_report_archive_fullpath,
             ),
             current_project_core_io=get_current_project_core_io(),
-            student_submission_path_provider=get_student_submission_path_provider(),
+            student_submission_folder_fullpath=get_path_config().student_submission_folder_fullpath,
+            current_project_id=get_current_project_id_state().get(),
         ),
         current_project_repo=get_current_project_repository(),
     )
@@ -181,14 +184,15 @@ def get_student_table_get_student_name_cell_data_usecase():
 def get_student_table_get_student_stage_state_cell_data_usecase():
     return StudentTableGetStudentStageStateCellDataUseCase(
         stage_path_list_sub_service=get_stage_path_list_sub_service(),
-        student_get_stage_path_result_entity_service=get_student_get_stage_path_result_entity_service(),
+        student_get_stage_path_result_map_service=get_student_get_stage_path_result_map_service(),
     )
 
 
 def get_student_table_get_student_error_cell_data_usecase():
     return StudentTableGetStudentErrorCellDataUseCase(
         stage_path_list_sub_service=get_stage_path_list_sub_service(),
-        student_get_stage_path_result_entity_service=get_student_get_stage_path_result_entity_service(),
+        student_get_stage_path_result_map_service=get_student_get_stage_path_result_map_service(),
+        student_stage_path_result_analyzer_service=get_student_stage_path_result_analyzer_service(),
     )
 
 
@@ -215,18 +219,20 @@ def get_test_test_stage_usecase():
 
 
 def get_student_run_build_stage_usecase():
+    from app.di.gateway import get_current_datetime_gateway
     return StudentRunBuildStageUseCase(
         student_submission_get_source_content_gateway=get_student_submission_get_source_content_gateway(),
         student_dynamic_clear_service=get_student_dynamic_clear_service(),
         student_dynamic_set_source_content_service=get_student_dynamic_set_source_content_service(),
         student_submission_get_checksum_gateway=get_student_submission_get_checksum_gateway(),
         student_put_stage_result_service=get_student_put_stage_path_result_entity_service(),
-
+        current_datetime_gateway=get_current_datetime_gateway(),
     )
 
 
 # StudentRunCompileStageUseCase
 def get_student_run_compile_stage_usecase():
+    from app.di.gateway import get_current_datetime_gateway
     return StudentRunCompileStageUseCase(
         storage_create_service=get_storage_create_service(),
         storage_load_student_source_service=get_storage_load_student_source_service(),
@@ -234,11 +240,13 @@ def get_student_run_compile_stage_usecase():
         storage_run_compiler_service=get_storage_run_compiler_service(),
         storage_delete_service=get_storage_delete_service(),
         student_put_stage_result_service=get_student_put_stage_path_result_entity_service(),
+        current_datetime_gateway=get_current_datetime_gateway(),
     )
 
 
 # StudentRunExecuteStageUseCase
 def get_student_run_execute_stage_usecase():
+    from app.di.gateway import get_current_datetime_gateway
     return StudentRunExecuteStageUseCase(
         storage_create_service=get_storage_create_service(),
         storage_load_student_executable_service=get_storage_load_student_executable_service(),
@@ -250,29 +258,33 @@ def get_student_run_execute_stage_usecase():
         storage_create_output_file_mapping_from_diff_service=get_storage_create_output_file_mapping_from_diff_service(),
         storage_write_stdout_file_service=get_storage_write_stdout_file_service(),
         student_put_stage_result_service=get_student_put_stage_path_result_entity_service(),
+        current_datetime_gateway=get_current_datetime_gateway(),
     )
 
 
 # StudentRunTestUseCase
 def get_student_run_test_stage_usecase():
+    from app.di.gateway import get_current_datetime_gateway
     return StudentRunTestStageUseCase(
         testcase_config_repo=get_testcase_config_repository(),
         match_get_best_service=get_match_get_best_service(),
         student_put_stage_result_service=get_student_put_stage_path_result_entity_service(),
-        student_get_stage_result_service=get_student_get_stage_path_result_entity_service(),
+        student_get_stage_result_map_service=get_student_get_stage_path_result_map_service(),
+        current_datetime_gateway=get_current_datetime_gateway(),
     )
 
 
 def get_student_run_next_stage_usecase():
     return StudentRunNextStageUseCase(
         stage_path_list_sub_service=get_stage_path_list_sub_service(),
-        student_get_stage_path_result_entity_service=get_student_get_stage_path_result_entity_service(),
+        student_get_stage_path_result_map_service=get_student_get_stage_path_result_map_service(),
         student_stage_result_rollback_service=get_student_stage_path_result_entity_rollback_service(),
         student_run_build_stage_usecase=get_student_run_build_stage_usecase(),
         student_run_compile_stage_usecase=get_student_run_compile_stage_usecase(),
         student_run_execute_stage_usecase=get_student_run_execute_stage_usecase(),
         student_run_test_stage_usecase=get_student_run_test_stage_usecase(),
         student_stage_path_result_check_rollback_service=get_student_stage_path_result_check_rollback_service(),
+        student_stage_path_result_analyzer_service=get_student_stage_path_result_analyzer_service(),
         event_bus=get_event_bus(),
     )
 
@@ -347,17 +359,17 @@ def get_testcase_config_list_id_usecase():
 def get_student_mark_view_data_get_test_result_usecase():
     return StudentMarkViewDataGetTestResultUseCase(
         stage_path_get_by_testcase_id_service=get_stage_path_get_by_testcase_id_service(),
-        student_get_stage_path_result_entity_service=get_student_get_stage_path_result_entity_service(),
+        student_get_stage_path_result_map_service=get_student_get_stage_path_result_map_service(),
+        student_stage_path_result_analyzer_service=get_student_stage_path_result_analyzer_service(),
     )
-
-
+    
 # StudentMarkViewDataGetMarkSummaryUseCase
 def get_student_mark_view_data_get_mark_summary_usecase():
     return StudentMarkViewDataGetMarkSummaryUseCase(
         student_repo=get_student_repository(),
         student_mark_get_sub_service=get_student_mark_get_sub_service(),
         stage_path_list_sub_service=get_stage_path_list_sub_service(),
-        student_get_stage_path_result_entity_service=get_student_get_stage_path_result_entity_service(),
+        student_get_stage_path_result_map_service=get_student_get_stage_path_result_map_service(),
         student_stage_path_result_check_rollback_service=get_student_stage_path_result_check_rollback_service(),
     )
 

@@ -2,14 +2,14 @@ from pathlib import Path
 
 from feature.workspace.usecase.interface import IStudentRunCompileStageUseCase
 from shared.domain.error import StorageRunCompilerServiceError
+from shared.domain.interface.gateway import ICurrentDatetimeGateway
+from shared.domain.model.stage import StageElement
+from shared.domain.model.student_result import CompileStageResultEntity
 from shared.domain.service.storage import StorageCreateService, \
     StorageDeleteService, StorageLoadStudentSourceService, StorageStoreStudentExecutableService
 from shared.domain.service.storage_run_compiler import StorageRunCompilerService
 from shared.domain.service.student_stage_path_result import StudentPutStagePathResultEntityService
 from shared.domain.value.identifier import StudentID
-from shared.domain.value.stage_path import StagePath
-from shared.domain.value.student_stage_result import CompileFailureStudentStageResult, \
-    CompileSuccessStudentStageResult
 
 
 class StudentRunCompileStageUseCase(IStudentRunCompileStageUseCase):
@@ -22,6 +22,7 @@ class StudentRunCompileStageUseCase(IStudentRunCompileStageUseCase):
             storage_run_compiler_service: StorageRunCompilerService,
             storage_delete_service: StorageDeleteService,
             student_put_stage_result_service: StudentPutStagePathResultEntityService,
+            current_datetime_gateway: ICurrentDatetimeGateway,
     ):
         self._storage_create_service = storage_create_service
         self._storage_load_student_source_service = storage_load_student_source_service
@@ -29,11 +30,12 @@ class StudentRunCompileStageUseCase(IStudentRunCompileStageUseCase):
         self._storage_run_compiler_service = storage_run_compiler_service
         self._storage_delete_service = storage_delete_service
         self._student_put_stage_result_service = student_put_stage_result_service
+        self._current_datetime_gateway = current_datetime_gateway
 
     __SOURCE_FILE_RELATIVE_PATH = Path("main.c")
     __EXECUTABLE_FILE_RELATIVE_PATH = Path("main.exe")
 
-    def execute(self, student_id: StudentID, stage_path: StagePath) -> None:
+    def execute(self, student_id: StudentID, stage_path: tuple[StageElement, ...]) -> None:
         # ストレージ領域の生成
         storage_id = self._storage_create_service.execute()
 
@@ -53,11 +55,12 @@ class StudentRunCompileStageUseCase(IStudentRunCompileStageUseCase):
         except StorageRunCompilerServiceError as e:
             # 失敗したら異常終了の結果を書きこむ
             self._student_put_stage_result_service.execute(
-                stage_path=stage_path,
-                result=CompileFailureStudentStageResult.create_instance(
+                result=CompileStageResultEntity(
                     student_id=student_id,
-                    reason=f"コンパイルに失敗しました。\n{e.reason}",
                     output=e.output or "",
+                    timestamp=self._current_datetime_gateway.execute(),
+                    is_success=False,
+                    error_summary=f"コンパイルに失敗しました。\n{e.reason}",
                 )
             )
         else:
@@ -70,10 +73,12 @@ class StudentRunCompileStageUseCase(IStudentRunCompileStageUseCase):
 
             # 正常終了の結果を書きこむ
             self._student_put_stage_result_service.execute(
-                stage_path=stage_path,
-                result=CompileSuccessStudentStageResult.create_instance(
+                result=CompileStageResultEntity(
                     student_id=student_id,
                     output=service_result.output,
+                    timestamp=self._current_datetime_gateway.execute(),
+                    is_success=True,
+                    error_summary=None,
                 )
             )
         finally:

@@ -1,4 +1,6 @@
 import re
+from pathlib import Path
+from typing import Callable
 
 from feature.projman.domain.interface.gateway import \
     StudentSubmissionListSourceRelativePathGatewayError, \
@@ -11,7 +13,6 @@ from shared.domain.interface.gateway import (
     IFolderShowInExplorerGateway,
 )
 from shared.domain.value.identifier import StudentID
-from shared.infra.path_provider.current_project import StudentSubmissionPathProvider
 from shared.infra.repository.student import StudentRepository
 from shared.infra.system.current_project_core_io import CurrentProjectCoreIO
 
@@ -95,15 +96,14 @@ class StudentSubmissionGetChecksumGateway(IStudentSubmissionGetChecksumGateway):
     def __init__(
             self,
             *,
-            student_submission_path_provider: StudentSubmissionPathProvider,
+            student_submission_folder_fullpath: Callable[[StudentID], Path],
             current_project_core_io: CurrentProjectCoreIO,
     ):
-        self._student_submission_path_provider = student_submission_path_provider
+        self._student_submission_folder_fullpath = student_submission_folder_fullpath
         self._current_project_core_io = current_project_core_io
 
     def execute(self, student_id: StudentID) -> int:
-        folder_fullpath \
-            = self._student_submission_path_provider.student_submission_folder_fullpath(student_id)
+        folder_fullpath = self._student_submission_folder_fullpath(student_id)
         checksum = self._current_project_core_io.calculate_folder_checksum(
             folder_fullpath=folder_fullpath,
         )
@@ -114,14 +114,12 @@ class StudentSubmissionFolderShowGateway(IStudentSubmissionFolderShowGateway):
     def __init__(
             self,
             *,
-            student_submission_path_provider: StudentSubmissionPathProvider,
+            student_submission_folder_fullpath: Callable[[StudentID], Path],
             folder_show_in_explorer_gateway: IFolderShowInExplorerGateway,
     ):
-        self._student_submission_path_provider = student_submission_path_provider
+        self._student_submission_folder_fullpath = student_submission_folder_fullpath
         self._folder_show_in_explorer_gateway = folder_show_in_explorer_gateway
 
     def execute(self, student_id: StudentID) -> None:
-        submission_folder_fullpath = (
-            self._student_submission_path_provider.student_submission_folder_fullpath(student_id)
-        )
+        submission_folder_fullpath = self._student_submission_folder_fullpath(student_id)
         self._folder_show_in_explorer_gateway.execute(submission_folder_fullpath)

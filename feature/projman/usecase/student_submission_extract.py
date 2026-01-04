@@ -1,10 +1,9 @@
-from pathlib import PurePosixPath
+from pathlib import PurePosixPath, Path
 from typing import Iterable, IO, Callable
 
 from feature.projman.usecase.interface import IStudentSubmissionExtractUseCase
 from shared.domain.error import ManabaReportArchiveIOError, StudentSubmissionServiceError
-from shared.domain.value.identifier import StudentID
-from shared.infra.path_provider.current_project import StudentSubmissionPathProvider
+from shared.domain.value.identifier import StudentID, ProjectID
 from shared.infra.repository.student import StudentRepository
 from shared.infra.system.current_project_core_io import CurrentProjectCoreIO
 from shared.infra.system.report_archive import ManabaReportArchiveIO
@@ -20,12 +19,14 @@ class StudentSubmissionExtractUseCase(IStudentSubmissionExtractUseCase):
             student_repo: StudentRepository,
             manaba_report_archive_io: ManabaReportArchiveIO,
             current_project_core_io: CurrentProjectCoreIO,
-            student_submission_path_provider: StudentSubmissionPathProvider,
+            student_submission_folder_fullpath: Callable[[ProjectID, StudentID], Path],
+            current_project_id: ProjectID,
     ):
         self._student_repo = student_repo
         self._manaba_report_archive_io = manaba_report_archive_io
         self._current_project_core_io = current_project_core_io
-        self._student_submission_path_provider = student_submission_path_provider
+        self._student_submission_folder_fullpath = student_submission_folder_fullpath
+        self._current_project_id = current_project_id
 
     def execute(self, progress_callback: Callable[[str], None]):
         if not self._student_repo.exists_any():
@@ -53,10 +54,9 @@ class StudentSubmissionExtractUseCase(IStudentSubmissionExtractUseCase):
                 progress_callback(f"生徒の提出ファイルを展開しています: {student_submission_folder_name!s}")
 
                 # 生徒の展開先のフォルダのフルパス
-                extract_base_folder_fullpath = (
-                    self._student_submission_path_provider.student_submission_folder_fullpath(
-                        student_id=student_id,
-                    )
+                extract_base_folder_fullpath = self._student_submission_folder_fullpath(
+                    self._current_project_id,
+                    student_id,
                 )
                 # 展開先のフォルダが存在しなかったらフォルダを生成
                 extract_base_folder_fullpath.mkdir(parents=True, exist_ok=False)

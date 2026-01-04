@@ -4,8 +4,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from app.di.path_config import get_static_resource_base_path, get_icon_fullpath, \
-    get_global_base_path, get_image_fullpath
+from app.di.path_config import get_path_config
 from app.di.provider import get_app_version_provider
 from shared.domain.value.app_version import ReleaseType, AppVersion
 
@@ -21,7 +20,8 @@ class ResourceIconVariableFactory(VariableFactory):
         if not var_name.startswith("icon_"):
             raise KeyError(var_name)
         icon_filename = var_name[5:]
-        icon_path = get_icon_fullpath(icon_filename).relative_to(get_global_base_path())
+        path_config = get_path_config()
+        icon_path = path_config.icon_fullpath(icon_filename).relative_to(path_config.global_base_path)
         return f"<img src=\"/{icon_path.as_posix()}\" width=\"15px\">"
 
 
@@ -30,7 +30,8 @@ class ResourceImageVariableFactory(VariableFactory):
         if not var_name.startswith("img_"):
             raise KeyError(var_name)
         image_filename = var_name[4:]
-        image_path = get_image_fullpath(image_filename).relative_to(get_global_base_path())
+        path_config = get_path_config()
+        image_path = path_config.image_fullpath(image_filename).relative_to(path_config.global_base_path)
         return f"![image_filename]({image_path.as_posix()})"
 
 
@@ -135,7 +136,7 @@ Path("README.md").write_text(
             AppStateVariableFactory(),
         )
     ).parse(
-        (get_static_resource_base_path() / "readme" / "README.md").read_text(encoding="utf-8")
+        (get_path_config().static_resource_base_path / "readme" / "README.md").read_text(encoding="utf-8")
     ),
     encoding="utf-8",
 )

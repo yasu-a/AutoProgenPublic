@@ -1,12 +1,11 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum, auto
 from typing import Callable
 
+from shared.domain.model.stage import StageElement, Stage
+from shared.domain.model.student_result import StudentStageStatusFlag
 from shared.domain.value.identifier import StudentID
-from shared.domain.value.stage import AbstractStage
-from shared.domain.value.stage_path import StagePath
 
 
 # DTOはinterfaceの直上に定義
@@ -46,19 +45,12 @@ class StudentNameCellDataDto:
     student_name: str
 
 
-class StudentStageStateCellDataStageState(Enum):
-    """学生ステージ状態セルデータの状態を表すEnum"""
-    UNFINISHED = auto()
-    FINISHED_SUCCESS = auto()
-    FINISHED_FAILURE = auto()
-
-
 @dataclass
 class StudentStageStateCellDataDto:
     """学生テーブル学生ステージ状態セルデータ取得UseCaseの結果を表すDTO"""
     student_id: StudentID
-    stage_type: type[AbstractStage]
-    states: dict[StagePath, StudentStageStateCellDataStageState]
+    stage_type: Stage
+    states: dict[tuple[StageElement, ...], StudentStageStatusFlag]
 
 
 @dataclass(frozen=True)
@@ -149,7 +141,7 @@ class IStudentTableGetStudentStageStateCellDataUseCase(ABC):
     """学生テーブル学生ステージ状態セルデータ取得UseCaseのインターフェース"""
 
     @abstractmethod
-    def execute(self, student_id: StudentID, stage_type: type[AbstractStage]) -> StudentStageStateCellDataDto:
+    def execute(self, student_id: StudentID, stage_type: Stage) -> StudentStageStateCellDataDto:
         raise NotImplementedError()
 
 
@@ -165,7 +157,7 @@ class IStudentRunBuildStageUseCase(ABC):
     """学生ビルドステージ実行UseCaseのインターフェース"""
 
     @abstractmethod
-    def execute(self, student_id: StudentID, stage_path: StagePath) -> None:
+    def execute(self, student_id: StudentID, stage_path: tuple[StageElement, ...]) -> None:
         raise NotImplementedError()
 
 
@@ -173,7 +165,7 @@ class IStudentRunCompileStageUseCase(ABC):
     """学生コンパイルステージ実行UseCaseのインターフェース"""
 
     @abstractmethod
-    def execute(self, student_id: StudentID, stage_path: StagePath) -> None:
+    def execute(self, student_id: StudentID, stage_path: tuple[StageElement, ...]) -> None:
         raise NotImplementedError()
 
 
@@ -181,7 +173,7 @@ class IStudentRunExecuteStageUseCase(ABC):
     """学生実行ステージ実行UseCaseのインターフェース"""
 
     @abstractmethod
-    def execute(self, student_id: StudentID, stage_path: StagePath) -> None:
+    def execute(self, student_id: StudentID, stage_path: tuple[StageElement, ...]) -> None:
         raise NotImplementedError()
 
 
@@ -189,7 +181,7 @@ class IStudentRunTestStageUseCase(ABC):
     """学生テストステージ実行UseCaseのインターフェース"""
 
     @abstractmethod
-    def execute(self, student_id: StudentID, stage_path: StagePath) -> None:
+    def execute(self, student_id: StudentID, stage_path: tuple[StageElement, ...]) -> None:
         raise NotImplementedError()
 
 

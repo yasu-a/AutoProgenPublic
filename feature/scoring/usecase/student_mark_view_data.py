@@ -1,19 +1,16 @@
-from feature.scoring.usecase.interface import IStudentMarkViewDataGetTestResultUseCase, \
-    IStudentMarkViewDataGetMarkSummaryUseCase, AbstractStudentTestCaseTestResultViewData, \
+from feature.scoring.usecase.interface import IStudentMarkViewDataGetMarkSummaryUseCase, \
+    AbstractStudentTestCaseTestResultViewData, \
     StudentTestCaseTestResultAcceptedViewData, StudentTestCaseTestResultWrongAnswerViewData, \
-    StudentTestCaseTestResultUntestableViewData
+    StudentTestCaseTestResultUntestableViewData, IStudentMarkViewDataGetTestResultUseCase
 from feature.scoring.usecase.interface import StudentMarkEntitySummaryViewDataDto, \
     StudentMarkEntityState
-from shared.domain.entity.student_stage_path_result import StudentStagePathResultEntity
-from shared.domain.service.stage_path import StagePathListSubService, \
-    StagePathGetByTestCaseIDService
-from shared.domain.service.student_mark_get import StudentMarkEntityGetSubService
-from shared.domain.service.student_stage_path_result import StudentGetStagePathResultEntityService, \
-    StudentStagePathResultEntityCheckRollbackService
+from shared.domain.interface.service import IStagePathListSubService, \
+    IStudentMarkEntityGetSubService, IStudentGetStagePathResultMapService, \
+    IStudentStagePathResultEntityCheckRollbackService, IStudentStagePathResultAnalyzerService
+from shared.domain.model.stage import StageElement, Stage
+from shared.domain.model.student_result import TestStageResultEntity
+from shared.domain.service.stage_path import StagePathGetByTestCaseIDService
 from shared.domain.value.identifier import StudentID, TestCaseID
-from shared.domain.value.stage import TestStage
-from shared.domain.value.stage_path import StagePath
-from shared.domain.value.student_stage_result import TestSuccessStudentStageResult
 from shared.infra.repository.student import StudentRepository
 
 
@@ -22,12 +19,15 @@ class StudentMarkViewDataGetTestResultUseCase(IStudentMarkViewDataGetTestResultU
             self,
             *,
             stage_path_get_by_testcase_id_service: StagePathGetByTestCaseIDService,
-            student_get_stage_path_result_entity_service: StudentGetStagePathResultEntityService,
+            student_get_stage_path_result_map_service: IStudentGetStagePathResultMapService,
+            student_stage_path_result_analyzer_service: IStudentStagePathResultAnalyzerService,
     ):
         self._stage_path_get_by_testcase_id_service \
             = stage_path_get_by_testcase_id_service
-        self._student_get_stage_path_result_entity_service \
-            = student_get_stage_path_result_entity_service
+        self._student_get_stage_path_result_map_service \
+            = student_get_stage_path_result_map_service
+        self._student_stage_path_result_analyzer_service \
+            = student_stage_path_result_analyzer_service
 
     def execute(
             self,
@@ -39,15 +39,16 @@ class StudentMarkViewDataGetTestResultUseCase(IStudentMarkViewDataGetTestResultU
             testcase_id)
 
         # このステージパスの結果を取得
-        stage_path_result: StudentStagePathResultEntity \
-            = self._student_get_stage_path_result_entity_service.execute(student_id, stage_path)
+        results_map = self._student_get_stage_path_result_map_service.execute(student_id, stage_path)
 
-        if stage_path_result.are_all_finished:
+        if self._student_stage_path_result_analyzer_service.is_all_finished(stage_path, results_map):
             # すべてのステージが成功しているとき
-            test_stage_result = stage_path_result.get_result_by_stage_type(
-                TestStage)
+            test_stage_element = next((e for e in stage_path if e.stage == Stage.TEST), None)
+            assert test_stage_element is not None
+            test_stage_result = results_map.get(test_stage_element)
+            
             assert isinstance(test_stage_result,
-                              TestSuccessStudentStageResult), test_stage_result
+                              TestStageResultEntity), test_stage_result
             if test_stage_result.is_accepted:
                 return StudentTestCaseTestResultAcceptedViewData(
                     student_id=student_id,
@@ -62,7 +63,7 @@ class StudentMarkViewDataGetTestResultUseCase(IStudentMarkViewDataGetTestResultU
                 )
         else:
             # 失敗しているとき
-            reason = stage_path_result.last_stage_detailed_reason
+            reason = self._student_stage_path_result_analyzer_service.get_last_failure_detailed_reason(stage_path, results_map)
             if reason is None:
                 reason = "処理が未完了です"
             return StudentTestCaseTestResultUntestableViewData(
@@ -77,10 +78,10 @@ class StudentMarkViewDataGetMarkSummaryUseCase(IStudentMarkViewDataGetMarkSummar
             self,
             *,
             student_repo: StudentRepository,
-            student_mark_get_sub_service: StudentMarkEntityGetSubService,
-            stage_path_list_sub_service: StagePathListSubService,
-            student_get_stage_path_result_entity_service: StudentGetStagePathResultEntityService,
-            student_stage_path_result_check_rollback_service: StudentStagePathResultEntityCheckRollbackService,
+            student_mark_get_sub_service: IStudentMarkEntityGetSubService,
+            stage_path_list_sub_service: IStagePathListSubService,
+            student_get_stage_path_result_map_service: IStudentGetStagePathResultMapService,
+            student_stage_path_result_check_rollback_service: IStudentStagePathResultEntityCheckRollbackService,
     ):
         self._student_repo \
             = student_repo
@@ -88,31 +89,30 @@ class StudentMarkViewDataGetMarkSummaryUseCase(IStudentMarkViewDataGetMarkSummar
             = student_mark_get_sub_service
         self._stage_path_list_sub_service \
             = stage_path_list_sub_service
-        self._student_get_stage_path_result_entity_service \
-            = student_get_stage_path_result_entity_service
+        self._student_get_stage_path_result_map_service \
+            = student_get_stage_path_result_map_service
         self._student_stage_path_result_check_rollback_service \
             = student_stage_path_result_check_rollback_service
 
     def execute(self, student_id: StudentID) -> StudentMarkEntitySummaryViewDataDto:
-        stage_path_lst: list[StagePath] = self._stage_path_list_sub_service.execute(
-        )
+        stage_path_lst: list[list[StageElement]] = self._stage_path_list_sub_service.execute()
 
         state: StudentMarkEntityState = StudentMarkEntityState.NO_TEST_FOUND
         detailed_text = None
         for stage_path in stage_path_lst:
-            test_stage = stage_path.get_stage_by_stage_type(TestStage)
+            test_stage = next((s for s in stage_path if s.stage == Stage.TEST), None)
             if test_stage is None:
                 # ステージパスにTestStageがない（テストケースが定義されていない）
                 continue
 
             # このステージパスの結果を取得
-            stage_path_result: StudentStagePathResultEntity \
-                = self._student_get_stage_path_result_entity_service.execute(student_id, stage_path)
+            results_map = self._student_get_stage_path_result_map_service.execute(student_id, stage_path)
 
             # ロールバックの必要があるか確認
             is_rollback_required = self._student_stage_path_result_check_rollback_service.execute(
                 student_id=student_id,
-                stage_path_result=stage_path_result,
+                stage_path=stage_path,
+                results_map=results_map,
             ) is not None
             if is_rollback_required:
                 state = StudentMarkEntityState.RERUN_REQUIRED

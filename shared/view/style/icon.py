@@ -4,12 +4,12 @@ from PyQt5.QtGui import QIcon, QPixmap, QTransform
 
 __all__ = "get_icon",
 
-from app.di.path_config import get_icon_fullpath
+from app.di.path_config import get_path_config
 
 
 @cache
 def _get_pixmap(filename: str) -> QPixmap:
-    filepath = str(get_icon_fullpath(filename))
+    filepath = str(get_path_config().icon_fullpath(filename))
     pixmap = QPixmap(filepath)
     if pixmap.isNull():
         raise FileNotFoundError(f"Icon '{filename}' not found.")

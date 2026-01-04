@@ -10,13 +10,12 @@ from app.di.usecase import get_student_table_get_student_id_cell_data_usecase, \
     get_student_submission_folder_show_usecase
 from feature.workspace.handler.interface import IStudentTableView, IStudentTableHandler, \
     StudentTableRowViewModel
-from feature.workspace.usecase.interface import StudentIDCellDataDto, StudentStageStateCellDataDto, \
-    StudentStageStateCellDataStageState
+from feature.workspace.usecase.interface import StudentIDCellDataDto, StudentStageStateCellDataDto
 from shared.domain.interface.event import IEventBus
+from shared.domain.model.stage import Stage
+from shared.domain.model.student_result import StudentStageStatusFlag
 from shared.domain.value.event import StudentUpdateEvent
 from shared.domain.value.identifier import StudentID
-from shared.domain.value.stage import AbstractStage, CompileStage, ExecuteStage, TestStage, \
-    BuildStage
 from shared.handler.interface import INavigator
 from util.app_logging import create_logger
 
@@ -95,24 +94,24 @@ class StudentTableHandler(IStudentTableHandler):
         name = get_student_table_get_student_name_cell_data_usecase().execute(
             student_id).student_name
 
-        status: dict[type[AbstractStage], list[str]] = {}
+        status: dict[Stage, list[str]] = {}
 
-        def status_to_text(s_lst: list[StudentStageStateCellDataStageState]) -> list[str]:
+        def status_to_text(s_lst: list[StudentStageStatusFlag]) -> list[str]:
             return [
                 {
-                    StudentStageStateCellDataStageState.UNFINISHED: "―",
-                    StudentStageStateCellDataStageState.FINISHED_SUCCESS: "✔",
-                    StudentStageStateCellDataStageState.FINISHED_FAILURE: "⚠",
+                    StudentStageStatusFlag.UNFINISHED: "―",
+                    StudentStageStatusFlag.FINISHED_SUCCESS: "✔",
+                    StudentStageStatusFlag.FINISHED_FAILURE: "⚠",
                 }[s]
                 for s in s_lst
             ]
 
-        for stage_type in (BuildStage, CompileStage, ExecuteStage, TestStage):
+        for stage_type in (Stage.BUILD, Stage.COMPILE, Stage.EXECUTE, Stage.TEST):
             result: StudentStageStateCellDataDto \
                 = get_student_table_get_student_stage_state_cell_data_usecase() \
                 .execute(student_id, stage_type)
 
-            if stage_type in (BuildStage, CompileStage):
+            if stage_type in (Stage.BUILD, Stage.COMPILE):
                 # v 従来は全部一致していなかったら「？マーク表示」だった？
                 status[stage_type] = status_to_text([list(result.states.values())[0]])
             else:
@@ -144,10 +143,10 @@ class StudentTableHandler(IStudentTableHandler):
             student_id=student_id,
             has_submission=dto.is_submission_folder_link_alive,
             name=name,
-            build_stage_status=status[BuildStage][0],
-            compile_stage_status=status[CompileStage][0],
-            execute_stage_status_lst=status[ExecuteStage],
-            test_stage_status_lst=status[TestStage],
+            build_stage_status=status[Stage.BUILD][0],
+            compile_stage_status=status[Stage.COMPILE][0],
+            execute_stage_status_lst=status[Stage.EXECUTE],
+            test_stage_status_lst=status[Stage.TEST],
             error_summary=error_summary_text,
             error_detailed_text=error_detailed_text,
             score=score_text,

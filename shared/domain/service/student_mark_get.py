@@ -1,9 +1,10 @@
 from shared.domain.entity.student_mark import StudentMarkEntity
+from shared.domain.interface.service import IStudentMarkEntityGetSubService
 from shared.domain.value.identifier import StudentID
 from shared.infra.repository.student_mark import StudentMarkEntityRepository
 
 
-class StudentMarkEntityGetSubService:
+class StudentMarkEntityGetSubService(IStudentMarkEntityGetSubService):
     def __init__(
             self,
             *,

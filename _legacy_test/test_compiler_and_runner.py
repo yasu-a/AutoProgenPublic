@@ -1,7 +1,6 @@
 from contextlib import contextmanager
 from pathlib import Path
 
-from app.di.path_config import get_global_path_provider
 from app.di.repository import get_storage_repository
 from app.di.service import get_storage_create_service, \
     get_storage_load_test_source_service, get_storage_delete_service, \
@@ -11,7 +10,8 @@ from shared.domain.value.identifier import FileID
 
 
 def write_test_source(source: str):
-    test_source_filepath = get_global_path_provider().test_source_file_fullpath()
+    from app.di.path_config import get_path_config
+    test_source_filepath = get_path_config().test_source_file_fullpath
     test_source_filepath.parent.mkdir(parents=True, exist_ok=True)
     test_source_filepath.write_text(source, encoding="utf-8")
 

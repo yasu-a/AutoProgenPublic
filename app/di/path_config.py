@@ -1,107 +1,86 @@
 import sys
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
-from app.di.state import get_current_project_id_state
-from shared.infra.path_provider.current_project import (
-    DynamicPathProvider, StudentDynamicPathProvider,
-    StudentStageResultPathProvider, ProjectStaticPathProvider, StudentSubmissionPathProvider,
-    TestCaseConfigPathProvider, StudentMarkPathProvider, StoragePathProvider, DatabasePathProvider
-)
-from shared.infra.path_provider.global_ import GlobalPathProvider
-from shared.infra.path_provider.project import ProjectListPathProvider, ProjectPathProvider
+from shared.domain.value.identifier import ProjectID, TestCaseID, StudentID, StorageID
 
 
-def get_global_base_path() -> Path:
-    return Path(sys.argv[0]).resolve().parent
+@dataclass(slots=True)
+class PathConfig:
+    # === グローバルパス（引数なし） ===
+    global_base_path: Path
+    static_resource_base_path: Path
+    settings_json_fullpath: Path
+    test_source_file_fullpath: Path
+    app_version_json_fullpath: Path
+    project_list_folder_fullpath: Path
+
+    # === プロジェクト依存パス ===
+    project_folder_fullpath: Callable[[ProjectID], Path]  # project id
+    project_config_json_fullpath: Callable[[ProjectID], Path]  # project id
+
+    # === カレントプロジェクト用ベースパス ===
+    current_project_testcase_config_base_folder: Callable[[ProjectID], Path]  # current project id
+    current_project_database_fullpath: Callable[[ProjectID], Path]  # current project id
+
+    # === ID引数が必要なパス ===
+    testcase_folder_fullpath: Callable[[ProjectID, TestCaseID], Path]  # current project id, testcase id
+    testcase_execute_config_json_fullpath: Callable[[ProjectID, TestCaseID], Path]  # current project id, testcase id
+    testcase_test_config_json_fullpath: Callable[[ProjectID, TestCaseID], Path]  # current project id, testcase id
+    storage_folder_fullpath: Callable[[ProjectID, StorageID], Path]  # current project id, storage id
+    student_submission_folder_fullpath: Callable[[ProjectID, StudentID], Path]  # current project id, student id
+
+    # === 静的リソースパス ===
+    icon_fullpath: Callable[[str], Path]  # filename
+    image_fullpath: Callable[[str], Path]  # filename
 
 
-def get_static_resource_base_path() -> Path:
-    return get_global_base_path() / "static"
+def create_path_config() -> PathConfig:
+    global_base = Path(sys.argv[0]).resolve().parent
+    static_resource_base = global_base / "static"
+    project_list_folder = Path("~/AutoProgenProjects").expanduser().resolve()
 
+    # ベースとなるラムダ定義
+    project_folder = lambda pid: project_list_folder / str(pid)
+    testcase_config_base = lambda pid: project_folder(pid) / "testcases"
+    dynamic_base = lambda pid: project_folder(pid) / "dynamic"
+    static_base = lambda pid: project_folder(pid) / "static"
+    submission_base = lambda pid: static_base(pid) / "reports"
+    storage_base = lambda pid: dynamic_base(pid) / "StorageEntity"
 
-def get_icon_fullpath(filename: str) -> Path:
-    return get_static_resource_base_path() / "icon" / f"{filename}.png"
+    return PathConfig(
+        # === グローバルパス（引数なし） ===
+        global_base_path=global_base,
+        static_resource_base_path=static_resource_base,
+        settings_json_fullpath=global_base / "settings.json",
+        test_source_file_fullpath=global_base / "vctest" / "test.c",
+        app_version_json_fullpath=global_base / "app_version.json",
+        project_list_folder_fullpath=project_list_folder,
 
+        # === プロジェクト依存パス ===
+        project_folder_fullpath=project_folder,
+        project_config_json_fullpath=lambda pid: project_folder(pid) / "config.json",
 
-def get_image_fullpath(filename: str) -> Path:
-    return get_static_resource_base_path() / "img" / f"{filename}.jpg"
+        # === カレントプロジェクト用ベースパス ===
+        current_project_testcase_config_base_folder=testcase_config_base,
+        current_project_database_fullpath=lambda pid: dynamic_base(pid) / "database.sqlite3",
 
+        # === ID引数が必要なパス ===
+        testcase_folder_fullpath=lambda pid, tc_id: testcase_config_base(pid) / str(tc_id),
+        testcase_execute_config_json_fullpath=lambda pid, tc_id: testcase_config_base(pid) / str(tc_id) / "execute_config.json",
+        testcase_test_config_json_fullpath=lambda pid, tc_id: testcase_config_base(pid) / str(tc_id) / "test_config.json",
+        storage_folder_fullpath=lambda pid, st_id: storage_base(pid) / str(st_id),
+        student_submission_folder_fullpath=lambda pid, s_id: submission_base(pid) / str(s_id),
 
-def get_global_path_provider():
-    return GlobalPathProvider(
-        settings_folder_fullpath=get_global_base_path(),
+        # === 静的リソースパス ===
+        icon_fullpath=lambda filename: static_resource_base / "icon" / f"{filename}.png",
+        image_fullpath=lambda filename: static_resource_base / "img" / f"{filename}.jpg",
     )
 
 
-def get_project_list_folder_fullpath() -> Path:
-    return Path("~/AutoProgenProjects").expanduser().resolve()
+_path_config = create_path_config()
 
 
-def get_project_list_path_provider():
-    return ProjectListPathProvider(
-        project_list_folder_fullpath=get_project_list_folder_fullpath(),
-    )
-
-
-def get_project_path_provider():
-    return ProjectPathProvider(
-        project_list_path_provider=get_project_list_path_provider(),
-    )
-
-
-def get_testcase_config_path_provider():
-    return TestCaseConfigPathProvider(
-        current_project_id=get_current_project_id_state().get(),
-        project_path_provider=get_project_path_provider(),
-    )
-
-
-def get_student_mark_path_provider():
-    return StudentMarkPathProvider(
-        current_project_id=get_current_project_id_state().get(),
-        project_path_provider=get_project_path_provider(),
-    )
-
-
-def get_dynamic_path_provider():
-    return DynamicPathProvider(
-        current_project_id=get_current_project_id_state().get(),
-        project_path_provider=get_project_path_provider(),
-    )
-
-
-def get_database_path_provider():
-    return DatabasePathProvider(
-        dynamic_path_provider=get_dynamic_path_provider(),
-    )
-
-
-def get_storage_path_provider():
-    return StoragePathProvider(
-        dynamic_path_provider=get_dynamic_path_provider(),
-    )
-
-
-def get_student_dynamic_path_provider():
-    return StudentDynamicPathProvider(
-        dynamic_path_provider=get_dynamic_path_provider(),
-    )
-
-
-def get_student_stage_result_path_provider():
-    return StudentStageResultPathProvider(
-        student_dynamic_path_provider=get_student_dynamic_path_provider(),
-    )
-
-
-def get_project_static_path_provider():
-    return ProjectStaticPathProvider(
-        current_project_id=get_current_project_id_state().get(),
-        project_path_provider=get_project_path_provider(),
-    )
-
-
-def get_student_submission_path_provider():
-    return StudentSubmissionPathProvider(
-        project_static_path_provider=get_project_static_path_provider(),
-    )
+def get_path_config() -> PathConfig:
+    return _path_config

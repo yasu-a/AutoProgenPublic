@@ -39,11 +39,11 @@ def setup_test():
     override_dependency()
 
     import shutil
-    from app.di.path_config import get_global_base_path
-    from app.di.path_config import get_project_list_folder_fullpath
+    from app.di.path_config import get_path_config
+    path_config = get_path_config()
     teardown_folders = [
-        get_global_base_path(),
-        get_project_list_folder_fullpath(),
+        path_config.global_base_path,
+        path_config.project_list_folder_fullpath,
     ]
     for folder_fullpath in teardown_folders:
         print(folder_fullpath, TEST_DATA_ROOT_FULLPATH)
@@ -52,8 +52,11 @@ def setup_test():
             print("rmtree", str(folder_fullpath))
             shutil.rmtree(folder_fullpath)
 
-    from app.di.path_config import get_database_path_provider
-    database_fullpath = get_database_path_provider().fullpath()
+    from app.di.path_config import get_path_config
+    from app.di.state import get_current_project_id_state
+    path_config = get_path_config()
+    current_project_id = get_current_project_id_state().get()
+    database_fullpath = path_config.current_project_database_fullpath(current_project_id)
     assert not database_fullpath.exists()
 
 

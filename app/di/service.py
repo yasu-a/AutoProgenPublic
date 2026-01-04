@@ -1,6 +1,7 @@
 from app.di.gateway import get_student_submission_get_checksum_gateway
 from app.di.repository import *
 from app.di.system import *
+from shared.domain.interface.service import IStagePathListSubService
 from shared.domain.service.match import MatchGetBestService
 from shared.domain.service.stage_path import StagePathListSubService, \
     StagePathGetByTestCaseIDService
@@ -19,10 +20,11 @@ from shared.domain.service.student_stage_path_result import \
     StudentStagePathResultEntityCheckRollbackService, \
     StudentStagePathResultEntityRollbackService, StudentStagePathResultEntityClearService, \
     StudentPutStagePathResultEntityService, \
-    StudentGetStagePathResultEntityService, StudentStagePathResultEntityCheckTimestampQueryService
+    StudentGetStagePathResultMapService, StudentStagePathResultEntityCheckTimestampQueryService
+from shared.domain.service.student_stage_result_analyzer import StudentStageResultAnalyzerService
 
 
-def get_stage_path_list_sub_service():
+def get_stage_path_list_sub_service() -> IStagePathListSubService:
     return StagePathListSubService(
         testcase_config_repo=get_testcase_config_repository(),
     )
@@ -44,8 +46,9 @@ def get_student_stage_path_result_check_rollback_service():
 
 
 def get_student_stage_path_result_entity_check_timestamp_query_service():
+    from app.di.repository import get_student_stage_result_repository
     return StudentStagePathResultEntityCheckTimestampQueryService(
-        student_stage_path_result_repo=get_student_stage_path_result_repository(),
+        student_stage_result_repo=get_student_stage_result_repository(),
     )
 
 
@@ -118,32 +121,40 @@ def get_storage_take_snapshot_service():
 
 
 def get_student_stage_path_result_entity_rollback_service():
+    from app.di.repository import get_student_stage_result_repository
     return StudentStagePathResultEntityRollbackService(
-        student_stage_path_result_repo=get_student_stage_path_result_repository(),
+        student_stage_result_repo=get_student_stage_result_repository(),
     )
 
 
 # StudentStageResultClearService
 def get_student_stage_path_result_entity_clear_service():
+    from app.di.repository import get_student_stage_result_repository
     return StudentStagePathResultEntityClearService(
         stage_path_list_sub_service=get_stage_path_list_sub_service(),
-        student_stage_path_result_repo=get_student_stage_path_result_repository(),
+        student_stage_result_repo=get_student_stage_result_repository(),
     )
 
 
 # StudentPutStagePathResultEntityService
 def get_student_put_stage_path_result_entity_service():
+    from app.di.repository import get_student_stage_result_repository
     return StudentPutStagePathResultEntityService(
-        student_stage_path_result_repo=get_student_stage_path_result_repository(),
+        student_stage_result_repo=get_student_stage_result_repository(),
 
     )
 
 
-# StudentGetStagePathResultEntityService
-def get_student_get_stage_path_result_entity_service():
-    return StudentGetStagePathResultEntityService(
-        student_stage_path_result_repo=get_student_stage_path_result_repository(),
+# StudentGetStagePathResultMapService
+def get_student_get_stage_path_result_map_service():
+    from app.di.repository import get_student_stage_result_repository
+    return StudentGetStagePathResultMapService(
+        student_stage_result_repo=get_student_stage_result_repository(),
     )
+
+
+def get_student_stage_path_result_analyzer_service():
+    return StudentStageResultAnalyzerService()
 
 
 # TestCaseConfigCopyService

@@ -1,10 +1,11 @@
 from json import JSONDecodeError
+from pathlib import Path
+from typing import Callable
 
 from shared.domain.entity.project import ProjectEntity
 from shared.domain.error import ProjectIOError
 from shared.domain.interface.repository import IProjectRepository
 from shared.domain.value.identifier import ProjectID
-from shared.infra.path_provider.project import ProjectListPathProvider, ProjectPathProvider
 from shared.infra.system.project_core_io import ProjectCoreIO
 
 
@@ -12,16 +13,16 @@ class ProjectRepository(IProjectRepository):
     def __init__(
             self,
             *,
-            project_list_path_provider: ProjectListPathProvider,
-            project_path_provider: ProjectPathProvider,
+            project_folder_fullpath: Callable[[ProjectID], Path],
+            project_config_json_fullpath: Callable[[ProjectID], Path],
             project_core_io: ProjectCoreIO,
     ):
-        self._project_list_path_provider = project_list_path_provider
-        self._project_path_provider = project_path_provider
+        self._project_folder_fullpath = project_folder_fullpath
+        self._project_config_json_fullpath = project_config_json_fullpath
         self._project_core_io = project_core_io
 
     def get(self, project_id: ProjectID) -> ProjectEntity:
-        config_json_fullpath = self._project_path_provider.config_json_fullpath(project_id)
+        config_json_fullpath = self._project_config_json_fullpath(project_id)
 
         if not config_json_fullpath.exists():
             raise ProjectIOError(f"ProjectEntity \"{project_id!s}\" not found")
@@ -53,8 +54,7 @@ class ProjectRepository(IProjectRepository):
             if project_old.target_id != project_entity.target_id:
                 raise ProjectIOError(f"Target id is unchangeable")
 
-        config_json_fullpath = self._project_path_provider.config_json_fullpath(
-            project_entity.project_id)
+        config_json_fullpath = self._project_config_json_fullpath(project_entity.project_id)
 
         self._project_core_io.write_json(
             project_id=project_entity.project_id,
@@ -63,7 +63,7 @@ class ProjectRepository(IProjectRepository):
         )
 
     def delete(self, project_id: ProjectID) -> None:
-        project_folder_fullpath = self._project_path_provider.base_folder_fullpath(project_id)
+        project_folder_fullpath = self._project_folder_fullpath(project_id)
 
         if not project_folder_fullpath.exists():
             raise ProjectIOError(f"ProjectEntity \"{project_id!s}\" not found")

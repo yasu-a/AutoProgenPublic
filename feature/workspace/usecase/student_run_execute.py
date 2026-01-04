@@ -2,6 +2,9 @@ from pathlib import Path
 
 from feature.workspace.usecase.interface import IStudentRunExecuteStageUseCase
 from shared.domain.error import StorageRunExecutableServiceError
+from shared.domain.interface.gateway import ICurrentDatetimeGateway
+from shared.domain.model.stage import StageElement, Stage
+from shared.domain.model.student_result import ExecuteStageResultEntity
 from shared.domain.service.dto.storage_diff_snapshot import StorageDiff
 from shared.domain.service.storage import StorageCreateService, StorageDeleteService, \
     StorageLoadStudentExecutableService, StorageLoadExecuteConfigInputFilesService, \
@@ -10,9 +13,6 @@ from shared.domain.service.storage import StorageCreateService, StorageDeleteSer
 from shared.domain.service.storage_run_executable import StorageRunExecutableService
 from shared.domain.service.student_stage_path_result import StudentPutStagePathResultEntityService
 from shared.domain.value.identifier import StudentID
-from shared.domain.value.stage_path import StagePath
-from shared.domain.value.student_stage_result import ExecuteFailureStudentStageResult, \
-    ExecuteSuccessStudentStageResult
 from shared.infra.repository.testcase_config import TestCaseConfigRepository
 
 
@@ -30,6 +30,7 @@ class StudentRunExecuteStageUseCase(IStudentRunExecuteStageUseCase):
             storage_run_executable_service: StorageRunExecutableService,
             storage_create_output_file_mapping_from_diff_service: StorageCreateOutputFileCollectionFromDiffService,
             storage_write_stdout_file_service: StorageWriteStdoutFileService,
+            current_datetime_gateway: ICurrentDatetimeGateway,
     ):
         self._storage_create_service \
             = storage_create_service
@@ -51,10 +52,17 @@ class StudentRunExecuteStageUseCase(IStudentRunExecuteStageUseCase):
             = storage_create_output_file_mapping_from_diff_service
         self._storage_write_stdout_file_service \
             = storage_write_stdout_file_service
+        self._current_datetime_gateway \
+            = current_datetime_gateway
 
     __EXECUTABLE_FILE_RELATIVE_PATH = Path("main.exe")
 
-    def execute(self, student_id: StudentID, stage_path: StagePath) -> None:
+    def execute(self, student_id: StudentID, stage_path: tuple[StageElement, ...]) -> None:
+        stage_element = next((e for e in stage_path if e.stage == Stage.EXECUTE), None)
+        assert stage_element is not None
+        testcase_id = stage_element.testcase_id
+        assert testcase_id is not None
+
         # ストレージ領域の生成
         storage_id = self._storage_create_service.execute()
 
@@ -73,12 +81,12 @@ class StudentRunExecuteStageUseCase(IStudentRunExecuteStageUseCase):
         # ストレージ領域に実行構成をロード
         self._storage_load_execute_config_input_files_service.execute(
             storage_id=storage_id,
-            testcase_id=stage_path.testcase_id,
+            testcase_id=testcase_id,
         )
 
         # 実行オプションを取得
         execute_options = self._testcase_config_repo.get(
-            testcase_id=stage_path.testcase_id,
+            testcase_id=testcase_id,
         ).execute_config.options
 
         # 実行
@@ -91,11 +99,14 @@ class StudentRunExecuteStageUseCase(IStudentRunExecuteStageUseCase):
         except StorageRunExecutableServiceError as e:
             # 失敗したら異常終了の結果を書きこむ
             self._student_put_stage_result_service.execute(
-                stage_path=stage_path,
-                result=ExecuteFailureStudentStageResult.create_instance(
+                result=ExecuteStageResultEntity(
                     student_id=student_id,
-                    testcase_id=stage_path.testcase_id,
-                    reason=e.reason,
+                    testcase_id=testcase_id,
+                    execute_config_mtime=None,
+                    output_file_collection=None,
+                    timestamp=self._current_datetime_gateway.execute(),
+                    is_success=False,
+                    error_summary=e.reason,
                 )
             )
             return
@@ -123,15 +134,17 @@ class StudentRunExecuteStageUseCase(IStudentRunExecuteStageUseCase):
 
             # 正常終了の結果を書きこむ
             execute_config_mtime = self._testcase_config_repo.get(
-                testcase_id=stage_path.testcase_id,
+                testcase_id=testcase_id,
             ).execute_config.mtime
             self._student_put_stage_result_service.execute(
-                stage_path=stage_path,
-                result=ExecuteSuccessStudentStageResult.create_instance(
+                result=ExecuteStageResultEntity(
                     student_id=student_id,
-                    testcase_id=stage_path.testcase_id,
+                    testcase_id=testcase_id,
                     execute_config_mtime=execute_config_mtime,
                     output_file_collection=output_file_collection,
+                    timestamp=self._current_datetime_gateway.execute(),
+                    is_success=True,
+                    error_summary=None,
                 )
             )
         finally:

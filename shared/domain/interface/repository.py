@@ -1,13 +1,16 @@
 from abc import ABC, abstractmethod
-from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 from shared.domain.entity.project import ProjectEntity
 from shared.domain.entity.storage import StorageEntity
 from shared.domain.entity.student import StudentEntity
 from shared.domain.entity.student_mark import StudentMarkEntity
-from shared.domain.entity.student_stage_path_result import StudentStagePathResultEntity
 from shared.domain.entity.testcase_config import TestCaseConfigEntity
+from shared.domain.model.stage import StageElement
+from shared.domain.model.student_result import StudentStageStatusEntity, \
+    AbstractStageResultEntity, BuildStageResultEntity, CompileStageResultEntity, \
+    ExecuteStageResultEntity, TestStageResultEntity
 from shared.domain.value.app_version import AppVersion
 from shared.domain.value.file_item import ExecutableFileItem, SourceFileItem
 from shared.domain.value.identifier import (
@@ -17,7 +20,6 @@ from shared.domain.value.identifier import (
     TestCaseID,
 )
 from shared.domain.value.setting import Setting
-from shared.domain.value.stage_path import StagePath
 
 
 class IAppNameProvider(ABC):
@@ -191,22 +193,43 @@ class IStorageRepository(ABC):
         raise NotImplementedError()
 
 
-class IStudentStagePathResultRepository(ABC):
-    """生徒ステージパス結果リポジトリのインターフェース"""
+class IStudentStageResultRepository(ABC):
+    """生徒ステージ結果repository"""
 
     @abstractmethod
-    def get(self, student_id: StudentID, stage_path: StagePath) -> StudentStagePathResultEntity:
-        """ステージパスの結果を取得"""
+    def get_status(
+            self,
+            student_id: StudentID,
+    ) -> StudentStageStatusEntity:
         raise NotImplementedError()
 
     @abstractmethod
-    def put(self, stage_path_result: StudentStagePathResultEntity) -> None:
-        """ステージパスの結果を保存"""
+    def get_build_result(self, student_id: StudentID) -> Optional[BuildStageResultEntity]:
         raise NotImplementedError()
 
     @abstractmethod
-    def get_timestamp(self, student_id: StudentID) -> datetime | None:
-        """指定された生徒IDの最終更新日時を取得"""
+    def get_compile_result(self, student_id: StudentID) -> Optional[CompileStageResultEntity]:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_execute_result(self, student_id: StudentID, testcase_id: TestCaseID) -> Optional[ExecuteStageResultEntity]:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_test_result(self, student_id: StudentID, testcase_id: TestCaseID) -> Optional[TestStageResultEntity]:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def update(
+            self,
+            result: AbstractStageResultEntity,
+    ) -> None:
+        """共通ヘッダーと、型に応じた詳細テーブルの両方を更新(Upsert)する。"""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def delete(self, student_id: StudentID, stage: StageElement) -> None:
+        """指定されたステージの結果を削除する"""
         raise NotImplementedError()
 
 

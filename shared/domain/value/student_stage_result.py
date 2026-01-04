@@ -4,17 +4,16 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import TypeVar
 
+from shared.domain.model.stage import StageElement, Stage
 from shared.domain.value.identifier import FileID, StudentID, TestCaseID
 from shared.domain.value.output_file import OutputFileCollection
-from shared.domain.value.stage import AbstractStage, BuildStage, CompileStage, ExecuteStage, \
-    TestStage
 from shared.domain.value.test_result_output_file_entry import AbstractTestResultOutputFileEntry
 
 
 @dataclass(slots=True)
 class AbstractStudentStageResult(ABC):  # å„ã‚¹ãƒ†ãƒ¼ã‚¸ã®çµæœã®åŸºåº•ã‚¯ãƒ©ã‚¹
     student_id: StudentID  # TODO: remove this  student_idã¯StudentStagePathResultã§ç®¡ç†ã•ã‚Œã€StudentStageResultã¯StudentStagePathResultã®ä¸­ã®å€¤ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã«éããªã„
-    stage: AbstractStage
+    stage: StageElement
 
     @property
     @abstractmethod
@@ -59,8 +58,9 @@ class BuildSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # ç”Ÿå
     def __post_init__(self):
         assert isinstance(self.student_id, StudentID), \
             (self.student_id, type(self.student_id))
-        assert isinstance(self.stage, BuildStage), \
+        assert isinstance(self.stage, StageElement), \
             (self.stage, type(self.stage))
+        assert self.stage.stage == Stage.BUILD
         assert isinstance(self.submission_folder_checksum, int), \
             (self.submission_folder_checksum, type(self.submission_folder_checksum))
 
@@ -68,7 +68,7 @@ class BuildSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # ç”Ÿå
     def create_instance(cls, *, student_id: StudentID, submission_folder_checksum: int):
         return cls(
             student_id=student_id,
-            stage=BuildStage(),
+            stage=StageElement(Stage.BUILD),
             submission_folder_checksum=submission_folder_checksum,
         )
 
@@ -83,7 +83,7 @@ class BuildSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # ç”Ÿå
     def from_json(cls, body):
         return cls(
             student_id=StudentID.from_json(body["student_id"]),
-            stage=AbstractStage.from_json(body["stage"]),
+            stage=StageElement.from_json(body["stage"]),
             submission_folder_checksum=body["submission_folder_hash"],
         )
 
@@ -94,8 +94,9 @@ class BuildFailureStudentStageResult(AbstractFailureStudentStageResult):  # ç”Ÿå
     def __post_init__(self):
         assert isinstance(self.student_id, StudentID), \
             (self.student_id, type(self.student_id))
-        assert isinstance(self.stage, BuildStage), \
+        assert isinstance(self.stage, StageElement), \
             (self.stage, type(self.stage))
+        assert self.stage.stage == Stage.BUILD
         assert isinstance(self.reason, str), \
             (self.reason, type(self.reason))
 
@@ -103,7 +104,7 @@ class BuildFailureStudentStageResult(AbstractFailureStudentStageResult):  # ç”Ÿå
     def create_instance(cls, *, student_id: StudentID, reason: str):
         return cls(
             student_id=student_id,
-            stage=BuildStage(),
+            stage=StageElement(Stage.BUILD),
             reason=reason,
         )
 
@@ -118,7 +119,7 @@ class BuildFailureStudentStageResult(AbstractFailureStudentStageResult):  # ç”Ÿå
     def from_json(cls, body):
         return cls(
             student_id=StudentID.from_json(body["student_id"]),
-            stage=AbstractStage.from_json(body["stage"]),
+            stage=StageElement.from_json(body["stage"]),
             reason=body["reason"],
         )
 
@@ -141,8 +142,9 @@ class CompileSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # ç”
     def __post_init__(self):
         assert isinstance(self.student_id, StudentID), \
             (self.student_id, type(self.student_id))
-        assert isinstance(self.stage, CompileStage), \
+        assert isinstance(self.stage, StageElement), \
             (self.stage, type(self.stage))
+        assert self.stage.stage == Stage.COMPILE
         assert isinstance(self.output, str), \
             (self.output, type(self.output))
 
@@ -150,7 +152,7 @@ class CompileSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # ç”
     def create_instance(cls, *, student_id: StudentID, output: str):
         return cls(
             student_id=student_id,
-            stage=CompileStage(),
+            stage=StageElement(Stage.COMPILE),
             output=output,
         )
 
@@ -165,7 +167,7 @@ class CompileSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # ç”
     def from_json(cls, body):
         return cls(
             student_id=StudentID.from_json(body["student_id"]),
-            stage=AbstractStage.from_json(body["stage"]),
+            stage=StageElement.from_json(body["stage"]),
             output=body["output"],
         )
 
@@ -178,8 +180,9 @@ class CompileFailureStudentStageResult(AbstractFailureStudentStageResult):  # ç”
     def __post_init__(self):
         assert isinstance(self.student_id, StudentID), \
             (self.student_id, type(self.student_id))
-        assert isinstance(self.stage, CompileStage), \
+        assert isinstance(self.stage, StageElement), \
             (self.stage, type(self.stage))
+        assert self.stage.stage == Stage.COMPILE
         assert isinstance(self.reason, str), \
             (self.reason, type(self.reason))
         assert isinstance(self.output, str), \
@@ -189,7 +192,7 @@ class CompileFailureStudentStageResult(AbstractFailureStudentStageResult):  # ç”
     def create_instance(cls, *, student_id: StudentID, reason: str, output: str):
         return cls(
             student_id=student_id,
-            stage=CompileStage(),
+            stage=StageElement(Stage.COMPILE),
             reason=reason,
             output=output,
         )
@@ -206,7 +209,7 @@ class CompileFailureStudentStageResult(AbstractFailureStudentStageResult):  # ç”
     def from_json(cls, body):
         return cls(
             student_id=StudentID.from_json(body["student_id"]),
-            stage=AbstractStage.from_json(body["stage"]),
+            stage=StageElement.from_json(body["stage"]),
             reason=body["reason"],
             output=body["output"],
         )
@@ -231,8 +234,9 @@ class ExecuteSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # ç”
     def __post_init__(self):
         assert isinstance(self.student_id, StudentID), \
             (self.student_id, type(self.student_id))
-        assert isinstance(self.stage, ExecuteStage), \
+        assert isinstance(self.stage, StageElement), \
             (self.stage, type(self.stage))
+        assert self.stage.stage == Stage.EXECUTE
         assert isinstance(self.execute_config_mtime, datetime), \
             (self.execute_config_mtime, type(self.execute_config_mtime))
         assert isinstance(self.output_file_collection, OutputFileCollection), \
@@ -249,7 +253,7 @@ class ExecuteSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # ç”
     ):
         return cls(
             student_id=student_id,
-            stage=ExecuteStage(testcase_id=testcase_id),
+            stage=StageElement(Stage.EXECUTE, testcase_id=testcase_id),
             execute_config_mtime=execute_config_mtime,
             output_file_collection=output_file_collection,
         )
@@ -266,14 +270,14 @@ class ExecuteSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # ç”
     def from_json(cls, body):
         return cls(
             student_id=StudentID.from_json(body["student_id"]),
-            stage=AbstractStage.from_json(body["stage"]),
+            stage=StageElement.from_json(body["stage"]),
             execute_config_mtime=datetime.fromisoformat(body["execute_config_mtime"]),
             output_file_collection=OutputFileCollection.from_json(body["output_file_collection"]),
         )
 
     @property
     def testcase_id(self) -> TestCaseID:
-        assert isinstance(self.stage, ExecuteStage)
+        assert self.stage.testcase_id is not None
         return self.stage.testcase_id
 
 
@@ -283,8 +287,9 @@ class ExecuteFailureStudentStageResult(AbstractFailureStudentStageResult):  # ç”
     def __post_init__(self):
         assert isinstance(self.student_id, StudentID), \
             (self.student_id, type(self.student_id))
-        assert isinstance(self.stage, ExecuteStage), \
+        assert isinstance(self.stage, StageElement), \
             (self.stage, type(self.stage))
+        assert self.stage.stage == Stage.EXECUTE
         assert isinstance(self.reason, str), \
             (self.reason, type(self.reason))
 
@@ -298,7 +303,7 @@ class ExecuteFailureStudentStageResult(AbstractFailureStudentStageResult):  # ç”
     ):
         return cls(
             student_id=student_id,
-            stage=ExecuteStage(testcase_id=testcase_id),
+            stage=StageElement(Stage.EXECUTE, testcase_id=testcase_id),
             reason=reason,
         )
 
@@ -313,7 +318,7 @@ class ExecuteFailureStudentStageResult(AbstractFailureStudentStageResult):  # ç”
     def from_json(cls, body: dict):
         return cls(
             student_id=StudentID.from_json(body["student_id"]),
-            stage=AbstractStage.from_json(body["stage"]),
+            stage=StageElement.from_json(body["stage"]),
             reason=body["reason"],
         )
 
@@ -323,7 +328,7 @@ class ExecuteFailureStudentStageResult(AbstractFailureStudentStageResult):  # ç”
 
     @property
     def testcase_id(self) -> TestCaseID:
-        assert isinstance(self.stage, ExecuteStage)
+        assert self.stage.testcase_id is not None
         return self.stage.testcase_id
 
 
@@ -390,8 +395,9 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # ç”Ÿå¾
     def __post_init__(self):
         assert isinstance(self.student_id, StudentID), \
             (self.student_id, type(self.student_id))
-        assert isinstance(self.stage, TestStage), \
+        assert isinstance(self.stage, StageElement), \
             (self.stage, type(self.stage))
+        assert self.stage.stage == Stage.TEST
         assert isinstance(self.test_config_mtime, datetime), \
             (self.test_config_mtime, type(self.test_config_mtime))
         assert isinstance(self.test_result_output_file_collection, TestResultOutputFileCollection), \
@@ -408,7 +414,7 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # ç”Ÿå¾
     ):
         return cls(
             student_id=student_id,
-            stage=TestStage(testcase_id=testcase_id),
+            stage=StageElement(Stage.TEST, testcase_id=testcase_id),
             test_config_mtime=test_config_mtime,
             test_result_output_file_collection=test_result_output_file_collection,
         )
@@ -425,7 +431,7 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # ç”Ÿå¾
     def from_json(cls, body: dict) -> "TestSuccessStudentStageResult":
         return cls(
             student_id=StudentID.from_json(body["student_id"]),
-            stage=AbstractStage.from_json(body["stage"]),
+            stage=StageElement.from_json(body["stage"]),
             test_config_mtime=datetime.fromisoformat(body["test_config_mtime"]),
             test_result_output_file_collection=TestResultOutputFileCollection.from_json(
                 body["test_result_output_file_collection"],
@@ -434,7 +440,7 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # ç”Ÿå¾
 
     @property
     def testcase_id(self) -> TestCaseID:
-        assert isinstance(self.stage, TestStage)
+        assert self.stage.testcase_id is not None
         return self.stage.testcase_id
 
     @property
@@ -448,8 +454,9 @@ class TestFailureStudentStageResult(AbstractFailureStudentStageResult):  # ç”Ÿå¾
     def __post_init__(self):
         assert isinstance(self.student_id, StudentID), \
             (self.student_id, type(self.student_id))
-        assert isinstance(self.stage, TestStage), \
+        assert isinstance(self.stage, StageElement), \
             (self.stage, type(self.stage))
+        assert self.stage.stage == Stage.TEST
         assert isinstance(self.reason, str), \
             (self.reason, type(self.reason))
 
@@ -463,7 +470,7 @@ class TestFailureStudentStageResult(AbstractFailureStudentStageResult):  # ç”Ÿå¾
     ):
         return cls(
             student_id=student_id,
-            stage=TestStage(testcase_id=testcase_id),
+            stage=StageElement(Stage.TEST, testcase_id=testcase_id),
             reason=reason,
         )
 
@@ -478,7 +485,7 @@ class TestFailureStudentStageResult(AbstractFailureStudentStageResult):  # ç”Ÿå¾
     def from_json(cls, body: dict) -> "TestFailureStudentStageResult":
         return cls(
             student_id=StudentID.from_json(body["student_id"]),
-            stage=AbstractStage.from_json(body["stage"]),
+            stage=StageElement.from_json(body["stage"]),
             reason=body["reason"],
         )
 
@@ -488,7 +495,7 @@ class TestFailureStudentStageResult(AbstractFailureStudentStageResult):  # ç”Ÿå¾
 
     @property
     def testcase_id(self) -> TestCaseID:
-        assert isinstance(self.stage, TestStage)
+        assert self.stage.testcase_id is not None
         return self.stage.testcase_id
 
 

@@ -1,10 +1,12 @@
+from shared.domain.interface.service import IStudentDynamicClearService, \
+    IStudentDynamicSetSourceContentService
 from shared.domain.value.file_item import SourceFileItem
 from shared.domain.value.identifier import StudentID
 from shared.infra.repository.student_dynamic import StudentSourceRepository, \
     StudentExecutableRepository
 
 
-class StudentDynamicClearService:
+class StudentDynamicClearService(IStudentDynamicClearService):
     # 動的データをクリアする
 
     def __init__(
@@ -24,7 +26,7 @@ class StudentDynamicClearService:
             self._student_execute_repo.delete(student_id)
 
 
-class StudentDynamicSetSourceContentService:
+class StudentDynamicSetSourceContentService(IStudentDynamicSetSourceContentService):
     def __init__(
             self,
             *,

@@ -17,8 +17,9 @@ def get_global_core_io():
 
 
 def get_project_core_io():
+    path_config = get_path_config()
     return ProjectCoreIO(
-        project_path_provider=get_project_path_provider(),
+        project_folder_fullpath=path_config.project_folder_fullpath,
     )
 
 
@@ -44,8 +45,10 @@ def get_executable_io():
 
 
 def get_project_database_io():
+    path_config = get_path_config()
+    current_project_id = get_current_project_id_state().get()
     return ProjectDatabaseIO(
-        database_path_provider=get_database_path_provider(),
+        database_fullpath=path_config.current_project_database_fullpath(current_project_id),
     )
 
 
