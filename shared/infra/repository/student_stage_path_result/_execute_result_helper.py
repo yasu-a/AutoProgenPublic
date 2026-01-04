@@ -22,7 +22,7 @@ class _ExecuteResultHelper(_AbstractStageResultHelper):
                 output_file_collection_json TEXT,
                 reason                      TEXT,
                 PRIMARY KEY (student_id, testcase_id),
-                FOREIGN KEY (student_id) REFERENCES StudentEntity (student_id)
+                FOREIGN KEY (student_id) REFERENCES student (student_id)
             )
             """
         )

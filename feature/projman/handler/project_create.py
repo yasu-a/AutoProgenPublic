@@ -1,19 +1,17 @@
 import random
 import zipfile
 from pathlib import Path
-
-from PyQt5.QtWidgets import QDialog, QMessageBox
+from typing import Callable
 
 from app.di.state import get_current_project_id_state
 from app.di.system import get_manaba_report_archive_io
-from app.di.usecase import get_project_update_last_opened_usecase
+from app.di.usecase import get_current_project_initialize_static_usecase
 from feature.projman.handler.interface import IProjectCreateView, IProjectCreateHandler, \
     NewProjectConfigDto
 from feature.projman.usecase.interface import (
     IProjectCheckExistByNameUseCase,
-    IProjectCreateUseCase,
+    IProjectCreateUseCase, IProjectUpdateLastOpenUseCase, ProjectInitializeResultDto,
 )
-from feature.projman.view.dialog_project_initialize import ProjectInitializeProgressDialog
 from shared.domain.interface.state import IDebugModeState
 from shared.domain.value.identifier import ProjectID
 from shared.handler.interface import INavigator
@@ -32,12 +30,14 @@ class ProjectCreateHandler(IProjectCreateHandler):
             navigator: INavigator,
             project_check_exist_usecase: IProjectCheckExistByNameUseCase,
             project_create_usecase: IProjectCreateUseCase,
+            project_update_last_open_usecase: IProjectUpdateLastOpenUseCase,
             debug_mode_state: IDebugModeState,
     ):
         self._view = view
         self._navigator = navigator
         self._project_check_exist_usecase = project_check_exist_usecase
         self._project_create_usecase = project_create_usecase
+        self._project_update_last_open_usecase = project_update_last_open_usecase
         self._debug_mode_state = debug_mode_state
 
     # ===== IProjectCreateHandler実装 =====
@@ -88,27 +88,32 @@ class ProjectCreateHandler(IProjectCreateHandler):
             self._view.notify_project_created(config)
 
             # Stateを更新（アプリケーション層の責務）
-            state = get_current_project_id_state()
-            assert state.get() is None, "Current project is already set. Failed to set new project."
-            state.update(project_id)
+            project_id_state = get_current_project_id_state()
+            assert project_id_state.get() is None, \
+                "Current project is already set. Failed to set new project."
+            project_id_state.update(project_id)
 
             # ドメイン状態を更新（UseCaseの責務）
-            get_project_update_last_opened_usecase().execute(project_id)
+            self._project_update_last_open_usecase.execute(project_id)
 
             # プロジェクト初期化ダイアログを表示（非同期実行）
-            dialog = ProjectInitializeProgressDialog(
-                manaba_report_archive_fullpath=archive_path,
+            def task_func(progress_callback: Callable[[str], None]) -> ProjectInitializeResultDto:
+                # FIXME: manaba report archive fullpathを受け取っている
+                #        current projectのスコープにする戦略は多分正しいが、プロジェクトにfullpathを含めるようにしたほうがいい
+                #        そしてgatewayをつくれば、archiveからrevertできるような仕組みを作れる。
+                return get_current_project_initialize_static_usecase(
+                    manaba_report_archive_fullpath=archive_path,
+                ).execute(progress_callback)
+
+            result: ProjectInitializeResultDto = self._navigator.run_blocking_task(
+                parent=self._view.get_parent_widget(),
+                title="プロジェクト作成",
+                initial_message="プロジェクトを初期化しています・・・",
+                task_func=task_func,
             )
-            if dialog.exec_() != QDialog.Accepted:
-                QMessageBox.critical(
-                    dialog,
-                    "プロジェクトの初期化",
-                    dialog.get_error_object().message,
-                    QMessageBox.Ok,
-                )
-                # 初期化失敗時はStateをクリア
-                state.clear()
-                return
+            if result.has_error:
+                self._view.show_initialize_error(result.message)
+                project_id_state.clear()
 
             # 初期化完了後、Navigatorで画面遷移
             self._navigator.navigate_to_main_window(project_id)

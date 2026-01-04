@@ -1,7 +1,11 @@
 from typing import TYPE_CHECKING
 
+from app.di.event import get_event_bus
 from app.di.state import get_debug_mode_state
 from feature.projman.handler.project_launcher import ProjectLauncherHandler
+from feature.workspace.handler.interface import IStudentTableView, IWorkspaceWindowHandler, \
+    IStudentTableHandler
+from feature.workspace.handler.student_table import StudentTableHandler
 
 if TYPE_CHECKING:
     from shared.handler.interface import INavigator
@@ -41,6 +45,7 @@ def get_project_create_handler(
         navigator=navigator,
         project_check_exist_usecase=di_usecase.get_project_check_exist_by_name_usecase(),
         project_create_usecase=di_usecase.get_project_create_usecase(),
+        project_update_last_open_usecase=di_usecase.get_project_update_last_opened_usecase(),
         debug_mode_state=get_debug_mode_state(),
     )
 
@@ -67,11 +72,23 @@ def get_workspace_window_handler(
         *,
         view,
         navigator: "INavigator",
-) -> WorkspaceWindowHandler:
+) -> IWorkspaceWindowHandler:
     """WorkspaceWindowHandlerを生成"""
     return WorkspaceWindowHandler(
         view=view,
         navigator=navigator,
+    )
+
+
+def get_student_table_handler(
+        *,
+        view: IStudentTableView,
+        navigator: "INavigator",
+) -> IStudentTableHandler:
+    return StudentTableHandler(
+        view=view,
+        navigator=navigator,
+        event_bus=get_event_bus(),
     )
 
 

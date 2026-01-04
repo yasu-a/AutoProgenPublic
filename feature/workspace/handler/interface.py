@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 from shared.domain.value.identifier import StudentID
 
@@ -23,16 +24,6 @@ class IWorkspaceWindowHandler(ABC):
         """ツールバーのアクションがトリガーされたとき"""
         raise NotImplementedError()
 
-    @abstractmethod
-    def on_student_id_cell_clicked(self, student_id: StudentID) -> None:
-        """生徒の学籍番号セルがクリックされたとき"""
-        raise NotImplementedError()
-
-    @abstractmethod
-    def on_mark_result_cell_clicked(self, student_id: StudentID) -> None:
-        """生徒の点数セルがクリックされたとき"""
-        raise NotImplementedError()
-
 
 # ===== View Interfaces (Handlerから見たViewのインターフェース) =====
 
@@ -48,10 +39,67 @@ class IProcessResourceUsageStatusBarView:
         raise NotImplementedError()
 
 
+class IStudentTableHandler(ABC):
+    @abstractmethod
+    def on_view_initialized(self) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def on_view_closed(self) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def on_student_id_clicked(self, student_id: StudentID):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def on_sore_clicked(self, student_id: StudentID):
+        raise NotImplementedError()
+
+
+@dataclass(slots=True)
+class StudentTableRowViewModel:
+    """
+    テーブルの1行分のデータを表すViewModel
+    ドメインロジックは持たず、表示に必要なプリミティブな情報のみを持つ
+    """
+    student_id: StudentID
+    has_submission: bool  # 提出ファイルがあるかどうか（設問の提出コードがあるかどうかはわからない）
+    name: str  # 名前
+    build_stage_status: str
+    compile_stage_status: str
+    execute_stage_status_lst: list[str]
+    test_stage_status_lst: list[str]
+    error_summary: str | None  # エラー概要テキスト (Noneならエラーなし)
+    error_detailed_text: str | None  # エラー詳細テキスト (Noneならエラーなし)
+    score: str  # 点数テキスト (例: "90", "未採点")
+
+
+# Not inheriting from ABC to avoid metaclass conflict with Qt classes
+# noinspection PyAbstractClass
+class IStudentTableView:
+    @abstractmethod
+    def set_handler(self, handler: IStudentTableHandler) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def update_table_data(self, view_models: list[StudentTableRowViewModel]):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_parent_widget(self):
+        """親ウィジェットを取得（QObjectのparent用）"""
+        raise NotImplementedError()
+
+
 # Not inheriting from ABC to avoid metaclass conflict with Qt classes
 # noinspection PyAbstractClass
 class IWorkspaceWindowView:
     """Handlerから見たワークスペースウィンドウのインターフェース"""
+
+    @abstractmethod
+    def add_table(self, table_view: IStudentTableView) -> None:
+        raise NotImplementedError()
 
     @abstractmethod
     def set_window_title(self, title: str) -> None:

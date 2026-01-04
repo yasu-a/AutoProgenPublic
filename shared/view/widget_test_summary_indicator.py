@@ -1,5 +1,3 @@
-import sys
-
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
@@ -74,35 +72,3 @@ class TestCaseTestSummaryIndicatorWidget(QGroupBox):
     def set_data(self, value: StudentTestCaseSummaryState | None):
         self.__value = value
         self._update_value()
-
-
-class _TestWidget(QWidget, QObject):
-    def __init__(self, parent: QObject = None):
-        super().__init__(parent)
-
-        self._init_ui()
-
-    def _init_ui(self):
-        layout = QHBoxLayout()
-        self.setLayout(layout)
-
-        for value in [
-            None,
-            StudentTestCaseSummaryState.WRONG_ANSWER,
-            StudentTestCaseSummaryState.ACCEPTED,
-            StudentTestCaseSummaryState.UNTESTABLE,
-        ]:
-            widget = TestCaseTestSummaryIndicatorWidget(parent=self)
-            widget.set_data(value)
-            layout.addWidget(widget)
-
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    # noinspection PyArgumentList
-    app.setFont(get_font())
-    w = _TestWidget()
-    # noinspection PyUnresolvedReferences
-    w.show()
-    app.exec()

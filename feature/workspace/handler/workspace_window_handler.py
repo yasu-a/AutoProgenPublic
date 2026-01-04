@@ -1,18 +1,14 @@
 from PyQt5.QtCore import QTimer
-from PyQt5.QtWidgets import QMessageBox
 
 from app.di.system import get_task_manager
 from app.di.usecase import (
     get_current_project_summary_get_usecase,
     get_resource_usage_get_usecase,
     get_student_list_id_usecase,
-    get_student_submission_folder_show_usecase,
 )
 from feature.workspace.handler.interface import IWorkspaceWindowHandler, IWorkspaceWindowView
 from feature.workspace.task.clean_all_stage import CleanAllStagesStudentTask
 from feature.workspace.task.run_stage import RunStagesStudentTask
-from feature.workspace.view.dialog_stop_tasks import StopTasksDialog
-from shared.domain.value.identifier import StudentID
 from shared.handler.interface import INavigator
 from shared.infra.system.task import AbstractStudentTask
 from util.app_logging import create_logger
@@ -37,7 +33,6 @@ class WorkspaceWindowHandler(IWorkspaceWindowHandler):
         self._resource_usage_timer.setInterval(1000)
         # noinspection PyUnresolvedReferences
         self._resource_usage_timer.timeout.connect(self._update_resource_usage)
-        self._resource_usage_timer.start()
 
     def on_view_initialized(self) -> None:
         """Viewが初期化されたときに呼ばれる"""
@@ -49,6 +44,9 @@ class WorkspaceWindowHandler(IWorkspaceWindowHandler):
 
         # リソース使用状況の初回更新
         self._update_resource_usage()
+
+        # タイマースタート
+        self._resource_usage_timer.start()
 
     def on_view_closed(self) -> None:
         """Viewが閉じられるときの処理"""
@@ -78,7 +76,9 @@ class WorkspaceWindowHandler(IWorkspaceWindowHandler):
                 task_cls=RunStagesStudentTask,
             )
         elif action_name == "stop":
-            self._perform_stop_tasks()
+            self._navigator.wait_for_task_termination(
+                parent=self._view.get_parent_widget(),
+            )
         elif action_name == "clear":
             self._enqueue_student_tasks_if_not_run(
                 parent=self._view.get_parent_widget(),
@@ -97,35 +97,7 @@ class WorkspaceWindowHandler(IWorkspaceWindowHandler):
         else:
             assert False, action_name
 
-    def on_student_id_cell_clicked(self, student_id: StudentID) -> None:
-        """生徒の学籍番号セルがクリックされたとき"""
-        # 学生の提出データがあるフォルダを開く
-        get_student_submission_folder_show_usecase().execute(
-            student_id=student_id,
-        )
-
-    def on_mark_result_cell_clicked(self, student_id: StudentID) -> None:
-        """生徒の点数セルがクリックされたとき"""
-        # タスクが実行中かチェック
-        if not get_task_manager().is_empty():
-            QMessageBox.warning(
-                self._view.get_parent_widget(),
-                "採点",
-                "タスクが終了するまでは採点できません"
-            )
-            return
-
-        # 採点ダイアログを表示（指定された生徒）
-        self._navigator.open_scoring_dialog_with_student(self._view.get_parent_widget(), student_id)
-
     # --- 内部メソッド ---
-
-    @classmethod
-    def _perform_stop_tasks(cls):
-        """タスクを停止する"""
-        if not get_task_manager().is_empty():
-            dialog = StopTasksDialog()
-            dialog.exec_()
 
     @classmethod
     def _enqueue_student_tasks_if_not_run(cls, parent, task_cls: type[AbstractStudentTask]):

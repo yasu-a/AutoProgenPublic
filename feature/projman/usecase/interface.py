@@ -51,7 +51,7 @@ class IProjectGetSizeQueryUseCase(ABC):
         raise NotImplementedError()
 
 
-class IProjectUpdateLastOpenedUseCase(ABC):
+class IProjectUpdateLastOpenUseCase(ABC):
     """プロジェクトの最終開いた時刻を更新するUseCaseのインターフェース"""
 
     @abstractmethod
@@ -206,7 +206,7 @@ class ICurrentProjectSummaryGetUseCase(ABC):
 
 class ICurrentProjectInitializeStaticUseCase(ABC):
     @abstractmethod
-    def execute(self, callback: Callable[[str], None]) -> ProjectInitializeResultDto:
+    def execute(self, progress_callback: Callable[[str], None]) -> ProjectInitializeResultDto:
         raise NotImplementedError()
 
 
@@ -214,7 +214,7 @@ class IStudentMasterCreateUseCase(ABC):
     """学生マスタ作成UseCaseのインターフェース"""
 
     @abstractmethod
-    def execute(self) -> None:
+    def execute(self, progress_callback: Callable[[str], None]):
         raise NotImplementedError()
 
 
@@ -222,5 +222,5 @@ class IStudentSubmissionExtractUseCase(ABC):
     """学生提出物展開UseCaseのインターフェース"""
 
     @abstractmethod
-    def execute(self) -> None:
+    def execute(self, progress_callback: Callable[[str], None]):
         raise NotImplementedError()

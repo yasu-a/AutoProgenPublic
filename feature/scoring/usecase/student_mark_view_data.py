@@ -121,7 +121,7 @@ class StudentMarkViewDataGetMarkSummaryUseCase(IStudentMarkViewDataGetMarkSummar
             state = StudentMarkEntityState.READY
 
         return StudentMarkEntitySummaryViewDataDto(
-            StudentEntity=self._student_repo.get(student_id),
+            student=self._student_repo.get(student_id),
             mark=self._student_mark_get_sub_service.execute(student_id),
             state=state,
             detailed_text=detailed_text,

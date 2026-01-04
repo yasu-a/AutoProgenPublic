@@ -1,5 +1,6 @@
 import functools
 import re
+from typing import Callable
 
 import dateutil.parser
 import openpyxl
@@ -181,7 +182,7 @@ class StudentMasterCreateUseCase(IStudentMasterCreateUseCase):
         self._student_repo = student_repo
         self._manaba_report_archive_io = manaba_report_archive_io
 
-    def execute(self):
+    def execute(self, progress_callback: Callable[[str], None]):
         if self._student_repo.exists_any():
             return
 
@@ -212,6 +213,7 @@ class StudentMasterCreateUseCase(IStudentMasterCreateUseCase):
                         ),
                         submission_folder_name=row["submission_folder_name"],
                     )
+                    progress_callback(f"生徒マスタを生成しています: {student.student_id!s}")
                     students.append(student)
         except (_UnexpectedStudentMasterExcelError, ManabaReportArchiveIOError) as e:
             raise StudentMasterServiceError(

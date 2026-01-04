@@ -16,7 +16,7 @@ class _BuildResultHelper(_AbstractStageResultHelper):
                 student_id                 TEXT PRIMARY KEY,
                 submission_folder_checksum UNSIGNED INTEGER,
                 reason                     TEXT,
-                FOREIGN KEY (student_id) REFERENCES StudentEntity (student_id)
+                FOREIGN KEY (student_id) REFERENCES student (student_id)
             )
             """
         )

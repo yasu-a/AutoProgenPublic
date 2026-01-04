@@ -90,7 +90,7 @@ class TaskManager(QObject):
         self._max_workers = max_workers
 
         self.__stack = _TaskStack()
-        self.__stack.register_task_queue("StudentEntity", StudentTaskQueue())
+        self.__stack.register_task_queue("student", StudentTaskQueue())
 
         self.__timer = QTimer()
         self.__timer.setInterval(100)
@@ -122,7 +122,7 @@ class TaskManager(QObject):
     def enqueue(self, task: AbstractTask):
         with self._lock():
             if isinstance(task, AbstractStudentTask):
-                self.__stack.enqueue("StudentEntity", task)
+                self.__stack.enqueue("student", task)
             else:
                 assert False, task
 
@@ -139,7 +139,7 @@ class TaskManager(QObject):
             # 終了したタスクの削除
             self.__stack.dequeue_finished_tasks()
 
-    def terminate(self, callback: Callable[[str], None]):
+    def terminate(self, progress_callback: Callable[[str], None]):
         while True:
             # メッセージ
             with self._lock():
@@ -150,7 +150,7 @@ class TaskManager(QObject):
                     + "\n".join(f" - {task!r}" for task in active_tasks),
                 )
                 # TODO: usecase layer
-                callback(
+                progress_callback(
                     f"{n_tasks}個のタスクが終了するのを待っています・・・\n"
                     + "\n".join(f" - {task!s}" for task in active_tasks[:8]),
                 )

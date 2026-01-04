@@ -1,5 +1,5 @@
 from pathlib import PurePosixPath
-from typing import Iterable, IO
+from typing import Iterable, IO, Callable
 
 from feature.projman.usecase.interface import IStudentSubmissionExtractUseCase
 from shared.domain.error import ManabaReportArchiveIOError, StudentSubmissionServiceError
@@ -27,17 +27,17 @@ class StudentSubmissionExtractUseCase(IStudentSubmissionExtractUseCase):
         self._current_project_core_io = current_project_core_io
         self._student_submission_path_provider = student_submission_path_provider
 
-    def execute(self):
+    def execute(self, progress_callback: Callable[[str], None]):
         if not self._student_repo.exists_any():
             raise StudentSubmissionServiceError("生徒マスタが作成されていません")
 
         # 生徒マスタを読み込んで生徒ID→提出フォルダ名のマッピングを作る
         student_master = self._student_repo.list()
         student_id_to_submission_folder_name_mapping: dict[StudentID, str] = {}
-        for StudentEntity in student_master:
-            if StudentEntity.submission_folder_name is not None:
-                student_id_to_submission_folder_name_mapping[StudentEntity.student_id] \
-                    = StudentEntity.submission_folder_name
+        for student in student_master:
+            if student.submission_folder_name is not None:
+                student_id_to_submission_folder_name_mapping[student.student_id] \
+                    = student.submission_folder_name
 
         # 生徒の提出物を展開する
         try:
@@ -50,6 +50,8 @@ class StudentSubmissionExtractUseCase(IStudentSubmissionExtractUseCase):
 
             for student_id, student_submission_folder_name in \
                     student_id_to_submission_folder_name_mapping.items():
+                progress_callback(f"生徒の提出ファイルを展開しています: {student_submission_folder_name!s}")
+
                 # 生徒の展開先のフォルダのフルパス
                 extract_base_folder_fullpath = (
                     self._student_submission_path_provider.student_submission_folder_fullpath(

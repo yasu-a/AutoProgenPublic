@@ -16,7 +16,7 @@ class _CompileResultHelper(_AbstractStageResultHelper):
                 student_id TEXT PRIMARY KEY,
                 output     TEXT NOT NULL,
                 reason     TEXT,
-                FOREIGN KEY (student_id) REFERENCES StudentEntity (student_id)
+                FOREIGN KEY (student_id) REFERENCES student (student_id)
             )
             """
         )

@@ -1,20 +1,21 @@
 from pathlib import Path
 from typing import TypeVar, Callable
 
-from PyQt5.QtCore import QEventLoop, QThread, pyqtSignal, QObject
+from PyQt5.QtCore import QObject
 from PyQt5.QtWidgets import QMainWindow
 
 import app.di.handler as di_handler
 import app.di.state as di_state
 import app.di.system as di_system
+from app.di.handler import get_student_table_handler
 from app.di.usecase import get_project_list_recent_summary_usecase
 from feature.projman.handler.project_launcher import ProjectLauncherHandler
 from feature.projman.view.project_create_view import ProjectCreateView
 from feature.projman.view.project_launcher import ProjectLauncherDialog
 from feature.projman.view.project_list_view import ProjectListView
+from feature.workspace.view.student_table import StudentTableView
 from shared.domain.value.identifier import ProjectID, TargetID
 from shared.handler.interface import INavigator
-from shared.view.dialog_wait import WaitDialog
 # Import specific features only here to act as Composition Root
 from shared.view.style.icon import get_icon
 
@@ -126,13 +127,18 @@ class Navigator(INavigator):
         from app.di import app as di_app
 
         window = WorkspaceWindow()
-
-        # Handlerを生成して注入
         handler = di_handler.get_workspace_window_handler(
             view=window,
             navigator=di_app.get_navigator(),
         )
         window.set_handler(handler)
+
+        table_view = StudentTableView(window)
+        table_handler = get_student_table_handler(view=table_view, navigator=di_app.get_navigator())
+        table_view.set_handler(table_handler)
+        window.closed.connect(table_handler.on_view_closed)
+        window.add_table(table_view)
+        table_handler.on_view_initialized()
 
         # ワークスペースの「×」ボタンはランチャーへの戻りを意味する
         window.closed.connect(self._on_workspace_closed)
@@ -152,7 +158,9 @@ class Navigator(INavigator):
         # 遷移中でなければ、タスク停止などを経てランチャーに戻る
         if not self._is_transitioning:
             # 1. タスク停止
-            self._wait_for_task_termination()
+            self.wait_for_task_termination(
+                parent=self._current_window,
+            )
 
             # 2. ステートの初期化
             di_state.get_current_project_id_state().clear()
@@ -160,56 +168,21 @@ class Navigator(INavigator):
             # 3. ランチャーへ戻る
             self._switch_window(self._create_launcher_window)
 
-    def _wait_for_task_termination(self) -> None:
+    def wait_for_task_termination(self, parent: QObject) -> None:
         """
         実行中のタスクの終了を待機する
         """
         task_manager = di_system.get_task_manager()
-        if task_manager.count_active() == 0:
+        if task_manager.is_empty():
             return
 
-        # 1. ダイアログを表示（以前のStopTasksDialogと同じ見た目）
-        dialog = WaitDialog(
-            self._current_window,
+        # 実行（run_blocking_taskを使用）
+        self.run_blocking_task(
+            parent=parent,
             title="タスクの停止",
-            message="実行中のタスクを終了しています...",
+            initial_message="停止処理を開始します...",
+            task_func=task_manager.terminate
         )
-        dialog.show()
-
-        # 2. 別スレッドでterminate()を実行
-        class TerminateWorker(QThread):
-            finished_signal = pyqtSignal()
-            message_signal = pyqtSignal(str)
-
-            def __init__(self, task_manager):
-                super().__init__()
-                self._task_manager = task_manager
-
-            def run(self):
-                def callback(msg: str):
-                    # noinspection PyUnresolvedReferences
-                    self.message_signal.emit(msg)
-
-                self._task_manager.terminate(callback)
-                # noinspection PyUnresolvedReferences
-                self.finished_signal.emit()
-
-        worker = TerminateWorker(task_manager)
-        # noinspection PyUnresolvedReferences
-        worker.message_signal.connect(dialog.set_message)
-
-        # 3. EventLoopで待機
-        loop = QEventLoop()
-        # noinspection PyUnresolvedReferences
-        worker.finished_signal.connect(loop.quit)
-        worker.start()
-
-        # タスクが終了するまで待機
-        loop.exec_()
-
-        # 4. クリーンアップ
-        worker.wait()
-        dialog.close()
 
     def open_compiler_search_dialog(self, parent: QObject) -> Path | None:
         """

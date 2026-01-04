@@ -1,3 +1,4 @@
+from app.di.event import get_event_bus
 from app.di.gateway import *
 from app.di.provider import get_app_name_provider, get_app_version_provider
 from app.di.service import *
@@ -15,7 +16,7 @@ from feature.projman.usecase.current_project import CurrentProjectSummaryGetUseC
 from feature.projman.usecase.project import ProjectCheckExistByNameUseCase, ProjectCreateUseCase, \
     ProjectListRecentSummaryUseCase, ProjectBaseFolderShowUseCase, \
     ProjectFolderShowUseCase, ProjectDeleteUseCase, ProjectGetSizeQueryUseCase, \
-    ProjectUpdateLastOpenedUseCase
+    ProjectUpdateLastOpenUseCase
 from feature.projman.usecase.student_master_create import StudentMasterCreateUseCase
 from feature.projman.usecase.student_submission_extract import StudentSubmissionExtractUseCase
 from feature.scoring.usecase.student_mark import StudentMarkGetUseCase, StudentMarkPutUseCase, \
@@ -136,7 +137,7 @@ def get_current_project_initialize_static_usecase(manaba_report_archive_fullpath
 
 # ProjectUpdateLastOpenedUseCase
 def get_project_update_last_opened_usecase():
-    return ProjectUpdateLastOpenedUseCase(
+    return ProjectUpdateLastOpenUseCase(
         project_repo=get_project_repository(),
     )
 
@@ -272,6 +273,7 @@ def get_student_run_next_stage_usecase():
         student_run_execute_stage_usecase=get_student_run_execute_stage_usecase(),
         student_run_test_stage_usecase=get_student_run_test_stage_usecase(),
         student_stage_path_result_check_rollback_service=get_student_stage_path_result_check_rollback_service(),
+        event_bus=get_event_bus(),
     )
 
 
@@ -317,6 +319,7 @@ def get_student_dynamic_take_diff_snapshot_usecase():
 def get_student_stage_result_clear_usecase():
     return StudentStageResultClearUseCase(
         student_stage_result_clear_service=get_student_stage_path_result_entity_clear_service(),
+        event_bus=get_event_bus(),
     )
 
 
@@ -377,6 +380,7 @@ def get_student_mark_get_usecase():
 def get_student_mark_put_usecase():
     return StudentMarkPutUseCase(
         student_mark_repo=get_student_mark_repository(),
+        event_bus=get_event_bus(),
     )
 
 

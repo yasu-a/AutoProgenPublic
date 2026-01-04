@@ -8,9 +8,7 @@ from feature.workspace.view.widget_status_process_resource_usage import \
 from feature.workspace.view.widget_status_task_state import TaskStateStatusBarWidget
 from feature.workspace.view.widget_status_unstable_version_notif import \
     UnstableVersionNotificationStatusBarWidget
-from feature.workspace.view.widget_student_table import StudentTableWidget
 from feature.workspace.view.widget_toolbar import ToolBar
-from shared.domain.value.identifier import StudentID
 from util.app_logging import create_logger
 
 
@@ -20,6 +18,7 @@ class WorkspaceWindow(QMainWindow, IWorkspaceWindowView):
     Handlerパターンを使用してロジックを分離
     """
     # Navigatorに「閉じた」と伝えるシグナル
+    # noinspection PyArgumentList
     closed = pyqtSignal()
 
     _logger = create_logger()
@@ -47,10 +46,7 @@ class WorkspaceWindow(QMainWindow, IWorkspaceWindowView):
         self.addToolBar(self._tool_bar)
 
         # 生徒のテーブル
-        # noinspection PyTypeChecker
-        self._w_student_table = StudentTableWidget(self)
-        # noinspection PyUnresolvedReferences
-        self.setCentralWidget(self._w_student_table)
+        self._w_student_table: QWidget
 
         # ステータスバー
         #  - タスクモニタ
@@ -73,27 +69,11 @@ class WorkspaceWindow(QMainWindow, IWorkspaceWindowView):
 
         # シグナル接続
         self._tool_bar.triggered.connect(self.__tool_bar_triggered)
-        self._w_student_table.student_id_cell_triggered.connect(
-            self.__w_student_table_student_id_cell_triggered
-        )
-        self._w_student_table.mark_result_cell_triggered.connect(
-            self.__w_student_table_mark_result_cell_triggered
-        )
 
     @pyqtSlot(str)
     def __tool_bar_triggered(self, name: str):
         """ツールバーのアクションがトリガーされたとき"""
         self._handler.on_toolbar_action_triggered(name)
-
-    @pyqtSlot(StudentID)
-    def __w_student_table_student_id_cell_triggered(self, student_id: StudentID):
-        """生徒の学籍番号セルがクリックされたとき"""
-        self._handler.on_student_id_cell_clicked(student_id)
-
-    @pyqtSlot(StudentID)
-    def __w_student_table_mark_result_cell_triggered(self, student_id: StudentID):
-        """生徒の点数セルがクリックされたとき"""
-        self._handler.on_mark_result_cell_clicked(student_id)
 
     def closeEvent(self, evt, **kwargs):
         """ウィンドウが閉じられたとき"""
@@ -107,6 +87,12 @@ class WorkspaceWindow(QMainWindow, IWorkspaceWindowView):
         super().closeEvent(evt)
 
     # ===== IWorkspaceWindowView実装 =====
+
+    def add_table(self, table_view: QWidget) -> None:
+        # noinspection PyAttributeOutsideInit
+        self._w_student_table = table_view
+        # noinspection PyUnresolvedReferences
+        self.setCentralWidget(self._w_student_table)
 
     def set_window_title(self, title: str) -> None:
         """ウィンドウタイトルを設定"""

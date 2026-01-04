@@ -22,7 +22,7 @@ class _ResultTimestampHelper:
                 (
                     student_id TEXT PRIMARY KEY,
                     timestamp  DATETIME NOT NULL,
-                    FOREIGN KEY (student_id) REFERENCES StudentEntity (student_id)
+                    FOREIGN KEY (student_id) REFERENCES student (student_id)
                 )
                 """
             )

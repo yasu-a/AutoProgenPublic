@@ -1,8 +1,10 @@
 from feature.scoring.usecase.interface import IStudentMarkGetUseCase, IStudentMarkPutUseCase, \
     IStudentScoreListUseCase
 from shared.domain.entity.student_mark import StudentMarkEntity
+from shared.domain.interface.event import IEventBus
 from shared.domain.service.student_mark_get import StudentMarkEntityGetSubService
 from shared.domain.service.student_mark_list import StudentMarkEntityListService
+from shared.domain.value.event import StudentUpdateEvent
 from shared.domain.value.identifier import StudentID
 from shared.infra.repository.student_mark import StudentMarkEntityRepository
 
@@ -24,11 +26,14 @@ class StudentMarkPutUseCase(IStudentMarkPutUseCase):
             self,
             *,
             student_mark_repo: StudentMarkEntityRepository,
+            event_bus: IEventBus,
     ):
         self._student_mark_repo = student_mark_repo
+        self._event_bus = event_bus
 
     def execute(self, student_mark: StudentMarkEntity) -> None:
         self._student_mark_repo.put(student_mark)
+        self._event_bus.publish(StudentUpdateEvent(student_mark.student_id))
 
 
 class StudentScoreListUseCase(IStudentScoreListUseCase):

@@ -36,7 +36,6 @@ class StudentStageResultDiffSnapshotDto:
 class StudentIDCellDataDto:
     """学生テーブル学生IDセルデータ取得UseCaseの結果を表すDTO"""
     student_id: StudentID
-    student_number: str  # 学籍番号の文字列
     is_submission_folder_link_alive: bool  # 提出フォルダへのリンクが生きているかどうか（提出データが存在するかどうか）
 
 

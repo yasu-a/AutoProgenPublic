@@ -7,9 +7,11 @@ from feature.workspace.usecase.student_run_execute import StudentRunExecuteStage
 from feature.workspace.usecase.student_run_test import StudentRunTestStageUseCase
 from shared.domain.entity.student_stage_path_result import StudentStagePathResultEntity
 from shared.domain.error import StopTask
+from shared.domain.interface.event import IEventBus
 from shared.domain.service.stage_path import StagePathListSubService
 from shared.domain.service.student_stage_path_result import StudentGetStagePathResultEntityService, \
     StudentStagePathResultEntityCheckRollbackService, StudentStagePathResultEntityRollbackService
+from shared.domain.value.event import StudentUpdateEvent
 from shared.domain.value.identifier import StudentID
 from shared.domain.value.stage import BuildStage, CompileStage, ExecuteStage, TestStage
 from shared.domain.value.stage_path import StagePath
@@ -29,6 +31,7 @@ class StudentRunNextStageUseCase(IStudentRunNextStageUseCase):
             student_run_execute_stage_usecase: StudentRunExecuteStageUseCase,
             student_run_test_stage_usecase: StudentRunTestStageUseCase,
             student_stage_path_result_check_rollback_service: StudentStagePathResultEntityCheckRollbackService,
+            event_bus: IEventBus,
     ):
         self._stage_path_list_sub_service \
             = stage_path_list_sub_service
@@ -46,6 +49,7 @@ class StudentRunNextStageUseCase(IStudentRunNextStageUseCase):
             = student_run_test_stage_usecase
         self._student_stage_path_result_check_rollback_service \
             = student_stage_path_result_check_rollback_service
+        self._event_bus = event_bus
 
     def __rollback(
             self,
@@ -156,3 +160,6 @@ class StudentRunNextStageUseCase(IStudentRunNextStageUseCase):
             # どのステージパスも進捗が無ければ終了
             if not result_updated:
                 break
+
+            # 進捗があればループする前にStudentUpdateEventを発火
+            self._event_bus.publish(StudentUpdateEvent(student_id))

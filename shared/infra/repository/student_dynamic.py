@@ -1,4 +1,5 @@
-from shared.domain.interface.repository import IStudentExecutableRepository
+from shared.domain.interface.repository import IStudentExecutableRepository, \
+    IStudentSourceRepository
 from shared.domain.value.file_item import SourceFileItem, ExecutableFileItem
 from shared.domain.value.identifier import StudentID
 from shared.infra.system.project_database import ProjectDatabaseIO
@@ -21,7 +22,7 @@ class StudentExecutableRepository(IStudentExecutableRepository):
                 (
                     student_id    TEXT NOT NULL PRIMARY KEY,
                     content_bytes BLOB NOT NULL,
-                    FOREIGN KEY (student_id) REFERENCES StudentEntity (student_id)
+                    FOREIGN KEY (student_id) REFERENCES student (student_id)
                 )
                 """
             )
@@ -94,7 +95,7 @@ class StudentExecutableRepository(IStudentExecutableRepository):
             con.commit()
 
 
-class StudentSourceRepository:
+class StudentSourceRepository(IStudentSourceRepository):
     def __init__(
             self,
             *,
@@ -112,7 +113,7 @@ class StudentSourceRepository:
                     student_id    TEXT PRIMARY KEY,
                     content_bytes BLOB,
                     encoding TEXT,
-                    FOREIGN KEY (student_id) REFERENCES StudentEntity (student_id)
+                    FOREIGN KEY (student_id) REFERENCES student (student_id)
                 )
                 """
             )

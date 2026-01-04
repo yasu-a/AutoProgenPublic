@@ -69,7 +69,7 @@ class StudentRepository(IStudentRepository):
             cur = con.cursor()
             cur.execute(
                 """
-                CREATE TABLE IF NOT EXISTS StudentEntity
+                CREATE TABLE IF NOT EXISTS student
                 (
                     student_id             TEXT    NOT NULL PRIMARY KEY,
                     name                   TEXT    NOT NULL,
@@ -90,7 +90,7 @@ class StudentRepository(IStudentRepository):
                 cur = con.cursor()
                 cur.executemany(
                     """
-                    INSERT INTO StudentEntity (student_id,
+                    INSERT INTO student (student_id,
                                          name,
                                          name_en,
                                          email_address,
@@ -122,7 +122,7 @@ class StudentRepository(IStudentRepository):
                 cur.execute(
                     """
                     SELECT EXISTS (SELECT 1
-                                   FROM StudentEntity)
+                                   FROM student)
                     """
                 )
                 return bool(cur.fetchone()[0])
@@ -135,14 +135,14 @@ class StudentRepository(IStudentRepository):
                 cur.execute(
                     """
                     SELECT *
-                    FROM StudentEntity
+                    FROM student
                     WHERE student_id = ?
                     """,
                     (str(student_id),),
                 )
                 row = cur.fetchone()
             if row is None:
-                raise RepositoryItemNotFoundError(f"StudentEntity {student_id} not found")
+                raise RepositoryItemNotFoundError(f"Student {student_id} not found")
             return StudentEntity(
                 student_id=StudentID(row["student_id"]),
                 name=row["name"],
@@ -161,7 +161,7 @@ class StudentRepository(IStudentRepository):
                 cur.execute(
                     """
                     SELECT *
-                    FROM StudentEntity
+                    FROM student
                     ORDER BY student_id
                     """
                 )

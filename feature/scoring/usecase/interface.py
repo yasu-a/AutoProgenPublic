@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 
+from shared.domain.entity.student import StudentEntity
 from shared.domain.entity.student_mark import StudentMarkEntity
 from shared.domain.value.identifier import StudentID, TestCaseID
 from shared.domain.value.student_stage_result import TestResultOutputFileCollection
@@ -19,14 +20,14 @@ class StudentMarkEntityState(Enum):
 @dataclass(slots=True)
 class StudentMarkEntitySummaryViewDataDto:
     """採点サマリー表示データ取得UseCaseの結果を表すDTO"""
-    StudentEntity: "StudentEntity"
+    student: StudentEntity
     mark: StudentMarkEntity
     state: StudentMarkEntityState
     detailed_text: str | None
 
     @property
     def student_id(self) -> StudentID:
-        return self.StudentEntity.student_id
+        return self.student.student_id
 
     @property
     def is_ready(self) -> bool:

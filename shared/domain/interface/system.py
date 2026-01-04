@@ -229,5 +229,5 @@ class ITaskManager(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def terminate(self, callback: Callable[[str], None]) -> None:
+    def terminate(self, progress_callback: Callable[[str], None]) -> None:
         raise NotImplementedError()

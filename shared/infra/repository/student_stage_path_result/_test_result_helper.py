@@ -21,7 +21,7 @@ class _TestResultHelper(_AbstractStageResultHelper):
                 test_result_output_file_collection TEXT,
                 reason                             TEXT,
                 PRIMARY KEY (student_id, testcase_id),
-                FOREIGN KEY (student_id) REFERENCES StudentEntity (student_id)
+                FOREIGN KEY (student_id) REFERENCES student (student_id)
             )
             """
         )

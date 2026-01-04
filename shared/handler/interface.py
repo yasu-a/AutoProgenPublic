@@ -35,6 +35,13 @@ class INavigator(ABC):
         raise NotImplementedError()
 
     @abstractmethod
+    def wait_for_task_termination(self, parent: QObject) -> None:
+        """
+        実行中のタスクの終了を待機する
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
     def open_compiler_search_dialog(self, parent) -> Path | None:
         """
         コンパイラ検索ダイアログを開く

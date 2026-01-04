@@ -68,6 +68,16 @@ class IProjectCreateView:
         """プロジェクト作成成功を通知（Handlerから呼ばれる）"""
         raise NotImplementedError()
 
+    @abstractmethod
+    def get_parent_widget(self):
+        """親ウィジェットを取得（QObjectのparent用）"""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def show_initialize_error(self):
+        """初期化失敗のエラーダイアログを表示する"""
+        raise NotImplementedError()
+
 
 # ===== Project List Interfaces =====
 

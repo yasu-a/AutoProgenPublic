@@ -44,22 +44,24 @@ class CurrentProjectInitializeStaticUseCase(ICurrentProjectInitializeStaticUseCa
         self._student_submission_extract_usecase = student_submission_extract_usecase
         self._current_project_repo = current_project_repo
 
-    def execute(self, callback: Callable[[str], None]) -> ProjectInitializeResultDto:
-        callback("生徒マスタを生成しています")
+    def execute(self, progress_callback: Callable[[str], None]) -> ProjectInitializeResultDto:
+        # 生徒マスタの作成
         try:
-            self._student_master_create_usecase.execute()
+            self._student_master_create_usecase.execute(progress_callback)
         except StudentMasterServiceError as e:
             return ProjectInitializeResultDto.create_error(
                 message=e.reason,
             )
-        callback("生徒の提出ファイルを展開しています")
+
+        # 提出ファイルの展開
         try:
-            self._student_submission_extract_usecase.execute()
+            self._student_submission_extract_usecase.execute(progress_callback)
         except StudentSubmissionServiceError as e:
             return ProjectInitializeResultDto.create_error(
                 message=e.reason,
             )
-        callback("初期化を完了しています")
+
+        progress_callback("初期化を完了しています")
         current_project = self._current_project_repo.get()
         current_project = current_project.set_initialized()
         self._current_project_repo.put(current_project)

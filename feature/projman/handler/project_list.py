@@ -9,7 +9,7 @@ from app.di.state import get_current_project_id_state
 from feature.projman.handler.interface import IProjectListView, IProjectListHandler
 from feature.projman.usecase.interface import (
     IProjectListRecentSummaryUseCase,
-    IProjectUpdateLastOpenedUseCase,
+    IProjectUpdateLastOpenUseCase,
     IProjectFolderShowUseCase,
     IProjectDeleteUseCase,
     IProjectBaseFolderShowUseCase,
@@ -77,7 +77,7 @@ class ProjectListHandler(IProjectListHandler):
             view: IProjectListView,
             navigator: INavigator,
             project_list_usecase: IProjectListRecentSummaryUseCase,
-            project_update_last_opened_usecase: IProjectUpdateLastOpenedUseCase,
+            project_update_last_opened_usecase: IProjectUpdateLastOpenUseCase,
             project_folder_show_usecase: IProjectFolderShowUseCase,
             project_delete_usecase: IProjectDeleteUseCase,
             project_base_folder_show_usecase: IProjectBaseFolderShowUseCase,

@@ -481,8 +481,8 @@ class ScoringDialog(QDialog):
             self._w_student_control.set_data(None)
         else:
             self._w_student_control.set_data(
-                StudentEntity=self.__get_student_mark_summary_view_data(
-                    self._state.student_id).StudentEntity,
+                student=self.__get_student_mark_summary_view_data(
+                    self._state.student_id).student,
             )
 
         # self._w_testcase_control: TestCaseControlWidget(self)
@@ -552,7 +552,7 @@ class ScoringDialog(QDialog):
             return
         student_mark = self._w_mark_score.get_data()
         if student_mark is not None:
-            self._logger.info(f"StudentEntity mark saved\n{student_mark}")
+            self._logger.info(f"Student mark saved\n{student_mark}")
             assert student_mark.student_id == self._state.student_id
             self.__put_student_mark(student_mark)
 

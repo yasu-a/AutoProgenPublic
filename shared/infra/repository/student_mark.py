@@ -82,7 +82,7 @@ class StudentMarkEntityRepository(IStudentScoreRepository):
                     student_id TEXT NOT NULL PRIMARY KEY,
                     score      INTEGER,
                     updated_at DATETIME,
-                    FOREIGN KEY (student_id) REFERENCES StudentEntity (student_id)
+                    FOREIGN KEY (student_id) REFERENCES student (student_id)
                 )
                 """
             )

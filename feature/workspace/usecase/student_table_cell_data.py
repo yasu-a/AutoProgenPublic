@@ -27,11 +27,9 @@ class StudentTableGetStudentIDCellDataUseCase(IStudentTableGetStudentIDCellDataU
         self._student_repo = student_repo
 
     def execute(self, student_id: StudentID) -> StudentIDCellDataDto:
-        student_number = str(student_id)
         does_submission_exist = self._student_repo.get(student_id).is_submitted
         return StudentIDCellDataDto(
             student_id=student_id,
-            student_number=student_number,
             is_submission_folder_link_alive=does_submission_exist,
         )
 

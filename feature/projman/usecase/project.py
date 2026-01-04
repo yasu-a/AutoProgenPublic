@@ -8,7 +8,7 @@ from feature.projman.usecase.interface import (
     IProjectCreateUseCase,
     IProjectDeleteUseCase,
     IProjectGetSizeQueryUseCase,
-    IProjectUpdateLastOpenedUseCase,
+    IProjectUpdateLastOpenUseCase,
     IProjectListRecentSummaryUseCase,
     IProjectBaseFolderShowUseCase,
     IProjectFolderShowUseCase, ErrorProjectSummary, NormalProjectSummary, AbstractProjectSummary,
@@ -90,7 +90,7 @@ class ProjectGetSizeQueryUseCase(IProjectGetSizeQueryUseCase):
         return self._project_file_system_gateway.get_size(project_id)
 
 
-class ProjectUpdateLastOpenedUseCase(IProjectUpdateLastOpenedUseCase):
+class ProjectUpdateLastOpenUseCase(IProjectUpdateLastOpenUseCase):
     """
     プロジェクトの最終開いた時刻を更新するUseCase
     ドメインロジックのみを担当（Stateの更新は含まない）

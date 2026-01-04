@@ -144,3 +144,15 @@ class ProjectCreateView(QWidget, IProjectCreateView):
     def notify_project_created(self, config: NewProjectConfigDto) -> None:
         """プロジェクト作成成功を通知（Handlerから呼ばれる）"""
         self.project_created.emit(config)
+
+    def get_parent_widget(self):
+        """親ウィジェットを取得（QObjectのparent用）"""
+        return self
+
+    def show_initialize_error(self):
+        QMessageBox.critical(
+            dialog,
+            "プロジェクトの初期化",
+            dialog.get_error_object().message,
+            QMessageBox.Ok,
+        )
