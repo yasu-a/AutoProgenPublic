@@ -111,7 +111,7 @@ class ProjectCreateHandler(IProjectCreateHandler):
                 initial_message="プロジェクトを初期化しています・・・",
                 task_func=task_func,
             )
-            if result.has_error:
+            if result.message is not None:
                 self._view.show_initialize_error(result.message)
                 project_id_state.clear()
 

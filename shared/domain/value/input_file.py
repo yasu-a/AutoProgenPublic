@@ -41,6 +41,18 @@ class InputFile:
         assert isinstance(other, type(self))
         return self._file_id == other._file_id and self._content == other._content
 
+    def __repr__(self):
+        if len(self._content) <= 20:
+            content_preview = self._content[:20]
+        else:
+            content_preview = self._content[:20] + b'...'
+        return (
+            f"InputFile(\n"
+            f"    file_id={self._file_id!r},\n"
+            f"    content={content_preview!r}\n"
+            f")"
+        )
+
     @property
     def file_id(self) -> FileID:
         return self._file_id
@@ -103,3 +115,12 @@ class InputFileCollection:
     @property
     def normal_file_count(self) -> int:
         return sum(1 for file_id in self._mapping if not file_id.is_special)
+
+    def __eq__(self, other):
+        if not isinstance(other, InputFileCollection):
+            raise TypeError(
+                f"Expected type: {type(self)}, but got {type(other)}")
+        return self._mapping == other._mapping
+
+    def __repr__(self):
+        return f"InputFileCollection({list(self._mapping.values())!r})"

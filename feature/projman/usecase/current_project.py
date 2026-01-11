@@ -9,6 +9,7 @@ from feature.projman.usecase.interface import (
 from feature.projman.usecase.interface import ProjectInitializeResultDto
 from shared.domain.entity.project import ProjectEntity
 from shared.domain.error import StudentMasterServiceError, StudentSubmissionServiceError
+from shared.domain.interface.gateway import IDatabaseInitializeGateway
 from shared.infra.repository.current_project import CurrentProjectRepository
 
 
@@ -36,15 +37,21 @@ class CurrentProjectInitializeStaticUseCase(ICurrentProjectInitializeStaticUseCa
     def __init__(
             self,
             *,
+            db_init_gateway: IDatabaseInitializeGateway,
             student_master_create_usecase: IStudentMasterCreateUseCase,
             student_submission_extract_usecase: IStudentSubmissionExtractUseCase,
             current_project_repo: CurrentProjectRepository,
     ):
+        self._db_init_gateway = db_init_gateway
         self._student_master_create_usecase = student_master_create_usecase
         self._student_submission_extract_usecase = student_submission_extract_usecase
         self._current_project_repo = current_project_repo
 
     def execute(self, progress_callback: Callable[[str], None]) -> ProjectInitializeResultDto:
+        # データベーススキーマを初期化
+        progress_callback("データベースを初期化しています")
+        self._db_init_gateway.initialize()
+        
         # 生徒マスタの作成
         try:
             self._student_master_create_usecase.execute(progress_callback)

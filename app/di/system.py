@@ -48,7 +48,8 @@ def get_project_database_io():
     path_config = get_path_config()
     current_project_id = get_current_project_id_state().get()
     return ProjectDatabaseIO(
-        database_fullpath=path_config.current_project_database_fullpath(current_project_id),
+        database_fullpath=path_config.current_project_database_fullpath(
+            current_project_id),
     )
 
 

@@ -1,5 +1,7 @@
+from contextlib import contextmanager
 from typing import Callable
 
+from PyQt5.QtCore import QMutex, QTimer
 from PyQt5.QtWidgets import QMessageBox
 
 from app.di.system import get_task_manager
@@ -14,10 +16,12 @@ from feature.workspace.usecase.interface import StudentIDCellDataDto, StudentSta
 from shared.domain.interface.event import IEventBus
 from shared.domain.model.stage import Stage
 from shared.domain.model.student_result import StudentStageStatusFlag
-from shared.domain.value.event import StudentUpdateEvent
+from shared.domain.value.event import StudentProcessingStageUpdateEvent, StudentResultUpdateEvent
 from shared.domain.value.identifier import StudentID
 from shared.handler.interface import INavigator
 from util.app_logging import create_logger
+
+_NOT_GIVEN_SENTINEL = object()
 
 
 class CachedRowCollection:
@@ -32,9 +36,62 @@ class CachedRowCollection:
             for index, row in enumerate(initial_collection)
         }
 
-    def update(self, row: StudentTableRowViewModel) -> None:
-        row_index = self._student_id_to_index.get(row.student_id)
-        self._rows[row_index] = row
+    def update(
+        self,
+        student_id: StudentID,
+        build_stage_status: str = _NOT_GIVEN_SENTINEL,
+        compile_stage_status: str = _NOT_GIVEN_SENTINEL,
+        execute_stage_status_lst: list[str] = _NOT_GIVEN_SENTINEL,
+        test_stage_status_lst: list[str] = _NOT_GIVEN_SENTINEL,
+        error_summary: str | None = _NOT_GIVEN_SENTINEL,
+        error_detailed_text: str | None = _NOT_GIVEN_SENTINEL,
+        score: str = _NOT_GIVEN_SENTINEL,
+        processing_stage: Stage | None = _NOT_GIVEN_SENTINEL,
+    ) -> None:
+        row_index = self._student_id_to_index[student_id]
+        if build_stage_status is not _NOT_GIVEN_SENTINEL:
+            self._rows[row_index].build_stage_status = build_stage_status
+        if compile_stage_status is not _NOT_GIVEN_SENTINEL:
+            self._rows[row_index].compile_stage_status = compile_stage_status
+        if execute_stage_status_lst is not _NOT_GIVEN_SENTINEL:
+            self._rows[row_index].execute_stage_status_lst = execute_stage_status_lst
+        if test_stage_status_lst is not _NOT_GIVEN_SENTINEL:
+            self._rows[row_index].test_stage_status_lst = test_stage_status_lst
+        if error_summary is not _NOT_GIVEN_SENTINEL:
+            self._rows[row_index].error_summary = error_summary
+        if error_detailed_text is not _NOT_GIVEN_SENTINEL:
+            self._rows[row_index].error_detailed_text = error_detailed_text
+        if score is not _NOT_GIVEN_SENTINEL:
+            self._rows[row_index].score = score
+        if processing_stage is not _NOT_GIVEN_SENTINEL:
+            self._rows[row_index].processing_stage = processing_stage
+
+    def get_row(self, student_id: StudentID) -> StudentTableRowViewModel:
+        return self._rows[self._student_id_to_index[student_id]]
+
+
+class AtomicUpdatableStudentIDCollection:
+    def __init__(self):
+        self._student_ids: set[StudentID] = set()
+        self._mutex = QMutex()
+
+    @contextmanager
+    def _lock(self):
+        self._mutex.lock()
+        try:
+            yield
+        finally:
+            self._mutex.unlock()
+
+    def add(self, student_id: StudentID) -> None:
+        with self._lock():
+            self._student_ids.add(student_id)
+
+    def pop_all(self) -> set[StudentID]:
+        with self._lock():
+            result = self._student_ids.copy()
+            self._student_ids.clear()
+            return result
 
 
 class StudentTableHandler(IStudentTableHandler):
@@ -53,19 +110,44 @@ class StudentTableHandler(IStudentTableHandler):
 
         self._row_collection = CachedRowCollection()
 
+        self._timer = QTimer()
+        self._timer.timeout.connect(self._polling_loop)
+        self._timer.setInterval(500)
+
+        self._update_required_student_ids = AtomicUpdatableStudentIDCollection()
+
     def on_view_initialized(self) -> None:
         self._initial_update()
 
         # StudentEventをサブスクライブ
-        self._event_bus.subscribe(StudentUpdateEvent, self._student_event_callback)
+        self._event_bus.subscribe(
+            StudentResultUpdateEvent, self._student_event_callback)
+        self._event_bus.subscribe(
+            StudentProcessingStageUpdateEvent, self._student_processing_stage_event_callback)
+
+        self._timer.start()
 
     def on_view_closed(self) -> None:
         # StudentEventのサブスクライブを解除
-        self._event_bus.unsubscribe(StudentUpdateEvent, self._student_event_callback)
+        self._event_bus.unsubscribe(
+            StudentResultUpdateEvent, self._student_event_callback)
+        self._event_bus.unsubscribe(
+            StudentProcessingStageUpdateEvent, self._student_processing_stage_event_callback)
 
-    def _student_event_callback(self, event: StudentUpdateEvent):
-        self._logger.debug(f"Student event received: {event}")
-        self._secondary_update(event.student_id)
+        self._timer.stop()
+
+    def _student_event_callback(self, event: StudentResultUpdateEvent):
+        self._logger.debug(f"StudentResultUpdateEvent received: {event}")
+        self._update_required_student_ids.add(event.student_id)
+
+    def _student_processing_stage_event_callback(self, event: StudentProcessingStageUpdateEvent):
+        self._logger.debug(
+            f"StudentProcessingStageUpdateEvent received: {event}")
+        self._row_collection.update(
+            student_id=event.student_id,
+            processing_stage=event.stage,
+        )
+        self._update_required_student_ids.add(event.student_id)
 
     def on_student_id_clicked(self, student_id: StudentID):
         """学籍番号クリック時：提出フォルダを開く"""
@@ -85,7 +167,8 @@ class StudentTableHandler(IStudentTableHandler):
             return
 
         # 採点ダイアログを表示（指定された生徒）
-        self._navigator.open_scoring_dialog_with_student(self._view.get_parent_widget(), student_id)
+        self._navigator.open_scoring_dialog_with_student(
+            self._view.get_parent_widget(), student_id)
 
     def _get_latest_student_row(self, student_id: StudentID) -> StudentTableRowViewModel:
         # TODO: inject dependencies
@@ -113,9 +196,11 @@ class StudentTableHandler(IStudentTableHandler):
 
             if stage_type in (Stage.BUILD, Stage.COMPILE):
                 # v 従来は全部一致していなかったら「？マーク表示」だった？
-                status[stage_type] = status_to_text([list(result.states.values())[0]])
+                status[stage_type] = status_to_text(
+                    [list(result.states.values())[0]])
             else:
-                status[stage_type] = status_to_text(list(result.states.values()))
+                status[stage_type] = status_to_text(
+                    list(result.states.values()))
 
         error_entries \
             = get_student_table_get_student_error_cell_data_usecase() \
@@ -128,7 +213,7 @@ class StudentTableHandler(IStudentTableHandler):
             error_detailed_text = error_entries[0].detailed_text
         else:
             error_summary_text = error_entries[0].summary_text \
-                                 + f"（他 {len(error_entries) - 1} 件のエラー）"
+                + f"（他 {len(error_entries) - 1} 件のエラー）"
             error_detailed_text = "\n".join(
                 f"◆ {entry.detailed_text}" for entry in error_entries
             )
@@ -150,8 +235,22 @@ class StudentTableHandler(IStudentTableHandler):
             error_summary=error_summary_text,
             error_detailed_text=error_detailed_text,
             score=score_text,
+            processing_stage=None,
         )
         return row
+
+    def _update_cache_with_latest_student_row(self, student_id: StudentID) -> None:
+        row = self._get_latest_student_row(student_id)
+        self._row_collection.update(
+            student_id=student_id,
+            build_stage_status=row.build_stage_status,
+            compile_stage_status=row.compile_stage_status,
+            execute_stage_status_lst=row.execute_stage_status_lst,
+            test_stage_status_lst=row.test_stage_status_lst,
+            error_summary=row.error_summary,
+            error_detailed_text=row.error_detailed_text,
+            score=row.score,
+        )
 
     def _load_initial_rows(self, progress_callback: Callable[[str], None]) \
             -> list[StudentTableRowViewModel]:
@@ -177,7 +276,10 @@ class StudentTableHandler(IStudentTableHandler):
         self._row_collection.initialize(rows)
         self._view.update_table_data(rows)
 
-    def _secondary_update(self, student_id: StudentID):
-        row = self._get_latest_student_row(student_id)
-        self._row_collection.update(row)
-        self._view.update_table_data([row])
+    def _polling_loop(self) -> None:
+        update_required_student_ids = self._update_required_student_ids.pop_all()
+        rows = []
+        for student_id in update_required_student_ids:
+            self._update_cache_with_latest_student_row(student_id)
+            rows.append(self._row_collection.get_row(student_id))
+        self._view.update_table_data(rows)

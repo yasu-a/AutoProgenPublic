@@ -1,10 +1,13 @@
 from app.di.event import get_event_bus
 from app.di.gateway import *
-from app.di.path_config import get_path_config
 from app.di.provider import get_app_name_provider, get_app_version_provider
 from app.di.service import *
 from app.di.state import get_current_project_id_state
-from app.di.system import get_manaba_report_archive_io, get_current_project_core_io
+from app.di.system import (
+    get_manaba_report_archive_io,
+    get_current_project_core_io,
+)
+from app.di.gateway import get_database_initialize_gateway
 from feature.about.usecase.get_about_info import GetAboutInfoUseCase
 from feature.export.usecase.excel.detect_layout import AutoDetectExcelLayoutUseCase
 from feature.export.usecase.excel.execute import ExecuteExcelScoreUpdateUseCase
@@ -31,9 +34,9 @@ from feature.setting.usecase.setting import SettingGetUseCase, \
     SettingPutUseCase
 from feature.setting.usecase.test_compile_stage import TestCompileStageUseCase
 from feature.testcase.usecase.test_test_stage import TestTestStageUseCase
-from feature.testcase.usecase.testcase_config import TestCaseConfigGetUseCase, \
-    TestCaseConfigPutUseCase, \
-    TestCaseConfigListIDUseCase
+from feature.testcase.usecase.testcase import TestCaseGetUseCase, \
+    TestCasePutUseCase, \
+    TestCaseListIDUseCase
 from feature.testcase.usecase.testcase_list_edit import TestCaseListSummaryUseCase, \
     TestCaseCreateNewNameUseCase, TestCaseCreateUseCase, \
     TestCaseCopyUseCase
@@ -119,6 +122,7 @@ def get_project_get_size_query_usecase():
 
 def get_current_project_initialize_static_usecase(manaba_report_archive_fullpath: Path):
     return CurrentProjectInitializeStaticUseCase(
+        db_init_gateway=get_database_initialize_gateway(),
         student_master_create_usecase=StudentMasterCreateUseCase(
             student_repo=get_student_repository(),
             manaba_report_archive_io=get_manaba_report_archive_io(
@@ -335,22 +339,22 @@ def get_student_stage_result_clear_usecase():
     )
 
 
-# TestCaseConfigGetUseCase
+# TestCaseGetUseCase
 def get_testcase_config_get_usecase():
-    return TestCaseConfigGetUseCase(
+    return TestCaseGetUseCase(
         testcase_config_repo=get_testcase_config_repository(),
     )
 
 
-# TestCaseConfigPutUseCase
+# TestCasePutUseCase
 def get_testcase_config_put_usecase():
-    return TestCaseConfigPutUseCase(
+    return TestCasePutUseCase(
         testcase_config_repo=get_testcase_config_repository(),
     )
 
 
 def get_testcase_config_list_id_usecase():
-    return TestCaseConfigListIDUseCase(
+    return TestCaseListIDUseCase(
         testcase_config_repo=get_testcase_config_repository(),
     )
 
@@ -362,7 +366,8 @@ def get_student_mark_view_data_get_test_result_usecase():
         student_get_stage_path_result_map_service=get_student_get_stage_path_result_map_service(),
         student_stage_path_result_analyzer_service=get_student_stage_path_result_analyzer_service(),
     )
-    
+
+
 # StudentMarkViewDataGetMarkSummaryUseCase
 def get_student_mark_view_data_get_mark_summary_usecase():
     return StudentMarkViewDataGetMarkSummaryUseCase(

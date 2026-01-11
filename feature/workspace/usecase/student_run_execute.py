@@ -13,7 +13,7 @@ from shared.domain.service.storage import StorageCreateService, StorageDeleteSer
 from shared.domain.service.storage_run_executable import StorageRunExecutableService
 from shared.domain.service.student_stage_path_result import StudentPutStagePathResultEntityService
 from shared.domain.value.identifier import StudentID
-from shared.infra.repository.testcase_config import TestCaseConfigRepository
+from shared.infra.repository.testcase import TestCaseRepository
 
 
 class StudentRunExecuteStageUseCase(IStudentRunExecuteStageUseCase):
@@ -26,7 +26,7 @@ class StudentRunExecuteStageUseCase(IStudentRunExecuteStageUseCase):
             storage_take_snapshot_service: StorageTakeSnapshotService,
             storage_delete_service: StorageDeleteService,
             student_put_stage_result_service: StudentPutStagePathResultEntityService,
-            testcase_config_repo: TestCaseConfigRepository,
+            testcase_config_repo: TestCaseRepository,
             storage_run_executable_service: StorageRunExecutableService,
             storage_create_output_file_mapping_from_diff_service: StorageCreateOutputFileCollectionFromDiffService,
             storage_write_stdout_file_service: StorageWriteStdoutFileService,

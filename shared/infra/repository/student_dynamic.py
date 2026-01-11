@@ -13,23 +13,7 @@ class StudentExecutableRepository(IStudentExecutableRepository):
     ):
         self._project_database_io = project_database_io
 
-    def _create_database_if_not_exists(self):
-        with self._project_database_io.connect() as con:
-            cur = con.cursor()
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS student_executable
-                (
-                    student_id    TEXT NOT NULL PRIMARY KEY,
-                    content_bytes BLOB NOT NULL,
-                    FOREIGN KEY (student_id) REFERENCES student (student_id)
-                )
-                """
-            )
-            con.commit()
-
     def put(self, student_id: StudentID, file_item: ExecutableFileItem) -> None:
-        self._create_database_if_not_exists()
         with self._project_database_io.connect() as con:
             cur = con.cursor()
             cur.execute(
@@ -46,7 +30,6 @@ class StudentExecutableRepository(IStudentExecutableRepository):
             con.commit()
 
     def get(self, student_id: StudentID) -> ExecutableFileItem:
-        self._create_database_if_not_exists()
         with self._project_database_io.connect() as con:
             cur = con.cursor()
             cur.execute(
@@ -65,7 +48,6 @@ class StudentExecutableRepository(IStudentExecutableRepository):
         )
 
     def exists(self, student_id: StudentID) -> bool:
-        self._create_database_if_not_exists()
         with self._project_database_io.connect() as con:
             cur = con.cursor()
             cur.execute(
@@ -79,7 +61,6 @@ class StudentExecutableRepository(IStudentExecutableRepository):
             return bool(cur.fetchone()[0])
 
     def delete(self, student_id: StudentID) -> None:
-        self._create_database_if_not_exists()
         with self._project_database_io.connect() as con:
             cur = con.cursor()
             cur.execute(
@@ -103,24 +84,7 @@ class StudentSourceRepository(IStudentSourceRepository):
     ):
         self._project_database_io = project_database_io
 
-    def _create_database_if_not_exists(self):
-        with self._project_database_io.connect() as con:
-            cur = con.cursor()
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS student_source
-                (
-                    student_id    TEXT PRIMARY KEY,
-                    content_bytes BLOB,
-                    encoding TEXT,
-                    FOREIGN KEY (student_id) REFERENCES student (student_id)
-                )
-                """
-            )
-            con.commit()
-
     def put(self, student_id: StudentID, file_item: SourceFileItem) -> None:
-        self._create_database_if_not_exists()
         with self._project_database_io.connect() as con:
             cur = con.cursor()
             cur.execute(
@@ -138,7 +102,6 @@ class StudentSourceRepository(IStudentSourceRepository):
             con.commit()
 
     def get(self, student_id: StudentID) -> SourceFileItem:
-        self._create_database_if_not_exists()
         with self._project_database_io.connect() as con:
             cur = con.cursor()
             cur.execute(
@@ -158,7 +121,6 @@ class StudentSourceRepository(IStudentSourceRepository):
         )
 
     def exists(self, student_id: StudentID) -> bool:
-        self._create_database_if_not_exists()
         with self._project_database_io.connect() as con:
             cur = con.cursor()
             cur.execute(
@@ -172,7 +134,6 @@ class StudentSourceRepository(IStudentSourceRepository):
             return bool(cur.fetchone()[0])
 
     def delete(self, student_id: StudentID) -> None:
-        self._create_database_if_not_exists()
         with self._project_database_io.connect() as con:
             cur = con.cursor()
             cur.execute(

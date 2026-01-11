@@ -6,83 +6,97 @@ from PyQt5.QtWidgets import QApplication, QMessageBox, QDialog
 from app.qt_style import apply_qt_style
 from feature.projman.handler.project_create import ProjectCreateHandler
 from feature.projman.view.project_create_view import ProjectCreateView
-from shared.domain.interface.state import IDebugModeState, ICurrentProjectIDState
+from shared.domain.interface.state import IDebugModeState
 from shared.domain.value.identifier import ProjectID
 from shared.handler.interface import INavigator
 
 
 def main():
     """
-    ProjectCreateViewを単体で表示し、動作確認を行うスクリプト
+    ProjectCreateViewを単体表示し、動作確認を行うスクリプト。
+    Workspaceのリファクタリング方針に基づき、DIと型定義を整理しています。
     """
     app = QApplication(sys.argv)
+
+    # 共通のスタイル適用（app_infoをセットしないことで単体テスト時の副作用を抑制）
     apply_qt_style(app, set_app_info=False)
 
-    # 1. Navigatorのモック作成
-    # 画面遷移の代わりにメッセージボックスを表示する
+    # 1. Navigatorのモック（遷移の代わりにダイアログで確認）
     mock_navigator = MagicMock(spec=INavigator)
 
-    def mock_navigate(project_id: ProjectID):
+    def on_navigate_success(project_id: ProjectID):
+        # 型チェックの確認（リファクタリングで厳格化したため）
+        if not isinstance(project_id, ProjectID):
+            print(f"Error: Invalid type for project_id: {type(project_id)}")
+            return
+
         QMessageBox.information(
             None,
-            "確認",
-            f"プロジェクト作成プロセスが完了しました。\n"
-            f"ProjectID: {project_id}\n\n"
-            f"（実際にはここでメイン画面へ遷移します）"
+            "Success",
+            f"プロジェクト作成完了通知を受け取りました。\n"
+            f"Target ProjectID: {project_id!s}\n\n"
+            f"実際にはここからメイン画面へ遷移します。"
         )
-        # ダイアログを閉じずにそのまま継続（再度作成可能）
 
-    mock_navigator.navigate_to_main_window.side_effect = mock_navigate
+    mock_navigator.navigate_to_main_window.side_effect = on_navigate_success
 
-    # 2. UseCaseのモック作成
-    # プロジェクト名重複チェック: 常に False (重複なし) を返す
+    # 2. UseCaseのモック（重複チェック、作成、最終更新日更新）
     mock_check_exist = MagicMock()
-    mock_check_exist.execute.return_value = False
+    mock_check_exist.execute.return_value = False  # 重複なし
 
-    # プロジェクト作成: ダミーのIDを返す
     mock_create = MagicMock()
-    mock_create.execute.return_value = ProjectID("test_proj_001")
+    # 常に新しいProjectIDを返すように設定
+    mock_create.execute.return_value = ProjectID("test-project-2026")
 
-    # 3. Stateのモック作成 (デバッグモード有効)
-    # リファクタリングで追加された自動入力機能を確認するためTrueにする
+    mock_update_last_open = MagicMock()
+    # メソッド名がsaveからupdateに変更された場合を考慮したモック
+    if hasattr(mock_update_last_open, 'update'):
+        mock_update_last_open.update.return_value = None
+    else:
+        mock_update_last_open.execute.return_value = None
+
+    # 3. Stateのモック（自動入力機能を確認するためDebugモードをON）
     mock_debug_state = MagicMock(spec=IDebugModeState)
     mock_debug_state.get.return_value = True
 
-    mock_cpi_state = MagicMock(spec=ICurrentProjectIDState)
-    mock_cpi_state.update.return_value = None
-    mock_cpi_state.get.return_value = None
+    # 4. 外部ダイアログと依存取得関数のパッチ
+    # プログレスダイアログなどの「重いUI」や「グローバルなDI取得」を差し替える
+    patch_path_progress = 'feature.projman.handler.project_create.ProjectInitializeProgressDialog'
+    patch_path_usecase_getter = 'feature.projman.handler.project_create.get_project_update_last_opened_usecase'
 
-    # 4. Handler内で使用されるグローバルDI関数やクラスのパッチ
-    # これを行わないと、裏で本物のファイル操作やDB接続が走ったりエラーになったりする
-    with patch(
-            'feature.projman.handler.project_create.get_project_update_last_opened_usecase') as mock_update_getter, \
-            patch(
-                'feature.projman.handler.project_create.ProjectInitializeProgressDialog') as MockDialogClass:
-        # UseCase.execute() のモック
-        mock_update_usecase = MagicMock()
-        mock_update_getter.return_value = mock_update_usecase
+    with patch(patch_path_progress) as MockProgressDialog, \
+            patch(patch_path_usecase_getter) as mock_getter:
 
-        # 初期化ダイアログのモック（成功したことにして即座に閉じる）
-        mock_dialog_instance = MockDialogClass.return_value
+        # get_xxx() 関数がモックを返すように設定
+        mock_getter.return_value = mock_update_last_open
+
+        # プログレスダイアログが即座に成功を返すように設定
+        mock_dialog_instance = MockProgressDialog.return_value
         mock_dialog_instance.exec_.return_value = QDialog.Accepted
 
-        # 5. ViewとHandlerの構築
+        # 5. ViewとHandlerの構築 (Constructor DI)
         view = ProjectCreateView()
 
+        # Workspaceでの方針（明示的なフィールド、StagePathの廃止）に倣い、
+        # 引数の意図が明確になるように配置
         handler = ProjectCreateHandler(
             view=view,
             navigator=mock_navigator,
             project_check_exist_usecase=mock_check_exist,
             project_create_usecase=mock_create,
+            project_update_last_open_usecase=mock_update_last_open,
             debug_mode_state=mock_debug_state,
         )
         view.set_handler(handler)
 
-        # 6. 表示
-        view.setWindowTitle("Project Create View (Test Mode)")
-        view.resize(600, 400)
+        # 6. ウィンドウ表示
+        # noinspection PyUnresolvedReferences
+        view.setWindowTitle("Unit Test - ProjectCreateView")
+        view.resize(650, 450)
+        # noinspection PyUnresolvedReferences
         view.show()
 
+        print("ProjectCreateView test script is running...")
         sys.exit(app.exec_())
 
 

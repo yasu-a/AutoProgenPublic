@@ -12,7 +12,7 @@ from shared.domain.model.stage import StageElement, Stage
 from shared.domain.model.student_result import AbstractStageResultEntity, \
     BuildStageResultEntity, ExecuteStageResultEntity, TestStageResultEntity
 from shared.domain.value.identifier import StudentID
-from shared.infra.repository.testcase_config import TestCaseConfigRepository
+from shared.infra.repository.testcase import TestCaseRepository
 
 
 class StudentStagePathResultEntityCheckRollbackService(
@@ -21,7 +21,7 @@ class StudentStagePathResultEntityCheckRollbackService(
     def __init__(
             self,
             student_submission_get_checksum_gateway: IStudentSubmissionGetChecksumGateway,
-            testcase_config_repo: TestCaseConfigRepository,
+            testcase_config_repo: TestCaseRepository,
     ):
         self._student_submission_get_checksum_gateway \
             = student_submission_get_checksum_gateway

@@ -55,7 +55,7 @@ class InMemoryStudentScoreRepository(IStudentScoreRepository):
         return list(self._marks.values())
 
 
-class StudentMarkEntityRepository(IStudentScoreRepository):
+class StudentScoreRepository(IStudentScoreRepository):
     def __init__(
             self,
             *,
@@ -72,22 +72,6 @@ class StudentMarkEntityRepository(IStudentScoreRepository):
         finally:
             self._lock.unlock()
 
-    def _create_database_if_not_exists(self):
-        with self._project_database_io.connect() as con:
-            cur = con.cursor()
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS student_mark
-                (
-                    student_id TEXT NOT NULL PRIMARY KEY,
-                    score      INTEGER,
-                    updated_at DATETIME,
-                    FOREIGN KEY (student_id) REFERENCES student (student_id)
-                )
-                """
-            )
-            con.commit()
-
     def create(self, student_id: StudentID) -> StudentMarkEntity:
         mark = StudentMarkEntity(
             student_id=student_id,
@@ -98,7 +82,6 @@ class StudentMarkEntityRepository(IStudentScoreRepository):
 
     def put(self, mark: StudentMarkEntity) -> StudentMarkEntity:
         with self.__lock():
-            self._create_database_if_not_exists()
             with self._project_database_io.connect() as con:
                 cur = con.cursor()
                 cur.execute(
@@ -118,7 +101,6 @@ class StudentMarkEntityRepository(IStudentScoreRepository):
 
     def exists(self, student_id: StudentID) -> bool:
         with self.__lock():
-            self._create_database_if_not_exists()
             with self._project_database_io.connect() as con:
                 cur = con.cursor()
                 cur.execute(
@@ -133,7 +115,6 @@ class StudentMarkEntityRepository(IStudentScoreRepository):
 
     def get(self, student_id: StudentID) -> StudentMarkEntity:
         with self.__lock():
-            self._create_database_if_not_exists()
             with self._project_database_io.connect() as con:
                 cur = con.cursor()
                 cur.execute(
@@ -173,7 +154,6 @@ class StudentMarkEntityRepository(IStudentScoreRepository):
 
     def list(self) -> list[StudentMarkEntity]:
         with self.__lock():
-            self._create_database_if_not_exists()
             with self._project_database_io.connect() as con:
                 cur = con.cursor()
                 cur.execute(

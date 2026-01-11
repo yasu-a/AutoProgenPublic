@@ -21,10 +21,6 @@ class ProjectInitializeResultDto:
     def create_error(cls, message: str):
         return cls(message=message)
 
-    @property
-    def has_error(self) -> bool:
-        return self.message is not None
-
 
 # ProjectEntity UseCase Interfaces
 class IProjectCheckExistByNameUseCase(ABC):

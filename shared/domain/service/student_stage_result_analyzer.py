@@ -8,6 +8,7 @@ from shared.domain.model.student_result import AbstractStageResultEntity, Compil
 
 class StudentStageResultAnalyzerService(IStudentStagePathResultAnalyzerService):
     """学生のステージ結果マップを分析し、次のステージや失敗理由などを判定するサービス。"""
+
     def get_next_stage(
             self,
             stage_path: list[StageElement],
@@ -41,9 +42,9 @@ class StudentStageResultAnalyzerService(IStudentStagePathResultAnalyzerService):
             if current_index + 1 < len(stage_path):
                 return stage_path[current_index + 1]
             else:
-                return None # All finished
+                return None  # All finished
         except ValueError:
-            return None # Should not happen
+            return None  # Should not happen
 
     def is_all_finished(
             self,
@@ -60,10 +61,10 @@ class StudentStageResultAnalyzerService(IStudentStagePathResultAnalyzerService):
         last_executed_result = self._get_last_executed_result(stage_path, results_map)
         if last_executed_result is None:
             return None
-        
+
         if last_executed_result.is_success:
             return None
-        
+
         # ステージごとに詳細情報を取得
         if isinstance(last_executed_result, CompileStageResultEntity):
             return last_executed_result.output or last_executed_result.error_summary
@@ -80,10 +81,10 @@ class StudentStageResultAnalyzerService(IStudentStagePathResultAnalyzerService):
         last_executed_result = self._get_last_executed_result(stage_path, results_map)
         if last_executed_result is None:
             return None
-        
+
         if last_executed_result.is_success:
             return None
-        
+
         return last_executed_result.error_summary
 
     def get_stage_statuses(
@@ -125,4 +126,3 @@ class StudentStageResultAnalyzerService(IStudentStagePathResultAnalyzerService):
                 break
             last_executed_result = result
         return last_executed_result
-

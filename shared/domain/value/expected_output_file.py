@@ -45,6 +45,9 @@ class ExpectedOutputFile:
         assert isinstance(other, type(self))
         return self._file_id == other._file_id and self._patterns == other._patterns
 
+    def __repr__(self):
+        return f"ExpectedOutputFile(file_id={self._file_id!r}, patterns={self._patterns!r})"
+
     @property
     def file_id(self) -> FileID:
         return self._file_id
@@ -90,3 +93,12 @@ class ExpectedOutputFileCollection:
             ExpectedOutputFile.from_json(expected_output_file_body)
             for file_id_str, expected_output_file_body in body.items()
         )
+
+    def __eq__(self, other):
+        if not isinstance(other, ExpectedOutputFileCollection):
+            raise TypeError(
+                f"Expected type: {type(self)}, but got {type(other)}")
+        return self._mapping == other._mapping
+
+    def __repr__(self):
+        return f"ExpectedOutputFileCollection({list(self._mapping.values())!r})"

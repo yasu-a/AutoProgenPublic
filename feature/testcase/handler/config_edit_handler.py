@@ -4,7 +4,7 @@ from feature.testcase.handler.interface import (
     ITestCaseConfigEditView,
     ITestCaseConfigEditHandler,
 )
-from shared.domain.entity.testcase_config import TestCaseConfigEntity
+from shared.domain.entity.testcase import TestCaseConfigEntity
 from shared.domain.interface.gateway import ICurrentDatetimeGateway
 from shared.domain.value.execute_config import TestCaseExecuteConfig
 from shared.domain.value.identifier import TestCaseID

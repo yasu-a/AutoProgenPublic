@@ -99,7 +99,8 @@ class TargetID:
         except ValueError:
             value = None
         if not isinstance(value, int):
-            raise ValueError("Value must be an integer or an integer-compatible value")
+            raise ValueError(
+                "Value must be an integer or an integer-compatible value")
         if value < 0:
             raise ValueError("Value must be non-negative")
         self.__value = value
@@ -174,6 +175,9 @@ class SpecialFileType(Enum):  # values are virtual filename
         assert isinstance(other, SpecialFileType)
         return self.value < other.value
 
+    def __repr__(self):
+        return f"{type(self).__name__}(\"{self.value}\")"
+
 
 class FileID:
     _is_special: bool
@@ -196,7 +200,8 @@ class FileID:
             self._value = obj._value
         else:
             raise ValueError("Invalid type of value for file ID")
-        assert isinstance(self._value, (Path, SpecialFileType)), (value, self._value)
+        assert isinstance(self._value, (Path, SpecialFileType)
+                          ), (value, self._value)
 
     def __to_string(self) -> str:
         if self._is_special:
@@ -243,15 +248,18 @@ class FileID:
             return False
         assert isinstance(other, FileID), other
         return (
-                self._is_special == other._is_special
-                and self._value == other._value
+            self._is_special == other._is_special
+            and self._value == other._value
         )
 
     def __hash__(self) -> int:
         return hash((self._is_special, self._value))
 
     def __repr__(self):
-        return f"FileID({self._value!r})"
+        if self._is_special:
+            return f"FileID(:{self._value!r})"
+        else:
+            return f"FileID({self._value!r})"
 
     def __order_index(self) -> tuple:  # インスタンスの順序付けのためのオブジェクトを返す
         return (

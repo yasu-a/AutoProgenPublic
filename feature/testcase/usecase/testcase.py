@@ -3,16 +3,16 @@ from feature.testcase.usecase.interface import (
     ITestCaseConfigPutUseCase,
     ITestCaseConfigListIDUseCase,
 )
-from shared.domain.entity.testcase_config import TestCaseConfigEntity
+from shared.domain.entity.testcase import TestCaseConfigEntity
+from shared.domain.interface.repository import ITestCaseRepository
 from shared.domain.value.identifier import TestCaseID
-from shared.infra.repository.testcase_config import TestCaseConfigRepository
 
 
-class TestCaseConfigGetUseCase(ITestCaseConfigGetUseCase):
+class TestCaseGetUseCase(ITestCaseConfigGetUseCase):
     def __init__(
             self,
             *,
-            testcase_config_repo: TestCaseConfigRepository,
+            testcase_config_repo: ITestCaseRepository,
     ):
         self._testcase_config_repo = testcase_config_repo
 
@@ -20,11 +20,11 @@ class TestCaseConfigGetUseCase(ITestCaseConfigGetUseCase):
         return self._testcase_config_repo.get(testcase_id)
 
 
-class TestCaseConfigPutUseCase(ITestCaseConfigPutUseCase):
+class TestCasePutUseCase(ITestCaseConfigPutUseCase):
     def __init__(
             self,
             *,
-            testcase_config_repo: TestCaseConfigRepository,
+            testcase_config_repo: ITestCaseRepository,
     ):
         self._testcase_config_repo = testcase_config_repo
 
@@ -32,16 +32,16 @@ class TestCaseConfigPutUseCase(ITestCaseConfigPutUseCase):
         self._testcase_config_repo.put(testcase_config)
 
 
-class TestCaseConfigListIDUseCase(ITestCaseConfigListIDUseCase):
+class TestCaseListIDUseCase(ITestCaseConfigListIDUseCase):
     def __init__(
             self,
             *,
-            testcase_config_repo: TestCaseConfigRepository,
+            testcase_config_repo: ITestCaseRepository,
     ):
         self._testcase_config_repo = testcase_config_repo
 
     def execute(self) -> list[TestCaseID]:
         return [
             testcase_config.testcase_id
-            for testcase_config in self._testcase_config_repo.list()
+            for testcase_config in self._testcase_config_repo.list_all()
         ]

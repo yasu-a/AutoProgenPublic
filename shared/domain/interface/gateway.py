@@ -19,7 +19,7 @@ class ResourceUsageDto(NamedTuple):
 
 class IResourceUsageGateway(ABC):
     """リソース使用状況を取得するGatewayインターフェース"""
-    
+
     @abstractmethod
     def execute(self) -> ResourceUsageDto:
         """リソース使用状況を取得"""
@@ -52,7 +52,7 @@ class IStudentSubmissionFolderShowGateway(ABC):
 
 class IFolderShowInExplorerGateway(ABC):
     """フォルダをエクスプローラで開くGatewayインターフェース"""
-    
+
     @abstractmethod
     def execute(self, folder_path: Path) -> None:
         """フォルダをエクスプローラで開く"""
@@ -66,20 +66,20 @@ class ExcelGatewayError(Exception):
 
 class IExcelGateway(ABC):
     """Excel読み書き用のGateway"""
-    
+
     @abstractmethod
     def list_sheet_names(self, excel_path: Path) -> list[str]:
         """シート名の一覧を取得"""
         raise NotImplementedError()
-    
+
     @abstractmethod
     def get_sheet_cells(
-        self,
-        excel_path: Path,
-        sheet_name: str,
-        *,
-        max_rows: int | None = None,
-        max_cols: int | None = None,
+            self,
+            excel_path: Path,
+            sheet_name: str,
+            *,
+            max_rows: int | None = None,
+            max_cols: int | None = None,
     ) -> "ExcelCellTable":
         """
         シートのセルを取得
@@ -94,14 +94,14 @@ class IExcelGateway(ABC):
             ExcelCellTable: ExcelセルテーブルのValue Object
         """
         raise NotImplementedError()
-    
+
     @abstractmethod
     def update_sheet_cells(
-        self,
-        *,
-        excel_path: Path,
-        sheet_name: str,
-        values: dict[tuple[int, int], Any],
+            self,
+            *,
+            excel_path: Path,
+            sheet_name: str,
+            values: dict[tuple[int, int], Any],
     ) -> None:
         """
         シートのセルを更新
@@ -112,4 +112,13 @@ class IExcelGateway(ABC):
             values: (row_index, column_index) -> value のマッピング
                 row_index, column_indexは0-based
         """
+        raise NotImplementedError()
+
+
+class IDatabaseInitializeGateway(ABC):
+    """データベーススキーマ初期化Gateway Interface"""
+
+    @abstractmethod
+    def initialize(self) -> None:
+        """データベースの全テーブルを作成する（冪等）"""
         raise NotImplementedError()

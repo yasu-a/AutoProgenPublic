@@ -11,10 +11,10 @@ from shared.infra.repository.storage import StorageRepository
 from shared.infra.repository.student import StudentRepository
 from shared.infra.repository.student_dynamic import StudentExecutableRepository, \
     StudentSourceRepository
-from shared.infra.repository.student_mark import StudentMarkEntityRepository
+from shared.infra.repository.student_mark import StudentScoreRepository
 from shared.infra.repository.student_stage_path_result import StudentStageResultRepository
 from shared.infra.repository.test_source import TestSourceRepository
-from shared.infra.repository.testcase_config import TestCaseConfigRepository
+from shared.infra.repository.testcase import TestCaseRepository
 
 
 # FIXME: @cacheを付けるとテストのときにステートが残ってしまう
@@ -67,14 +67,8 @@ def get_student_stage_result_repository():
 
 @cache  # インスタンス内部にキャッシュを持つのでプロジェクト内ステートフル
 def get_testcase_config_repository():
-    path_config = get_path_config()
-    current_project_id = get_current_project_id_state().get()
-    return TestCaseConfigRepository(
-        testcase_config_base_folder=path_config.current_project_testcase_config_base_folder(current_project_id),
-        testcase_folder_fullpath=lambda tc_id: path_config.testcase_folder_fullpath(current_project_id, tc_id),
-        testcase_execute_config_json_fullpath=lambda tc_id: path_config.testcase_execute_config_json_fullpath(current_project_id, tc_id),
-        testcase_test_config_json_fullpath=lambda tc_id: path_config.testcase_test_config_json_fullpath(current_project_id, tc_id),
-        current_project_core_io=get_current_project_core_io(),
+    return TestCaseRepository(
+        project_database_io=get_project_database_io(),
     )
 
 
@@ -110,6 +104,6 @@ def get_test_source_repository():
 
 @cache  # インスタンス内部にロックを持つのでプロジェクト内ステートフル
 def get_student_mark_repository():
-    return StudentMarkEntityRepository(
+    return StudentScoreRepository(
         project_database_io=get_project_database_io(),
     )

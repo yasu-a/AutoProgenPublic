@@ -64,28 +64,8 @@ class StudentRepository(IStudentRepository):
         finally:
             self._lock.unlock()
 
-    def _create_database_if_not_exists(self):
-        with self._project_database_io.connect() as con:
-            cur = con.cursor()
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS student
-                (
-                    student_id             TEXT    NOT NULL PRIMARY KEY,
-                    name                   TEXT    NOT NULL,
-                    name_en                TEXT    NOT NULL,
-                    email_address          TEXT    NOT NULL,
-                    submitted_at           DATETIME,
-                    num_submissions        INTEGER NOT NULL,
-                    submission_folder_name TEXT
-                )
-                """
-            )
-            con.commit()
-
     def create_all(self, students: list[StudentEntity]) -> None:
         with self.__lock():
-            self._create_database_if_not_exists()
             with self._project_database_io.connect() as con:
                 cur = con.cursor()
                 cur.executemany(
@@ -116,7 +96,6 @@ class StudentRepository(IStudentRepository):
     def exists_any(self) -> bool:
         # 何らかの生徒データが存在する場合にTrueを返す
         with self.__lock():
-            self._create_database_if_not_exists()
             with self._project_database_io.connect() as con:
                 cur = con.cursor()
                 cur.execute(
@@ -129,7 +108,6 @@ class StudentRepository(IStudentRepository):
 
     def get(self, student_id: StudentID) -> StudentEntity:
         with self.__lock():
-            self._create_database_if_not_exists()
             with self._project_database_io.connect() as con:
                 cur = con.cursor()
                 cur.execute(
@@ -155,7 +133,6 @@ class StudentRepository(IStudentRepository):
 
     def list(self) -> list[StudentEntity]:
         with self.__lock():
-            self._create_database_if_not_exists()
             with self._project_database_io.connect() as con:
                 cur = con.cursor()
                 cur.execute(

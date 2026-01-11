@@ -12,14 +12,14 @@ from shared.domain.value.output_file import OutputFile
 from shared.domain.value.student_stage_result import TestResultOutputFileCollection
 from shared.domain.value.test_result_output_file_entry import TestResultTestedOutputFileEntry, \
     TestResultAbsentOutputFileEntry, TestResultUnexpectedOutputFileEntry
-from shared.infra.repository.testcase_config import TestCaseConfigRepository
+from shared.infra.repository.testcase import TestCaseRepository
 
 
 class StudentRunTestStageUseCase(IStudentRunTestStageUseCase):  # TODO: ロジックからStudentTestServiceを分離
     def __init__(
             self,
             *,
-            testcase_config_repo: TestCaseConfigRepository,
+            testcase_config_repo: TestCaseRepository,
             student_put_stage_result_service: StudentPutStagePathResultEntityService,
             student_get_stage_result_map_service: StudentGetStagePathResultMapService,
             match_get_best_service: MatchGetBestService,

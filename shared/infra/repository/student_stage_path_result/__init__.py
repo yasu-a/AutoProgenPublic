@@ -1,522 +1,358 @@
 import json
+import threading
 from datetime import datetime
-from typing import Optional
+from typing import Dict, Optional
 
 from shared.domain.interface.repository import IStudentStageResultRepository
 from shared.domain.model.stage import Stage, StageElement
-from shared.domain.model.student_result import \
-    StudentStageStatusEntity, StudentStageStatusFlag, \
-    AbstractStageResultEntity, BuildStageResultEntity, CompileStageResultEntity, \
-    ExecuteStageResultEntity, TestStageResultEntity
+from shared.domain.model.student_result import (
+    AbstractStageResultEntity,
+    BuildStageResultEntity,
+    CompileStageResultEntity,
+    ExecuteStageResultEntity,
+    StudentStageStatusEntity,
+    StudentStageStatusFlag,
+    TestStageResultEntity,
+)
 from shared.domain.value.identifier import StudentID, TestCaseID
 from shared.domain.value.output_file import OutputFileCollection
-from shared.domain.value.student_stage_result import TestResultOutputFileCollection
+from shared.domain.value.student_stage_result import (
+    TestResultOutputFileCollection
+)
 from shared.infra.system.project_database import ProjectDatabaseIO
 from util.app_logging import create_logger
 
 
-# 新しいテーブル設計用のHelperクラス群
+class _BuildResultHelper:
+    _logger = create_logger()
 
-class _StageResultHeaderHelper:
-    """共通ヘッダーテーブル用Helper"""
+    @classmethod
+    def upsert(cls, cursor, entity: BuildStageResultEntity) -> None:
+        cursor.execute("""
+            INSERT OR REPLACE INTO result_build
+            (student_id, is_success, timestamp, error_summary,
+             submission_folder_checksum)
+            VALUES (?, ?, ?, ?, ?)
+        """, (
+            str(entity.student_id),
+            1 if entity.is_success else 0,
+            entity.timestamp,
+            entity.error_summary,
+            entity.submission_folder_checksum
+        ))
 
-    _DB_COMMON_ID = "__COMMON__"
-
-    def create_table_if_not_exists(self, cursor) -> None:
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS student_stage_result_header
-            (
-                student_id  TEXT NOT NULL,
-                stage       TEXT NOT NULL,
-                testcase_id TEXT NOT NULL DEFAULT '__COMMON__',
-                is_success  INTEGER NOT NULL,
-                timestamp   DATETIME NOT NULL,
-                error_summary TEXT,
-                PRIMARY KEY (student_id, stage, testcase_id),
-                FOREIGN KEY (student_id) REFERENCES student (student_id),
-                FOREIGN KEY (testcase_id) REFERENCES testcase_config (testcase_id)
-            )
-            """
+    @classmethod
+    def fetch(cls, cursor, student_id: StudentID) -> Optional[BuildStageResultEntity]:
+        sql = "SELECT * FROM result_build WHERE student_id = ?"
+        row = cursor.execute(sql, (str(student_id),)).fetchone()
+        if not row:
+            return None
+        return BuildStageResultEntity(
+            student_id=student_id,
+            submission_folder_checksum=int(row["submission_folder_checksum"]) if row["submission_folder_checksum"] is not None else None,
+            timestamp=row["timestamp"],
+            is_success=bool(row["is_success"]),
+            error_summary=row["error_summary"]
         )
 
-    def upsert(self, cursor, student_id: StudentID, stage: Stage, testcase_id: str,
-               is_success: bool, timestamp: datetime, error_summary: str | None) -> None:
+    @classmethod
+    def delete(cls, cursor, student_id: StudentID) -> None:
         cursor.execute(
-            """
-            INSERT OR REPLACE INTO student_stage_result_header
-            (student_id, stage, testcase_id, is_success, timestamp, error_summary)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (str(student_id), stage.value, testcase_id,
-             1 if is_success else 0, timestamp, error_summary)
-        )
-
-    def fetch_status(self, cursor, student_id: StudentID) -> tuple[dict, datetime | None]:
-        cursor.execute(
-            """
-            SELECT stage, testcase_id, is_success, timestamp
-            FROM student_stage_result_header
-            WHERE student_id = ?
-            """,
+            "DELETE FROM result_build WHERE student_id = ?",
             (str(student_id),)
         )
-        rows = cursor.fetchall()
 
-        build_status = None
-        compile_status = None
-        execute_status: dict[TestCaseID, StudentStageStatusFlag] = {}
-        test_status: dict[TestCaseID, StudentStageStatusFlag] = {}
-        max_timestamp = None
 
-        for row in rows:
-            stage_str = row["stage"]
-            testcase_id_str = row["testcase_id"]
-            is_success = bool(row["is_success"])
-            ts = row["timestamp"]
+class _CompileResultHelper:
+    _logger = create_logger()
 
-            if max_timestamp is None or ts > max_timestamp:
-                max_timestamp = ts
+    @classmethod
+    def upsert(cls, cursor, entity: CompileStageResultEntity) -> None:
+        cursor.execute("""
+            INSERT OR REPLACE INTO result_compile
+            (student_id, is_success, timestamp, error_summary, compiler_output)
+            VALUES (?, ?, ?, ?, ?)
+        """, (
+            str(entity.student_id),
+            1 if entity.is_success else 0,
+            entity.timestamp,
+            entity.error_summary,
+            entity.output
+        ))
 
-            flag = StudentStageStatusFlag.FINISHED_SUCCESS if is_success else StudentStageStatusFlag.FINISHED_FAILURE
-
-            if testcase_id_str == self._DB_COMMON_ID:
-                # BUILD or COMPILE
-                if stage_str == Stage.BUILD.value:
-                    build_status = flag
-                elif stage_str == Stage.COMPILE.value:
-                    compile_status = flag
-            else:
-                # EXECUTE or TEST
-                testcase_id = TestCaseID(testcase_id_str)
-                if stage_str == Stage.EXECUTE.value:
-                    execute_status[testcase_id] = flag
-                elif stage_str == Stage.TEST.value:
-                    test_status[testcase_id] = flag
-
-        return {
-            "build": build_status,
-            "compile": compile_status,
-            "execute": execute_status,
-            "test": test_status
-        }, max_timestamp
-
-    def fetch_header(self, cursor, student_id: StudentID, stage: Stage, testcase_id: str) -> dict | None:
-        cursor.execute(
-            """
-            SELECT is_success, timestamp, error_summary
-            FROM student_stage_result_header
-            WHERE student_id = ? AND stage = ? AND testcase_id = ?
-            """,
-            (str(student_id), stage.value, testcase_id)
-        )
-        row = cursor.fetchone()
-        if row is None:
+    @classmethod
+    def fetch(cls, cursor, student_id: StudentID) -> Optional[CompileStageResultEntity]:
+        sql = "SELECT * FROM result_compile WHERE student_id = ?"
+        row = cursor.execute(sql, (str(student_id),)).fetchone()
+        if not row:
             return None
-        return {
-            "is_success": bool(row["is_success"]),
-            "timestamp": row["timestamp"],
-            "error_summary": row["error_summary"]
-        }
-
-    def delete(self, cursor, student_id: StudentID, stage: Stage, testcase_id: str) -> None:
-        """ヘッダーを削除（CASCADEで詳細も削除される）"""
-        cursor.execute(
-            """
-            DELETE FROM student_stage_result_header
-            WHERE student_id = ? AND stage = ? AND testcase_id = ?
-            """,
-            (str(student_id), stage.value, testcase_id)
+        return CompileStageResultEntity(
+            student_id=student_id,
+            output=row["compiler_output"],
+            timestamp=row["timestamp"],
+            is_success=bool(row["is_success"]),
+            error_summary=row["error_summary"]
         )
 
-
-class _BuildResultDetailHelper:
-    """BUILD詳細テーブル用Helper"""
-
-    def create_table_if_not_exists(self, cursor) -> None:
+    @classmethod
+    def delete(cls, cursor, student_id: StudentID) -> None:
         cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS result_detail_build
-            (
-                student_id  TEXT NOT NULL,
-                stage       TEXT NOT NULL DEFAULT 'build',
-                testcase_id TEXT NOT NULL DEFAULT '__COMMON__',
-                submission_folder_checksum TEXT,
-                PRIMARY KEY (student_id, stage, testcase_id),
-                FOREIGN KEY (student_id, stage, testcase_id)
-                    REFERENCES student_stage_result_header (student_id, stage, testcase_id)
-                    ON DELETE CASCADE
-            )
-            """
-        )
-
-    def upsert(self, cursor, student_id: StudentID, checksum: str | None) -> None:
-        cursor.execute(
-            """
-            INSERT OR REPLACE INTO result_detail_build
-            (student_id, stage, testcase_id, submission_folder_checksum)
-            VALUES (?, 'build', '__COMMON__', ?)
-            """,
-            (str(student_id), checksum)
-        )
-
-    def fetch(self, cursor, student_id: StudentID) -> dict | None:
-        cursor.execute(
-            """
-            SELECT submission_folder_checksum
-            FROM result_detail_build
-            WHERE student_id = ?
-            """,
+            "DELETE FROM result_compile WHERE student_id = ?",
             (str(student_id),)
         )
-        row = cursor.fetchone()
-        if row is None:
+
+
+class _ExecuteResultHelper:
+    _logger = create_logger()
+
+    @classmethod
+    def upsert(cls, cursor, entity: ExecuteStageResultEntity) -> None:
+        files_json = None
+        if entity.output_file_collection:
+            files_json = json.dumps(entity.output_file_collection.to_json())
+
+        cursor.execute("""
+            INSERT OR REPLACE INTO result_execute
+            (student_id, testcase_id, is_success, timestamp, error_summary,
+             execute_config_mtime, output_file_collection_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            str(entity.student_id),
+            str(entity.testcase_id),
+            1 if entity.is_success else 0,
+            entity.timestamp,
+            entity.error_summary,
+            entity.execute_config_mtime,
+            files_json
+        ))
+
+    @classmethod
+    def fetch(cls, cursor, student_id: StudentID,
+              testcase_id: TestCaseID) -> Optional[ExecuteStageResultEntity]:
+        sql = "SELECT * FROM result_execute WHERE student_id = ? AND testcase_id = ?"
+        row = cursor.execute(
+            sql, (str(student_id), str(testcase_id))).fetchone()
+        if not row:
             return None
-        return {"submission_folder_checksum": row["submission_folder_checksum"]}
 
-
-class _CompileResultDetailHelper:
-    """COMPILE詳細テーブル用Helper"""
-
-    def create_table_if_not_exists(self, cursor) -> None:
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS result_detail_compile
-            (
-                student_id  TEXT NOT NULL,
-                stage       TEXT NOT NULL DEFAULT 'compile',
-                testcase_id TEXT NOT NULL DEFAULT '__COMMON__',
-                compiler_output TEXT,
-                PRIMARY KEY (student_id, stage, testcase_id),
-                FOREIGN KEY (student_id, stage, testcase_id)
-                    REFERENCES student_stage_result_header (student_id, stage, testcase_id)
-                    ON DELETE CASCADE
+        files = None
+        if row["output_file_collection_json"]:
+            files = OutputFileCollection.from_json(
+                json.loads(row["output_file_collection_json"])
             )
-            """
+
+        return ExecuteStageResultEntity(
+            student_id=student_id,
+            testcase_id=testcase_id,
+            execute_config_mtime=row["execute_config_mtime"],
+            output_file_collection=files,
+            timestamp=row["timestamp"],
+            is_success=bool(row["is_success"]),
+            error_summary=row["error_summary"]
         )
 
-    def upsert(self, cursor, student_id: StudentID, compiler_output: str | None) -> None:
-        cursor.execute(
-            """
-            INSERT OR REPLACE INTO result_detail_compile
-            (student_id, stage, testcase_id, compiler_output)
-            VALUES (?, 'compile', '__COMMON__', ?)
-            """,
-            (str(student_id), compiler_output)
-        )
-
-    def fetch(self, cursor, student_id: StudentID) -> dict | None:
-        cursor.execute(
-            """
-            SELECT compiler_output
-            FROM result_detail_compile
-            WHERE student_id = ?
-            """,
-            (str(student_id),)
-        )
-        row = cursor.fetchone()
-        if row is None:
-            return None
-        return {"compiler_output": row["compiler_output"]}
+    @classmethod
+    def delete(cls, cursor, student_id: StudentID,
+               testcase_id: Optional[TestCaseID]) -> None:
+        if testcase_id:
+            sql = "DELETE FROM result_execute WHERE student_id = ? AND testcase_id = ?"
+            cursor.execute(sql, (str(student_id), str(testcase_id)))
+        else:
+            sql = "DELETE FROM result_execute WHERE student_id = ?"
+            cursor.execute(sql, (str(student_id),))
 
 
-class _ExecuteResultDetailHelper:
-    """EXECUTE詳細テーブル用Helper"""
+class _TestResultHelper:
+    _logger = create_logger()
 
-    def create_table_if_not_exists(self, cursor) -> None:
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS result_detail_execute
-            (
-                student_id  TEXT NOT NULL,
-                stage       TEXT NOT NULL DEFAULT 'execute',
-                testcase_id TEXT NOT NULL,
-                execute_config_mtime DATETIME,
-                output_files_json TEXT,
-                PRIMARY KEY (student_id, stage, testcase_id),
-                FOREIGN KEY (student_id, stage, testcase_id)
-                    REFERENCES student_stage_result_header (student_id, stage, testcase_id)
-                    ON DELETE CASCADE,
-                FOREIGN KEY (testcase_id) REFERENCES testcase_config (testcase_id)
+    @classmethod
+    def upsert(cls, cursor, entity: TestStageResultEntity) -> None:
+        files_json = None
+        if entity.test_result_output_file_collection:
+            files_json = json.dumps(
+                entity.test_result_output_file_collection.to_json()
             )
-            """
-        )
 
-    def upsert(self, cursor, student_id: StudentID, testcase_id: TestCaseID,
-               execute_config_mtime: datetime | None, output_file_collection: OutputFileCollection | None) -> None:
-        output_files_json = None
-        if output_file_collection is not None:
-            output_files_json = json.dumps(output_file_collection.to_json())
+        cursor.execute("""
+            INSERT OR REPLACE INTO result_test
+            (student_id, testcase_id, is_success, timestamp, error_summary,
+             test_config_mtime, test_result_output_file_collection_json, failure_reason)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            str(entity.student_id),
+            str(entity.testcase_id),
+            1 if entity.is_success else 0,
+            entity.timestamp,
+            entity.error_summary,
+            entity.test_config_mtime,
+            files_json,
+            entity.failure_reason
+        ))
 
-        cursor.execute(
-            """
-            INSERT OR REPLACE INTO result_detail_execute
-            (student_id, stage, testcase_id, execute_config_mtime, output_files_json)
-            VALUES (?, 'execute', ?, ?, ?)
-            """,
-            (str(student_id), str(testcase_id),
-             execute_config_mtime, output_files_json)
-        )
-
-    def fetch(self, cursor, student_id: StudentID, testcase_id: TestCaseID) -> dict | None:
-        cursor.execute(
-            """
-            SELECT execute_config_mtime, output_files_json
-            FROM result_detail_execute
-            WHERE student_id = ? AND testcase_id = ?
-            """,
-            (str(student_id), str(testcase_id))
-        )
-        row = cursor.fetchone()
-        if row is None:
+    @classmethod
+    def fetch(cls, cursor, student_id: StudentID,
+              testcase_id: TestCaseID) -> Optional[TestStageResultEntity]:
+        sql = "SELECT * FROM result_test WHERE student_id = ? AND testcase_id = ?"
+        row = cursor.execute(
+            sql, (str(student_id), str(testcase_id))).fetchone()
+        if not row:
             return None
 
-        output_file_collection = None
-        if row["output_files_json"] is not None:
-            output_file_collection = OutputFileCollection.from_json(
-                json.loads(row["output_files_json"]))
-
-        return {
-            "execute_config_mtime": row["execute_config_mtime"],
-            "output_file_collection": output_file_collection
-        }
-
-
-class _TestResultDetailHelper:
-    """TEST詳細テーブル用Helper"""
-
-    def create_table_if_not_exists(self, cursor) -> None:
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS result_detail_test
-            (
-                student_id  TEXT NOT NULL,
-                stage       TEXT NOT NULL DEFAULT 'test',
-                testcase_id TEXT NOT NULL,
-                test_config_mtime DATETIME,
-                test_result_output_files_json TEXT,
-                failure_reason TEXT,
-                PRIMARY KEY (student_id, stage, testcase_id),
-                FOREIGN KEY (student_id, stage, testcase_id)
-                    REFERENCES student_stage_result_header (student_id, stage, testcase_id)
-                    ON DELETE CASCADE,
-                FOREIGN KEY (testcase_id) REFERENCES testcase_config (testcase_id)
+        files = None
+        if row["test_result_output_file_collection_json"]:
+            files = TestResultOutputFileCollection.from_json(
+                json.loads(row["test_result_output_file_collection_json"])
             )
-            """
+
+        return TestStageResultEntity(
+            student_id=student_id,
+            testcase_id=testcase_id,
+            test_config_mtime=row["test_config_mtime"],
+            test_result_output_file_collection=files,
+            failure_reason=row["failure_reason"],
+            timestamp=row["timestamp"],
+            is_success=bool(row["is_success"]),
+            error_summary=row["error_summary"]
         )
 
-    def upsert(self, cursor, student_id: StudentID, testcase_id: TestCaseID,
-               test_config_mtime: datetime | None, test_result_output_file_collection: TestResultOutputFileCollection | None,
-               failure_reason: str | None) -> None:
-        test_result_output_files_json = None
-        if test_result_output_file_collection is not None:
-            test_result_output_files_json = json.dumps(
-                test_result_output_file_collection.to_json())
-
-        cursor.execute(
-            """
-            INSERT OR REPLACE INTO result_detail_test
-            (student_id, stage, testcase_id, test_config_mtime, test_result_output_files_json, failure_reason)
-            VALUES (?, 'test', ?, ?, ?, ?)
-            """,
-            (str(student_id), str(testcase_id), test_config_mtime,
-             test_result_output_files_json, failure_reason)
-        )
-
-    def fetch(self, cursor, student_id: StudentID, testcase_id: TestCaseID) -> dict | None:
-        cursor.execute(
-            """
-            SELECT test_config_mtime, test_result_output_files_json, failure_reason
-            FROM result_detail_test
-            WHERE student_id = ? AND testcase_id = ?
-            """,
-            (str(student_id), str(testcase_id))
-        )
-        row = cursor.fetchone()
-        if row is None:
-            return None
-
-        test_result_output_file_collection = None
-        if row["test_result_output_files_json"] is not None:
-            test_result_output_file_collection = TestResultOutputFileCollection.from_json(
-                json.loads(row["test_result_output_files_json"]))
-
-        return {
-            "test_config_mtime": row["test_config_mtime"],
-            "test_result_output_file_collection": test_result_output_file_collection,
-            "failure_reason": row["failure_reason"]
-        }
+    @classmethod
+    def delete(cls, cursor, student_id: StudentID,
+               testcase_id: Optional[TestCaseID]) -> None:
+        if testcase_id:
+            sql = "DELETE FROM result_test WHERE student_id = ? AND testcase_id = ?"
+            cursor.execute(sql, (str(student_id), str(testcase_id)))
+        else:
+            sql = "DELETE FROM result_test WHERE student_id = ?"
+            cursor.execute(sql, (str(student_id),))
 
 
 class StudentStageResultRepository(IStudentStageResultRepository):
-    def __init__(
-            self,
-            *,
-            project_database_io: ProjectDatabaseIO,
-    ):
+    """
+    キャッシュ機能を備えた生徒ステージ結果リポジトリ。
+    各ステージの結果を独立したテーブルで管理し、スレッドセーフなアクセスを保証します。
+    """
+
+    def __init__(self, *, project_database_io: ProjectDatabaseIO):
         self._project_database_io = project_database_io
-        self._logger = create_logger()
 
-        self._header_helper = _StageResultHeaderHelper()
-        self._build_helper = _BuildResultDetailHelper()
-        self._compile_helper = _CompileResultDetailHelper()
-        self._execute_helper = _ExecuteResultDetailHelper()
-        self._test_helper = _TestResultDetailHelper()
+        # ロックとキャッシュ
+        self._lock = threading.RLock()
+        self._status_cache: Dict[StudentID, StudentStageStatusEntity] = {}
 
-        self._create_tables_if_not_exists()
-
-    def _create_tables_if_not_exists(self) -> None:
-        with self._project_database_io.connect() as con:
-            cur = con.cursor()
-            self._header_helper.create_table_if_not_exists(cur)
-            self._build_helper.create_table_if_not_exists(cur)
-            self._compile_helper.create_table_if_not_exists(cur)
-            self._execute_helper.create_table_if_not_exists(cur)
-            self._test_helper.create_table_if_not_exists(cur)
-            con.commit()
-
-    def get_build_result(self, student_id: StudentID) -> Optional[BuildStageResultEntity]:
-        with self._project_database_io.connect() as con:
-            cur = con.cursor()
-            header = self._header_helper.fetch_header(
-                cur, student_id, Stage.BUILD, _StageResultHeaderHelper._DB_COMMON_ID)
-            if header is None:
-                return None
-            detail = self._build_helper.fetch(cur, student_id)
-
-            # detail がない場合でも header があれば生成可能（仕様によるが今回は許容する）
-            checksum = detail["submission_folder_checksum"] if detail else None
-
-            return BuildStageResultEntity(
-                student_id=student_id,
-                submission_folder_checksum=checksum,
-                timestamp=header["timestamp"],
-                is_success=header["is_success"],
-                error_summary=header["error_summary"],
-            )
-
-    def get_compile_result(self, student_id: StudentID) -> Optional[CompileStageResultEntity]:
-        with self._project_database_io.connect() as con:
-            cur = con.cursor()
-            header = self._header_helper.fetch_header(
-                cur, student_id, Stage.COMPILE, _StageResultHeaderHelper._DB_COMMON_ID)
-            if header is None:
-                return None
-            detail = self._compile_helper.fetch(cur, student_id)
-            output = detail["compiler_output"] if detail else None
-
-            return CompileStageResultEntity(
-                student_id=student_id,
-                output=output,
-                timestamp=header["timestamp"],
-                is_success=header["is_success"],
-                error_summary=header["error_summary"],
-            )
-
-    def get_execute_result(self, student_id: StudentID, testcase_id: TestCaseID) -> Optional[ExecuteStageResultEntity]:
-        with self._project_database_io.connect() as con:
-            cur = con.cursor()
-            header = self._header_helper.fetch_header(
-                cur, student_id, Stage.EXECUTE, str(testcase_id))
-            if header is None:
-                return None
-            detail = self._execute_helper.fetch(cur, student_id, testcase_id)
-
-            execute_config_mtime = detail["execute_config_mtime"] if detail else None
-            output_file_collection = detail["output_file_collection"] if detail else None
-
-            return ExecuteStageResultEntity(
-                student_id=student_id,
-                testcase_id=testcase_id,
-                execute_config_mtime=execute_config_mtime,
-                output_file_collection=output_file_collection,
-                timestamp=header["timestamp"],
-                is_success=header["is_success"],
-                error_summary=header["error_summary"],
-            )
-
-    def get_test_result(self, student_id: StudentID, testcase_id: TestCaseID) -> Optional[TestStageResultEntity]:
-        with self._project_database_io.connect() as con:
-            cur = con.cursor()
-            header = self._header_helper.fetch_header(
-                cur, student_id, Stage.TEST, str(testcase_id))
-            if header is None:
-                return None
-            detail = self._test_helper.fetch(cur, student_id, testcase_id)
-
-            test_config_mtime = detail["test_config_mtime"] if detail else None
-            test_result_output_file_collection = detail["test_result_output_file_collection"] if detail else None
-            failure_reason = detail["failure_reason"] if detail else None
-
-            return TestStageResultEntity(
-                student_id=student_id,
-                testcase_id=testcase_id,
-                test_config_mtime=test_config_mtime,
-                test_result_output_file_collection=test_result_output_file_collection,
-                failure_reason=failure_reason,
-                timestamp=header["timestamp"],
-                is_success=header["is_success"],
-                error_summary=header["error_summary"],
-            )
+        self._build = _BuildResultHelper
+        self._compile = _CompileResultHelper
+        self._execute = _ExecuteResultHelper
+        self._test = _TestResultHelper
 
     def update(self, result: AbstractStageResultEntity) -> None:
-        student_id = result.student_id
-        stage = result.stage
-        testcase_id_str = str(
-            result.testcase_id) if result.testcase_id else _StageResultHeaderHelper._DB_COMMON_ID
+        with self._lock:
+            with self._project_database_io.connect() as con:
+                cur = con.cursor()
+                if isinstance(result, BuildStageResultEntity):
+                    self._build.upsert(cur, result)
+                elif isinstance(result, CompileStageResultEntity):
+                    self._compile.upsert(cur, result)
+                elif isinstance(result, ExecuteStageResultEntity):
+                    self._execute.upsert(cur, result)
+                elif isinstance(result, TestStageResultEntity):
+                    self._test.upsert(cur, result)
+                con.commit()
 
-        with self._project_database_io.connect() as con:
-            cur = con.cursor()
-
-            # ヘッダーを保存
-            self._header_helper.upsert(
-                cur, student_id, stage, testcase_id_str,
-                result.is_success, result.timestamp, result.error_summary
-            )
-
-            # 詳細テーブルへの保存
-            if isinstance(result, BuildStageResultEntity):
-                self._build_helper.upsert(
-                    cur, student_id, result.submission_folder_checksum)
-            elif isinstance(result, CompileStageResultEntity):
-                self._compile_helper.upsert(cur, student_id, result.output)
-            elif isinstance(result, ExecuteStageResultEntity):
-                assert result.testcase_id is not None
-                self._execute_helper.upsert(
-                    cur, student_id, result.testcase_id,
-                    result.execute_config_mtime, result.output_file_collection
-                )
-            elif isinstance(result, TestStageResultEntity):
-                assert result.testcase_id is not None
-                self._test_helper.upsert(
-                    cur, student_id, result.testcase_id,
-                    result.test_config_mtime, result.test_result_output_file_collection,
-                    result.failure_reason
-                )
-
-            con.commit()
+            # キャッシュの無効化
+            if result.student_id in self._status_cache:
+                del self._status_cache[result.student_id]
 
     def get_status(self, student_id: StudentID) -> StudentStageStatusEntity:
-        """ステータス情報を取得"""
-        with self._project_database_io.connect() as con:
-            cur = con.cursor()
-            status_dict, max_timestamp = self._header_helper.fetch_status(
-                cur, student_id)
-            return StudentStageStatusEntity(
-                student_id=student_id,
-                build_status=status_dict["build"] or StudentStageStatusFlag.UNFINISHED,
-                compile_status=status_dict["compile"] or StudentStageStatusFlag.UNFINISHED,
-                execute_status=status_dict["execute"],
-                test_status=status_dict["test"],
-                timestamp=max_timestamp,
+        with self._lock:
+            # キャッシュのチェック
+            if student_id in self._status_cache:
+                return self._status_cache[student_id]
+
+            sid_str = str(student_id)
+            sql = """
+                SELECT 'build' as stage, NULL as tid, is_success, timestamp
+                FROM result_build WHERE student_id = ?
+                UNION ALL
+                SELECT 'compile', NULL, is_success, timestamp
+                FROM result_compile WHERE student_id = ?
+                UNION ALL
+                SELECT 'execute', testcase_id, is_success, timestamp
+                FROM result_execute WHERE student_id = ?
+                UNION ALL
+                SELECT 'test', testcase_id, is_success, timestamp
+                FROM result_test WHERE student_id = ?
+            """
+            with self._project_database_io.connect() as con:
+                cur = con.cursor()
+                rows = cur.execute(
+                    sql, (sid_str, sid_str, sid_str, sid_str)).fetchall()
+
+            build_s = StudentStageStatusFlag.UNFINISHED
+            compile_s = StudentStageStatusFlag.UNFINISHED
+            exec_s, test_s, max_ts = {}, {}, None
+
+            for row in rows:
+                stg, tid, ok, ts = (
+                    row["stage"], row["tid"], bool(
+                        row["is_success"]), row["timestamp"]
+                )
+                flag = (
+                    StudentStageStatusFlag.FINISHED_SUCCESS if ok
+                    else StudentStageStatusFlag.FINISHED_FAILURE
+                )
+                if max_ts is None or ts > max_ts:
+                    max_ts = ts
+
+                if stg == 'build':
+                    build_s = flag
+                elif stg == 'compile':
+                    compile_s = flag
+                elif stg == 'execute':
+                    exec_s[TestCaseID(tid)] = flag
+                elif stg == 'test':
+                    test_s[TestCaseID(tid)] = flag
+
+            status = StudentStageStatusEntity(
+                student_id, build_s, compile_s, exec_s, test_s, max_ts
             )
+            self._status_cache[student_id] = status
+            return status
+
+    def get_build_result(self, student_id: StudentID) -> Optional[BuildStageResultEntity]:
+        with self._lock:
+            with self._project_database_io.connect() as con:
+                return self._build.fetch(con.cursor(), student_id)
+
+    def get_compile_result(self, student_id: StudentID) -> Optional[CompileStageResultEntity]:
+        with self._lock:
+            with self._project_database_io.connect() as con:
+                return self._compile.fetch(con.cursor(), student_id)
+
+    def get_execute_result(self, student_id: StudentID,
+                           testcase_id: TestCaseID) -> Optional[ExecuteStageResultEntity]:
+        with self._lock:
+            with self._project_database_io.connect() as con:
+                return self._execute.fetch(con.cursor(), student_id, testcase_id)
+
+    def get_test_result(self, student_id: StudentID,
+                        testcase_id: TestCaseID) -> Optional[TestStageResultEntity]:
+        with self._lock:
+            with self._project_database_io.connect() as con:
+                return self._test.fetch(con.cursor(), student_id, testcase_id)
 
     def delete(self, student_id: StudentID, stage: StageElement) -> None:
-        """指定されたステージの結果を削除"""
-        testcase_id_str = str(
-            stage.testcase_id) if stage.testcase_id else _StageResultHeaderHelper._DB_COMMON_ID
-        with self._project_database_io.connect() as con:
-            cur = con.cursor()
-            self._header_helper.delete(
-                cur, student_id, stage.stage, testcase_id_str)
-            con.commit()
+        with self._lock:
+            with self._project_database_io.connect() as con:
+                cur = con.cursor()
+                if stage.stage == Stage.BUILD:
+                    self._build.delete(cur, student_id)
+                elif stage.stage == Stage.COMPILE:
+                    self._compile.delete(cur, student_id)
+                elif stage.stage == Stage.EXECUTE:
+                    self._execute.delete(cur, student_id, stage.testcase_id)
+                elif stage.stage == Stage.TEST:
+                    self._test.delete(cur, student_id, stage.testcase_id)
+                con.commit()
+
+            if student_id in self._status_cache:
+                del self._status_cache[student_id]

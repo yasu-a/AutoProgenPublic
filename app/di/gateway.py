@@ -1,13 +1,15 @@
 from app.di.path_config import *
 from app.di.repository import get_current_project_repository, get_student_repository
 from app.di.state import get_current_project_id_state
-from app.di.system import get_current_project_core_io, get_project_core_io
+from app.di.system import get_current_project_core_io, get_project_core_io, get_project_database_io
 from feature.projman.infra.gateway.project import ProjectListGateway, ProjectConfigStateGateway, \
     ProjectFileSystemGateway
 from feature.projman.infra.gateway.student_submission import \
     StudentSubmissionListSourceRelativePathGateway, StudentSubmissionGetFileContentGateway
 from feature.setting.infra.gateway.compiler_location import VSFindCompilerPathGateway
+from shared.domain.interface.gateway import IDatabaseInitializeGateway
 from shared.infra.gateway.current_datetime import CurrentDatetimeGateway
+from shared.infra.gateway.database_initialize_gateway import DatabaseInitializeGateway
 from shared.infra.gateway.student_submission import (
     StudentSubmissionGetSourceContentGateway,
     StudentSubmissionGetChecksumGateway,
@@ -46,7 +48,8 @@ def get_student_submission_list_source_relative_path_gateway():
     path_config = get_path_config()
     current_project_id = get_current_project_id_state().get()
     return StudentSubmissionListSourceRelativePathGateway(
-        student_submission_folder_fullpath=lambda s_id: path_config.student_submission_folder_fullpath(current_project_id, s_id),
+        student_submission_folder_fullpath=lambda
+            s_id: path_config.student_submission_folder_fullpath(current_project_id, s_id),
         current_project_core_io=get_current_project_core_io(),
         current_project_repo=get_current_project_repository(),
     )
@@ -56,7 +59,8 @@ def get_student_submission_get_file_content_gateway():
     path_config = get_path_config()
     current_project_id = get_current_project_id_state().get()
     return StudentSubmissionGetFileContentGateway(
-        student_submission_folder_fullpath=lambda s_id: path_config.student_submission_folder_fullpath(current_project_id, s_id),
+        student_submission_folder_fullpath=lambda
+            s_id: path_config.student_submission_folder_fullpath(current_project_id, s_id),
         current_project_core_io=get_current_project_core_io(),
     )
 
@@ -73,7 +77,8 @@ def get_student_submission_get_checksum_gateway():
     path_config = get_path_config()
     current_project_id = get_current_project_id_state().get()
     return StudentSubmissionGetChecksumGateway(
-        student_submission_folder_fullpath=lambda s_id: path_config.student_submission_folder_fullpath(current_project_id, s_id),
+        student_submission_folder_fullpath=lambda
+            s_id: path_config.student_submission_folder_fullpath(current_project_id, s_id),
         current_project_core_io=get_current_project_core_io(),
     )
 
@@ -82,7 +87,8 @@ def get_student_submission_folder_show_gateway():
     path_config = get_path_config()
     current_project_id = get_current_project_id_state().get()
     return StudentSubmissionFolderShowGateway(
-        student_submission_folder_fullpath=lambda s_id: path_config.student_submission_folder_fullpath(current_project_id, s_id),
+        student_submission_folder_fullpath=lambda
+            s_id: path_config.student_submission_folder_fullpath(current_project_id, s_id),
         folder_show_in_explorer_gateway=get_folder_show_in_explorer_gateway(),
     )
 
@@ -127,3 +133,7 @@ def get_excel_gateway():
 def get_excel_backup_gateway():
     from feature.export.infra.gateway.excel_backup import ExcelBackupGateway
     return ExcelBackupGateway()
+
+
+def get_database_initialize_gateway() -> IDatabaseInitializeGateway:
+    return DatabaseInitializeGateway(db_io=get_project_database_io())

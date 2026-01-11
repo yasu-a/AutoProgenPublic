@@ -302,7 +302,7 @@ class IStudentStagePathResultAnalyzerService(ABC):
             self,
             stage_path: list[StageElement],
             results_map: OrderedDict[StageElement, AbstractStageResultEntity | None]
-    ) -> OrderedDict[StageElement, str]: # returns "unfinished", "success", "failure"
+    ) -> OrderedDict[StageElement, str]:  # returns "unfinished", "success", "failure"
         raise NotImplementedError()
 
     @abstractmethod

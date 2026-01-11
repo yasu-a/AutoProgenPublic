@@ -1,16 +1,18 @@
 from feature.workspace.usecase.interface import IStudentDynamicTakeDiffSnapshotUseCase, StudentStageResultDiffSnapshotDto
+from shared.domain.interface.repository import IStudentScoreRepository
+from shared.domain.interface.service import IStudentStagePathResultEntityCheckTimestampQueryService
 from shared.domain.service.student_stage_path_result import \
     StudentStagePathResultEntityCheckTimestampQueryService
 from shared.domain.value.identifier import StudentID
-from shared.infra.repository.student_mark import StudentMarkEntityRepository
+from shared.infra.repository.student_mark import StudentScoreRepository
 
 
 class StudentDynamicTakeDiffSnapshotUseCase(IStudentDynamicTakeDiffSnapshotUseCase):
     def __init__(
             self,
             *,
-            student_stage_result_check_timestamp_query_service: StudentStagePathResultEntityCheckTimestampQueryService,
-            student_mark_repo: StudentMarkEntityRepository,
+            student_stage_result_check_timestamp_query_service: IStudentStagePathResultEntityCheckTimestampQueryService,
+            student_mark_repo: IStudentScoreRepository,
     ):
         self._student_stage_result_check_timestamp_query_service \
             = student_stage_result_check_timestamp_query_service

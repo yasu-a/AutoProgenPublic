@@ -218,7 +218,8 @@ class StudentTestCaseTestResultUntestableViewData(AbstractStudentTestCaseTestRes
     @property
     def output_and_results(self) -> TestResultOutputFileCollection:
         raise ValueError("output and results not provided")
-        
+
+
 class IStudentMarkViewDataGetTestResultUseCase(ABC):
     """テスト結果表示データ取得UseCaseのインターフェース"""
 

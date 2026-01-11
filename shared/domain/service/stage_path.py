@@ -2,7 +2,7 @@ from shared.domain.interface.service import IStagePathGetByTestCaseIDService, \
     IStagePathListSubService
 from shared.domain.model.stage import StageElement, Stage
 from shared.domain.value.identifier import TestCaseID
-from shared.infra.repository.testcase_config import TestCaseConfigRepository
+from shared.infra.repository.testcase import TestCaseRepository
 
 
 class StagePathListSubService(IStagePathListSubService):
@@ -11,7 +11,7 @@ class StagePathListSubService(IStagePathListSubService):
     def __init__(
             self,
             *,
-            testcase_config_repo: TestCaseConfigRepository,
+            testcase_config_repo: TestCaseRepository,
     ):
         self._testcase_config_repo = testcase_config_repo
 
@@ -20,7 +20,7 @@ class StagePathListSubService(IStagePathListSubService):
         # 例えばテストケースがない場合はExecuteStageとTestStageが含まれない
         testcase_ids = [
             testcase_config.testcase_id
-            for testcase_config in self._testcase_config_repo.list()
+            for testcase_config in self._testcase_config_repo.list_all()
         ]
         
         paths: list[list[StageElement]] = []

@@ -84,8 +84,10 @@ class ProjectCreateView(QWidget, IProjectCreateView):
 
         layout.addStretch(1)
 
+    # noinspection PyPep8Naming
     def showEvent(self, evt: QShowEvent) -> None:
         """表示イベント：Handlerに初期化を通知"""
+        # noinspection PyUnresolvedReferences
         super().showEvent(evt)
         self._handler.on_view_initialized()
 
@@ -133,6 +135,7 @@ class ProjectCreateView(QWidget, IProjectCreateView):
 
     def show_validation_errors(self, errors: list[str]) -> None:
         """バリデーションエラーを表示"""
+        # noinspection PyTypeChecker
         QMessageBox.critical(
             self,
             "プロジェクトを作成",
@@ -149,10 +152,11 @@ class ProjectCreateView(QWidget, IProjectCreateView):
         """親ウィジェットを取得（QObjectのparent用）"""
         return self
 
-    def show_initialize_error(self):
+    def show_initialize_error(self, message: str):
+        # noinspection PyTypeChecker
         QMessageBox.critical(
-            dialog,
+            self,
             "プロジェクトの初期化",
-            dialog.get_error_object().message,
+            message,
             QMessageBox.Ok,
         )

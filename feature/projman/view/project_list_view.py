@@ -1,7 +1,7 @@
 from typing import List, Union
 
 from PyQt5.QtCore import *
-from PyQt5.QtGui import QCursor, QShowEvent
+from PyQt5.QtGui import QCursor, QShowEvent, QHideEvent
 from PyQt5.QtWidgets import *
 
 from feature.projman.handler.interface import IProjectListView, IProjectListHandler
@@ -305,10 +305,12 @@ class ProjectListView(QWidget, IProjectListView):
 
     def showEvent(self, evt: QShowEvent) -> None:
         """タブがアクティブになったときに自動ロード"""
+        # noinspection PyUnresolvedReferences
         super().showEvent(evt)
         self._handler.on_view_initialized()
 
-    def hideEvent(self, evt) -> None:
+    # noinspection PyMethodOverriding
+    def hideEvent(self, evt: QHideEvent) -> None:
         """タブが非アクティブになったときにWorkerを停止"""
         super().hideEvent(evt)
         self._handler.stop_size_loading()
@@ -361,6 +363,7 @@ class ProjectListView(QWidget, IProjectListView):
 
     def show_delete_confirmation(self, project_id: ProjectID) -> bool:
         """Handlerから呼ばれる：削除確認ダイアログ"""
+        # noinspection PyTypeChecker
         result = QMessageBox.warning(
             self,
             "プロジェクトの削除",
@@ -372,6 +375,7 @@ class ProjectListView(QWidget, IProjectListView):
 
     def show_error_message(self, message: str) -> None:
         """Handlerから呼ばれる：エラーメッセージを表示"""
+        # noinspection PyTypeChecker
         QMessageBox.critical(self, "エラー", message)
 
     def start_size_loading(self) -> None:

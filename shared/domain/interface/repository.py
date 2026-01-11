@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -6,7 +7,7 @@ from shared.domain.entity.project import ProjectEntity
 from shared.domain.entity.storage import StorageEntity
 from shared.domain.entity.student import StudentEntity
 from shared.domain.entity.student_mark import StudentMarkEntity
-from shared.domain.entity.testcase_config import TestCaseConfigEntity
+from shared.domain.entity.testcase import TestCaseConfigEntity
 from shared.domain.model.stage import StageElement
 from shared.domain.model.student_result import StudentStageStatusEntity, \
     AbstractStageResultEntity, BuildStageResultEntity, CompileStageResultEntity, \
@@ -88,6 +89,10 @@ class IStudentScoreRepository(ABC):
         raise NotImplementedError()
 
     @abstractmethod
+    def get_timestamp(self, student_id: StudentID) -> datetime | None:
+        raise NotImplementedError()
+
+    @abstractmethod
     def list(self) -> list[StudentMarkEntity]:
         """すべての点数データを取得"""
         raise NotImplementedError()
@@ -140,7 +145,7 @@ class ICurrentProjectRepository(ABC):
         raise NotImplementedError()
 
 
-class ITestCaseConfigRepository(ABC):
+class ITestCaseRepository(ABC):
     """テストケース設定リポジトリのインターフェース"""
 
     @abstractmethod
@@ -154,7 +159,7 @@ class ITestCaseConfigRepository(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def list(self) -> list[TestCaseConfigEntity]:
+    def list_all(self) -> list[TestCaseConfigEntity]:
         """すべてのテストケース設定を取得"""
         raise NotImplementedError()
 

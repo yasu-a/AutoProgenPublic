@@ -11,7 +11,7 @@ from shared.infra.repository.storage import StorageRepository
 from shared.infra.repository.student_dynamic import StudentSourceRepository, \
     StudentExecutableRepository
 from shared.infra.repository.test_source import TestSourceRepository
-from shared.infra.repository.testcase_config import TestCaseConfigRepository
+from shared.infra.repository.testcase import TestCaseRepository
 
 
 class StorageCreateService:
@@ -162,7 +162,7 @@ class StorageLoadExecuteConfigInputFilesService:
             self,
             *,
             storage_repo: StorageRepository,
-            testcase_config_repo: TestCaseConfigRepository,
+            testcase_config_repo: TestCaseRepository,
     ):
         self._storage_repo = storage_repo
         self._testcase_config_repo = testcase_config_repo

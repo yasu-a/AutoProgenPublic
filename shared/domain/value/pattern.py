@@ -269,7 +269,15 @@ class AbstractPatternList(ABC):
     def __hash__(self) -> int:
         return hash((type(self), *self))
 
-    def to_regex_pattern(self, *, ignore_case: bool) -> tuple[str, int]:  # pattern and flags
+    def __eq__(self, other):
+        if not isinstance(other, AbstractPatternList):
+            raise TypeError(
+                f"Expected type: {type(self)}, but got {type(other)}"
+            )
+        return self._patterns == other._patterns
+
+    # pattern and flags
+    def to_regex_pattern(self, *, ignore_case: bool) -> tuple[str, int]:
         pattern_regex_lst = []
         for pattern in self._patterns:
             regex = pattern.to_regex_with_group()
@@ -316,11 +324,13 @@ class PatternList(AbstractPatternList):  # immutable
 
         slice_lst = []
         if self.expected_patterns._patterns[0].index != 0:
-            slice_lst.append(slice(0, self.expected_patterns._patterns[0].index))
+            slice_lst.append(
+                slice(0, self.expected_patterns._patterns[0].index))
         for p in itertools.pairwise(self.expected_patterns):
             slice_lst.append(slice(p[0].index + 1, p[1].index))
         if self.expected_patterns._patterns[-1].index != len(self) - 1:
-            slice_lst.append(slice(self.expected_patterns._patterns[-1].index + 1, len(self)))
+            slice_lst.append(
+                slice(self.expected_patterns._patterns[-1].index + 1, len(self)))
 
         for s in slice_lst:
             if s.start == s.stop:

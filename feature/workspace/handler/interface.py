@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from shared.domain.model.stage import Stage
 from shared.domain.value.identifier import StudentID
 
 
@@ -73,7 +74,12 @@ class StudentTableRowViewModel:
     error_summary: str | None  # エラー概要テキスト (Noneならエラーなし)
     error_detailed_text: str | None  # エラー詳細テキスト (Noneならエラーなし)
     score: str  # 点数テキスト (例: "90", "未採点")
+    
+    processing_stage: Stage | None  # 実行中のステージ
 
+    def __post_init__(self):
+        if self.processing_stage is not None:
+            assert self.processing_stage in Stage, f"processing_stage must be a Stage: {self.processing_stage}"
 
 # Not inheriting from ABC to avoid metaclass conflict with Qt classes
 # noinspection PyAbstractClass

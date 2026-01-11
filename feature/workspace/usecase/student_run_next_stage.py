@@ -11,7 +11,7 @@ from shared.domain.interface.service import IStagePathListSubService, \
     IStudentStagePathResultEntityCheckRollbackService, IStudentStagePathResultAnalyzerService
 from shared.domain.model.stage import StageElement, Stage
 from shared.domain.model.student_result import AbstractStageResultEntity
-from shared.domain.value.event import StudentUpdateEvent
+from shared.domain.value.event import StudentProcessingStageUpdateEvent, StudentResultUpdateEvent
 from shared.domain.value.identifier import StudentID
 from util.app_logging import create_logger
 
@@ -109,27 +109,33 @@ class StudentRunNextStageUseCase(IStudentRunNextStageUseCase):
                 )
                 if is_rollback_dispatched:
                     # ロールバックが実行されたらもう一度このステージパスの結果を取得
-                    results_map = self._student_get_stage_path_result_map_service.execute(student_id,
-                                                                                          stage_path)
+                    results_map = self._student_get_stage_path_result_map_service.execute(
+                        student_id,
+                        stage_path)
 
                 # このステージパスのすべてのステージが終了しているなら終了
-                if self._student_stage_path_result_analyzer_service.is_all_finished(stage_path, results_map):
+                if self._student_stage_path_result_analyzer_service.is_all_finished(stage_path,
+                                                                                    results_map):
                     finished_stage_path_indexes.add(stage_path_index)
                     continue
 
                 # 次のステージを実行
-                next_stage = self._student_stage_path_result_analyzer_service.get_next_stage(stage_path, results_map)
-                
+                next_stage = self._student_stage_path_result_analyzer_service.get_next_stage(
+                    stage_path, results_map)
+
                 if next_stage is None:
-                     # is_all_finished で弾かれていないが next_stage が None のケース（念のため）
-                     finished_stage_path_indexes.add(stage_path_index)
-                     continue
+                    # is_all_finished で弾かれていないが next_stage が None のケース（念のため）
+                    finished_stage_path_indexes.add(stage_path_index)
+                    continue
+
+                self._event_bus.publish(StudentProcessingStageUpdateEvent(student_id, next_stage.stage))
 
                 if next_stage.stage == Stage.BUILD:
                     self._logger.info(f"{student_id} run BUILD {next_stage}")
                     self._student_run_build_stage_usecase.execute(
                         student_id=student_id,
-                        stage_path=tuple(stage_path), # UseCase signature likely expects tuple due to previous refactoring
+                        stage_path=tuple(stage_path),
+                        # UseCase signature likely expects tuple due to previous refactoring
                     )
                 elif next_stage.stage == Stage.COMPILE:
                     self._logger.info(f"{student_id} run COMPILE {next_stage}")
@@ -153,13 +159,15 @@ class StudentRunNextStageUseCase(IStudentRunNextStageUseCase):
                     assert False, next_stage
 
                 # 実行前の進捗の状況と実行後の進捗の状況を比較してこのステージパスの実行を終了するかどうかを決定
-                finish_states_before_run = self._student_stage_path_result_analyzer_service.get_stage_statuses(stage_path, results_map)
-                
+                finish_states_before_run = self._student_stage_path_result_analyzer_service.get_stage_statuses(
+                    stage_path, results_map)
+
                 new_results_map = self._student_get_stage_path_result_map_service.execute(
-                        student_id,
-                        stage_path,
-                    )
-                finish_states_after_run = self._student_stage_path_result_analyzer_service.get_stage_statuses(stage_path, new_results_map)
+                    student_id,
+                    stage_path,
+                )
+                finish_states_after_run = self._student_stage_path_result_analyzer_service.get_stage_statuses(
+                    stage_path, new_results_map)
 
                 if finish_states_before_run == finish_states_after_run:
                     finished_stage_path_indexes.add(stage_path_index)
@@ -170,5 +178,8 @@ class StudentRunNextStageUseCase(IStudentRunNextStageUseCase):
             if not result_updated:
                 break
 
-            # 進捗があればループする前にStudentUpdateEventを発火
-            self._event_bus.publish(StudentUpdateEvent(student_id))
+            # 進捗があればループする前にStudentResultUpdateEventを発火
+            self._event_bus.publish(StudentResultUpdateEvent(student_id))
+            
+        # 処理中のステージがなくなったことを通知
+        self._event_bus.publish(StudentProcessingStageUpdateEvent(student_id, None))

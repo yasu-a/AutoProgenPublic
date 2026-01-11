@@ -96,6 +96,7 @@ class WorkspaceWindow(QMainWindow, IWorkspaceWindowView):
 
     def set_window_title(self, title: str) -> None:
         """ウィンドウタイトルを設定"""
+        # noinspection PyUnresolvedReferences
         self.setWindowTitle(title)
 
     def get_parent_widget(self):

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
-from shared.domain.entity.testcase_config import TestCaseConfigEntity
+from shared.domain.entity.testcase import TestCaseConfigEntity
 from shared.domain.value.identifier import TestCaseID
 from shared.domain.value.test_result_output_file_entry import AbstractTestResultOutputFileEntry
 

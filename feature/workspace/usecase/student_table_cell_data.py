@@ -50,7 +50,8 @@ class StudentTableGetStudentNameCellDataUseCase(IStudentTableGetStudentNameCellD
 
 
 class StudentTableGetStudentStageStateCellDataUseCase(
-    IStudentTableGetStudentStageStateCellDataUseCase):
+    IStudentTableGetStudentStageStateCellDataUseCase
+):
 
     def __init__(
             self,
@@ -71,9 +72,9 @@ class StudentTableGetStudentStageStateCellDataUseCase(
                 student_id=student_id,
                 stage_path=stage_path,
             )
-            
+
             stage_element = next((e for e in stage_path if e.stage == stage_type), None)
-            
+
             stage_result = None
             if stage_element:
                 stage_result = results_map.get(stage_element)
@@ -112,8 +113,10 @@ class StudentTableGetStudentErrorCellDataUseCase(IStudentTableGetStudentErrorCel
                 student_id=student_id,
                 stage_path=stage_path,
             )
-            summary_text = self._student_stage_path_result_analyzer_service.get_last_failure_main_reason(stage_path, results_map) or ""
-            detailed_text = self._student_stage_path_result_analyzer_service.get_last_failure_detailed_reason(stage_path, results_map) or ""
+            summary_text = self._student_stage_path_result_analyzer_service.get_last_failure_main_reason(
+                stage_path, results_map) or ""
+            detailed_text = self._student_stage_path_result_analyzer_service.get_last_failure_detailed_reason(
+                stage_path, results_map) or ""
             if summary_text or detailed_text:
                 text_entries.append(
                     StudentErrorCellDataTextEntryDto(

@@ -7,9 +7,10 @@ from feature.testcase.usecase.interface import (
     ITestCaseCopyUseCase,
 )
 from feature.testcase.usecase.interface import TestCaseSummaryDto
-from shared.domain.entity.testcase_config import TestCaseConfigEntity
+from shared.domain.entity.testcase import TestCaseConfigEntity
 from shared.domain.error import UseCaseError, ServiceError
 from shared.domain.interface.gateway import ICurrentDatetimeGateway
+from shared.domain.interface.repository import ITestCaseRepository
 from shared.domain.interface.service import (
     ITestCaseConfigCopyService,
 )
@@ -20,14 +21,13 @@ from shared.domain.value.identifier import TestCaseID
 from shared.domain.value.input_file import InputFileCollection
 from shared.domain.value.test_config import TestCaseTestConfig
 from shared.domain.value.test_config_options import TestConfigOptions
-from shared.infra.repository.testcase_config import TestCaseConfigRepository
 
 
 class TestCaseListSummaryUseCase(ITestCaseListSummaryUseCase):
     # テストケース構成の要約をリストアップする
     def __init__(
             self,
-            testcase_config_repo: TestCaseConfigRepository,
+            testcase_config_repo: ITestCaseRepository,
     ):
         self._testcase_config_repo = testcase_config_repo
 
@@ -39,7 +39,7 @@ class TestCaseListSummaryUseCase(ITestCaseListSummaryUseCase):
                 has_stdin=testcase_config.execute_config.input_file_collection.has_stdin,
                 num_normal_files=testcase_config.execute_config.input_file_collection.normal_file_count,
             )
-            for testcase_config in self._testcase_config_repo.list()
+            for testcase_config in self._testcase_config_repo.list_all()
         ]
 
 
@@ -49,7 +49,7 @@ class TestCaseCreateNewNameUseCase(ITestCaseCreateNewNameUseCase):
     def __init__(
             self,
             *,
-            testcase_config_repo: TestCaseConfigRepository,
+            testcase_config_repo: ITestCaseRepository,
     ):
         self._testcase_config_repo = testcase_config_repo
 
@@ -57,7 +57,7 @@ class TestCaseCreateNewNameUseCase(ITestCaseCreateNewNameUseCase):
         new_testcase_id_format = "テストケース{number:02d}"
         testcase_id_set = {
             testcase_config.testcase_id
-            for testcase_config in self._testcase_config_repo.list()
+            for testcase_config in self._testcase_config_repo.list_all()
         }
         for i in itertools.count():
             new_testcase_id = TestCaseID(new_testcase_id_format.format(number=i + 1))
@@ -72,7 +72,7 @@ class TestCaseCreateUseCase(ITestCaseCreateUseCase):
     def __init__(
             self,
             *,
-            testcase_config_repo: TestCaseConfigRepository,
+            testcase_config_repo: ITestCaseRepository,
             current_datetime_gateway: ICurrentDatetimeGateway,
     ):
         self._testcase_config_repo = testcase_config_repo

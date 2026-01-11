@@ -1,16 +1,16 @@
 import copy
 
-from shared.domain.entity.testcase_config import TestCaseConfigEntity
+from shared.domain.entity.testcase import TestCaseConfigEntity
 from shared.domain.error import ServiceError
 from shared.domain.value.identifier import TestCaseID
-from shared.infra.repository.testcase_config import TestCaseConfigRepository
+from shared.infra.repository.testcase import TestCaseRepository
 
 
 class TestCaseConfigCopyService:
     def __init__(
             self,
             *,
-            testcase_config_repo: TestCaseConfigRepository,
+            testcase_config_repo: TestCaseRepository,
     ):
         self._testcase_config_repo = testcase_config_repo
 

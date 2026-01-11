@@ -9,7 +9,7 @@ from feature.testcase.view.widget_testcase_output_files_edit import \
 from feature.testcase.view.widget_testcase_test_config_options import \
     TestCaseTestConfigOptionsEditWidget
 from feature.testcase.view.widget_testcase_test_config_tester import TestCaseTestConfigTesterWidget
-from shared.domain.entity.testcase_config import TestCaseConfigEntity
+from shared.domain.entity.testcase import TestCaseConfigEntity
 from shared.domain.value.execute_config import TestCaseExecuteConfig
 from shared.domain.value.test_config import TestCaseTestConfig
 from shared.view.style.font import get_font

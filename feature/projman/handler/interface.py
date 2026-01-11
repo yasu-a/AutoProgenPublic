@@ -74,7 +74,7 @@ class IProjectCreateView:
         raise NotImplementedError()
 
     @abstractmethod
-    def show_initialize_error(self):
+    def show_initialize_error(self, message: str):
         """初期化失敗のエラーダイアログを表示する"""
         raise NotImplementedError()
 

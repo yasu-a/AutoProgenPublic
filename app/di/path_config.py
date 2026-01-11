@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from shared.domain.value.identifier import ProjectID, TestCaseID, StudentID, StorageID
+from shared.domain.value.identifier import ProjectID, StudentID, StorageID
 
 
 @dataclass(slots=True)
@@ -25,11 +25,10 @@ class PathConfig:
     current_project_database_fullpath: Callable[[ProjectID], Path]  # current project id
 
     # === ID引数が必要なパス ===
-    testcase_folder_fullpath: Callable[[ProjectID, TestCaseID], Path]  # current project id, testcase id
-    testcase_execute_config_json_fullpath: Callable[[ProjectID, TestCaseID], Path]  # current project id, testcase id
-    testcase_test_config_json_fullpath: Callable[[ProjectID, TestCaseID], Path]  # current project id, testcase id
-    storage_folder_fullpath: Callable[[ProjectID, StorageID], Path]  # current project id, storage id
-    student_submission_folder_fullpath: Callable[[ProjectID, StudentID], Path]  # current project id, student id
+    storage_folder_fullpath: Callable[
+        [ProjectID, StorageID], Path]  # current project id, storage id
+    student_submission_folder_fullpath: Callable[
+        [ProjectID, StudentID], Path]  # current project id, student id
 
     # === 静的リソースパス ===
     icon_fullpath: Callable[[str], Path]  # filename
@@ -67,9 +66,6 @@ def create_path_config() -> PathConfig:
         current_project_database_fullpath=lambda pid: dynamic_base(pid) / "database.sqlite3",
 
         # === ID引数が必要なパス ===
-        testcase_folder_fullpath=lambda pid, tc_id: testcase_config_base(pid) / str(tc_id),
-        testcase_execute_config_json_fullpath=lambda pid, tc_id: testcase_config_base(pid) / str(tc_id) / "execute_config.json",
-        testcase_test_config_json_fullpath=lambda pid, tc_id: testcase_config_base(pid) / str(tc_id) / "test_config.json",
         storage_folder_fullpath=lambda pid, st_id: storage_base(pid) / str(st_id),
         student_submission_folder_fullpath=lambda pid, s_id: submission_base(pid) / str(s_id),
 
