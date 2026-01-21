@@ -5,16 +5,15 @@ from typing import Callable
 
 from PyQt5.QtCore import QThread, QMutex, pyqtSignal
 
-from app.di.state import get_current_project_id_state
 from feature.projman.handler.interface import IProjectListView, IProjectListHandler
 from feature.projman.usecase.interface import (
     IProjectListRecentSummaryUseCase,
     IProjectUpdateLastOpenUseCase,
     IProjectFolderShowUseCase,
-    IProjectDeleteUseCase,
-    IProjectBaseFolderShowUseCase,
-    IProjectGetSizeQueryUseCase,
+    IProjectGetSizeQueryUseCase, IProjectBaseFolderShowUseCase,
 )
+from shared.domain.interface.gateway import IProjectDeleteGateway
+from shared.domain.interface.state import ICurrentProjectIDState
 from shared.domain.value.identifier import ProjectID
 from shared.handler.interface import INavigator
 
@@ -76,19 +75,21 @@ class ProjectListHandler(IProjectListHandler):
             *,
             view: IProjectListView,
             navigator: INavigator,
+            current_project_id_state: ICurrentProjectIDState,
             project_list_usecase: IProjectListRecentSummaryUseCase,
             project_update_last_opened_usecase: IProjectUpdateLastOpenUseCase,
             project_folder_show_usecase: IProjectFolderShowUseCase,
-            project_delete_usecase: IProjectDeleteUseCase,
+            project_delete_gateway: IProjectDeleteGateway,
             project_base_folder_show_usecase: IProjectBaseFolderShowUseCase,
             project_get_size_usecase: IProjectGetSizeQueryUseCase,
     ):
         self._view = view
         self._navigator = navigator
+        self._current_project_id_state = current_project_id_state
         self._project_list_usecase = project_list_usecase
         self._project_update_last_opened_usecase = project_update_last_opened_usecase
         self._project_folder_show_usecase = project_folder_show_usecase
-        self._project_delete_usecase = project_delete_usecase
+        self._project_delete_gateway = project_delete_gateway
         self._project_base_folder_show_usecase = project_base_folder_show_usecase
         self._project_get_size_usecase = project_get_size_usecase
 
@@ -114,9 +115,9 @@ class ProjectListHandler(IProjectListHandler):
     def on_open_project_requested(self, project_id: ProjectID) -> None:
         """プロジェクトを開く"""
         # 1. Stateを更新（アプリケーション層の責務）
-        state = get_current_project_id_state()
-        assert state.get() is None, state.get()
-        state.update(project_id)
+        assert self._current_project_id_state.get() is None, \
+            self._current_project_id_state.get()
+        self._current_project_id_state.update(project_id)
 
         # 2. ドメイン状態を更新（UseCaseの責務）
         self._project_update_last_opened_usecase.execute(project_id)
@@ -137,7 +138,7 @@ class ProjectListHandler(IProjectListHandler):
         # 削除実行
         def task_func(progress_callback: Callable[[str], None]):
             _ = progress_callback
-            self._project_delete_usecase.execute(project_id)
+            self._project_delete_gateway.delete_project(project_id)
 
         self._navigator.run_blocking_task(
             parent=self._view.get_parent_widget(),

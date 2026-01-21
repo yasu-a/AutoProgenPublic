@@ -1,8 +1,8 @@
 from pathlib import Path
 
 from shared.domain.interface.repository import IAppVersionProvider
+from shared.domain.interface.system import IGlobalCoreIO
 from shared.domain.value.app_version import AppVersion
-from shared.infra.system.global_core_io import GlobalCoreIO
 
 
 class JsonAppVersionProvider(IAppVersionProvider):
@@ -12,7 +12,7 @@ class JsonAppVersionProvider(IAppVersionProvider):
             self,
             *,
             app_version_json_fullpath: Path,
-            global_core_io: GlobalCoreIO,
+            global_core_io: IGlobalCoreIO,
     ):
         self._app_version_json_fullpath = app_version_json_fullpath
         self._global_core_io = global_core_io

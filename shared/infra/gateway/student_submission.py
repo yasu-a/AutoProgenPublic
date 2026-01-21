@@ -12,9 +12,9 @@ from shared.domain.interface.gateway import (
     IStudentSubmissionFolderShowGateway,
     IFolderShowInExplorerGateway,
 )
+from shared.domain.interface.repository import IStudentRepository
 from shared.domain.value.identifier import StudentID
-from shared.infra.repository.student import StudentRepository
-from shared.infra.system.current_project_core_io import CurrentProjectCoreIO
+from shared.infra.system.project_core_io import ProjectCoreIO
 
 
 class StudentSubmissionGetSourceFileGatewayError(ServiceError):
@@ -28,7 +28,7 @@ class StudentSubmissionGetSourceContentGateway(IStudentSubmissionGetSourceConten
             *,
             student_submission_list_source_relative_path_gateway: IStudentSubmissionListSourceRelativePathGateway,
             student_submission_get_file_content_gateway: IStudentSubmissionGetFileContentGateway,
-            student_repo: StudentRepository,
+            student_repo: IStudentRepository,
     ):
         self._student_submission_list_source_relative_path_gateway = student_submission_list_source_relative_path_gateway
         self._student_submission_get_file_content_gateway = student_submission_get_file_content_gateway
@@ -97,14 +97,14 @@ class StudentSubmissionGetChecksumGateway(IStudentSubmissionGetChecksumGateway):
             self,
             *,
             student_submission_folder_fullpath: Callable[[StudentID], Path],
-            current_project_core_io: CurrentProjectCoreIO,
+            project_core_io: ProjectCoreIO,
     ):
         self._student_submission_folder_fullpath = student_submission_folder_fullpath
-        self._current_project_core_io = current_project_core_io
+        self._project_core_io = project_core_io
 
     def execute(self, student_id: StudentID) -> int:
         folder_fullpath = self._student_submission_folder_fullpath(student_id)
-        checksum = self._current_project_core_io.calculate_folder_checksum(
+        checksum = self._project_core_io.calculate_folder_checksum(
             folder_fullpath=folder_fullpath,
         )
         return checksum

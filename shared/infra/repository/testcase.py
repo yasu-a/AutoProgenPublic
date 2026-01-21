@@ -1,12 +1,13 @@
 import json
 from datetime import datetime
+from pathlib import Path
 
 from shared.domain.entity.testcase import TestCaseConfigEntity
 from shared.domain.interface.repository import ITestCaseRepository
 from shared.domain.value.execute_config import TestCaseExecuteConfig
 from shared.domain.value.identifier import TestCaseID
 from shared.domain.value.test_config import TestCaseTestConfig
-from shared.infra.system.project_database import ProjectDatabaseIO
+from shared.infra.system.database import DatabaseManager
 
 
 class _TestCaseHelper:
@@ -105,9 +106,9 @@ class TestCaseRepository(ITestCaseRepository):
     def __init__(
             self,
             *,
-            project_database_io: ProjectDatabaseIO,
+            db_path: Path,
     ):
-        self._project_database_io = project_database_io
+        self._db = DatabaseManager(db_path)
         self._helper = _TestCaseHelper()
 
     def put(self, testcase_config: TestCaseConfigEntity) -> None:
@@ -116,7 +117,7 @@ class TestCaseRepository(ITestCaseRepository):
             testcase_config.execute_config.to_json())
         test_config_json = json.dumps(testcase_config.test_config.to_json())
 
-        with self._project_database_io.connect() as con:
+        with self._db.connect() as con:
             cur = con.cursor()
             self._helper.upsert(
                 cur,
@@ -128,7 +129,7 @@ class TestCaseRepository(ITestCaseRepository):
 
     def get(self, testcase_id: TestCaseID) -> TestCaseConfigEntity:
         # データベースから取得
-        with self._project_database_io.connect() as con:
+        with self._db.connect() as con:
             cur = con.cursor()
             row = self._helper.fetch(cur, testcase_id)
 
@@ -153,7 +154,7 @@ class TestCaseRepository(ITestCaseRepository):
 
     def list_all(self) -> list[TestCaseConfigEntity]:
         # データベースから全件取得
-        with self._project_database_io.connect() as con:
+        with self._db.connect() as con:
             cur = con.cursor()
             rows = self._helper.fetch_all(cur)
 
@@ -176,12 +177,12 @@ class TestCaseRepository(ITestCaseRepository):
         return entities
 
     def exists(self, testcase_id: TestCaseID) -> bool:
-        with self._project_database_io.connect() as con:
+        with self._db.connect() as con:
             cur = con.cursor()
             return self._helper.exists(cur, testcase_id)
 
     def delete(self, testcase_id: TestCaseID) -> None:
-        with self._project_database_io.connect() as con:
+        with self._db.connect() as con:
             cur = con.cursor()
             self._helper.delete(cur, testcase_id)
             con.commit()

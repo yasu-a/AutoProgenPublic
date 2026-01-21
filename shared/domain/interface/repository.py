@@ -131,20 +131,6 @@ class IProjectRepository(ABC):
         raise NotImplementedError()
 
 
-class ICurrentProjectRepository(ABC):
-    """現在のプロジェクトリポジトリのインターフェース"""
-
-    @abstractmethod
-    def get(self) -> ProjectEntity:
-        """現在のプロジェクトを取得"""
-        raise NotImplementedError()
-
-    @abstractmethod
-    def put(self, project_entity: ProjectEntity) -> None:
-        """現在のプロジェクトを保存"""
-        raise NotImplementedError()
-
-
 class ITestCaseRepository(ABC):
     """テストケース設定リポジトリのインターフェース"""
 
@@ -217,11 +203,13 @@ class IStudentStageResultRepository(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_execute_result(self, student_id: StudentID, testcase_id: TestCaseID) -> Optional[ExecuteStageResultEntity]:
+    def get_execute_result(self, student_id: StudentID, testcase_id: TestCaseID) -> Optional[
+        ExecuteStageResultEntity]:
         raise NotImplementedError()
 
     @abstractmethod
-    def get_test_result(self, student_id: StudentID, testcase_id: TestCaseID) -> Optional[TestStageResultEntity]:
+    def get_test_result(self, student_id: StudentID, testcase_id: TestCaseID) -> Optional[
+        TestStageResultEntity]:
         raise NotImplementedError()
 
     @abstractmethod

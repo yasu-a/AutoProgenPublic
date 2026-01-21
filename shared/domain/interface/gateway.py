@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, NamedTuple
 
-from shared.domain.value.identifier import StudentID
+from shared.domain.value.identifier import StudentID, ProjectID
 
 if TYPE_CHECKING:
     from shared.domain.value.excel_cell_table import ExcelCellTable
@@ -121,4 +121,10 @@ class IDatabaseInitializeGateway(ABC):
     @abstractmethod
     def initialize(self) -> None:
         """データベースの全テーブルを作成する（冪等）"""
+        raise NotImplementedError()
+
+
+class IProjectDeleteGateway(ABC):
+    @abstractmethod
+    def delete_project(self, project_id: ProjectID) -> None:
         raise NotImplementedError()

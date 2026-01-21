@@ -1,12 +1,14 @@
+from pathlib import Path
+
 from shared.domain.interface.gateway import IDatabaseInitializeGateway
-from shared.infra.system.project_database import ProjectDatabaseIO
+from shared.infra.system.database import DatabaseManager
 
 
 class DatabaseInitializeGateway(IDatabaseInitializeGateway):
     """データベーススキーマ初期化Gateway"""
 
-    def __init__(self, db_io: ProjectDatabaseIO):
-        self._db_io = db_io
+    def __init__(self, db_path: Path):
+        self._db_io = DatabaseManager(db_path)
 
     def initialize(self) -> None:
         """データベースの全テーブルを作成する（冪等）"""

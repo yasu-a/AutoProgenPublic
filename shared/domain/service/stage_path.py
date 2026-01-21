@@ -1,8 +1,8 @@
+from shared.domain.interface.repository import ITestCaseRepository
 from shared.domain.interface.service import IStagePathGetByTestCaseIDService, \
     IStagePathListSubService
 from shared.domain.model.stage import StageElement, Stage
 from shared.domain.value.identifier import TestCaseID
-from shared.infra.repository.testcase import TestCaseRepository
 
 
 class StagePathListSubService(IStagePathListSubService):
@@ -11,7 +11,7 @@ class StagePathListSubService(IStagePathListSubService):
     def __init__(
             self,
             *,
-            testcase_config_repo: TestCaseRepository,
+            testcase_config_repo: ITestCaseRepository,
     ):
         self._testcase_config_repo = testcase_config_repo
 

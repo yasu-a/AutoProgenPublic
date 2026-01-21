@@ -28,7 +28,7 @@ from shared.infra.repository.student_stage_path_result import (
 )
 from shared.infra.repository.student import StudentRepository
 from shared.infra.repository.testcase import TestCaseRepository
-from shared.infra.system.project_database import ProjectDatabaseIO
+from shared.infra.system.database import DatabaseManager
 
 
 # --------------------------------------------------
@@ -42,28 +42,28 @@ def tmp_db_path(tmp_path: Path) -> Path:
 
 
 @pytest.fixture()
-def project_database_io(tmp_db_path: Path) -> ProjectDatabaseIO:
-    return ProjectDatabaseIO(database_fullpath=tmp_db_path)
+def project_database_io(tmp_db_path: Path) -> DatabaseManager:
+    return DatabaseManager(db_path=tmp_db_path)
 
 
 @pytest.fixture()
-def init_db(project_database_io: ProjectDatabaseIO):
+def init_db(project_database_io: DatabaseManager):
     """DBスキーマを初期化"""
     DatabaseInitializeGateway(project_database_io).initialize()
 
 
 @pytest.fixture()
-def student_repo(project_database_io: ProjectDatabaseIO) -> StudentRepository:
+def student_repo(project_database_io: DatabaseManager) -> StudentRepository:
     return StudentRepository(project_database_io=project_database_io)
 
 
 @pytest.fixture()
-def testcase_repo(project_database_io: ProjectDatabaseIO) -> TestCaseRepository:
+def testcase_repo(project_database_io: DatabaseManager) -> TestCaseRepository:
     return TestCaseRepository(project_database_io=project_database_io)
 
 
 @pytest.fixture()
-def result_repo(project_database_io: ProjectDatabaseIO) -> StudentStageResultRepository:
+def result_repo(project_database_io: DatabaseManager) -> StudentStageResultRepository:
     return StudentStageResultRepository(project_database_io=project_database_io)
 
 

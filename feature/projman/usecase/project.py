@@ -66,18 +66,6 @@ class ProjectCreateUseCase(IProjectCreateUseCase):
         return project_id
 
 
-class ProjectDeleteUseCase(IProjectDeleteUseCase):
-    def __init__(
-            self,
-            *,
-            project_repo: ProjectRepository,
-    ):
-        self._project_repo = project_repo
-
-    def execute(self, project_id: ProjectID) -> None:
-        self._project_repo.delete(project_id)
-
-
 class ProjectGetSizeQueryUseCase(IProjectGetSizeQueryUseCase):
     def __init__(
             self,
@@ -127,7 +115,7 @@ class ProjectListRecentSummaryUseCase(IProjectListRecentSummaryUseCase):
         project_ids = self._project_list_gateway.execute()
         project_summaries: list[AbstractProjectSummary] = []
         for project_id in project_ids:
-            project_config_state = self._project_config_state_gateway.execute(project_id)
+            project_config_state = self._project_config_state_gateway.analyze_state(project_id)
             if project_config_state == ProjectConfigState.NORMAL:
                 project_entity = self._project_repo.get(project_id)
                 project_summary = NormalProjectSummary(

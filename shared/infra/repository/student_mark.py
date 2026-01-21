@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from datetime import datetime
+from pathlib import Path
 
 from PyQt5.QtCore import QMutex
 
@@ -7,12 +8,12 @@ from shared.domain.entity.student_mark import StudentMarkEntity
 from shared.domain.error import RepositoryItemNotFoundError
 from shared.domain.interface.repository import IStudentScoreRepository
 from shared.domain.value.identifier import StudentID
-from shared.infra.system.project_database import ProjectDatabaseIO
+from shared.infra.system.database import DatabaseManager
 
 
 class InMemoryStudentScoreRepository(IStudentScoreRepository):
     """メモリ上で動作するStudentScoreRepositoryの実装"""
-    
+
     def __init__(self, marks: list[StudentMarkEntity] | None = None):
         """
         初期化
@@ -24,7 +25,7 @@ class InMemoryStudentScoreRepository(IStudentScoreRepository):
         if marks is not None:
             for mark in marks:
                 self._marks[mark.student_id] = mark
-    
+
     def create(self, student_id: StudentID) -> StudentMarkEntity:
         """未採点の点数データを作成"""
         mark = StudentMarkEntity(
@@ -33,35 +34,31 @@ class InMemoryStudentScoreRepository(IStudentScoreRepository):
         )
         self.put(mark)
         return mark
-    
+
     def put(self, mark: StudentMarkEntity) -> StudentMarkEntity:
         """点数データをメモリに保存"""
         self._marks[mark.student_id] = mark
         return mark
-    
+
     def exists(self, student_id: StudentID) -> bool:
         """点数データが存在するか"""
         return student_id in self._marks
-    
+
     def get(self, student_id: StudentID) -> StudentMarkEntity:
         """点数データを取得"""
         if student_id not in self._marks:
             raise RepositoryItemNotFoundError(
                 f"Mark data for StudentEntity {student_id} not found")
         return self._marks[student_id]
-    
+
     def list(self) -> list[StudentMarkEntity]:
         """すべての点数データを取得"""
         return list(self._marks.values())
 
 
 class StudentScoreRepository(IStudentScoreRepository):
-    def __init__(
-            self,
-            *,
-            project_database_io: ProjectDatabaseIO,
-    ):
-        self._project_database_io = project_database_io
+    def __init__(self, db_path: Path):
+        self._db = DatabaseManager(db_path)
         self._lock = QMutex()
 
     @contextmanager
@@ -82,7 +79,7 @@ class StudentScoreRepository(IStudentScoreRepository):
 
     def put(self, mark: StudentMarkEntity) -> StudentMarkEntity:
         with self.__lock():
-            with self._project_database_io.connect() as con:
+            with self._db.connect() as con:
                 cur = con.cursor()
                 cur.execute(
                     """
@@ -101,7 +98,7 @@ class StudentScoreRepository(IStudentScoreRepository):
 
     def exists(self, student_id: StudentID) -> bool:
         with self.__lock():
-            with self._project_database_io.connect() as con:
+            with self._db.connect() as con:
                 cur = con.cursor()
                 cur.execute(
                     """
@@ -115,7 +112,7 @@ class StudentScoreRepository(IStudentScoreRepository):
 
     def get(self, student_id: StudentID) -> StudentMarkEntity:
         with self.__lock():
-            with self._project_database_io.connect() as con:
+            with self._db.connect() as con:
                 cur = con.cursor()
                 cur.execute(
                     """
@@ -137,7 +134,7 @@ class StudentScoreRepository(IStudentScoreRepository):
     def get_timestamp(self, student_id: StudentID) -> datetime | None:
         with self.__lock():
             self._create_database_if_not_exists()
-            with self._project_database_io.connect() as con:
+            with self._db.connect() as con:
                 cur = con.cursor()
                 cur.execute(
                     """
@@ -154,7 +151,7 @@ class StudentScoreRepository(IStudentScoreRepository):
 
     def list(self) -> list[StudentMarkEntity]:
         with self.__lock():
-            with self._project_database_io.connect() as con:
+            with self._db.connect() as con:
                 cur = con.cursor()
                 cur.execute(
                     """

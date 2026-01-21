@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from shared.domain.interface.repository import ITestSourceRepository
+from shared.domain.interface.system import IGlobalCoreIO
 from shared.infra.system.global_core_io import GlobalCoreIO
 
 
@@ -11,7 +12,7 @@ class TestSourceRepository(ITestSourceRepository):
             self,
             *,
             test_source_file_fullpath: Path,
-            global_core_io: GlobalCoreIO,
+            global_core_io: IGlobalCoreIO,
     ):
         self._test_source_file_fullpath = test_source_file_fullpath
         self._global_core_io = global_core_io

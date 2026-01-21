@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from enum import IntEnum, auto
 from pathlib import Path
 
-from shared.domain.value.identifier import ProjectID, StudentID
+from shared.domain.value.identifier import ProjectID, StudentID, StorageID
 
 
 class IProjectListGateway(ABC):
@@ -20,7 +20,7 @@ class ProjectConfigState(IntEnum):
 
 class IProjectConfigStateGateway(ABC):
     @abstractmethod
-    def execute(self, project_id: ProjectID) -> ProjectConfigState:
+    def analyze_state(self, project_id: ProjectID) -> ProjectConfigState:
         raise NotImplementedError()
 
 

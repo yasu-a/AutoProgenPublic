@@ -17,7 +17,7 @@ def setting_repository(tmp_path):
     """テスト用のSettingRepository（一時ファイルを使用）"""
     settings_json_path = tmp_path / "settings.json"
     return SettingRepository(
-        settings_json_fullpath=settings_json_path,
+        setting_json_path=settings_json_path,
         global_core_io=GlobalCoreIO(),
     )
 

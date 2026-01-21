@@ -2,10 +2,11 @@ import json
 from pathlib import Path
 from typing import Optional, Any
 
+from shared.domain.interface.system import IGlobalCoreIO
 from util.app_logging import create_logger
 
 
-class GlobalCoreIO:
+class GlobalCoreIO(IGlobalCoreIO):
     _logger = create_logger()
 
     def __init__(self):

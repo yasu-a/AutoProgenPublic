@@ -22,15 +22,14 @@ def convert_datetime(val):
 sqlite3.register_converter("DATETIME", convert_datetime)
 
 
-class ProjectDatabaseIO:
+class DatabaseManager:
     _logger = create_logger()
 
     def __init__(
             self,
-            *,
-            database_fullpath: Path,
+            db_path: Path,
     ):
-        self._database_fullpath = database_fullpath
+        self._database_fullpath = db_path
 
     def _create_connection(self):
         con = sqlite3.connect(

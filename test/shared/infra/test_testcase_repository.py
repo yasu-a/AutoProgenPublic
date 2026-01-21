@@ -13,7 +13,7 @@ from shared.domain.value.test_config import TestCaseTestConfig
 from shared.domain.entity.testcase import TestCaseConfigEntity
 from shared.infra.gateway.database_initialize_gateway import DatabaseInitializeGateway
 from shared.infra.repository.testcase import TestCaseRepository
-from shared.infra.system.project_database import ProjectDatabaseIO
+from shared.infra.system.database import DatabaseManager
 
 
 # ---------------------------------------------------------------------------
@@ -23,7 +23,7 @@ from shared.infra.system.project_database import ProjectDatabaseIO
 @pytest.fixture
 def repo(tmp_path: Path) -> TestCaseRepository:
     db_path = tmp_path / "project.sqlite3"
-    db_io = ProjectDatabaseIO(database_fullpath=db_path)
+    db_io = DatabaseManager(db_path=db_path)
     
     # スキーマ初期化
     DatabaseInitializeGateway(db_io).initialize()

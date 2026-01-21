@@ -5,8 +5,8 @@ from typing import Callable
 from shared.domain.entity.project import ProjectEntity
 from shared.domain.error import ProjectIOError
 from shared.domain.interface.repository import IProjectRepository
+from shared.domain.interface.system import IProjectCoreIOFactory
 from shared.domain.value.identifier import ProjectID
-from shared.infra.system.project_core_io import ProjectCoreIO
 
 
 class ProjectRepository(IProjectRepository):
@@ -15,11 +15,11 @@ class ProjectRepository(IProjectRepository):
             *,
             project_folder_fullpath: Callable[[ProjectID], Path],
             project_config_json_fullpath: Callable[[ProjectID], Path],
-            project_core_io: ProjectCoreIO,
+            project_core_io_factory: IProjectCoreIOFactory,
     ):
         self._project_folder_fullpath = project_folder_fullpath
         self._project_config_json_fullpath = project_config_json_fullpath
-        self._project_core_io = project_core_io
+        self._project_core_io_factory = project_core_io_factory
 
     def get(self, project_id: ProjectID) -> ProjectEntity:
         config_json_fullpath = self._project_config_json_fullpath(project_id)
@@ -28,8 +28,9 @@ class ProjectRepository(IProjectRepository):
             raise ProjectIOError(f"ProjectEntity \"{project_id!s}\" not found")
 
         try:
-            json_body = self._project_core_io.read_json(
+            json_body = self._project_core_io_factory.create_project_core_io(
                 project_id=project_id,
+            ).read_json(
                 json_fullpath=config_json_fullpath,
             )
         except (OSError, JSONDecodeError):  # 失敗した場合は壊れているか古いバージョンのプロジェクトか
@@ -56,19 +57,9 @@ class ProjectRepository(IProjectRepository):
 
         config_json_fullpath = self._project_config_json_fullpath(project_entity.project_id)
 
-        self._project_core_io.write_json(
+        self._project_core_io_factory.create_project_core_io(
             project_id=project_entity.project_id,
+        ).write_json(
             json_fullpath=config_json_fullpath,
             body=project_entity.to_json(),
-        )
-
-    def delete(self, project_id: ProjectID) -> None:
-        project_folder_fullpath = self._project_folder_fullpath(project_id)
-
-        if not project_folder_fullpath.exists():
-            raise ProjectIOError(f"ProjectEntity \"{project_id!s}\" not found")
-
-        self._project_core_io.rmtree_folder(
-            project_id=project_id,
-            path=project_folder_fullpath,
         )

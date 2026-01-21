@@ -4,23 +4,23 @@ from pathlib import Path
 from PyQt5.QtCore import QMutex
 
 from shared.domain.interface.repository import ISettingRepository
+from shared.domain.interface.system import IGlobalCoreIO
 from shared.domain.value.setting import Setting
-from shared.infra.system.global_core_io import GlobalCoreIO
 
 
 class SettingRepository(ISettingRepository):
     def __init__(
             self,
             *,
-            settings_json_fullpath: Path,
-            global_core_io: GlobalCoreIO,
+            setting_json_path: Path,
+            global_core_io: IGlobalCoreIO,
     ):
         """
         Args:
-            settings_json_fullpath: 設定ファイルのJSONパス
+            setting_json_path: 設定ファイルのJSONパス
             global_core_io: JSON読み書き用のIO
         """
-        self._settings_json_fullpath = settings_json_fullpath
+        self._setting_json_path = setting_json_path
         self._global_core_io = global_core_io
 
         self.__model: Setting | None = None
@@ -36,12 +36,12 @@ class SettingRepository(ISettingRepository):
 
     def _get_model_unlocked(self) -> Setting:
         if self.__model is None:
-            if not self._settings_json_fullpath.exists():
+            if not self._setting_json_path.exists():
                 self.__model = Setting.create_default()
             else:
                 self.__model = Setting.from_json(
                     self._global_core_io.read_json(
-                        json_fullpath=self._settings_json_fullpath,
+                        json_fullpath=self._setting_json_path,
                     )
                 )
         assert self.__model is not None
@@ -50,7 +50,7 @@ class SettingRepository(ISettingRepository):
     def _set_model_unlocked(self, model: Setting) -> None:
         self.__model = model
         self._global_core_io.write_json(
-            json_fullpath=self._settings_json_fullpath,
+            json_fullpath=self._setting_json_path,
             body=self.__model.to_json(),
         )
 

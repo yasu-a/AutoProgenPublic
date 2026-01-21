@@ -1,6 +1,7 @@
 import json
 import threading
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, Optional
 
 from shared.domain.interface.repository import IStudentStageResultRepository
@@ -19,7 +20,7 @@ from shared.domain.value.output_file import OutputFileCollection
 from shared.domain.value.student_stage_result import (
     TestResultOutputFileCollection
 )
-from shared.infra.system.project_database import ProjectDatabaseIO
+from shared.infra.system.database import DatabaseManager
 from util.app_logging import create_logger
 
 
@@ -232,8 +233,8 @@ class StudentStageResultRepository(IStudentStageResultRepository):
     各ステージの結果を独立したテーブルで管理し、スレッドセーフなアクセスを保証します。
     """
 
-    def __init__(self, *, project_database_io: ProjectDatabaseIO):
-        self._project_database_io = project_database_io
+    def __init__(self, *, db_path: Path):
+        self._db = DatabaseManager(db_path)
 
         # ロックとキャッシュ
         self._lock = threading.RLock()
@@ -246,7 +247,7 @@ class StudentStageResultRepository(IStudentStageResultRepository):
 
     def update(self, result: AbstractStageResultEntity) -> None:
         with self._lock:
-            with self._project_database_io.connect() as con:
+            with self._db.connect() as con:
                 cur = con.cursor()
                 if isinstance(result, BuildStageResultEntity):
                     self._build.upsert(cur, result)
@@ -282,7 +283,7 @@ class StudentStageResultRepository(IStudentStageResultRepository):
                 SELECT 'test', testcase_id, is_success, timestamp
                 FROM result_test WHERE student_id = ?
             """
-            with self._project_database_io.connect() as con:
+            with self._db.connect() as con:
                 cur = con.cursor()
                 rows = cur.execute(
                     sql, (sid_str, sid_str, sid_str, sid_str)).fetchall()
@@ -320,29 +321,29 @@ class StudentStageResultRepository(IStudentStageResultRepository):
 
     def get_build_result(self, student_id: StudentID) -> Optional[BuildStageResultEntity]:
         with self._lock:
-            with self._project_database_io.connect() as con:
+            with self._db.connect() as con:
                 return self._build.fetch(con.cursor(), student_id)
 
     def get_compile_result(self, student_id: StudentID) -> Optional[CompileStageResultEntity]:
         with self._lock:
-            with self._project_database_io.connect() as con:
+            with self._db.connect() as con:
                 return self._compile.fetch(con.cursor(), student_id)
 
     def get_execute_result(self, student_id: StudentID,
                            testcase_id: TestCaseID) -> Optional[ExecuteStageResultEntity]:
         with self._lock:
-            with self._project_database_io.connect() as con:
+            with self._db.connect() as con:
                 return self._execute.fetch(con.cursor(), student_id, testcase_id)
 
     def get_test_result(self, student_id: StudentID,
                         testcase_id: TestCaseID) -> Optional[TestStageResultEntity]:
         with self._lock:
-            with self._project_database_io.connect() as con:
+            with self._db.connect() as con:
                 return self._test.fetch(con.cursor(), student_id, testcase_id)
 
     def delete(self, student_id: StudentID, stage: StageElement) -> None:
         with self._lock:
-            with self._project_database_io.connect() as con:
+            with self._db.connect() as con:
                 cur = con.cursor()
                 if stage.stage == Stage.BUILD:
                     self._build.delete(cur, student_id)

@@ -1,20 +1,22 @@
+from pathlib import Path
+
 from shared.domain.interface.repository import IStudentExecutableRepository, \
     IStudentSourceRepository
 from shared.domain.value.file_item import SourceFileItem, ExecutableFileItem
 from shared.domain.value.identifier import StudentID
-from shared.infra.system.project_database import ProjectDatabaseIO
+from shared.infra.system.database import DatabaseManager
 
 
 class StudentExecutableRepository(IStudentExecutableRepository):
     def __init__(
             self,
             *,
-            project_database_io: ProjectDatabaseIO,
+            db_path: Path,
     ):
-        self._project_database_io = project_database_io
+        self._db = DatabaseManager(db_path=db_path)
 
     def put(self, student_id: StudentID, file_item: ExecutableFileItem) -> None:
-        with self._project_database_io.connect() as con:
+        with self._db.connect() as con:
             cur = con.cursor()
             cur.execute(
                 """
@@ -30,7 +32,7 @@ class StudentExecutableRepository(IStudentExecutableRepository):
             con.commit()
 
     def get(self, student_id: StudentID) -> ExecutableFileItem:
-        with self._project_database_io.connect() as con:
+        with self._db.connect() as con:
             cur = con.cursor()
             cur.execute(
                 """
@@ -48,7 +50,7 @@ class StudentExecutableRepository(IStudentExecutableRepository):
         )
 
     def exists(self, student_id: StudentID) -> bool:
-        with self._project_database_io.connect() as con:
+        with self._db.connect() as con:
             cur = con.cursor()
             cur.execute(
                 """
@@ -61,7 +63,7 @@ class StudentExecutableRepository(IStudentExecutableRepository):
             return bool(cur.fetchone()[0])
 
     def delete(self, student_id: StudentID) -> None:
-        with self._project_database_io.connect() as con:
+        with self._db.connect() as con:
             cur = con.cursor()
             cur.execute(
                 """
@@ -77,15 +79,11 @@ class StudentExecutableRepository(IStudentExecutableRepository):
 
 
 class StudentSourceRepository(IStudentSourceRepository):
-    def __init__(
-            self,
-            *,
-            project_database_io: ProjectDatabaseIO,
-    ):
-        self._project_database_io = project_database_io
+    def __init__(self, db_path: Path):
+        self._db = DatabaseManager(db_path)
 
     def put(self, student_id: StudentID, file_item: SourceFileItem) -> None:
-        with self._project_database_io.connect() as con:
+        with self._db.connect() as con:
             cur = con.cursor()
             cur.execute(
                 """
@@ -102,7 +100,7 @@ class StudentSourceRepository(IStudentSourceRepository):
             con.commit()
 
     def get(self, student_id: StudentID) -> SourceFileItem:
-        with self._project_database_io.connect() as con:
+        with self._db.connect() as con:
             cur = con.cursor()
             cur.execute(
                 """
@@ -121,7 +119,7 @@ class StudentSourceRepository(IStudentSourceRepository):
         )
 
     def exists(self, student_id: StudentID) -> bool:
-        with self._project_database_io.connect() as con:
+        with self._db.connect() as con:
             cur = con.cursor()
             cur.execute(
                 """
@@ -134,7 +132,7 @@ class StudentSourceRepository(IStudentSourceRepository):
             return bool(cur.fetchone()[0])
 
     def delete(self, student_id: StudentID) -> None:
-        with self._project_database_io.connect() as con:
+        with self._db.connect() as con:
             cur = con.cursor()
             cur.execute(
                 """

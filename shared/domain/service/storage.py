@@ -1,6 +1,8 @@
 import uuid
 from pathlib import Path
 
+from shared.domain.interface.repository import IStorageRepository, IStudentSourceRepository, \
+    ITestSourceRepository, ITestCaseRepository
 from shared.domain.service.dto.storage_diff_snapshot import StorageDiff, StorageFileSnapshot, \
     StorageDiffSnapshotFileEntry
 from shared.domain.value.file_item import ExecutableFileItem
@@ -8,10 +10,7 @@ from shared.domain.value.identifier import StorageID, StudentID, TestCaseID, Fil
 from shared.domain.value.input_file import InputFileCollection
 from shared.domain.value.output_file import OutputFileCollection, OutputFile
 from shared.infra.repository.storage import StorageRepository
-from shared.infra.repository.student_dynamic import StudentSourceRepository, \
-    StudentExecutableRepository
-from shared.infra.repository.test_source import TestSourceRepository
-from shared.infra.repository.testcase import TestCaseRepository
+from shared.infra.repository.student_dynamic import IStudentExecutableRepository
 
 
 class StorageCreateService:
@@ -32,7 +31,7 @@ class StorageDeleteService:
     def __init__(
             self,
             *,
-            storage_repo: StorageRepository,
+            storage_repo: IStorageRepository,
     ):
         self._storage_repo = storage_repo
 
@@ -46,8 +45,8 @@ class StorageLoadTestSourceService:
     def __init__(
             self,
             *,
-            test_source_repo: TestSourceRepository,
-            storage_repo: StorageRepository,
+            test_source_repo: ITestSourceRepository,
+            storage_repo: IStorageRepository,
     ):
         self._test_source_repo = test_source_repo
         self._storage_repo = storage_repo
@@ -73,8 +72,8 @@ class StorageLoadStudentSourceService:
     def __init__(
             self,
             *,
-            student_source_repo: StudentSourceRepository,
-            storage_repo: StorageRepository,
+            student_source_repo: IStudentSourceRepository,
+            storage_repo: IStorageRepository,
     ):
         self._student_source_repo = student_source_repo
         self._storage_repo = storage_repo
@@ -101,8 +100,8 @@ class StorageLoadStudentExecutableService:
     def __init__(
             self,
             *,
-            student_executable_repo: StudentExecutableRepository,
-            storage_repo: StorageRepository,
+            student_executable_repo: IStudentExecutableRepository,
+            storage_repo: IStorageRepository,
     ):
         self._student_executable_repo = student_executable_repo
         self._storage_repo = storage_repo
@@ -129,8 +128,8 @@ class StorageStoreStudentExecutableService:
     def __init__(
             self,
             *,
-            student_executable_repo: StudentExecutableRepository,
-            storage_repo: StorageRepository,
+            student_executable_repo: IStudentExecutableRepository,
+            storage_repo: IStorageRepository,
     ):
         self._student_executable_repo = student_executable_repo
         self._storage_repo = storage_repo
@@ -161,8 +160,8 @@ class StorageLoadExecuteConfigInputFilesService:
     def __init__(
             self,
             *,
-            storage_repo: StorageRepository,
-            testcase_config_repo: TestCaseRepository,
+            storage_repo: IStorageRepository,
+            testcase_config_repo: ITestCaseRepository,
     ):
         self._storage_repo = storage_repo
         self._testcase_config_repo = testcase_config_repo
@@ -189,7 +188,7 @@ class StorageWriteStdoutFileService:
     def __init__(
             self,
             *,
-            storage_repo: StorageRepository,
+            storage_repo: IStorageRepository,
     ):
         self._storage_repo = storage_repo
 
@@ -209,7 +208,7 @@ class StorageCreateOutputFileCollectionFromDiffService:
     def __init__(
             self,
             *,
-            storage_repo: StorageRepository,
+            storage_repo: IStorageRepository,
     ):
         self._storage_repo = storage_repo
 
@@ -243,7 +242,7 @@ class StorageTakeSnapshotService:
     def __init__(
             self,
             *,
-            storage_repo: StorageRepository,
+            storage_repo: IStorageRepository,
     ):
         self._storage_repo = storage_repo
 

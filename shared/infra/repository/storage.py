@@ -1,15 +1,15 @@
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Callable
 
 from shared.domain.entity.storage import StorageEntity
+from shared.domain.interface.path_manager import IProjectPathManager
 from shared.domain.interface.repository import IStorageRepository
+from shared.domain.interface.system import IProjectCoreIO
 from shared.domain.value.identifier import StorageID
 from shared.domain.value.storage_item import StorageFileContentMapper, \
     FileRelativePathListProducerType, FileContentMapperType, FileRelativePathExistsMapperType, \
     FileRelativePathStatMapperType, StorageStat, CommandType
-from shared.infra.system.current_project_core_io import CurrentProjectCoreIO
 from util.app_logging import create_logger
 
 
@@ -19,10 +19,10 @@ class StorageRepository(IStorageRepository):
     def __init__(
             self,
             *,
-            storage_folder_fullpath: Callable[[StorageID], Path],
-            current_project_core_io: CurrentProjectCoreIO,
+            project_path_manager: IProjectPathManager,
+            current_project_core_io: IProjectCoreIO,
     ):
-        self._storage_folder_fullpath = storage_folder_fullpath
+        self._project_path_manager = project_path_manager
         self._current_project_core_io = current_project_core_io
 
     def __get_file_relative_path_list_producer(self, base_folder_fullpath: Path) \
@@ -77,7 +77,7 @@ class StorageRepository(IStorageRepository):
 
     def create(self, storage_id: StorageID) -> StorageEntity:
         # ストレージを生成する
-        base_folder_fullpath = self._storage_folder_fullpath(storage_id)
+        base_folder_fullpath = self._project_path_manager.get_storage_dir(storage_id)
         if base_folder_fullpath.exists():
             raise ValueError(f"IO session {storage_id} already exists")
         base_folder_fullpath.mkdir(parents=True, exist_ok=False)
@@ -105,7 +105,7 @@ class StorageRepository(IStorageRepository):
     def get(self, storage_id: StorageID) -> StorageEntity:
         # 既存のストレージを取得する
 
-        base_folder_fullpath = self._storage_folder_fullpath(storage_id)
+        base_folder_fullpath = self._project_path_manager.get_storage_dir(storage_id)
         if not base_folder_fullpath.exists():
             raise ValueError(f"IO session {storage_id} not found")
 
@@ -133,7 +133,7 @@ class StorageRepository(IStorageRepository):
         # ストレージの変更をコミットする
         # ストレージにコミットした後のストレージインスタンスを操作してはならない！！！
 
-        base_folder_fullpath = self._storage_folder_fullpath(storage.storage_id)
+        base_folder_fullpath = self._project_path_manager.get_storage_dir(storage.storage_id)
         if not base_folder_fullpath.exists():
             raise ValueError(f"IO session {storage.storage_id} not found")
 
@@ -157,7 +157,7 @@ class StorageRepository(IStorageRepository):
     def delete(self, storage_id: StorageID) -> None:
         # ストレージを削除する
 
-        base_folder_fullpath = self._storage_folder_fullpath(storage_id)
+        base_folder_fullpath = self._project_path_manager.get_storage_dir(storage_id)
         if not base_folder_fullpath.exists():
             raise ValueError(f"IO session {storage_id} not found")
 

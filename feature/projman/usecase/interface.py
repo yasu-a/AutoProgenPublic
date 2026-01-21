@@ -35,12 +35,6 @@ class IProjectCreateUseCase(ABC):
         raise NotImplementedError()
 
 
-class IProjectDeleteUseCase(ABC):
-    @abstractmethod
-    def execute(self, project_id: ProjectID) -> None:
-        raise NotImplementedError()
-
-
 class IProjectGetSizeQueryUseCase(ABC):
     @abstractmethod
     def execute(self, project_id: ProjectID) -> int:
