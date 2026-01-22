@@ -59,6 +59,7 @@ class _VSDevTool:
             stderr=subprocess.STDOUT,
             cwd=self._cwd_fullpath,
             universal_newlines=True,
+            errors="replace",
         )
         return output
 

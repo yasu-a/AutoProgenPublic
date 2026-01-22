@@ -14,9 +14,12 @@ from service.storage_run_executable import StorageRunExecutableService
 from service.student_stage_path_result import StudentPutStageResultService
 from service.testcase_config import TestCaseConfigGetExecuteConfigMtimeService, \
     TestCaseConfigGetExecuteOptionsService
+from util.app_logging import create_logger
 
 
 class StudentRunExecuteStageUseCase:
+    _logger = create_logger()
+    
     def __init__(
             self,
             *,

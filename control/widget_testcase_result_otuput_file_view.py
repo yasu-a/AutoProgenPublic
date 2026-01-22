@@ -60,7 +60,7 @@ class TestCaseResultOutputFileViewWidget(QWidget):
                 actual_content = ""
                 content_replacement = "（不明な文字コード）"
             elif actual_content == "":
-                content_replacement = "（空）"
+                content_replacement = "（出力がありません。実行時エラーが発生した可能性があります。生徒が提出したソースコードを直接Visual Studioで実行してください。）"
             else:
                 pass  # 正常な出力
             if of.has_expected:
@@ -76,7 +76,7 @@ class TestCaseResultOutputFileViewWidget(QWidget):
             if of.has_expected:
                 errors.append(
                     (
-                        "プログラムからこのストリームへの出力がありませんでした",
+                        "プログラムからこのストリームへの出力がありませんでした。生徒がプログラム内で誤ったファイル名を指定したか、実行時エラーが発生した可能性があります。生徒が提出したソースコードを直接Visual Studioで実行してください。",
                         None,
                     ),
                 )

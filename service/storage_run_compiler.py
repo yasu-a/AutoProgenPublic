@@ -55,7 +55,8 @@ class StorageRunCompilerService:
             # コンパイル時のカレントディレクトリ
             cwd_fullpath=source_file_fullpath.parent,
             # ソースコードの相対パス
-            target_relative_path=source_file_fullpath.relative_to(source_file_fullpath.parent),
+            target_relative_path=source_file_fullpath.relative_to(
+                source_file_fullpath.parent),
         )
 
         # コンパイルの実行
@@ -63,7 +64,7 @@ class StorageRunCompilerService:
             output = self._compile_tool_io.run_and_get_output(**kwargs)
         except CompileToolIOError as e:
             raise StorageRunCompilerServiceError(
-                reason=f"コンパイルに失敗しました。\n{e.reason}",
+                reason=f"コンパイルに失敗しました。ソースコードを直接Visual Studioで開いて実行してください．\n文字コードが原因の場合、Visual Studioで実行すると正常に動作することがあります。\n{e.reason}",
                 output=e.output,
             )
 

@@ -172,13 +172,18 @@ class StorageRepository:
                     path=base_folder_fullpath,
                 )
             except PermissionError:
-                self._logger.exception(
+                self._logger.critical(
                     f"PermissionError occurred in delete({storage_id})\n"
                     f"next retry_count={retry_count + 1}"
                 )
                 retry_count += 1
                 if retry_count == 5:
-                    raise
+                    self._logger.exception(
+                        f"PermissionError occurred in delete({storage_id})\n"
+                        f"{retry_count} times retried but still failed."
+                        f"Stop deleting storage {storage_id}."
+                    )
+                    break
                 time.sleep(4)
                 continue
             else:

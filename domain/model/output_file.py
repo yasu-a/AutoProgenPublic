@@ -17,6 +17,7 @@ class OutputFile:
             self._content = bytes(content, encoding="utf-8")
         else:
             self._content = content
+        self._content = self._content.replace(b"\r\n", b"\n")
 
     def __eq__(self, other):
         if not isinstance(other, OutputFile):

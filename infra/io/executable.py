@@ -34,6 +34,8 @@ class ExecutableIO:
             universal_newlines=True,
             # shell=True,  # cwdを動作させるために必要？
             # ^ TrueにするとPopenの__exit__ `stdout.close()`でハングする
+            encoding="utf-8",
+            errors="replace",
         )
         if input_file_fullpath is not None:
             # noinspection PyTypeChecker

@@ -48,7 +48,8 @@ class MarkStudentControlWidget(QWidget):
 
         self._l_student_id = QLabel(self)
         self._l_student_id.setFixedWidth(150)
-        self._l_student_id.setFont(get_font(monospace=True, large=True, bold=True))
+        self._l_student_id.setFont(
+            get_font(monospace=True, large=True, bold=True))
         self._l_student_id.setAlignment(Qt.AlignCenter)
         layout.addWidget(self._l_student_id)
 
@@ -166,7 +167,8 @@ class MarkDialogStateCreator:
                 testcase_id=self._state.testcase_id,
             )
             if view_data.is_success:
-                file_ids_by_testcase[testcase_id] = list(view_data.output_and_results.file_ids)
+                file_ids_by_testcase[testcase_id] = list(
+                    view_data.output_and_results.file_ids)
             else:
                 file_ids_by_testcase[testcase_id] = []
         return file_ids_by_testcase
@@ -319,9 +321,11 @@ class MarkDialog(QDialog):
     def __init__(self, parent: QObject = None):
         super().__init__(parent)
 
-        self._student_ids: list[StudentID] = get_student_list_id_usecase().execute()
+        self._student_ids: list[StudentID] = get_student_list_id_usecase(
+        ).execute()
         # ^ get_student_id_list_usecase
-        self._testcase_ids: list[TestCaseID] = get_testcase_config_list_id_usecase().execute()
+        self._testcase_ids: list[TestCaseID] = get_testcase_config_list_id_usecase(
+        ).execute()
         self._state = MarkDialogState()
 
         self._init_ui()
@@ -355,11 +359,14 @@ class MarkDialog(QDialog):
 
                     # 生徒のソースコード
                     self._w_source_code_view = StudentSourceCodeView(self)
-                    layout_middle_left_inner.addWidget(self._w_source_code_view)
+                    layout_middle_left_inner.addWidget(
+                        self._w_source_code_view)
 
                     # ファイルごとのテスト結果
-                    self._w_testcase_test_result_view = TestCaseTestResultViewWidget(self)
-                    layout_middle_left_inner.addWidget(self._w_testcase_test_result_view)
+                    self._w_testcase_test_result_view = TestCaseTestResultViewWidget(
+                        self)
+                    layout_middle_left_inner.addWidget(
+                        self._w_testcase_test_result_view)
 
             if "middle-right":
                 layout_middle_right = QVBoxLayout()
@@ -484,7 +491,8 @@ class MarkDialog(QDialog):
             self._w_student_control.set_data(None)
         else:
             self._w_student_control.set_data(
-                student=self.__get_student_mark_summary_view_data(self._state.student_id).student,
+                student=self.__get_student_mark_summary_view_data(
+                    self._state.student_id).student,
             )
 
         # self._w_testcase_control: TestCaseControlWidget(self)
@@ -497,36 +505,49 @@ class MarkDialog(QDialog):
                 testcase_id=self._state.testcase_id,
             )
 
-        # self._w_source_code_view: StudentSourceCodeView
         if self._state.student_id is None:
-            self._w_source_code_view.set_data(
-                source_code_text=None,
-            )
+            source_code_text = None
         else:
-            self._w_source_code_view.set_data(
-                source_code_text=self.__get_student_source_code(
-                    self._state.student_id
-                ),
+            source_code_text = self.__get_student_source_code(
+                self._state.student_id
             )
 
         # self._w_test_result_view_placeholder: TestCaseTestResultViewPlaceholderWidget(self)
+        # self._w_source_code_view: StudentSourceCodeView
+        NO_SELECTION = object()
         if self._state.student_id is None:
-            self._w_testcase_test_result_view.set_data(data="生徒が選択されていません")
+            data_of_testcase_test_result_view = "生徒が選択されていません"
+            selected_file_id_of_testcase_test_result_view = NO_SELECTION
         elif self._state.testcase_id is None:
-            self._w_testcase_test_result_view.set_data(data="テストケースが選択されていません")
+            data_of_testcase_test_result_view = "テストケースが選択されていません"
+            selected_file_id_of_testcase_test_result_view = NO_SELECTION
         else:
-            summary_view_data = self.__get_student_mark_summary_view_data(self._state.student_id)
+            summary_view_data = self.__get_student_mark_summary_view_data(
+                self._state.student_id)
             if summary_view_data.is_ready:
                 testcase_result_view_data = self.__get_student_testcase_test_result_view_data(
                     student_id=self._state.student_id,
                     testcase_id=self._state.testcase_id,
                 )
-                self._w_testcase_test_result_view.set_data(data=testcase_result_view_data)
-                self._w_testcase_test_result_view.set_selected(self._state.file_id)
+                try:
+                    if "コンパイルエラー" in testcase_result_view_data.detailed_reason:
+                        source_code_text = None
+                except ValueError:
+                    pass
+                data_of_testcase_test_result_view = testcase_result_view_data
+                selected_file_id_of_testcase_test_result_view = self._state.file_id
             else:
-                self._w_testcase_test_result_view.set_data(
-                    data=summary_view_data.reason,
-                )
+                data_of_testcase_test_result_view = summary_view_data.reason
+                selected_file_id_of_testcase_test_result_view = NO_SELECTION
+
+        self._w_testcase_test_result_view.set_data(
+            data=data_of_testcase_test_result_view)
+        if selected_file_id_of_testcase_test_result_view is not NO_SELECTION:
+            self._w_testcase_test_result_view.set_selected(
+                selected_file_id_of_testcase_test_result_view)
+        self._w_source_code_view.set_data(
+            source_code_text=source_code_text,
+        )
 
         # self._w_testcase_result_list: TestCaseTestResultListWidget(self)
         if self._state.student_id is None:
@@ -547,7 +568,8 @@ class MarkDialog(QDialog):
         if self._state.student_id is None:
             self._w_mark_score.set_data(None)
         else:
-            self._w_mark_score.set_data(self.__get_student_mark(self._state.student_id))
+            self._w_mark_score.set_data(
+                self.__get_student_mark(self._state.student_id))
 
     def __save_data(self):
         if not self._w_mark_score.is_modified():

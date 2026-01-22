@@ -71,7 +71,8 @@ class StudentSubmissionExtractService:
                     )
                 )
                 # 展開先のフォルダが存在しなかったらフォルダを生成
-                extract_base_folder_fullpath.mkdir(parents=True, exist_ok=False)
+                extract_base_folder_fullpath.mkdir(
+                    parents=True, exist_ok=False)
                 # 生徒のアーカイブ内のファイルの相対パスとファイルポインタのイテラブルを取得
                 it: Iterable[tuple[PurePosixPath, IO[bytes]]] = (
                     self._manaba_report_archive_io.iter_student_submission_archive_contents(
@@ -81,7 +82,8 @@ class StudentSubmissionExtractService:
                 )
                 # それぞれのファイルを展開する
                 for content_relative_path, fp in it:
-                    self._logger.info(f"Extracting {student_id} {content_relative_path!s}")
+                    self._logger.info(
+                        f"Extracting {student_id} {content_relative_path!s}")
                     # パスにスペースが含まれているとこの先のos.makedirsで失敗するので取り除く
                     content_relative_path = PurePosixPath(
                         *map(str.strip, content_relative_path.parts)
@@ -115,7 +117,8 @@ class StudentSubmissionFolderShowService:
         self._student_folder_open_in_explorer_io = student_folder_show_in_explorer_io
 
     def execute(self, student_id: StudentID):
-        self._student_folder_open_in_explorer_io.show_submission_folder(student_id)
+        self._student_folder_open_in_explorer_io.show_submission_folder(
+            student_id)
 
 
 class StudentSubmissionGetChecksumService:
@@ -183,16 +186,17 @@ class StudentSubmissionListSourceRelativePathQueryService:
                 continue
 
             # 設問番号の抽出
-            numbers_str = re.findall(r"(?<!\()\d+(?!\))", file_relative_path.stem)
+            numbers_str = re.findall(
+                r"(?<!\()\d+(?!\))", file_relative_path.stem)
             if len(numbers_str) > 1:
                 raise StudentSubmissionListSourceRelativePathQueryServiceError(
                     reason=f"ファイル名{file_relative_path!s}から設問番号を判別できません。\n"
-                           f"ファイル名に数字が複数含まれています: {', '.join(numbers_str)}",
+                    f"ファイル名に数字が複数含まれています: {', '.join(numbers_str)}",
                 )
             elif len(numbers_str) == 0:
                 raise StudentSubmissionListSourceRelativePathQueryServiceError(
                     reason=f"ファイル名{file_relative_path!s}から設問番号を判別できません。\n"
-                           f"ファイル名に数字が含まれていません。",
+                    f"ファイル名に数字が含まれていません。",
                 )
             number = int(numbers_str[0])
 
@@ -227,9 +231,26 @@ class StudentSubmissionGetFileContentQueryService:
         if not file_fullpath.exists():
             raise FileNotFoundError()
 
-        return self._current_project_core_io.read_file_content_bytes(
+        content_src: bytes = self._current_project_core_io.read_file_content_bytes(
             file_fullpath=file_fullpath,
         )
+
+        try:
+            content_str_utf8 = content_src.decode("utf-8", errors="strict")
+        except UnicodeDecodeError:
+            try:
+                content_str_shift_jis = content_src.decode(
+                    "shift-jis", errors="strict")
+            except UnicodeDecodeError:
+                raise UnicodeError("source file is not UTF-8 or Shift-JIS")
+            else:
+                content_str = content_str_shift_jis
+        else:
+            content_str = content_str_utf8
+
+        content_utf8_bytes = content_str.encode("utf-8")
+
+        return content_utf8_bytes
 
 
 class StudentSubmissionGetSourceFileServiceError(ServiceError):
@@ -284,22 +305,32 @@ class StudentSubmissionGetSourceContentService:
 
         # ソースコードを読み込む
         source_file_relative_path = source_file_relative_path_lst[0]
-        content_bytes = self._student_submission_get_file_content_query_service.execute(
-            student_id=student_id,
-            file_relative_path=source_file_relative_path,
-        )
-
-        # エンコーディングを見つける
         try:
-            content_text = content_bytes.decode("utf-8", errors="strict")
-        except UnicodeDecodeError:
-            try:
-                content_text = content_bytes.decode("shift-jis", errors="strict")
-            except UnicodeDecodeError:
-                raise StudentSubmissionGetSourceFileServiceError(
-                    reason=f"ソースファイルの文字コードが判定できません。\n"
-                           f"ファイル名: {source_file_relative_path}\n"
-                )
+            content_bytes = self._student_submission_get_file_content_query_service.execute(
+                student_id=student_id,
+                file_relative_path=source_file_relative_path,
+            )
+        except UnicodeError:
+            raise StudentSubmissionGetSourceFileServiceError(
+                reason=f"ソースファイルの文字コードが判定できません。\n"
+                f"ファイル名: {source_file_relative_path}\n"
+            )
+        
+        # エンコーディングを見つける
+        # NOTE: エンコーディングはStudentSubmissionGetFileContentQueryServiceで見つけるようにした
+        #       なのでこの段階でcontent_bytesはutf-8でエンコードされている
+        content_text = content_bytes.decode("utf-8")
+        # try:
+        #     content_text = content_bytes.decode("utf-8", errors="strict")
+        # except UnicodeDecodeError:
+        #     try:
+        #         content_text = content_bytes.decode(
+        #             "shift-jis", errors="strict")
+        #     except UnicodeDecodeError:
+        #         raise StudentSubmissionGetSourceFileServiceError(
+        #             reason=f"ソースファイルの文字コードが判定できません。\n"
+        #             f"ファイル名: {source_file_relative_path}\n"
+        #         )
 
         # 改行コードを\nに置き換える
         content_text = re.sub(r"\n|\r\n", "\n", content_text)

@@ -98,7 +98,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(
                 self,
                 "採点",
-                "タスクが終了するまでは採点できません"
+                "実行が完了するまでは採点できません"
             )
             return
 
