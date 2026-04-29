@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import QVBoxLayout, QLabel, QWidget
 from control.widget_testcase_result_output_file_text_view import \
     TestCaseResultOutputFileTextView
 from domain.model.test_result_output_file_entry import AbstractTestResultOutputFileEntry
+from domain.model.value import FileID
 
 
 class TestCaseResultOutputFileViewWidget(QWidget):
@@ -60,7 +61,10 @@ class TestCaseResultOutputFileViewWidget(QWidget):
                 actual_content = ""
                 content_replacement = "（不明な文字コード）"
             elif actual_content == "":
-                content_replacement = "（出力がありません。実行時エラーが発生した可能性があります。生徒が提出したソースコードを直接Visual Studioで実行してください。）"
+                if of.file_id == FileID.STDIN:
+                    content_replacement = "（標準入力は空です）"
+                else:
+                    content_replacement = "（出力がありません。実行時エラーが発生した可能性があります。生徒が提出したソースコードを直接Visual Studioで実行してください。）"
             else:
                 pass  # 正常な出力
             if of.has_expected:
@@ -69,7 +73,7 @@ class TestCaseResultOutputFileViewWidget(QWidget):
                 errors.append(
                     (
                         "このストリームはテスト対象ではありません",
-                        "テスト対象である場合はテストケースの自動テストの構成でストリームを追加してください",
+                        "自動テストを有効にするにはテストケースの自動テストの構成でストリームを追加してください",
                     ),
                 )
         else:
