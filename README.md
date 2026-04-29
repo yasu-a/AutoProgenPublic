@@ -1,7 +1,7 @@
 <!-- このファイルは main_generate_readme.py で自動生成されています -->
 <!-- 編集する場合はテンプレート static/readme/README.md を編集して再生成します --> 
 
-# AutoProgen 1.1-beta.2
+# AutoProgen 1.1-beta.3
 
 ![image_filename](static/img/screenshot.jpg)
 
@@ -24,7 +24,7 @@
 - Windows 11
 - Python 3.10
 
-# 1.1-beta.2
+# 1.1-beta.3
 
   
 
@@ -45,6 +45,7 @@
 - エクスポート時に重複した学生IDがあるとクラッシュするバグを修正
 - エラーが生じた結果を採点者が手動で採点するよう促すメッセージを追加
 - ストレージの削除、文字コードの扱いによりクラッシュするバグを修正
+- 2026/04/29 新形式の学籍番号26HG2xxxxxxXに対応
 
 ## 既知のバグ
 
