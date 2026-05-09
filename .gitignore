@@ -3,3 +3,4 @@
 /tests/__test_data_root__/
 /settings.json
 /db.sqlite3
+/_legacy
