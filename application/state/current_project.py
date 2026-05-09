@@ -9,5 +9,10 @@ def set_current_project_id(project_id: ProjectID):
     _project_id = project_id
 
 
-def get_current_project_id() -> ProjectID:
+def get_current_project_id() -> ProjectID | None:
     return _project_id
+
+
+def clear_current_project_id() -> None:
+    global _project_id
+    _project_id = None

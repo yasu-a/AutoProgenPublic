@@ -6,9 +6,6 @@ from util.app_logging import create_logger
 
 if TYPE_CHECKING:
     from PyQt5.QtWidgets import QApplication
-    from control.window_main import MainWindow
-    from domain.model.value import ProjectID
-    from control.dto.new_project_config import NewProjectConfig
 
 if __name__ == '__main__':
     import sys
@@ -52,69 +49,9 @@ def create_app() -> "QApplication":
     return app
 
 
-def launch_existing_project(project_id: "ProjectID") -> "MainWindow":
-    from application.dependency.usecase import get_project_open_usecase
-    from control.window_main import MainWindow
-
-    # 現在のプロジェクトを設定
-    get_project_open_usecase().execute(project_id)
-    # メインウィンドウを開く
-    window = MainWindow()
-    # noinspection PyUnresolvedReferences
-    window.show()
-
-    return window
-
-
-def launch_new_project(new_project_config: "NewProjectConfig") -> "MainWindow":
-    from application.dependency.usecase import get_project_create_usecase
-    from application.dependency.usecase import get_current_project_initialize_static_usecase
-    from application.dependency.usecase import get_project_open_usecase
-    from control.dialog_progress import AbstractProgressDialog
-    from control.window_main import MainWindow
-    from PyQt5.QtWidgets import QMessageBox
-
-    # 新規にプロジェクトを生成
-
-    project_id = get_project_create_usecase().execute(
-        project_name=new_project_config.project_name,
-        target_number=new_project_config.target_number,
-        zip_name=new_project_config.manaba_report_archive_fullpath.name,
-    )
-    # 現在のプロジェクトを設定
-    get_project_open_usecase().execute(project_id)
-    # 現在のプロジェクトを初期化
-    result = AbstractProgressDialog.run_blocking_task(
-        parent=None,  # type: ignore[arg-type]
-        title="プロジェクトの初期化",
-        initial_message="初期化を開始しています...",
-        task_func=get_current_project_initialize_static_usecase(
-            manaba_report_archive_fullpath=new_project_config.manaba_report_archive_fullpath,
-        ).execute,
-    )
-    if result is not None and result.has_error:
-        QMessageBox.critical(
-            None,
-            "プロジェクトの初期化",
-            result.message,
-            QMessageBox.Ok,
-        )
-        sys.exit(1)
-
-    # メインウィンドウを開く
-    window = MainWindow()
-    # noinspection PyUnresolvedReferences
-    window.show()
-
-    return window
-
-
 def main():
+    from application.dependency.navigator import get_navigator
     from application.state.debug import set_debug
-    from control.dialog_welcome import WelcomeDialog
-    from PyQt5.QtWidgets import QDialog
-    from domain.model.value import ProjectID
-    from control.dto.new_project_config import NewProjectConfig
 
     # 環境変数からデバッグ用の構成を用意
     app_logging.set_level(app_logging.INFO)
@@ -127,29 +64,11 @@ def main():
 
     # QApplicationを生成
     app = create_app()
-    # ウェルカムダイアログを表示
-    welcome = WelcomeDialog()
-    res = welcome.exec_()
-    # ウェルカムダイアログの応答によって処理を分ける
-    if res == QDialog.Accepted:  # 応答がacceptedなら
-        result = welcome.get_data()  # 応答結果を取得
-        del welcome  # ウェルカムダイアログを解放
-        if isinstance(result, ProjectID):  # 既存のプロジェクトIDなら
-            # 既存のプロジェクトを起動
-            project_id: ProjectID = result
-            window = launch_existing_project(project_id)
-        elif isinstance(result, NewProjectConfig):  # 新規プロジェクトの構成なら
-            # 新規プロジェクトを起動
-            new_project_config: NewProjectConfig = result
-            window = launch_new_project(new_project_config)
-        else:
-            # それ以外はあり得ない
-            assert False, result
-        # Qtのイベントループに入る
-        _ = window  # C++に解放されないようにインスタンスを保つ
+    app.setQuitOnLastWindowClosed(False)
+
+    navigator = get_navigator()
+    if navigator.start():
         sys.exit(app.exec_())
-    else:  # 応答がキャンセルなら
-        pass  # 何もしない
 
 
 if __name__ == '__main__':
