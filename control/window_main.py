@@ -9,8 +9,8 @@ from application.dependency.usecase import get_current_project_summary_get_useca
 from control.dialog_about import AboutDialog
 from control.dialog_global_settings import GlobalSettingsEditDialog
 from control.dialog_mark import MarkDialog
+from control.dialog_progress import AbstractProgressDialog
 from control.dialog_score_export import ScoreExportDialog
-from control.dialog_stop_tasks import StopTasksDialog
 from control.dialog_testcase_list_edit import TestCaseListEditDialog
 from control.task.clean_all_stage import CleanAllStagesStudentTask
 from control.task.run_stage import RunStagesStudentTask
@@ -106,11 +106,14 @@ class MainWindow(QMainWindow):
         dialog.set_state(dialog.states.create_state_by_student_id(student_id))
         dialog.exec_()
 
-    @classmethod
-    def __perform_stop_tasks(cls):
+    def __perform_stop_tasks(self):
         if not get_task_manager().is_empty():
-            dialog = StopTasksDialog()
-            dialog.exec_()
+            AbstractProgressDialog.run_blocking_task(
+                parent=self,
+                title="タスクの停止",
+                initial_message="停止処理を開始します...",
+                task_func=get_task_manager().terminate,
+            )
 
     @classmethod
     def __enqueue_student_tasks_if_not_run(cls, parent, task_cls: type[AbstractStudentTask]):

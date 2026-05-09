@@ -1,13 +1,12 @@
 import time
 from contextlib import contextmanager
-from typing import Callable
-
 from PyQt5.QtCore import QObject, QTimer, QMutex, pyqtSlot
 from PyQt5.QtWidgets import qApp
 
 from infra.repository.global_settings import GlobalSettingsRepository
 from infra.task.queue import AbstractTaskQueue, StudentTaskQueue
 from infra.task.task import AbstractTask, AbstractStudentTask
+from usecase.progress import ProgressCallback
 from util.app_logging import create_logger
 
 
@@ -140,7 +139,7 @@ class TaskManager(QObject):
             # 終了したタスクの削除
             self.__stack.dequeue_finished_tasks()
 
-    def terminate(self, callback: Callable[[str], None]):
+    def terminate(self, progress_callback: ProgressCallback | None = None):
         while True:
             # メッセージ
             with self._lock():
@@ -151,10 +150,11 @@ class TaskManager(QObject):
                     + "\n".join(f" - {task!r}" for task in active_tasks),
                 )
                 # TODO: usecase layer
-                callback(
-                    f"{n_tasks}個のタスクが終了するのを待っています・・・\n"
-                    + "\n".join(f" - {task!s}" for task in active_tasks[:8]),
-                )
+                if progress_callback is not None:
+                    progress_callback(
+                        f"{n_tasks}個のタスクが終了するのを待っています・・・\n"
+                        + "\n".join(f" - {task!s}" for task in active_tasks[:8]),
+                    )
             with self._lock():
                 # 新たなタスクが開始しないように未開始のタスクを消す
                 self.__stack.dequeue_unstarted_tasks()

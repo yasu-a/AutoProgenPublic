@@ -1,10 +1,9 @@
-from typing import Callable
-
 from domain.error import StudentMasterServiceError, StudentSubmissionServiceError
 from service.current_project import CurrentProjectGetService, CurrentProjectSetInitializedService
 from service.student_master_create import StudentMasterCreateService
 from service.student_submission import StudentSubmissionExtractService
 from usecase.dto.project import NormalProjectSummary, ProjectInitializeResult
+from usecase.progress import ProgressCallback
 
 
 class CurrentProjectSummaryGetUseCase:
@@ -39,21 +38,24 @@ class CurrentProjectInitializeStaticUseCase:
         self._student_submission_extract_service = student_submission_extract_service
         self._current_project_set_initialized_service = current_project_set_initialized_service
 
-    def execute(self, callback: Callable[[str], None]) -> ProjectInitializeResult:
-        callback("生徒マスタを生成しています")
+    def execute(self, progress_callback: ProgressCallback | None = None) -> ProjectInitializeResult:
+        if progress_callback is not None:
+            progress_callback("生徒マスタを生成しています")
         try:
             self._student_master_create_service.execute()
         except StudentMasterServiceError as e:
             return ProjectInitializeResult.create_error(
                 message=e.reason,
             )
-        callback("生徒の提出ファイルを展開しています")
+        if progress_callback is not None:
+            progress_callback("生徒の提出ファイルを展開しています")
         try:
             self._student_submission_extract_service.execute()
         except StudentSubmissionServiceError as e:
             return ProjectInitializeResult.create_error(
                 message=e.reason,
             )
-        callback("初期化を完了しています")
+        if progress_callback is not None:
+            progress_callback("初期化を完了しています")
         self._current_project_set_initialized_service.execute()
         return ProjectInitializeResult.create_success()

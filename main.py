@@ -68,10 +68,11 @@ def launch_existing_project(project_id: "ProjectID") -> "MainWindow":
 
 def launch_new_project(new_project_config: "NewProjectConfig") -> "MainWindow":
     from application.dependency.usecase import get_project_create_usecase
+    from application.dependency.usecase import get_current_project_initialize_static_usecase
     from application.dependency.usecase import get_project_open_usecase
-    from control.dialog_project_initialize import ProjectInitializeProgressDialog
+    from control.dialog_progress import AbstractProgressDialog
     from control.window_main import MainWindow
-    from PyQt5.QtWidgets import QDialog, QMessageBox
+    from PyQt5.QtWidgets import QMessageBox
 
     # 新規にプロジェクトを生成
 
@@ -83,14 +84,19 @@ def launch_new_project(new_project_config: "NewProjectConfig") -> "MainWindow":
     # 現在のプロジェクトを設定
     get_project_open_usecase().execute(project_id)
     # 現在のプロジェクトを初期化
-    dialog = ProjectInitializeProgressDialog(
-        manaba_report_archive_fullpath=new_project_config.manaba_report_archive_fullpath,
+    result = AbstractProgressDialog.run_blocking_task(
+        parent=None,  # type: ignore[arg-type]
+        title="プロジェクトの初期化",
+        initial_message="初期化を開始しています...",
+        task_func=get_current_project_initialize_static_usecase(
+            manaba_report_archive_fullpath=new_project_config.manaba_report_archive_fullpath,
+        ).execute,
     )
-    if dialog.exec_() != QDialog.Accepted:
+    if result is not None and result.has_error:
         QMessageBox.critical(
-            dialog,
+            None,
             "プロジェクトの初期化",
-            dialog.get_error_object().message,
+            result.message,
             QMessageBox.Ok,
         )
         sys.exit(1)
