@@ -447,6 +447,7 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
                 student_ids=get_student_list_id_usecase().execute(),
             ),
         )
+
         # noinspection PyTypeChecker
         self._model = StudentTableModel(
             self,
