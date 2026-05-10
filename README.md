@@ -1,7 +1,7 @@
 <!-- このファイルは main_generate_readme.py で自動生成されています -->
 <!-- 編集する場合はテンプレート static/readme/README.md を編集して再生成します --> 
 
-# AutoProgen 1.1-beta.3
+# AutoProgen 1.1-beta.4
 
 ![image_filename](static/img/screenshot.jpg)
 
@@ -24,7 +24,7 @@
 - Windows 11
 - Python 3.10
 
-# 1.1-beta.3
+# 1.1-beta.4
 
   
 
