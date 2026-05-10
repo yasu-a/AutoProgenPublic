@@ -135,6 +135,12 @@ class TestCaseConfigRepository:
                 )
             return self._testcase_cache[testcase_id]
 
+    def list_ids(self) -> list[TestCaseID]:
+        return [
+            TestCaseID(folder_name)
+            for folder_name in sorted(self.__iter_testcase_folder_names())
+        ]
+
     def list(self) -> list[TestCaseConfig]:
         return [
             self.get(TestCaseID(folder_name))

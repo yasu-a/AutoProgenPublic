@@ -29,11 +29,6 @@ from usecase.student_table_cell_data import StudentTableGetStudentIDCellDataUseC
     StudentTableGetStudentErrorCellDataUseCase
 from usecase.test_compile_stage import TestCompileStageUseCase
 from usecase.test_test_stage import TestTestStageUseCase
-from usecase.testcase_config import TestCaseConfigGetUseCase, TestCaseConfigPutUseCase, \
-    TestCaseConfigListIDUseCase, TestCaseConfigDeleteUseCase
-from usecase.testcase_list_edit import TestCaseListEditListSummaryUseCase, \
-    TestCaseListEditCreateNewNameUseCase, TestCaseListEditCreateTestCaseUseCase, \
-    TestCaseListEditCopyTestCaseUseCase
 
 
 def get_global_settings_get_usecase():
@@ -290,50 +285,6 @@ def create_student_run_next_stage_usecase(project_id: ProjectID):
     )
 
 
-# TestCaseListEditListSummaryUseCase
-def get_testcase_list_edit_list_summary_usecase():
-    return create_testcase_list_edit_list_summary_usecase(require_current_project_id())
-
-
-def create_testcase_list_edit_list_summary_usecase(project_id: ProjectID):
-    return TestCaseListEditListSummaryUseCase(
-        testcase_config_repo=create_testcase_config_repository(project_id),
-    )
-
-
-# TestCaseListEditCreateNewNameUseCase
-def get_testcase_list_edit_create_new_name_usecase():
-    return create_testcase_list_edit_create_new_name_usecase(require_current_project_id())
-
-
-def create_testcase_list_edit_create_new_name_usecase(project_id: ProjectID):
-    return TestCaseListEditCreateNewNameUseCase(
-        testcase_config_list_id_sub_service=create_testcase_config_list_id_sub_service(project_id),
-    )
-
-
-# TestCaseListEditCreateTestCaseUseCase
-def get_testcase_list_edit_create_testcase_usecase():
-    return create_testcase_list_edit_create_testcase_usecase(require_current_project_id())
-
-
-def create_testcase_list_edit_create_testcase_usecase(project_id: ProjectID):
-    return TestCaseListEditCreateTestCaseUseCase(
-        testcase_config_repo=create_testcase_config_repository(project_id),
-    )
-
-
-# TestCaseListEditCopyTestCaseUseCase
-def get_testcase_list_edit_copy_testcase_usecase():
-    return create_testcase_list_edit_copy_testcase_usecase(require_current_project_id())
-
-
-def create_testcase_list_edit_copy_testcase_usecase(project_id: ProjectID):
-    return TestCaseListEditCopyTestCaseUseCase(
-        testcase_config_copy_service=create_testcase_config_copy_service(project_id),
-    )
-
-
 # StudentStageResultTakeDiffSnapshotUseCase
 def create_student_dynamic_take_diff_snapshot_usecase(project_id: ProjectID):
     return StudentDynamicTakeDiffSnapshotUseCase(
@@ -346,48 +297,6 @@ def create_student_dynamic_take_diff_snapshot_usecase(project_id: ProjectID):
 def create_student_stage_result_clear_usecase(project_id: ProjectID):
     return StudentStageResultClearUseCase(
         student_stage_result_clear_service=create_student_stage_result_clear_service(project_id),
-    )
-
-
-# TestCaseConfigGetUseCase
-def get_testcase_config_get_usecase():
-    return create_testcase_config_get_usecase(require_current_project_id())
-
-
-def create_testcase_config_get_usecase(project_id: ProjectID):
-    return TestCaseConfigGetUseCase(
-        testcase_config_repo=create_testcase_config_repository(project_id),
-    )
-
-
-# TestCaseConfigPutUseCase
-def get_testcase_config_put_usecase():
-    return create_testcase_config_put_usecase(require_current_project_id())
-
-
-def create_testcase_config_put_usecase(project_id: ProjectID):
-    return TestCaseConfigPutUseCase(
-        testcase_config_repo=create_testcase_config_repository(project_id),
-    )
-
-
-def get_testcase_config_delete_usecase():
-    return create_testcase_config_delete_usecase(require_current_project_id())
-
-
-def create_testcase_config_delete_usecase(project_id: ProjectID):
-    return TestCaseConfigDeleteUseCase(
-        testcase_config_repo=create_testcase_config_repository(project_id),
-    )
-
-
-def get_testcase_config_list_id_usecase():
-    return create_testcase_config_list_id_usecase(require_current_project_id())
-
-
-def create_testcase_config_list_id_usecase(project_id: ProjectID):
-    return TestCaseConfigListIDUseCase(
-        testcase_config_list_id_sub_service=create_testcase_config_list_id_sub_service(project_id),
     )
 
 

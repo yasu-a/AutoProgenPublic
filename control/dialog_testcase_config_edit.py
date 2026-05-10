@@ -2,8 +2,7 @@ from PyQt5.QtCore import QObject
 from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import QVBoxLayout, QDialog
 
-from application.dependency.usecase import get_testcase_config_get_usecase, \
-    get_testcase_config_put_usecase
+from application.container import ProjectContainer
 from control.widget_testcase_config_edit import TestCaseConfigEditWidget
 from domain.model.value import TestCaseID
 from util.app_logging import create_logger
@@ -12,10 +11,17 @@ from util.app_logging import create_logger
 class TestCaseConfigEditDialog(QDialog):
     _logger = create_logger()
 
-    def __init__(self, parent: QObject = None, *, testcase_id: TestCaseID):
+    def __init__(
+            self,
+            parent: QObject = None,
+            *,
+            testcase_id: TestCaseID,
+            project_container: ProjectContainer,
+    ):
         super().__init__(parent)
 
         self._testcase_id = testcase_id
+        self._project_container = project_container
 
         self._init_ui()
 
@@ -28,7 +34,7 @@ class TestCaseConfigEditDialog(QDialog):
         self.setLayout(layout)
 
         self._w_testcase_edit = TestCaseConfigEditWidget(self)
-        config = get_testcase_config_get_usecase().execute(
+        config = self._project_container.testcase_get_usecase.execute(
             testcase_id=self._testcase_id
         )
         self._w_testcase_edit.set_data(config)
@@ -41,7 +47,7 @@ class TestCaseConfigEditDialog(QDialog):
 
     def closeEvent(self, evt: QCloseEvent):
         config = self._w_testcase_edit.get_data()
-        get_testcase_config_put_usecase().execute(config)
+        self._project_container.testcase_put_usecase.execute(config)
 
         self._logger.info(
             f"Configuration of testcase {self._testcase_id!s} saved\n"

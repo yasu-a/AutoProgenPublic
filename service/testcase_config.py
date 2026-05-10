@@ -6,21 +6,6 @@ from domain.model.value import TestCaseID
 from infra.repository.testcase_config import TestCaseConfigRepository
 
 
-class TestCaseConfigListIDSubService:
-    def __init__(
-            self,
-            *,
-            testcase_config_repo: TestCaseConfigRepository,
-    ):
-        self._testcase_config_repo = testcase_config_repo
-
-    def execute(self) -> list[TestCaseID]:
-        return [
-            testcase_config.testcase_id
-            for testcase_config in self._testcase_config_repo.list()
-        ]
-
-
 class TestCaseConfigCopyService:
     def __init__(
             self,

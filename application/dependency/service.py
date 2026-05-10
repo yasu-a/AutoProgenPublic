@@ -28,8 +28,7 @@ from service.student_submission import StudentSubmissionExistService, \
     StudentSubmissionExtractService, \
     StudentSubmissionGetChecksumService, StudentSubmissionListSourceRelativePathQueryService, \
     StudentSubmissionGetFileContentQueryService, StudentSubmissionGetSourceContentService
-from service.testcase_config import TestCaseConfigListIDSubService, \
-    TestCaseConfigGetExecuteConfigMtimeService, TestCaseConfigGetTestConfigMtimeService, \
+from service.testcase_config import TestCaseConfigGetExecuteConfigMtimeService, TestCaseConfigGetTestConfigMtimeService, \
     TestCaseConfigCopyService
 
 
@@ -148,23 +147,13 @@ def create_student_get_service(project_id: ProjectID):
     )
 
 
-def get_testcase_config_list_id_sub_service():
-    return create_testcase_config_list_id_sub_service(require_current_project_id())
-
-
-def create_testcase_config_list_id_sub_service(project_id: ProjectID):
-    return TestCaseConfigListIDSubService(
-        testcase_config_repo=create_testcase_config_repository(project_id),
-    )
-
-
 def get_stage_path_list_sub_service():
     return create_stage_path_list_sub_service(require_current_project_id())
 
 
 def create_stage_path_list_sub_service(project_id: ProjectID):
     return StagePathListSubService(
-        testcase_config_list_id_sub_service=create_testcase_config_list_id_sub_service(project_id),
+        testcase_config_repo=create_testcase_config_repository(project_id),
     )
 
 

@@ -1,9 +1,7 @@
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from application.dependency.usecase import get_testcase_list_edit_list_summary_usecase, \
-    get_testcase_list_edit_create_new_name_usecase, get_testcase_list_edit_create_testcase_usecase, \
-    get_testcase_list_edit_copy_testcase_usecase, get_testcase_config_delete_usecase
+from application.container import ProjectContainer
 from control.dialog_testcase_config_edit import TestCaseConfigEditDialog
 from control.widget_button_box import ButtonBox
 from domain.error import UseCaseError
@@ -14,8 +12,9 @@ from usecase.dto.testcase_list_edit import TestCaseListEditTestCaseSummary
 class TestCaseListWidget(QListWidget):
     testcase_item_double_clicked = pyqtSignal(TestCaseID, name="testcase_item_double_clicked")
 
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, project_container: ProjectContainer):
         super().__init__(parent)
+        self._project_container = project_container
 
         self._testcase_config_summary_lst: list[TestCaseListEditTestCaseSummary] = []
 
@@ -47,7 +46,7 @@ class TestCaseListWidget(QListWidget):
     @pyqtSlot()
     def update_data(self):
         self.clear()
-        self._testcase_config_summary_lst = get_testcase_list_edit_list_summary_usecase().execute()
+        self._testcase_config_summary_lst = self._project_container.testcase_list_summary_usecase.execute()
         for testcase_config_summary in self._testcase_config_summary_lst:
             self.addItem(testcase_config_summary.name)
 
@@ -55,8 +54,9 @@ class TestCaseListWidget(QListWidget):
 class TestCaseListEditWidget(QWidget):
     testcase_modified = pyqtSignal(name="testcase_modified")
 
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, project_container: ProjectContainer):
         super().__init__(parent)
+        self._project_container = project_container
 
         self._init_ui()
         self._init_signals()
@@ -65,7 +65,10 @@ class TestCaseListEditWidget(QWidget):
         layout = QHBoxLayout()
         self.setLayout(layout)
 
-        self._w_testcase_list = TestCaseListWidget(self)  # type: ignore
+        self._w_testcase_list = TestCaseListWidget(
+            self,  # type: ignore
+            project_container=self._project_container,
+        )
         layout.addWidget(self._w_testcase_list)
 
         self._w_buttons = ButtonBox(self, orientation=Qt.Vertical)
@@ -87,7 +90,7 @@ class TestCaseListEditWidget(QWidget):
                 self,  # type: ignore
                 "新しいテストケース",
                 "新しいテストケースの名前を入力してください",
-                text=get_testcase_list_edit_create_new_name_usecase().execute(),
+                text=self._project_container.testcase_create_new_name_usecase.execute(),
             )
             if not ok:
                 return
@@ -95,7 +98,7 @@ class TestCaseListEditWidget(QWidget):
             if not testcase_name:
                 return
             try:
-                get_testcase_list_edit_create_testcase_usecase().execute(testcase_name)
+                self._project_container.testcase_create_usecase.execute(testcase_name)
             except UseCaseError:
                 QMessageBox.critical(
                     self,  # type: ignore
@@ -115,7 +118,7 @@ class TestCaseListEditWidget(QWidget):
                 self,  # type: ignore
                 f"{testcase_id!s}のコピー",
                 "新しいテストケースの名前を入力してください",
-                text=get_testcase_list_edit_create_new_name_usecase().execute(),
+                text=self._project_container.testcase_create_new_name_usecase.execute(),
             )
             if not ok:
                 return
@@ -123,7 +126,7 @@ class TestCaseListEditWidget(QWidget):
             if not new_testcase_name:
                 return
             try:
-                get_testcase_list_edit_copy_testcase_usecase().execute(
+                self._project_container.testcase_copy_usecase.execute(
                     src_testcase_id=testcase_id,
                     new_testcase_name=new_testcase_name,
                 )
@@ -150,12 +153,16 @@ class TestCaseListEditWidget(QWidget):
         )
         if res != QMessageBox.Yes:
             return
-        get_testcase_config_delete_usecase().execute(testcase_id)
+        self._project_container.testcase_delete_usecase.execute(testcase_id)
         self.testcase_modified.emit()
 
     @pyqtSlot(TestCaseID)
     def dispatch_action_edit(self, testcase_id: TestCaseID):
-        dialog = TestCaseConfigEditDialog(self, testcase_id=testcase_id)
+        dialog = TestCaseConfigEditDialog(
+            self,
+            testcase_id=testcase_id,
+            project_container=self._project_container,
+        )
         dialog.exec_()
         self.testcase_modified.emit()
 
@@ -183,8 +190,9 @@ class TestCaseListEditWidget(QWidget):
 
 
 class TestCaseListEditDialog(QDialog):
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, project_container: ProjectContainer):
         super().__init__(parent)
+        self._project_container = project_container
 
         self._init_ui()
 
@@ -197,5 +205,8 @@ class TestCaseListEditDialog(QDialog):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        self._w_testcase_edit = TestCaseListEditWidget(self)  # type: ignore
+        self._w_testcase_edit = TestCaseListEditWidget(
+            self,  # type: ignore
+            project_container=self._project_container,
+        )
         layout.addWidget(self._w_testcase_edit)

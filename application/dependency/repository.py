@@ -49,6 +49,8 @@ def get_project_repository():
 
 @cache  # インスタンス内部にキャッシュを持つのでプロジェクト内ステートフル
 def get_current_project_repository():
+    # Deprecated: incremental migration compatibility only.
+    # New code should use ProjectContainer.current_project_repository.
     return create_current_project_repository(require_current_project_id())
 
 
@@ -61,6 +63,8 @@ def create_current_project_repository(project_id: ProjectID):
 
 @cache  # インスタンス内部にロックを持つのでプロジェクト内ステートフル
 def get_student_repository():
+    # Deprecated: incremental migration compatibility only.
+    # New code should use ProjectContainer.student_repository.
     return create_student_repository(require_current_project_id())
 
 
@@ -72,6 +76,8 @@ def create_student_repository(project_id: ProjectID):
 
 @cache  # プロジェクト内ステートフル
 def get_student_stage_path_result_repository():
+    # Deprecated: incremental migration compatibility only.
+    # New code should use ProjectContainer.student_stage_path_result_repository.
     return create_student_stage_path_result_repository(require_current_project_id())
 
 
@@ -83,6 +89,8 @@ def create_student_stage_path_result_repository(project_id: ProjectID):
 
 @cache  # インスタンス内部にキャッシュを持つのでプロジェクト内ステートフル
 def get_testcase_config_repository():
+    # Deprecated: incremental migration compatibility only.
+    # New code should use ProjectContainer.testcase_config_repository.
     return create_testcase_config_repository(require_current_project_id())
 
 
@@ -94,6 +102,8 @@ def create_testcase_config_repository(project_id: ProjectID):
 
 
 def get_storage_repository():
+    # Deprecated: incremental migration compatibility only.
+    # New code should use ProjectContainer.storage_repository.
     return create_storage_repository(require_current_project_id())
 
 
@@ -106,6 +116,8 @@ def create_storage_repository(project_id: ProjectID):
 
 # StudentExecutableRepository
 def get_student_executable_repository():
+    # Deprecated: incremental migration compatibility only.
+    # New code should use ProjectContainer.student_executable_repository.
     return create_student_executable_repository(require_current_project_id())
 
 
@@ -116,6 +128,8 @@ def create_student_executable_repository(project_id: ProjectID):
 
 
 def get_student_source_repository():
+    # Deprecated: incremental migration compatibility only.
+    # New code should use ProjectContainer.student_source_repository.
     return create_student_source_repository(require_current_project_id())
 
 
@@ -134,6 +148,8 @@ def get_test_source_repository():
 
 @cache  # インスタンス内部にロックを持つのでプロジェクト内ステートフル
 def get_student_mark_repository():
+    # Deprecated: incremental migration compatibility only.
+    # New code should use ProjectContainer.student_mark_repository.
     return create_student_mark_repository(require_current_project_id())
 
 

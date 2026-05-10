@@ -63,7 +63,8 @@ class Navigator(INavigator):
 
     def open_score_export_dialog(self, parent: QWidget) -> None:
         from control.dialog_score_export import ScoreExportDialog
-        dialog = ScoreExportDialog(parent)
+        assert self._current_project_container is not None
+        dialog = ScoreExportDialog(parent, project_container=self._current_project_container)
         dialog.exec_()
 
     def open_scoring_dialog(self, parent: QWidget) -> None:
@@ -82,7 +83,8 @@ class Navigator(INavigator):
 
     def open_testcase_list_edit_dialog(self, parent: QWidget) -> None:
         from control.dialog_testcase_list_edit import TestCaseListEditDialog
-        dialog = TestCaseListEditDialog(parent)
+        assert self._current_project_container is not None
+        dialog = TestCaseListEditDialog(parent, project_container=self._current_project_container)
         dialog.exec_()
 
     def _launch_new_project(self, new_project_config) -> QMainWindow | None:

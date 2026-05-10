@@ -6,10 +6,9 @@ from PyQt5.QtWidgets import QDialog, QHBoxLayout, QLabel, \
     QVBoxLayout, QPlainTextEdit, QPushButton, QLineEdit, QComboBox, \
     QFileDialog, QMessageBox
 
+from application.container import ProjectContainer
 from application.dependency.external_io import get_score_excel_io
-from application.dependency.service import get_current_project_get_service
-from application.dependency.usecase import get_student_list_id_usecase, \
-    get_student_mark_list_usecase, get_global_settings_get_usecase
+from application.dependency.usecase import get_global_settings_get_usecase
 from control.widget_horizontal_line import HorizontalLineWidget
 from domain.model.student_mark import StudentMark
 from domain.model.value import StudentID, TargetID
@@ -21,12 +20,13 @@ from util.app_logging import create_logger
 class ScoreExportDialog(QDialog):  # FIXME: usecase化
     _logger = create_logger()
 
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, project_container: ProjectContainer):
         super().__init__(parent)
+        self._project_container = project_container
 
-        self._student_ids: list[StudentID] = get_student_list_id_usecase().execute()
-        self._target_id: TargetID = get_current_project_get_service().execute().target_id
-        self._student_marks: list[StudentMark] = get_student_mark_list_usecase().execute()
+        self._student_ids: list[StudentID] = self._project_container.student_list_id_usecase.execute()
+        self._target_id: TargetID = self._project_container.current_project_repository.get().target_id
+        self._student_marks: list[StudentMark] = self._project_container.student_mark_list_usecase.execute()
 
         self._init_ui()
         self._init_signals()
