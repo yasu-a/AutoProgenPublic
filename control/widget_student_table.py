@@ -407,6 +407,14 @@ class _StudentObserver(QObject):
 
         self._student_id_mtime_mapping: dict[StudentID, StudentStageResultDiffSnapshot] = {}
         self._current_student_index = 0
+        self._stopped = False
+
+    def stop(self) -> None:
+        """監視タイマーを停止する。複数回呼ばれても安全。"""
+        if self._stopped:
+            return
+        self._stopped = True
+        self._timer.stop()
 
     @pyqtSlot()
     def _on_timer_timeout(self):
@@ -447,6 +455,7 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
                 student_ids=get_student_list_id_usecase().execute(),
             ),
         )
+
         # noinspection PyTypeChecker
         self._model = StudentTableModel(
             self,
@@ -493,6 +502,10 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
         index_begin = self._model.createIndex(i_row, 0)
         index_end = self._model.createIndex(i_row, self._model.columnCount() - 1)
         self.dataChanged(index_begin, index_end)
+
+    def shutdown(self) -> None:
+        """ウィジェット終了時の後片付けとして生徒監視を停止する。"""
+        self._student_observer.stop()
 
     def mouseMoveEvent(self, evt: QMouseEvent):
         # 特定のセルに来たらマウスカーソルの形を変える

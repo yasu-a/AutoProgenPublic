@@ -1,12 +1,14 @@
 from datetime import datetime
 
 from application.state.current_project import set_current_project_id
+from domain.model.project import Project
 from domain.model.value import ProjectID, TargetID
+from infra.io.project_base_folder_show_in_explorer import ProjectFolderShowInExplorerIO
+from infra.repository.app_version import AppVersionRepository
+from infra.repository.project import ProjectRepository
 from service.dto.project import ProjectConfigState
-from service.project import ProjectCreateService, ProjectBaseFolderShowService, \
-    ProjectFolderShowService, ProjectDeleteService, ProjectGetSizeQueryService, \
-    ProjectUpdateTimestampService, ProjectListIDQueryService, ProjectGetService, \
-    ProjectGetConfigStateQueryService
+from service.project import ProjectGetSizeQueryService, ProjectUpdateTimestampService, \
+    ProjectListIDQueryService, ProjectGetConfigStateQueryService
 from usecase.dto.project import NormalProjectSummary, ErrorProjectSummary
 
 
@@ -35,18 +37,25 @@ class ProjectCreateUseCase:
     def __init__(
             self,
             *,
-            project_create_service: ProjectCreateService,
+            project_repo: ProjectRepository,
+            app_version_repo: AppVersionRepository,
     ):
-        self._project_create_service = project_create_service
+        self._project_repo = project_repo
+        self._app_version_repo = app_version_repo
 
     def execute(self, project_name: str, target_number: int, zip_name: str) -> ProjectID:
         project_id = ProjectID(project_name)
         target_id = TargetID(target_number)
-        self._project_create_service.execute(
+        project = Project(
+            app_version=self._app_version_repo.get(),
             project_id=project_id,
             target_id=target_id,
+            created_at=datetime.now(),
             zip_name=zip_name,
+            open_at=datetime.now(),
+            is_initialized=False,
         )
+        self._project_repo.put(project)
         return project_id
 
 
@@ -54,12 +63,12 @@ class ProjectDeleteUseCase:
     def __init__(
             self,
             *,
-            project_delete_service: ProjectDeleteService,
+            project_repo: ProjectRepository,
     ):
-        self._project_delete_service = project_delete_service
+        self._project_repo = project_repo
 
     def execute(self, project_id: ProjectID) -> None:
-        self._project_delete_service.execute(project_id)
+        self._project_repo.delete(project_id)
 
 
 class ProjectGetSizeQueryUseCase:
@@ -97,11 +106,11 @@ class ProjectListRecentSummaryUseCase:
             *,
             project_list_id_query_service: ProjectListIDQueryService,
             project_get_config_state_query_service: ProjectGetConfigStateQueryService,
-            project_get_service: ProjectGetService,
+            project_repo: ProjectRepository,
     ):
         self._project_list_id_query_service = project_list_id_query_service
         self._project_get_config_state_query_service = project_get_config_state_query_service
-        self._project_get_service = project_get_service
+        self._project_repo = project_repo
 
     def execute(self) -> list[NormalProjectSummary]:
         project_ids = self._project_list_id_query_service.execute()
@@ -109,7 +118,7 @@ class ProjectListRecentSummaryUseCase:
         for project_id in project_ids:
             project_config_state = self._project_get_config_state_query_service.execute(project_id)
             if project_config_state == ProjectConfigState.NORMAL:
-                project = self._project_get_service.execute(project_id)
+                project = self._project_repo.get(project_id)
                 project_summary = NormalProjectSummary(
                     project_id=project.project_id,
                     target_number=int(project.target_id),
@@ -143,21 +152,21 @@ class ProjectBaseFolderShowUseCase:
     def __init__(
             self,
             *,
-            project_base_folder_show_service: ProjectBaseFolderShowService,
+            project_folder_show_in_explorer_io: ProjectFolderShowInExplorerIO,
     ):
-        self._project_base_folder_show_service = project_base_folder_show_service
+        self._project_folder_show_in_explorer_io = project_folder_show_in_explorer_io
 
     def execute(self) -> None:
-        self._project_base_folder_show_service.execute()
+        self._project_folder_show_in_explorer_io.show_base_folder()
 
 
 class ProjectFolderShowUseCase:
     def __init__(
             self,
             *,
-            project_folder_show_service: ProjectFolderShowService,
+            project_folder_show_in_explorer_io: ProjectFolderShowInExplorerIO,
     ):
-        self._project_folder_show_service = project_folder_show_service
+        self._project_folder_show_in_explorer_io = project_folder_show_in_explorer_io
 
     def execute(self, project_id: ProjectID) -> None:
-        self._project_folder_show_service.execute(project_id)
+        self._project_folder_show_in_explorer_io.show_folder(project_id)

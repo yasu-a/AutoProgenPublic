@@ -1,14 +1,14 @@
 from domain.model.value import StudentID
-from service.student_submission import StudentSubmissionFolderShowService
+from infra.io.student_folder_show_in_explorer import StudentFolderShowInExplorerIO
 
 
 class StudentSubmissionFolderShowUseCase:
     def __init__(
             self,
             *,
-            student_submission_folder_show_service: StudentSubmissionFolderShowService,
+            student_folder_show_in_explorer_io: StudentFolderShowInExplorerIO,
     ):
-        self._student_submission_folder_show_service = student_submission_folder_show_service
+        self._student_folder_show_in_explorer_io = student_folder_show_in_explorer_io
 
     def execute(self, student_id: StudentID) -> None:
-        self._student_submission_folder_show_service.execute(student_id)
+        self._student_folder_show_in_explorer_io.show_submission_folder(student_id)

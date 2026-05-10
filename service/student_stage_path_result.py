@@ -105,31 +105,6 @@ class StudentStageResultCheckTimestampQueryService:
         return self._student_stage_path_result_repo.get_timestamp(student_id)
 
 
-class StudentStageResultRollbackService:
-    # 与えられたステージ以降（与えられたステージ自身を含む）の結果生成をなかったことにする
-
-    def __init__(
-            self,
-            *,
-            student_stage_path_result_repo: StudentStagePathResultRepository,
-    ):
-        self._student_stage_path_result_repo = student_stage_path_result_repo
-
-    def execute(
-            self,
-            *,
-            student_id: StudentID,
-            stage_path: StagePath,
-            stage_type: type[AbstractStage],
-    ) -> None:
-        stage_path_result = self._student_stage_path_result_repo.get(student_id, stage_path)
-        for stage in reversed(stage_path):
-            stage_path_result.delete_result(stage)
-            if isinstance(stage, stage_type):
-                break
-        self._student_stage_path_result_repo.put(stage_path_result)
-
-
 class StudentStageResultClearService:
     # 生徒の結果データを全削除する
 

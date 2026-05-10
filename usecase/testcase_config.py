@@ -1,31 +1,31 @@
 from domain.model.testcase_config import TestCaseConfig
 from domain.model.value import TestCaseID
-from service.testcase_config import TestCaseConfigGetService, TestCaseConfigPutService, \
-    TestCaseConfigListIDSubService
+from infra.repository.testcase_config import TestCaseConfigRepository
+from service.testcase_config import TestCaseConfigListIDSubService
 
 
 class TestCaseConfigGetUseCase:
     def __init__(
             self,
             *,
-            testcase_config_get_service: TestCaseConfigGetService,
+            testcase_config_repo: TestCaseConfigRepository,
     ):
-        self._testcase_config_get_service = testcase_config_get_service
+        self._testcase_config_repo = testcase_config_repo
 
     def execute(self, testcase_id: TestCaseID) -> TestCaseConfig:
-        return self._testcase_config_get_service.execute(testcase_id)
+        return self._testcase_config_repo.get(testcase_id)
 
 
 class TestCaseConfigPutUseCase:
     def __init__(
             self,
             *,
-            testcase_config_put_service: TestCaseConfigPutService,
+            testcase_config_repo: TestCaseConfigRepository,
     ):
-        self._testcase_config_put_service = testcase_config_put_service
+        self._testcase_config_repo = testcase_config_repo
 
     def execute(self, testcase_config: TestCaseConfig) -> None:
-        self._testcase_config_put_service.execute(testcase_config)
+        self._testcase_config_repo.put(testcase_config)
 
 
 class TestCaseConfigListIDUseCase:
@@ -38,3 +38,15 @@ class TestCaseConfigListIDUseCase:
 
     def execute(self) -> list[TestCaseID]:
         return self._testcase_config_list_id_sub_service.execute()
+
+
+class TestCaseConfigDeleteUseCase:
+    def __init__(
+            self,
+            *,
+            testcase_config_repo: TestCaseConfigRepository,
+    ):
+        self._testcase_config_repo = testcase_config_repo
+
+    def execute(self, testcase_id: TestCaseID) -> None:
+        self._testcase_config_repo.delete(testcase_id)

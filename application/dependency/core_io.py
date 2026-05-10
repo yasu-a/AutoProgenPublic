@@ -1,5 +1,6 @@
 from application.dependency.path_provider import *
-from application.state.current_project import get_current_project_id
+from application.state.current_project import require_current_project_id
+from domain.model.value import ProjectID
 from infra.io.files.current_project import CurrentProjectCoreIO
 from infra.io.files.global_ import GlobalCoreIO
 from infra.io.files.project import ProjectCoreIO
@@ -15,10 +16,14 @@ def get_project_core_io():
     )
 
 
-def get_current_project_core_io():
+def create_current_project_core_io(project_id: ProjectID):
     return CurrentProjectCoreIO(
-        current_project_id=get_current_project_id(),
+        current_project_id=project_id,
         project_core_io=get_project_core_io(),
     )
+
+
+def get_current_project_core_io():
+    return create_current_project_core_io(require_current_project_id())
 
 

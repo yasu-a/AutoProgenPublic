@@ -1,8 +1,10 @@
 from functools import cache
 
 from application.dependency.core_io import *
-from application.dependency.external_io import get_project_database_io
+from application.dependency.external_io import create_project_database_io
 from application.dependency.path_provider import *
+from application.state.current_project import require_current_project_id
+from domain.model.value import ProjectID
 from infra.repository.app_version import AppVersionRepository
 from infra.repository.current_project import CurrentProjectRepository
 from infra.repository.global_settings import GlobalSettingsRepository
@@ -47,51 +49,79 @@ def get_project_repository():
 
 @cache  # インスタンス内部にキャッシュを持つのでプロジェクト内ステートフル
 def get_current_project_repository():
+    return create_current_project_repository(require_current_project_id())
+
+
+def create_current_project_repository(project_id: ProjectID):
     return CurrentProjectRepository(
-        current_project_id=get_current_project_id(),
+        current_project_id=project_id,
         project_repo=get_project_repository(),
     )
 
 
 @cache  # インスタンス内部にロックを持つのでプロジェクト内ステートフル
 def get_student_repository():
+    return create_student_repository(require_current_project_id())
+
+
+def create_student_repository(project_id: ProjectID):
     return StudentRepository(
-        project_database_io=get_project_database_io(),
+        project_database_io=create_project_database_io(project_id),
     )
 
 
 @cache  # プロジェクト内ステートフル
 def get_student_stage_path_result_repository():
+    return create_student_stage_path_result_repository(require_current_project_id())
+
+
+def create_student_stage_path_result_repository(project_id: ProjectID):
     return StudentStagePathResultRepository(
-        project_database_io=get_project_database_io(),
+        project_database_io=create_project_database_io(project_id),
     )
 
 
 @cache  # インスタンス内部にキャッシュを持つのでプロジェクト内ステートフル
 def get_testcase_config_repository():
+    return create_testcase_config_repository(require_current_project_id())
+
+
+def create_testcase_config_repository(project_id: ProjectID):
     return TestCaseConfigRepository(
-        testcase_config_path_provider=get_testcase_config_path_provider(),
-        current_project_core_io=get_current_project_core_io(),
+        testcase_config_path_provider=create_testcase_config_path_provider(project_id),
+        current_project_core_io=create_current_project_core_io(project_id),
     )
 
 
 def get_storage_repository():
+    return create_storage_repository(require_current_project_id())
+
+
+def create_storage_repository(project_id: ProjectID):
     return StorageRepository(
-        storage_path_provider=get_storage_path_provider(),
-        current_project_core_io=get_current_project_core_io(),
+        storage_path_provider=create_storage_path_provider(project_id),
+        current_project_core_io=create_current_project_core_io(project_id),
     )
 
 
 # StudentExecutableRepository
 def get_student_executable_repository():
+    return create_student_executable_repository(require_current_project_id())
+
+
+def create_student_executable_repository(project_id: ProjectID):
     return StudentExecutableRepository(
-        project_database_io=get_project_database_io(),
+        project_database_io=create_project_database_io(project_id),
     )
 
 
 def get_student_source_repository():
+    return create_student_source_repository(require_current_project_id())
+
+
+def create_student_source_repository(project_id: ProjectID):
     return StudentSourceRepository(
-        project_database_io=get_project_database_io(),
+        project_database_io=create_project_database_io(project_id),
     )
 
 
@@ -104,6 +134,10 @@ def get_test_source_repository():
 
 @cache  # インスタンス内部にロックを持つのでプロジェクト内ステートフル
 def get_student_mark_repository():
+    return create_student_mark_repository(require_current_project_id())
+
+
+def create_student_mark_repository(project_id: ProjectID):
     return StudentMarkRepository(
-        project_database_io=get_project_database_io(),
+        project_database_io=create_project_database_io(project_id),
     )

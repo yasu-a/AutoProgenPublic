@@ -163,7 +163,7 @@ class TestCaseConfigRepository:
 
     def delete(self, testcase_id: TestCaseID) -> None:
         with self.__lock():
-            del self._testcase_cache[testcase_id]
+            self._testcase_cache.pop(testcase_id, None)
 
             base_folder_fullpath = self._testcase_config_path_provider.testcase_folder_fullpath(
                 testcase_id=testcase_id,

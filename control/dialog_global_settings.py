@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import *
 from application.dependency.usecase import get_global_settings_get_usecase, \
     get_global_settings_put_usecase, get_test_compile_stage_usecase
 from control.dialog_compiler_search import CompilerSearchDialog
+from control.dialog_progress import AbstractProgressDialog
 from domain.model.global_settings import GlobalSettings
 from infra.io.compiler_location import is_compiler_location
 from res.icon import get_icon
@@ -276,8 +277,17 @@ class GlobalSettingsEditWidget(QWidget):
 
     @pyqtSlot(Path)
     def __w_compiler_tool_path_compile_test_requested(self, compiler_tool_fullpath: Path):
-        result = get_test_compile_stage_usecase().execute(
-            compiler_tool_fullpath=Path(compiler_tool_fullpath),
+        def task(*, progress_callback):
+            progress_callback("コンパイルテストを実行しています...")
+            return get_test_compile_stage_usecase().execute(
+                compiler_tool_fullpath=Path(compiler_tool_fullpath),
+            )
+
+        result = AbstractProgressDialog.run_blocking_task(
+            parent=self,  # type: ignore[arg-type]
+            title="コンパイルテスト",
+            initial_message="実行準備をしています...",
+            task_func=task,
         )
         if result.is_success:
             QMessageBox.information(

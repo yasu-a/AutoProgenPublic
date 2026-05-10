@@ -1,17 +1,12 @@
-import sys
+from typing import TYPE_CHECKING
 
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 from application.dependency.task import get_task_manager
-from application.dependency.usecase import get_current_project_summary_get_usecase, \
-    get_student_list_id_usecase, get_student_submission_folder_show_usecase
-from control.dialog_about import AboutDialog
-from control.dialog_global_settings import GlobalSettingsEditDialog
+from application.dependency.usecase import get_student_list_id_usecase, get_student_submission_folder_show_usecase
 from control.dialog_mark import MarkDialog
-from control.dialog_score_export import ScoreExportDialog
-from control.dialog_stop_tasks import StopTasksDialog
-from control.dialog_testcase_list_edit import TestCaseListEditDialog
+from control.dialog_progress import AbstractProgressDialog
 from control.task.clean_all_stage import CleanAllStagesStudentTask
 from control.task.run_stage import RunStagesStudentTask
 from control.widget_status_process_resource_usage import ProcessResourceUsageStatusBarWidget
@@ -23,18 +18,31 @@ from domain.model.value import StudentID
 from infra.task.task import AbstractStudentTask
 from util.app_logging import create_logger
 
+from control.interface_navigator import INavigator
+
+if TYPE_CHECKING:
+    from application.container import ProjectContainer
+
 
 class MainWindow(QMainWindow):
     _logger = create_logger()
 
-    def __init__(self, parent: QObject = None):
+    def __init__(
+            self,
+            parent: QObject = None,
+            *,
+            navigator: INavigator,
+            project_container: "ProjectContainer",
+    ):
         super().__init__(parent)
+        self._navigator = navigator
+        self._project_container = project_container
 
         self._init_ui()
         self._init_signals()
 
     def _init_ui(self):
-        project_summary = get_current_project_summary_get_usecase().execute()
+        project_summary = self._project_container.current_project_summary_get_usecase.execute()
 
         # noinspection PyUnresolvedReferences
         self.setWindowTitle(
@@ -106,11 +114,14 @@ class MainWindow(QMainWindow):
         dialog.set_state(dialog.states.create_state_by_student_id(student_id))
         dialog.exec_()
 
-    @classmethod
-    def __perform_stop_tasks(cls):
+    def __perform_stop_tasks(self):
         if not get_task_manager().is_empty():
-            dialog = StopTasksDialog()
-            dialog.exec_()
+            AbstractProgressDialog.run_blocking_task(
+                parent=self,
+                title="タスクの停止",
+                initial_message="停止処理を開始します...",
+                task_func=get_task_manager().terminate,
+            )
 
     @classmethod
     def __enqueue_student_tasks_if_not_run(cls, parent, task_cls: type[AbstractStudentTask]):
@@ -124,25 +135,9 @@ class MainWindow(QMainWindow):
                 )
             )
 
-    def __perform_reopen_project(self) -> None:
-        # noinspection PyTypeChecker
-        if QMessageBox.question(
-                self,
-                "プロジェクトを開く",
-                "別のプロジェクトを開きます。このプロジェクトを閉じてもよろしいですか？",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No,
-        ) != QMessageBox.Yes:
-            return
-        self.close()
-        self._logger.info("RESTARTING APP")
-        QProcess.startDetached(sys.executable, sys.argv)
-
     def __tool_bar_triggered(self, name):
         self._tool_bar.update_button_state(is_task_alive=True)
-        if name == "open-project":
-            self.__perform_reopen_project()
-        elif name == "run":
+        if name == "run":
             self.__enqueue_student_tasks_if_not_run(
                 parent=self,
                 task_cls=RunStagesStudentTask,
@@ -155,24 +150,28 @@ class MainWindow(QMainWindow):
                 task_cls=CleanAllStagesStudentTask,
             )
         elif name == "edit-settings":
-            dialog = GlobalSettingsEditDialog()
-            dialog.exec_()
+            # noinspection PyTypeChecker
+            self._navigator.open_setting_dialog(self)
         elif name == "edit-testcases":
             # noinspection PyTypeChecker
-            dialog = TestCaseListEditDialog(self)
-            dialog.exec_()
+            self._navigator.open_testcase_list_edit_dialog(self)
         elif name == "mark":
-            dialog = MarkDialog(self)
-            dialog.set_state(dialog.states.create_state_of_first_student())
-            dialog.exec_()
+            # noinspection PyTypeChecker
+            self._navigator.open_scoring_dialog(self)
         elif name == "export-scores":
-            dialog = ScoreExportDialog(self)
-            dialog.exec_()
+            # noinspection PyTypeChecker
+            self._navigator.open_score_export_dialog(self)
         elif name == "about":
-            dialog = AboutDialog(self)
-            dialog.exec_()
+            # noinspection PyTypeChecker
+            self._navigator.open_about_dialog(self)
         else:
             assert False, name
 
     def closeEvent(self, evt, **kwargs):
-        self.__perform_stop_tasks()
+        self._w_student_table.shutdown()
+        evt.accept()
+        # noinspection PyTypeChecker
+        QTimer.singleShot(
+            0,
+            lambda: self._navigator.transition_from_workspace_to_launcher(self),
+        )

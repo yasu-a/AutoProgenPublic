@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import *
 from application.dependency.usecase import get_project_list_recent_summary_usecase, \
     get_project_base_folder_show_usecase, get_project_folder_show_usecase, \
     get_project_delete_usecase, get_project_get_size_query_usecase
-from control.dialog_progress import AbstractProgressDialogWorker, AbstractProgressDialog
+from control.dialog_progress import AbstractProgressDialog
 from control.widget_clickable_label import ClickableLabel
 from domain.model.value import ProjectID
 from res.font import get_font
@@ -296,33 +296,6 @@ class _RecentProjectSizeFieldGetWorker(QThread):
             time.sleep(0.05)
 
 
-class _ProjectDeleteWorker(AbstractProgressDialogWorker):
-    def __init__(self, parent: QObject = None, *, project_id: ProjectID):
-        super().__init__(parent)
-
-        self._project_delete_usecase = get_project_delete_usecase()
-        self._project_id = project_id
-
-    def run(self):
-        self._callback("プロジェクトを削除しています・・・")
-        self._project_delete_usecase.execute(self._project_id)
-        time.sleep(0.5)  # プロジェクトのサイズが小さいとUIが一瞬で消えるので少し待つ
-
-
-class ProjectDeleteProgressDialog(AbstractProgressDialog):
-    # プロジェクトを削除しそのプログレスを表示するダイアログ
-
-    def __init__(self, parent: QObject = None, *, project_id: ProjectID):
-        super().__init__(
-            parent,
-            title="プロジェクトの削除",
-            worker_producer=lambda: _ProjectDeleteWorker(
-                self,  # type: ignore
-                project_id=project_id,
-            ),
-        )
-
-
 class RecentProjectWidget(QWidget):
     # noinspection PyArgumentList
     accepted = pyqtSignal(ProjectID)
@@ -405,7 +378,17 @@ class RecentProjectWidget(QWidget):
                 QMessageBox.No,
         ) == QMessageBox.No:
             return
-        ProjectDeleteProgressDialog(project_id=project_id).exec_()
+        def task(*, progress_callback):
+            progress_callback("プロジェクトを削除しています・・・")
+            get_project_delete_usecase().execute(project_id)
+            time.sleep(0.5)  # プロジェクトのサイズが小さいとUIが一瞬で消えるので少し待つ
+
+        _ = AbstractProgressDialog.run_blocking_task(
+            parent=self,
+            title="プロジェクトの削除",
+            initial_message="削除を開始しています...",
+            task_func=task,
+        )
         self.__update_list()
 
     @pyqtSlot()

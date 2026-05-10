@@ -6,7 +6,6 @@ from domain.error import ServiceError, ManabaReportArchiveIOError, StudentSubmis
 from domain.model.value import StudentID, TargetID
 from infra.io.files.current_project import CurrentProjectCoreIO
 from infra.io.report_archive import ManabaReportArchiveIO
-from infra.io.student_folder_show_in_explorer import StudentFolderShowInExplorerIO
 from infra.path_provider.current_project import StudentSubmissionPathProvider
 from infra.repository.current_project import CurrentProjectRepository
 from infra.repository.student import StudentRepository
@@ -104,21 +103,6 @@ class StudentSubmissionExtractService:
             raise StudentSubmissionServiceError(
                 reason=f"提出アーカイブの展開中にエラーが発生しました。\n{e.reason}",
             )
-
-
-class StudentSubmissionFolderShowService:
-    # 生徒の提出データが入ったフォルダをエクスプローラで開く
-
-    def __init__(
-            self,
-            *,
-            student_folder_show_in_explorer_io: StudentFolderShowInExplorerIO,
-    ):
-        self._student_folder_open_in_explorer_io = student_folder_show_in_explorer_io
-
-    def execute(self, student_id: StudentID):
-        self._student_folder_open_in_explorer_io.show_submission_folder(
-            student_id)
 
 
 class StudentSubmissionGetChecksumService:
