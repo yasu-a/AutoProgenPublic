@@ -7,7 +7,6 @@ def invalidate_cached_providers():
     from . import core_io
     from . import external_io
     from . import path_provider
-    from . import navigator
     from . import repository
     from . import service
     from . import task
@@ -17,7 +16,6 @@ def invalidate_cached_providers():
         core_io,
         external_io,
         path_provider,
-        navigator,
         repository,
         service,
         task,

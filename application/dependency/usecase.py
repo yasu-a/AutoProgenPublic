@@ -138,10 +138,6 @@ def get_project_check_exist_by_name_usecase():
     )
 
 
-def get_current_project_summary_get_usecase():
-    return create_current_project_summary_get_usecase(require_current_project_id())
-
-
 def create_current_project_summary_get_usecase(project_id: ProjectID):
     return CurrentProjectSummaryGetUseCase(
         current_project_get_service=create_current_project_get_service(project_id),

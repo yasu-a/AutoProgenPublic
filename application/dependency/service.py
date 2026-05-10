@@ -1,5 +1,5 @@
 from application.dependency.external_io import *
-from application.dependency.external_io import get_student_folder_show_in_explorer_io, create_student_folder_show_in_explorer_io
+from application.dependency.external_io import create_student_folder_show_in_explorer_io
 from application.dependency.repository import *
 from application.state.current_project import require_current_project_id
 from domain.model.value import ProjectID

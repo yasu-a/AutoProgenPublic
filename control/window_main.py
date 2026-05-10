@@ -1,9 +1,10 @@
+from typing import TYPE_CHECKING
+
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 from application.dependency.task import get_task_manager
-from application.dependency.usecase import get_current_project_summary_get_usecase, \
-    get_student_list_id_usecase, get_student_submission_folder_show_usecase
+from application.dependency.usecase import get_student_list_id_usecase, get_student_submission_folder_show_usecase
 from control.dialog_mark import MarkDialog
 from control.dialog_progress import AbstractProgressDialog
 from control.task.clean_all_stage import CleanAllStagesStudentTask
@@ -19,6 +20,9 @@ from util.app_logging import create_logger
 
 from control.interface_navigator import INavigator
 
+if TYPE_CHECKING:
+    from application.container import ProjectContainer
+
 
 class MainWindow(QMainWindow):
     _logger = create_logger()
@@ -28,15 +32,17 @@ class MainWindow(QMainWindow):
             parent: QObject = None,
             *,
             navigator: INavigator,
+            project_container: "ProjectContainer",
     ):
         super().__init__(parent)
         self._navigator = navigator
+        self._project_container = project_container
 
         self._init_ui()
         self._init_signals()
 
     def _init_ui(self):
-        project_summary = get_current_project_summary_get_usecase().execute()
+        project_summary = self._project_container.current_project_summary_get_usecase.execute()
 
         # noinspection PyUnresolvedReferences
         self.setWindowTitle(

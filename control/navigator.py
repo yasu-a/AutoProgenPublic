@@ -2,6 +2,7 @@ from typing import Callable
 
 from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QMessageBox, QWidget
 
+from application.container import AppContainer, ProjectContainer
 from application.dependency import invalidate_cached_providers
 from application.dependency.task import get_task_manager
 from application.dependency.usecase import get_project_create_usecase, \
@@ -15,16 +16,17 @@ from application.state.current_project import clear_current_project_id
 class Navigator(INavigator):
     # アプリ起動・トップレベル遷移を扱う最小Navigator
 
-    def __init__(self):
+    def __init__(self, *, app_container: AppContainer):
+        self._app_container = app_container
         self._current_window: QMainWindow | None = None
+        self._current_project_container: ProjectContainer | None = None
         self._handling_workspace_close = False
 
     def start(self) -> bool:
         return self.transition_to_launcher()
 
     def transition_from_launcher_to_workspace(self, project_id: ProjectID) -> QMainWindow:
-        self._open_project(project_id)
-        invalidate_cached_providers()
+        self._open_project_and_prepare_container(project_id)
         return self._show_main_window()
 
     def transition_from_workspace_to_launcher(self, current_window: QMainWindow) -> None:
@@ -37,6 +39,7 @@ class Navigator(INavigator):
             if self._current_window is current_window:
                 self._current_window = None
             self._perform_stop_tasks_if_needed(current_window)
+            self._current_project_container = None
             clear_current_project_id()
             invalidate_cached_providers()
         finally:
@@ -80,7 +83,7 @@ class Navigator(INavigator):
             target_number=new_project_config.target_number,
             zip_name=new_project_config.manaba_report_archive_fullpath.name,
         )
-        self._open_project(project_id)
+        self._open_project_and_prepare_container(project_id)
 
         result = AbstractProgressDialog.run_blocking_task(
             parent=None,  # type: ignore[arg-type]
@@ -105,10 +108,21 @@ class Navigator(INavigator):
     def _open_project(project_id: ProjectID) -> None:
         get_project_open_usecase().execute(project_id)
 
+    def _open_project_and_prepare_container(self, project_id: ProjectID) -> None:
+        self._open_project(project_id)
+        invalidate_cached_providers()
+        self._current_project_container = self._app_container.create_project_container(project_id)
+
     def _show_main_window(self) -> QMainWindow:
         from control.window_main import MainWindow
 
-        return self._replace_main_window(lambda: MainWindow(navigator=self))
+        assert self._current_project_container is not None
+        return self._replace_main_window(
+            lambda: MainWindow(
+                navigator=self,
+                project_container=self._current_project_container,
+            )
+        )
 
     def _show_welcome_dialog(self) -> bool:
         from control.dialog_welcome import WelcomeDialog

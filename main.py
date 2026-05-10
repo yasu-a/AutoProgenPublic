@@ -50,8 +50,9 @@ def create_app() -> "QApplication":
 
 
 def main():
-    from application.dependency.navigator import get_navigator
+    from application.container import AppContainer
     from application.state.debug import set_debug
+    from control.navigator import Navigator
 
     # 環境変数からデバッグ用の構成を用意
     app_logging.set_level(app_logging.INFO)
@@ -66,7 +67,8 @@ def main():
     app = create_app()
     app.setQuitOnLastWindowClosed(False)
 
-    navigator = get_navigator()
+    app_container = AppContainer()
+    navigator = Navigator(app_container=app_container)
     if navigator.start():
         sys.exit(app.exec_())
 
