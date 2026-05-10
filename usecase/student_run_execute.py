@@ -5,6 +5,7 @@ from domain.model.stage_path import StagePath
 from domain.model.student_stage_result import ExecuteFailureStudentStageResult, \
     ExecuteSuccessStudentStageResult
 from domain.model.value import StudentID
+from infra.repository.testcase_config import TestCaseConfigRepository
 from service.dto.storage_diff_snapshot import StorageDiff
 from service.storage import StorageCreateService, StorageDeleteService, \
     StorageLoadStudentExecutableService, StorageLoadExecuteConfigInputFilesService, \
@@ -12,8 +13,7 @@ from service.storage import StorageCreateService, StorageDeleteService, \
     StorageTakeSnapshotService
 from service.storage_run_executable import StorageRunExecutableService
 from service.student_stage_path_result import StudentPutStageResultService
-from service.testcase_config import TestCaseConfigGetExecuteConfigMtimeService, \
-    TestCaseConfigGetExecuteOptionsService
+from service.testcase_config import TestCaseConfigGetExecuteConfigMtimeService
 from util.app_logging import create_logger
 
 
@@ -31,7 +31,7 @@ class StudentRunExecuteStageUseCase:
             student_put_stage_result_service: StudentPutStageResultService,
             testcase_config_get_execute_config_mtime_service: TestCaseConfigGetExecuteConfigMtimeService,
             storage_run_executable_service: StorageRunExecutableService,
-            testcase_config_get_execute_options_service: TestCaseConfigGetExecuteOptionsService,
+            testcase_config_repo: TestCaseConfigRepository,
             storage_create_output_file_mapping_from_diff_service: StorageCreateOutputFileCollectionFromDiffService,
             storage_write_stdout_file_service: StorageWriteStdoutFileService,
     ):
@@ -51,8 +51,7 @@ class StudentRunExecuteStageUseCase:
             = testcase_config_get_execute_config_mtime_service
         self._storage_run_executable_service \
             = storage_run_executable_service
-        self._testcase_config_get_execute_options_service \
-            = testcase_config_get_execute_options_service
+        self._testcase_config_repo = testcase_config_repo
         self._storage_create_output_file_mapping_from_diff_service \
             = storage_create_output_file_mapping_from_diff_service
         self._storage_write_stdout_file_service \
@@ -83,9 +82,9 @@ class StudentRunExecuteStageUseCase:
         )
 
         # 実行オプションを取得
-        execute_options = self._testcase_config_get_execute_options_service.execute(
+        execute_options = self._testcase_config_repo.get(
             testcase_id=stage_path.testcase_id,
-        )
+        ).execute_config.options
 
         # 実行
         try:

@@ -1,16 +1,11 @@
 from application.dependency.external_io import *
-from application.dependency.external_io import create_student_folder_show_in_explorer_io
 from application.dependency.repository import *
 from application.state.current_project import require_current_project_id
 from domain.model.value import ProjectID
-from service.app_version import AppVersionGetService
 from service.current_project import CurrentProjectGetService, CurrentProjectSetInitializedService
-from service.global_settings import GlobalSettingsGetService, GlobalSettingsPutService
 from service.match import MatchGetBestService
-from service.project import ProjectCreateService, ProjectBaseFolderShowService, \
-    ProjectFolderShowService, ProjectDeleteService, ProjectGetSizeQueryService, \
-    ProjectUpdateTimestampService, ProjectGetConfigStateQueryService, ProjectListIDQueryService, \
-    ProjectGetService
+from service.project import ProjectGetSizeQueryService, ProjectUpdateTimestampService, \
+    ProjectGetConfigStateQueryService, ProjectListIDQueryService
 from service.stage_path import StagePathListSubService, StagePathGetByTestCaseIDService
 from service.storage import StorageLoadTestSourceService, \
     StorageCreateService, StorageDeleteService, StorageLoadStudentSourceService, \
@@ -30,33 +25,12 @@ from service.student_stage_path_result import StudentStagePathResultGetService, 
     StudentStageResultRollbackService, StudentStageResultClearService, StudentPutStageResultService, \
     StudentGetStageResultService
 from service.student_submission import StudentSubmissionExistService, \
-    StudentSubmissionExtractService, StudentSubmissionFolderShowService, \
+    StudentSubmissionExtractService, \
     StudentSubmissionGetChecksumService, StudentSubmissionListSourceRelativePathQueryService, \
     StudentSubmissionGetFileContentQueryService, StudentSubmissionGetSourceContentService
 from service.testcase_config import TestCaseConfigListIDSubService, \
     TestCaseConfigGetExecuteConfigMtimeService, TestCaseConfigGetTestConfigMtimeService, \
-    TestCaseConfigDeleteService, TestCaseConfigGetExecuteOptionsService, \
-    TestCaseConfigGetTestOptionsService, TestCaseConfigGetService, TestCaseConfigPutService, \
     TestCaseConfigCopyService
-
-
-def get_global_settings_get_service():
-    return GlobalSettingsGetService(
-        global_settings_repo=get_global_settings_repository(),
-    )
-
-
-def get_global_settings_put_service():
-    return GlobalSettingsPutService(
-        global_settings_repo=get_global_settings_repository(),
-    )
-
-
-# AppVersionGetService
-def get_app_version_get_service():
-    return AppVersionGetService(
-        app_version_repo=get_app_version_repository(),
-    )
 
 
 # ProjectGetConfigStateQueryService
@@ -64,7 +38,7 @@ def get_project_get_config_state_query_service():
     return ProjectGetConfigStateQueryService(
         project_path_provider=get_project_path_provider(),
         project_core_io=get_project_core_io(),
-        app_version_get_service=get_app_version_get_service(),
+        app_version_repo=get_app_version_repository(),
     )
 
 
@@ -75,29 +49,9 @@ def get_project_list_id_query_service():
     )
 
 
-def get_project_get_service():
-    return ProjectGetService(
-        project_repo=get_project_repository(),
-    )
-
-
-def get_project_create_service():
-    return ProjectCreateService(
-        project_repo=get_project_repository(),
-        app_version_get_service=get_app_version_get_service(),
-    )
-
-
 # ProjectUpdateTimestampService
 def get_project_update_timestamp_service():
     return ProjectUpdateTimestampService(
-        project_repo=get_project_repository(),
-    )
-
-
-# ProjectDeleteService
-def get_project_delete_service():
-    return ProjectDeleteService(
         project_repo=get_project_repository(),
     )
 
@@ -107,20 +61,6 @@ def get_project_get_size_query_service():
     return ProjectGetSizeQueryService(
         project_path_provider=get_project_path_provider(),
         project_core_io=get_project_core_io(),
-    )
-
-
-# ProjectBaseFolderShowService
-def get_project_base_folder_show_service():
-    return ProjectBaseFolderShowService(
-        project_folder_show_in_explorer_io=get_project_folder_show_in_explorer_io(),
-    )
-
-
-# ProjectFolderShowService
-def get_project_folder_show_service():
-    return ProjectFolderShowService(
-        project_folder_show_in_explorer_io=get_project_folder_show_in_explorer_io(),
     )
 
 
@@ -185,16 +125,6 @@ def get_student_list_sub_service():
 def create_student_list_sub_service(project_id: ProjectID):
     return StudentListSubService(
         student_repo=create_student_repository(project_id),
-    )
-
-
-def get_student_submission_folder_show_service():
-    return create_student_submission_folder_show_service(require_current_project_id())
-
-
-def create_student_submission_folder_show_service(project_id: ProjectID):
-    return StudentSubmissionFolderShowService(
-        student_folder_show_in_explorer_io=create_student_folder_show_in_explorer_io(project_id),
     )
 
 
@@ -482,28 +412,6 @@ def create_student_get_stage_result_service(project_id: ProjectID):
     )
 
 
-# TestCaseConfigGetService
-def get_testcase_config_get_service():
-    return create_testcase_config_get_service(require_current_project_id())
-
-
-def create_testcase_config_get_service(project_id: ProjectID):
-    return TestCaseConfigGetService(
-        testcase_config_repo=create_testcase_config_repository(project_id),
-    )
-
-
-# TestCaseConfigPutService
-def get_testcase_config_put_service():
-    return create_testcase_config_put_service(require_current_project_id())
-
-
-def create_testcase_config_put_service(project_id: ProjectID):
-    return TestCaseConfigPutService(
-        testcase_config_repo=create_testcase_config_repository(project_id),
-    )
-
-
 # TestCaseConfigCopyService
 def get_testcase_config_copy_service():
     return create_testcase_config_copy_service(require_current_project_id())
@@ -511,28 +419,6 @@ def get_testcase_config_copy_service():
 
 def create_testcase_config_copy_service(project_id: ProjectID):
     return TestCaseConfigCopyService(
-        testcase_config_repo=create_testcase_config_repository(project_id),
-    )
-
-
-# TestCaseConfigGetExecuteOptionsService
-def get_testcase_config_get_execute_options_service():
-    return create_testcase_config_get_execute_options_service(require_current_project_id())
-
-
-def create_testcase_config_get_execute_options_service(project_id: ProjectID):
-    return TestCaseConfigGetExecuteOptionsService(
-        testcase_config_repo=create_testcase_config_repository(project_id),
-    )
-
-
-# TestCaseConfigGetTestOptionsService
-def get_testcase_config_get_test_options_service():
-    return create_testcase_config_get_test_options_service(require_current_project_id())
-
-
-def create_testcase_config_get_test_options_service(project_id: ProjectID):
-    return TestCaseConfigGetTestOptionsService(
         testcase_config_repo=create_testcase_config_repository(project_id),
     )
 
@@ -555,16 +441,6 @@ def get_testcase_config_get_test_config_mtime_service():
 
 def create_testcase_config_get_test_config_mtime_service(project_id: ProjectID):
     return TestCaseConfigGetTestConfigMtimeService(
-        testcase_config_repo=create_testcase_config_repository(project_id),
-    )
-
-
-def get_testcase_config_delete_service():
-    return create_testcase_config_delete_service(require_current_project_id())
-
-
-def create_testcase_config_delete_service(project_id: ProjectID):
-    return TestCaseConfigDeleteService(
         testcase_config_repo=create_testcase_config_repository(project_id),
     )
 

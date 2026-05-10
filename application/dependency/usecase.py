@@ -30,7 +30,7 @@ from usecase.student_table_cell_data import StudentTableGetStudentIDCellDataUseC
 from usecase.test_compile_stage import TestCompileStageUseCase
 from usecase.test_test_stage import TestTestStageUseCase
 from usecase.testcase_config import TestCaseConfigGetUseCase, TestCaseConfigPutUseCase, \
-    TestCaseConfigListIDUseCase
+    TestCaseConfigListIDUseCase, TestCaseConfigDeleteUseCase
 from usecase.testcase_list_edit import TestCaseListEditListSummaryUseCase, \
     TestCaseListEditCreateNewNameUseCase, TestCaseListEditCreateTestCaseUseCase, \
     TestCaseListEditCopyTestCaseUseCase
@@ -38,27 +38,27 @@ from usecase.testcase_list_edit import TestCaseListEditListSummaryUseCase, \
 
 def get_global_settings_get_usecase():
     return GlobalSettingsGetUseCase(
-        global_settings_get_service=get_global_settings_get_service(),
+        global_settings_repo=get_global_settings_repository(),
     )
 
 
 def get_global_settings_put_usecase():
     return GlobalSettingsPutUseCase(
-        global_settings_put_service=get_global_settings_put_service(),
+        global_settings_repo=get_global_settings_repository(),
     )
 
 
 # AppVersionGetTextUseCase
 def get_app_version_get_text_usecase():
     return AppVersionGetTextUseCase(
-        app_version_get_service=get_app_version_get_service(),
+        app_version_repo=get_app_version_repository(),
     )
 
 
 # AppVersionCheckIsStableUseCase
 def get_app_version_check_is_stable_usecase():
     return AppVersionCheckIsStableUseCase(
-        app_version_get_service=get_app_version_get_service(),
+        app_version_repo=get_app_version_repository(),
     )
 
 
@@ -66,34 +66,35 @@ def get_project_list_recent_summary_usecase():
     return ProjectListRecentSummaryUseCase(
         project_list_id_query_service=get_project_list_id_query_service(),
         project_get_config_state_query_service=get_project_get_config_state_query_service(),
-        project_get_service=get_project_get_service(),
+        project_repo=get_project_repository(),
     )
 
 
 # ProjectBaseFolderShowUseCase
 def get_project_base_folder_show_usecase():
     return ProjectBaseFolderShowUseCase(
-        project_base_folder_show_service=get_project_base_folder_show_service(),
+        project_folder_show_in_explorer_io=get_project_folder_show_in_explorer_io(),
     )
 
 
 # ProjectFolderShowUseCase
 def get_project_folder_show_usecase():
     return ProjectFolderShowUseCase(
-        project_folder_show_service=get_project_folder_show_service(),
+        project_folder_show_in_explorer_io=get_project_folder_show_in_explorer_io(),
     )
 
 
 def get_project_create_usecase():
     return ProjectCreateUseCase(
-        project_create_service=get_project_create_service(),
+        project_repo=get_project_repository(),
+        app_version_repo=get_app_version_repository(),
     )
 
 
 # ProjectDeleteUseCase
 def get_project_delete_usecase():
     return ProjectDeleteUseCase(
-        project_delete_service=get_project_delete_service(),
+        project_repo=get_project_repository(),
     )
 
 
@@ -160,7 +161,7 @@ def get_student_submission_folder_show_usecase():
 
 def create_student_submission_folder_show_usecase(project_id: ProjectID):
     return StudentSubmissionFolderShowUseCase(
-        student_submission_folder_show_service=create_student_submission_folder_show_service(project_id),
+        student_folder_show_in_explorer_io=create_student_folder_show_in_explorer_io(project_id),
     )
 
 
@@ -274,7 +275,7 @@ def create_student_run_execute_stage_usecase(project_id: ProjectID):
         storage_delete_service=create_storage_delete_service(project_id),
         testcase_config_get_execute_config_mtime_service=create_testcase_config_get_execute_config_mtime_service(project_id),
         storage_run_executable_service=create_storage_run_executable_service(project_id),
-        testcase_config_get_execute_options_service=create_testcase_config_get_execute_options_service(project_id),
+        testcase_config_repo=create_testcase_config_repository(project_id),
         storage_create_output_file_mapping_from_diff_service=create_storage_create_output_file_mapping_from_diff_service(project_id),
         storage_write_stdout_file_service=create_storage_write_stdout_file_service(project_id),
         student_put_stage_result_service=create_student_put_stage_result_service(project_id),
@@ -288,7 +289,7 @@ def get_student_run_test_stage_usecase():
 
 def create_student_run_test_stage_usecase(project_id: ProjectID):
     return StudentRunTestStageUseCase(
-        testcase_config_get_service=create_testcase_config_get_service(project_id),
+        testcase_config_repo=create_testcase_config_repository(project_id),
         testcase_config_get_test_config_mtime_service=create_testcase_config_get_test_config_mtime_service(project_id),
         match_get_best_service=get_match_get_best_service(),
         student_put_stage_result_service=create_student_put_stage_result_service(project_id),
@@ -387,7 +388,7 @@ def get_testcase_config_get_usecase():
 
 def create_testcase_config_get_usecase(project_id: ProjectID):
     return TestCaseConfigGetUseCase(
-        testcase_config_get_service=create_testcase_config_get_service(project_id),
+        testcase_config_repo=create_testcase_config_repository(project_id),
     )
 
 
@@ -398,7 +399,17 @@ def get_testcase_config_put_usecase():
 
 def create_testcase_config_put_usecase(project_id: ProjectID):
     return TestCaseConfigPutUseCase(
-        testcase_config_put_service=create_testcase_config_put_service(project_id),
+        testcase_config_repo=create_testcase_config_repository(project_id),
+    )
+
+
+def get_testcase_config_delete_usecase():
+    return create_testcase_config_delete_usecase(require_current_project_id())
+
+
+def create_testcase_config_delete_usecase(project_id: ProjectID):
+    return TestCaseConfigDeleteUseCase(
+        testcase_config_repo=create_testcase_config_repository(project_id),
     )
 
 

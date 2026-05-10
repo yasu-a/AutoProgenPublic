@@ -1,26 +1,26 @@
 from domain.model.global_settings import GlobalSettings
-from service.global_settings import GlobalSettingsGetService, GlobalSettingsPutService
+from infra.repository.global_settings import GlobalSettingsRepository
 
 
 class GlobalSettingsGetUseCase:
     def __init__(
             self,
             *,
-            global_settings_get_service: GlobalSettingsGetService,
+            global_settings_repo: GlobalSettingsRepository,
     ):
-        self._global_settings_get_service = global_settings_get_service
+        self._global_settings_repo = global_settings_repo
 
     def execute(self) -> GlobalSettings:
-        return self._global_settings_get_service.execute()
+        return self._global_settings_repo.get()
 
 
 class GlobalSettingsPutUseCase:
     def __init__(
             self,
             *,
-            global_settings_put_service: GlobalSettingsPutService,
+            global_settings_repo: GlobalSettingsRepository,
     ):
-        self._global_settings_put_service = global_settings_put_service
+        self._global_settings_repo = global_settings_repo
 
     def execute(self, global_settings: GlobalSettings) -> None:
-        self._global_settings_put_service.execute(global_settings)
+        self._global_settings_repo.put(global_settings)

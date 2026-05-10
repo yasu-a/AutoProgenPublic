@@ -1,10 +1,9 @@
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from application.dependency.service import get_testcase_config_delete_service
 from application.dependency.usecase import get_testcase_list_edit_list_summary_usecase, \
     get_testcase_list_edit_create_new_name_usecase, get_testcase_list_edit_create_testcase_usecase, \
-    get_testcase_list_edit_copy_testcase_usecase
+    get_testcase_list_edit_copy_testcase_usecase, get_testcase_config_delete_usecase
 from control.dialog_testcase_config_edit import TestCaseConfigEditDialog
 from control.widget_button_box import ButtonBox
 from domain.error import UseCaseError
@@ -151,7 +150,7 @@ class TestCaseListEditWidget(QWidget):
         )
         if res != QMessageBox.Yes:
             return
-        get_testcase_config_delete_service().execute(testcase_id)
+        get_testcase_config_delete_usecase().execute(testcase_id)
         self.testcase_modified.emit()
 
     @pyqtSlot(TestCaseID)

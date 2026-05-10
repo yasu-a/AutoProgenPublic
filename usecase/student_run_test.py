@@ -8,24 +8,24 @@ from domain.model.test_result_output_file_entry import TestResultTestedOutputFil
     TestResultAbsentOutputFileEntry, TestResultUnexpectedOutputFileEntry
 from domain.model.value import FileID
 from domain.model.value import StudentID
+from infra.repository.testcase_config import TestCaseConfigRepository
 from service.match import MatchGetBestService
 from service.student_stage_path_result import StudentPutStageResultService, \
     StudentGetStageResultService
-from service.testcase_config import TestCaseConfigGetTestConfigMtimeService, \
-    TestCaseConfigGetService
+from service.testcase_config import TestCaseConfigGetTestConfigMtimeService
 
 
 class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestServiceを分離
     def __init__(
             self,
             *,
-            testcase_config_get_service: TestCaseConfigGetService,
+            testcase_config_repo: TestCaseConfigRepository,
             student_put_stage_result_service: StudentPutStageResultService,
             student_get_stage_result_service: StudentGetStageResultService,
             testcase_config_get_test_config_mtime_service: TestCaseConfigGetTestConfigMtimeService,
             match_get_best_service: MatchGetBestService,
     ):
-        self._testcase_config_get_service = testcase_config_get_service
+        self._testcase_config_repo = testcase_config_repo
         self._student_put_stage_result_service = student_put_stage_result_service
         self._student_get_stage_result_service = student_get_stage_result_service
         self._testcase_config_get_test_config_mtime_service = testcase_config_get_test_config_mtime_service
@@ -50,7 +50,7 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
             assert isinstance(execute_result, ExecuteSuccessStudentStageResult)
 
             # テストケースのテスト構成を読み込む
-            test_config = self._testcase_config_get_service.execute(
+            test_config = self._testcase_config_repo.get(
                 testcase_id=stage_path.testcase_id,
             ).test_config
 
