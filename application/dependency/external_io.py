@@ -1,4 +1,6 @@
 from application.dependency.path_provider import *
+from application.state.current_project import require_current_project_id
+from domain.model.value import ProjectID
 from infra.io.compile_tool import CompileToolIO
 from infra.io.executable import ExecutableIO
 from infra.io.project_base_folder_show_in_explorer import ProjectFolderShowInExplorerIO
@@ -30,8 +32,12 @@ def get_score_excel_io(excel_fullpath: Path):
 
 
 def get_student_folder_show_in_explorer_io():
+    return create_student_folder_show_in_explorer_io(require_current_project_id())
+
+
+def create_student_folder_show_in_explorer_io(project_id: ProjectID):
     return StudentFolderShowInExplorerIO(
-        student_submission_path_provider=get_student_submission_path_provider(),
+        student_submission_path_provider=create_student_submission_path_provider(project_id),
     )
 
 
@@ -41,10 +47,14 @@ def get_project_folder_show_in_explorer_io():
     )
 
 
-def get_project_database_io():
+def create_project_database_io(project_id: ProjectID):
     return ProjectDatabaseIO(
-        database_path_provider=get_database_path_provider(),
+        database_path_provider=create_database_path_provider(project_id),
     )
+
+
+def get_project_database_io():
+    return create_project_database_io(require_current_project_id())
 
 
 def get_resource_usage_io():

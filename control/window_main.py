@@ -176,6 +176,7 @@ class MainWindow(QMainWindow):
             assert False, name
 
     def closeEvent(self, evt, **kwargs):
+        self._w_student_table.shutdown()
         evt.accept()
         # noinspection PyTypeChecker
         QTimer.singleShot(
