@@ -4,7 +4,6 @@ _logger = create_logger()
 
 
 def invalidate_cached_providers():
-    from . import cache
     from . import core_io
     from . import external_io
     from . import path_provider
@@ -15,7 +14,6 @@ def invalidate_cached_providers():
     from . import usecase
 
     modules = [
-        cache,
         core_io,
         external_io,
         path_provider,
