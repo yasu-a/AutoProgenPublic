@@ -1,16 +1,17 @@
 from functools import cached_property
-from typing import TYPE_CHECKING
 
-from application.dependency.usecase import create_current_project_summary_get_usecase
+from application.dependency.usecase import create_current_project_summary_get_usecase, \
+    create_student_list_id_usecase, create_student_table_get_student_id_cell_data_usecase, \
+    create_student_table_get_student_name_cell_data_usecase, \
+    create_student_table_get_student_stage_state_cell_data_usecase, \
+    create_student_table_get_student_error_cell_data_usecase, \
+    create_student_dynamic_take_diff_snapshot_usecase, create_student_mark_get_usecase, \
+    create_student_submission_folder_show_usecase
 from domain.model.value import ProjectID
-
-if TYPE_CHECKING:
-    from application.container.app import AppContainer
 
 
 class ProjectContainer:
-    def __init__(self, *, app_container: "AppContainer", project_id: ProjectID) -> None:
-        self._app = app_container
+    def __init__(self, *, project_id: ProjectID) -> None:
         self._project_id = project_id
 
     @property
@@ -20,3 +21,35 @@ class ProjectContainer:
     @cached_property
     def current_project_summary_get_usecase(self):
         return create_current_project_summary_get_usecase(self._project_id)
+
+    @cached_property
+    def student_list_id_usecase(self):
+        return create_student_list_id_usecase(self._project_id)
+
+    @cached_property
+    def student_table_get_student_id_cell_data_usecase(self):
+        return create_student_table_get_student_id_cell_data_usecase(self._project_id)
+
+    @cached_property
+    def student_table_get_student_name_cell_data_usecase(self):
+        return create_student_table_get_student_name_cell_data_usecase(self._project_id)
+
+    @cached_property
+    def student_table_get_student_stage_state_cell_data_usecase(self):
+        return create_student_table_get_student_stage_state_cell_data_usecase(self._project_id)
+
+    @cached_property
+    def student_table_get_student_error_cell_data_usecase(self):
+        return create_student_table_get_student_error_cell_data_usecase(self._project_id)
+
+    @cached_property
+    def student_dynamic_take_diff_snapshot_usecase(self):
+        return create_student_dynamic_take_diff_snapshot_usecase(self._project_id)
+
+    @cached_property
+    def student_mark_get_usecase(self):
+        return create_student_mark_get_usecase(self._project_id)
+
+    @cached_property
+    def student_submission_folder_show_usecase(self):
+        return create_student_submission_folder_show_usecase(self._project_id)

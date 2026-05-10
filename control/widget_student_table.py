@@ -1,18 +1,12 @@
 from collections import defaultdict
 from contextlib import contextmanager
 from functools import cache
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, TYPE_CHECKING
 
 from PyQt5.QtCore import *
 from PyQt5.QtGui import QColor, QFont, QMouseEvent
 from PyQt5.QtWidgets import *
 
-from application.dependency.usecase import get_student_list_id_usecase, \
-    get_student_table_get_student_id_cell_data_usecase, \
-    get_student_table_get_student_name_cell_data_usecase, \
-    get_student_table_get_student_stage_state_cell_data_usecase, \
-    get_student_table_get_student_error_cell_data_usecase, \
-    get_student_dynamic_take_diff_snapshot_usecase, get_student_mark_get_usecase
 from control.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
 from domain.model.stage import BuildStage, CompileStage, ExecuteStage, TestStage
 from domain.model.value import StudentID
@@ -20,6 +14,9 @@ from res.font import get_font
 from usecase.dto.student_stage_result_diff_snapshot import StudentStageResultDiffSnapshot
 from usecase.dto.student_table_cell_data import StudentStageStateCellDataStageState
 from util.app_logging import create_logger
+
+if TYPE_CHECKING:
+    from application.container import ProjectContainer
 
 
 class StudentTableColumns:
@@ -83,6 +80,10 @@ class AbstractStudentTableModelDataProvider:
 class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     _logger = create_logger()
 
+    def __init__(self, *, student_ids: list[StudentID], project_container: "ProjectContainer"):
+        super().__init__(student_ids)
+        self._project_container = project_container
+
     @classmethod
     @cache
     def _font_link_text(cls, *, monospace: bool) -> QFont:
@@ -111,16 +112,16 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     )
     def get_data_of_student_id_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            cell_data = get_student_table_get_student_id_cell_data_usecase().execute(student_id)
+            cell_data = self._project_container.student_table_get_student_id_cell_data_usecase.execute(student_id)
             return cell_data.student_number
         elif role == Qt.FontRole:
-            cell_data = get_student_table_get_student_id_cell_data_usecase().execute(student_id)
+            cell_data = self._project_container.student_table_get_student_id_cell_data_usecase.execute(student_id)
             if cell_data.is_submission_folder_link_alive:
                 return self._font_link_text(monospace=True)
             else:
                 return self._font_dead_link_text(monospace=True)
         elif role == Qt.ForegroundRole:
-            cell_data = get_student_table_get_student_id_cell_data_usecase().execute(student_id)
+            cell_data = self._project_container.student_table_get_student_id_cell_data_usecase.execute(student_id)
             if cell_data.is_submission_folder_link_alive:
                 return self._foreground_link_text()
             else:
@@ -133,7 +134,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     )
     def get_data_of_student_name_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            cell_data = get_student_table_get_student_name_cell_data_usecase().execute(student_id)
+            cell_data = self._project_container.student_table_get_student_name_cell_data_usecase.execute(student_id)
             return cell_data.student_name
         else:
             return None
@@ -163,7 +164,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     )
     def get_data_of_stage_build_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            cell_data = get_student_table_get_student_stage_state_cell_data_usecase().execute(
+            cell_data = self._project_container.student_table_get_student_stage_state_cell_data_usecase.execute(
                 student_id=student_id,
                 stage_type=BuildStage,
             )
@@ -182,7 +183,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     )
     def get_data_of_stage_compile_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            cell_data = get_student_table_get_student_stage_state_cell_data_usecase().execute(
+            cell_data = self._project_container.student_table_get_student_stage_state_cell_data_usecase.execute(
                 student_id=student_id,
                 stage_type=CompileStage,
             )
@@ -201,7 +202,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     )
     def get_data_of_stage_execute_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            cell_data = get_student_table_get_student_stage_state_cell_data_usecase().execute(
+            cell_data = self._project_container.student_table_get_student_stage_state_cell_data_usecase.execute(
                 student_id=student_id,
                 stage_type=ExecuteStage,
             )
@@ -220,7 +221,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     )
     def get_data_of_stage_test_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            cell_data = get_student_table_get_student_stage_state_cell_data_usecase().execute(
+            cell_data = self._project_container.student_table_get_student_stage_state_cell_data_usecase.execute(
                 student_id=student_id,
                 stage_type=TestStage,
             )
@@ -239,7 +240,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     )
     def get_data_of_error_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            cell_data = get_student_table_get_student_error_cell_data_usecase().execute(
+            cell_data = self._project_container.student_table_get_student_error_cell_data_usecase.execute(
                 student_id=student_id,
             )
             aggregated_text_entries = cell_data.aggregate_text_entries()
@@ -251,7 +252,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
                 return aggregated_text_entries[0].summary_text \
                     + f"（他{len(aggregated_text_entries) - 1}件のエラー）"
         elif role == Qt.ToolTipRole:
-            cell_data = get_student_table_get_student_error_cell_data_usecase().execute(
+            cell_data = self._project_container.student_table_get_student_error_cell_data_usecase.execute(
                 student_id=student_id,
             )
             aggregated_text_entries = cell_data.aggregate_text_entries()
@@ -270,7 +271,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     )
     def get_data_of_mark_result_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            student_mark = get_student_mark_get_usecase().execute(
+            student_mark = self._project_container.student_mark_get_usecase.execute(
                 student_id=student_id,
             )
             if student_mark.is_marked:
@@ -393,11 +394,14 @@ class _StudentObserver(QObject):
             for student_id in student_ids:
                 yield student_id
 
-    def __init__(self, parent: QObject):
+    def __init__(self, parent: QObject, *, project_container: "ProjectContainer"):
         super().__init__(parent)
+        self._project_container = project_container
 
         self._student_id_iter = iter(
-            self.__student_id_cyclic_iterator(get_student_list_id_usecase().execute())
+            self.__student_id_cyclic_iterator(
+                self._project_container.student_list_id_usecase.execute()
+            )
         )
 
         self._timer = QTimer(self)
@@ -422,7 +426,7 @@ class _StudentObserver(QObject):
         student_id = next(self._student_id_iter)
 
         # スナップショットを取得
-        new_snapshot = get_student_dynamic_take_diff_snapshot_usecase().execute(student_id)
+        new_snapshot = self._project_container.student_dynamic_take_diff_snapshot_usecase.execute(student_id)
 
         # 初めて巡回したとき以外は更新を確認してシグナルを送出
         if student_id in self._student_id_mtime_mapping:
@@ -442,17 +446,22 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
     student_id_cell_triggered = pyqtSignal(StudentID, name="student_id_cell_triggered")
     mark_result_cell_triggered = pyqtSignal(StudentID, name="mark_result_cell_triggered")
 
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, project_container: "ProjectContainer"):
         super().__init__(parent)
+        self._project_container = project_container
 
         # noinspection PyTypeChecker
-        self._student_observer = _StudentObserver(self)
+        self._student_observer = _StudentObserver(
+            self,
+            project_container=self._project_container,
+        )
         # noinspection PyUnresolvedReferences
         self._student_observer.student_modified.connect(self._on_student_modification_observed)
 
         self._model_data_provider = CachedStudentTableModelDataProvider.from_provider(
             provider=StudentTableModelDataProvider(
-                student_ids=get_student_list_id_usecase().execute(),
+                student_ids=self._project_container.student_list_id_usecase.execute(),
+                project_container=self._project_container,
             ),
         )
 

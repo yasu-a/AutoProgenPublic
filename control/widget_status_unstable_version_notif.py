@@ -1,19 +1,23 @@
 from PyQt5.QtCore import QObject
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel
+from typing import TYPE_CHECKING
 
-from application.dependency.usecase import get_app_version_check_is_stable_usecase
 from res.font import get_font
+
+if TYPE_CHECKING:
+    from application.container import AppContainer
 
 
 class UnstableVersionNotificationStatusBarWidget(QWidget):
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, app_container: "AppContainer"):
         super().__init__(parent)
+        self._app_container = app_container
 
         self._init_ui()
         self._init_signals()
 
     def _init_ui(self):
-        is_stable = get_app_version_check_is_stable_usecase().execute()
+        is_stable = self._app_container.app_version_check_is_stable_usecase.execute()
 
         # noinspection PyUnresolvedReferences
         if not is_stable:

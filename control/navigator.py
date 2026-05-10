@@ -120,6 +120,7 @@ class Navigator(INavigator):
         return self._replace_main_window(
             lambda: MainWindow(
                 navigator=self,
+                app_container=self._app_container,
                 project_container=self._current_project_container,
             )
         )

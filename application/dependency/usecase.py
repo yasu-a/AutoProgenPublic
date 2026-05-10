@@ -56,7 +56,7 @@ def get_app_version_get_text_usecase():
 
 
 # AppVersionCheckIsStableUseCase
-def get_app_version_check_is_stable_usecase():
+def create_app_version_check_is_stable_usecase():
     return AppVersionCheckIsStableUseCase(
         app_version_repo=get_app_version_repository(),
     )
@@ -155,18 +155,10 @@ def create_student_list_id_usecase(project_id: ProjectID):
     )
 
 
-def get_student_submission_folder_show_usecase():
-    return create_student_submission_folder_show_usecase(require_current_project_id())
-
-
 def create_student_submission_folder_show_usecase(project_id: ProjectID):
     return StudentSubmissionFolderShowUseCase(
         student_folder_show_in_explorer_io=create_student_folder_show_in_explorer_io(project_id),
     )
-
-
-def get_student_table_get_student_id_cell_data_usecase():
-    return create_student_table_get_student_id_cell_data_usecase(require_current_project_id())
 
 
 def create_student_table_get_student_id_cell_data_usecase(project_id: ProjectID):
@@ -175,18 +167,10 @@ def create_student_table_get_student_id_cell_data_usecase(project_id: ProjectID)
     )
 
 
-def get_student_table_get_student_name_cell_data_usecase():
-    return create_student_table_get_student_name_cell_data_usecase(require_current_project_id())
-
-
 def create_student_table_get_student_name_cell_data_usecase(project_id: ProjectID):
     return StudentTableGetStudentNameCellDataUseCase(
         student_get_service=create_student_get_service(project_id),
     )
-
-
-def get_student_table_get_student_stage_state_cell_data_usecase():
-    return create_student_table_get_student_stage_state_cell_data_usecase(require_current_project_id())
 
 
 def create_student_table_get_student_stage_state_cell_data_usecase(project_id: ProjectID):
@@ -194,10 +178,6 @@ def create_student_table_get_student_stage_state_cell_data_usecase(project_id: P
         stage_path_list_sub_service=create_stage_path_list_sub_service(project_id),
         student_stage_path_result_get_service=create_student_stage_path_result_get_service(project_id),
     )
-
-
-def get_student_table_get_student_error_cell_data_usecase():
-    return create_student_table_get_student_error_cell_data_usecase(require_current_project_id())
 
 
 def create_student_table_get_student_error_cell_data_usecase(project_id: ProjectID):
@@ -359,10 +339,6 @@ def create_testcase_list_edit_copy_testcase_usecase(project_id: ProjectID):
 
 
 # StudentStageResultTakeDiffSnapshotUseCase
-def get_student_dynamic_take_diff_snapshot_usecase():
-    return create_student_dynamic_take_diff_snapshot_usecase(require_current_project_id())
-
-
 def create_student_dynamic_take_diff_snapshot_usecase(project_id: ProjectID):
     return StudentDynamicTakeDiffSnapshotUseCase(
         student_stage_result_check_timestamp_query_service=create_student_stage_result_check_timestamp_query_service(project_id),
@@ -495,7 +471,7 @@ def create_student_mark_list_usecase(project_id: ProjectID):
 
 
 # ResourceUsageGetUseCase
-def get_resource_usage_get_usecase():
+def create_resource_usage_get_usecase():
     return ResourceUsageGetUseCase(
         resource_usage_io=get_resource_usage_io(),
     )

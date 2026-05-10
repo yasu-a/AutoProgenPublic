@@ -4,7 +4,6 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 from application.dependency.task import get_task_manager
-from application.dependency.usecase import get_student_list_id_usecase, get_student_submission_folder_show_usecase
 from control.dialog_mark import MarkDialog
 from control.dialog_progress import AbstractProgressDialog
 from control.task.clean_all_stage import CleanAllStagesStudentTask
@@ -21,7 +20,7 @@ from util.app_logging import create_logger
 from control.interface_navigator import INavigator
 
 if TYPE_CHECKING:
-    from application.container import ProjectContainer
+    from application.container import ProjectContainer, AppContainer
 
 
 class MainWindow(QMainWindow):
@@ -32,10 +31,12 @@ class MainWindow(QMainWindow):
             parent: QObject = None,
             *,
             navigator: INavigator,
+            app_container: "AppContainer",
             project_container: "ProjectContainer",
     ):
         super().__init__(parent)
         self._navigator = navigator
+        self._app_container = app_container
         self._project_container = project_container
 
         self._init_ui()
@@ -57,7 +58,10 @@ class MainWindow(QMainWindow):
 
         # 生徒のテーブル
         # noinspection PyTypeChecker
-        self._w_student_table = StudentTableWidget(self)
+        self._w_student_table = StudentTableWidget(
+            self,
+            project_container=self._project_container,
+        )
         # noinspection PyUnresolvedReferences
         self.setCentralWidget(self._w_student_table)
 
@@ -71,12 +75,18 @@ class MainWindow(QMainWindow):
         self.statusBar().addPermanentWidget(QLabel(self), 1)
         #  - テスト版通知
         # noinspection PyTypeChecker
-        self._sb_unstable_version_notif = UnstableVersionNotificationStatusBarWidget(self)
+        self._sb_unstable_version_notif = UnstableVersionNotificationStatusBarWidget(
+            self,
+            app_container=self._app_container,
+        )
         # noinspection PyUnresolvedReferences
         self.statusBar().addPermanentWidget(self._sb_unstable_version_notif)
         #  - リソースモニタ
         # noinspection PyTypeChecker
-        self._sb_process_resource_usage = ProcessResourceUsageStatusBarWidget(self)
+        self._sb_process_resource_usage = ProcessResourceUsageStatusBarWidget(
+            self,
+            app_container=self._app_container,
+        )
         # noinspection PyUnresolvedReferences
         self.statusBar().addPermanentWidget(self._sb_process_resource_usage)
 
@@ -93,7 +103,7 @@ class MainWindow(QMainWindow):
     def __w_student_table_student_id_cell_triggered(self, student_id: StudentID):
         # テーブルの生徒の学籍番号がクリックされたとき
         # 学生の提出データがあるフォルダを開く
-        get_student_submission_folder_show_usecase().execute(
+        self._project_container.student_submission_folder_show_usecase.execute(
             student_id=student_id,
         )
 
@@ -123,11 +133,10 @@ class MainWindow(QMainWindow):
                 task_func=get_task_manager().terminate,
             )
 
-    @classmethod
-    def __enqueue_student_tasks_if_not_run(cls, parent, task_cls: type[AbstractStudentTask]):
+    def __enqueue_student_tasks_if_not_run(self, parent, task_cls: type[AbstractStudentTask]):
         if not get_task_manager().is_empty():
             return
-        for student_id in get_student_list_id_usecase().execute():
+        for student_id in self._project_container.student_list_id_usecase.execute():
             get_task_manager().enqueue(
                 task_cls(
                     parent=parent,
