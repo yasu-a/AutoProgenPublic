@@ -277,10 +277,6 @@ def create_student_run_test_stage_usecase(project_id: ProjectID):
     )
 
 
-def get_student_run_next_stage_usecase():
-    return create_student_run_next_stage_usecase(require_current_project_id())
-
-
 def create_student_run_next_stage_usecase(project_id: ProjectID):
     return StudentRunNextStageUseCase(
         stage_path_list_sub_service=create_stage_path_list_sub_service(project_id),
@@ -347,10 +343,6 @@ def create_student_dynamic_take_diff_snapshot_usecase(project_id: ProjectID):
 
 
 # StudentStageResultClearUseCase
-def get_student_stage_result_clear_usecase():
-    return create_student_stage_result_clear_usecase(require_current_project_id())
-
-
 def create_student_stage_result_clear_usecase(project_id: ProjectID):
     return StudentStageResultClearUseCase(
         student_stage_result_clear_service=create_student_stage_result_clear_service(project_id),

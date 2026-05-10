@@ -141,6 +141,7 @@ class MainWindow(QMainWindow):
                 task_cls(
                     parent=parent,
                     student_id=student_id,
+                    project_container=self._project_container,
                 )
             )
 

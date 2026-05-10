@@ -1,13 +1,21 @@
-from application.dependency.usecase import get_student_stage_result_clear_usecase
 from domain.error import StopTask
 from infra.task.task import AbstractStudentTask
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from application.container import ProjectContainer
+
 
 class CleanAllStagesStudentTask(AbstractStudentTask):
+    def __init__(self, parent, student_id, *, project_container: "ProjectContainer"):
+        super().__init__(parent, student_id)
+        self._project_container = project_container
+
     def run(self) -> None:
         self._logger.info(f"Task started [{self.student_id}]")
         try:
-            get_student_stage_result_clear_usecase().execute(
+            self._project_container.student_stage_result_clear_usecase.execute(
                 student_id=self.student_id,
                 stop_producer=self.is_stop_received,
             )
