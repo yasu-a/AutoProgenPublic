@@ -22,7 +22,7 @@ from service.student_mark import StudentMarkGetSubService, StudentMarkPutService
 from service.student_master_create import StudentMasterCreateService
 from service.student_stage_path_result import StudentStagePathResultGetService, \
     StudentStagePathResultCheckRollbackService, StudentStageResultCheckTimestampQueryService, \
-    StudentStageResultRollbackService, StudentStageResultClearService, StudentPutStageResultService, \
+    StudentStageResultClearService, StudentPutStageResultService, \
     StudentGetStageResultService
 from service.student_submission import StudentSubmissionExistService, \
     StudentSubmissionExtractService, \
@@ -364,16 +364,6 @@ def create_student_submission_get_source_content_service(project_id: ProjectID):
         student_submission_list_source_relative_path_query_service=create_student_submission_list_source_relative_path_query_service(project_id),
         student_submission_get_file_content_query_service=create_student_submission_get_file_content_query_service(project_id),
         student_repo=create_student_repository(project_id),
-    )
-
-
-def get_student_stage_result_rollback_service():
-    return create_student_stage_result_rollback_service(require_current_project_id())
-
-
-def create_student_stage_result_rollback_service(project_id: ProjectID):
-    return StudentStageResultRollbackService(
-        student_stage_path_result_repo=create_student_stage_path_result_repository(project_id),
     )
 
 

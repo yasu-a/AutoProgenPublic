@@ -305,7 +305,7 @@ def create_student_run_next_stage_usecase(project_id: ProjectID):
     return StudentRunNextStageUseCase(
         stage_path_list_sub_service=create_stage_path_list_sub_service(project_id),
         student_stage_path_result_get_service=create_student_stage_path_result_get_service(project_id),
-        student_stage_result_rollback_service=create_student_stage_result_rollback_service(project_id),
+        student_stage_path_result_repo=create_student_stage_path_result_repository(project_id),
         student_run_build_stage_usecase=create_student_run_build_stage_usecase(project_id),
         student_run_compile_stage_usecase=create_student_run_compile_stage_usecase(project_id),
         student_run_execute_stage_usecase=create_student_run_execute_stage_usecase(project_id),
