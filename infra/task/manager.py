@@ -34,9 +34,9 @@ class _TaskStack:
 
     def is_empty(self) -> bool:
         for task_queue in self._task_queues.values():
-            if task_queue.is_empty():
-                return True
-        return False
+            if not task_queue.is_empty():
+                return False
+        return True
 
     def enqueue(self, name: str, task: AbstractTask) -> None:
         self._task_queues[name].enqueue(task)
