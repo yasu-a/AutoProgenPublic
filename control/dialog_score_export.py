@@ -96,7 +96,7 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
             self,
             "エクスポート先のエクセルファイルを選択",
             QStandardPaths.writableLocation(QStandardPaths.DownloadLocation),
-            "Zipファイル (*.xlsx)",
+            "Excelファイル (*.xlsx)",
         )
         if not fullpath:
             return
