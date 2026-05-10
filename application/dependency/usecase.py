@@ -100,13 +100,6 @@ def get_project_get_size_query_usecase():
     )
 
 
-def get_current_project_initialize_static_usecase(manaba_report_archive_fullpath: Path):
-    return create_current_project_initialize_static_usecase(
-        project_id=require_current_project_id(),
-        manaba_report_archive_fullpath=manaba_report_archive_fullpath,
-    )
-
-
 def create_current_project_initialize_static_usecase(project_id: ProjectID, manaba_report_archive_fullpath: Path):
     return CurrentProjectInitializeStaticUseCase(
         student_master_create_service=create_student_master_create_service(

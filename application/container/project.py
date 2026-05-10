@@ -1,9 +1,11 @@
 from functools import cached_property
+from pathlib import Path
 
 from application.dependency.repository import create_current_project_repository, create_student_repository, \
     create_student_stage_path_result_repository, create_testcase_config_repository, create_storage_repository, \
     create_student_executable_repository, create_student_source_repository, create_student_mark_repository
 from application.dependency.usecase import create_current_project_summary_get_usecase, \
+    create_current_project_initialize_static_usecase, \
     create_student_table_get_student_id_cell_data_usecase, \
     create_student_table_get_student_name_cell_data_usecase, \
     create_student_table_get_student_stage_state_cell_data_usecase, \
@@ -71,6 +73,12 @@ class ProjectContainer:
     @cached_property
     def current_project_summary_get_usecase(self):
         return create_current_project_summary_get_usecase(self._project_id)
+
+    def create_current_project_initialize_static_usecase(self, *, manaba_report_archive_fullpath: Path):
+        return create_current_project_initialize_static_usecase(
+            project_id=self._project_id,
+            manaba_report_archive_fullpath=manaba_report_archive_fullpath,
+        )
 
     @cached_property
     def student_list_id_usecase(self):

@@ -6,7 +6,7 @@ from application.container import AppContainer, ProjectContainer
 from application.dependency import invalidate_cached_providers
 from application.dependency.task import get_task_manager
 from application.dependency.usecase import get_project_create_usecase, \
-    get_current_project_initialize_static_usecase, get_project_open_usecase
+    get_project_open_usecase
 from control.dialog_progress import AbstractProgressDialog
 from control.interface_navigator import INavigator
 from domain.model.value import ProjectID, StudentID
@@ -99,7 +99,7 @@ class Navigator(INavigator):
             parent=None,  # type: ignore[arg-type]
             title="プロジェクトの初期化",
             initial_message="初期化を開始しています...",
-            task_func=get_current_project_initialize_static_usecase(
+            task_func=self._current_project_container.create_current_project_initialize_static_usecase(
                 manaba_report_archive_fullpath=new_project_config.manaba_report_archive_fullpath,
             ).execute,
         )
