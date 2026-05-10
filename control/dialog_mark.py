@@ -155,7 +155,7 @@ class MarkDialogStateCreator:
         for testcase_id in self._testcase_ids:
             view_data = self._project_container.student_mark_view_data_get_test_result_usecase.execute(
                 student_id=self._state.student_id,
-                testcase_id=self._state.testcase_id,
+                testcase_id=testcase_id,
             )
             if view_data.is_success:
                 file_ids_by_testcase[testcase_id] = list(
