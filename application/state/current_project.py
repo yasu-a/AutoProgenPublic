@@ -3,6 +3,10 @@ from domain.model.value import ProjectID
 _project_id: ProjectID | None = None
 
 
+class CurrentProjectNotOpenedError(RuntimeError):
+    pass
+
+
 def set_current_project_id(project_id: ProjectID):
     global _project_id
     assert _project_id is None, _project_id
@@ -16,3 +20,10 @@ def get_current_project_id() -> ProjectID | None:
 def clear_current_project_id() -> None:
     global _project_id
     _project_id = None
+
+
+def require_current_project_id() -> ProjectID:
+    project_id = get_current_project_id()
+    if project_id is None:
+        raise CurrentProjectNotOpenedError("No project is currently opened.")
+    return project_id
