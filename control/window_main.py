@@ -4,7 +4,6 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 from application.dependency.task import get_task_manager
-from control.dialog_mark import MarkDialog
 from control.dialog_progress import AbstractProgressDialog
 from control.task.clean_all_stage import CleanAllStagesStudentTask
 from control.task.run_stage import RunStagesStudentTask
@@ -120,9 +119,7 @@ class MainWindow(QMainWindow):
             )
             return
 
-        dialog = MarkDialog(self)
-        dialog.set_state(dialog.states.create_state_by_student_id(student_id))
-        dialog.exec_()
+        self._navigator.open_scoring_dialog_for_student(self, student_id)
 
     def __perform_stop_tasks(self):
         if not get_task_manager().is_empty():

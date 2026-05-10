@@ -7,7 +7,10 @@ from application.dependency.usecase import create_current_project_summary_get_us
     create_student_table_get_student_error_cell_data_usecase, \
     create_student_dynamic_take_diff_snapshot_usecase, create_student_mark_get_usecase, \
     create_student_submission_folder_show_usecase, create_student_run_next_stage_usecase, \
-    create_student_stage_result_clear_usecase
+    create_student_stage_result_clear_usecase, create_testcase_config_list_id_usecase, \
+    create_student_mark_view_data_get_test_result_usecase, \
+    create_student_mark_view_data_get_mark_summary_usecase, \
+    create_student_source_code_get_usecase, create_student_mark_put_usecase
 from domain.model.value import ProjectID
 
 
@@ -50,6 +53,26 @@ class ProjectContainer:
     @cached_property
     def student_mark_get_usecase(self):
         return create_student_mark_get_usecase(self._project_id)
+
+    @cached_property
+    def testcase_config_list_id_usecase(self):
+        return create_testcase_config_list_id_usecase(self._project_id)
+
+    @cached_property
+    def student_mark_view_data_get_test_result_usecase(self):
+        return create_student_mark_view_data_get_test_result_usecase(self._project_id)
+
+    @cached_property
+    def student_mark_view_data_get_mark_summary_usecase(self):
+        return create_student_mark_view_data_get_mark_summary_usecase(self._project_id)
+
+    @cached_property
+    def student_source_code_get_usecase(self):
+        return create_student_source_code_get_usecase(self._project_id)
+
+    @cached_property
+    def student_mark_put_usecase(self):
+        return create_student_mark_put_usecase(self._project_id)
 
     @cached_property
     def student_submission_folder_show_usecase(self):

@@ -9,7 +9,7 @@ from application.dependency.usecase import get_project_create_usecase, \
     get_current_project_initialize_static_usecase, get_project_open_usecase
 from control.dialog_progress import AbstractProgressDialog
 from control.interface_navigator import INavigator
-from domain.model.value import ProjectID
+from domain.model.value import ProjectID, StudentID
 from application.state.current_project import clear_current_project_id
 
 
@@ -68,8 +68,16 @@ class Navigator(INavigator):
 
     def open_scoring_dialog(self, parent: QWidget) -> None:
         from control.dialog_mark import MarkDialog
-        dialog = MarkDialog(parent)
+        assert self._current_project_container is not None
+        dialog = MarkDialog(parent, project_container=self._current_project_container)
         dialog.set_state(dialog.states.create_state_of_first_student())
+        dialog.exec_()
+
+    def open_scoring_dialog_for_student(self, parent: QWidget, student_id: StudentID) -> None:
+        from control.dialog_mark import MarkDialog
+        assert self._current_project_container is not None
+        dialog = MarkDialog(parent, project_container=self._current_project_container)
+        dialog.set_state(dialog.states.create_state_by_student_id(student_id))
         dialog.exec_()
 
     def open_testcase_list_edit_dialog(self, parent: QWidget) -> None:

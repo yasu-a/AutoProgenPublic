@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from PyQt5.QtWidgets import QMainWindow, QWidget
 
-from domain.model.value import ProjectID
+from domain.model.value import ProjectID, StudentID
 
 
 class INavigator(ABC):
@@ -32,6 +32,10 @@ class INavigator(ABC):
 
     @abstractmethod
     def open_scoring_dialog(self, parent: QWidget) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def open_scoring_dialog_for_student(self, parent: QWidget, student_id: StudentID) -> None:
         raise NotImplementedError()
 
     @abstractmethod

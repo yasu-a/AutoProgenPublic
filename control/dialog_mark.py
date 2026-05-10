@@ -3,10 +3,7 @@ from PyQt5.QtGui import QKeyEvent, QCloseEvent
 from PyQt5.QtWidgets import QDialog, QWidget, QHBoxLayout, QLabel, \
     QVBoxLayout, QPushButton
 
-from application.dependency.usecase import get_student_list_id_usecase, \
-    get_student_mark_view_data_get_test_result_usecase, \
-    get_student_mark_view_data_get_mark_summary_usecase, get_student_source_code_get_usecase, \
-    get_testcase_config_list_id_usecase, get_student_mark_get_usecase, get_student_mark_put_usecase
+from application.container import ProjectContainer
 from control.dialog_mark_help import MarkHelpDialog
 from control.dto.dialog_mark import MarkDialogState
 from control.widget_mark_score_edit import MarkScoreEditWidget
@@ -139,18 +136,12 @@ class MarkDialogStateCreator:
             state: MarkDialogState,
             student_ids: list[StudentID],
             testcase_ids: list[TestCaseID],
+            project_container: ProjectContainer,
     ):
         self._state = state
         self._student_ids = student_ids
         self._testcase_ids = testcase_ids
-
-    @classmethod
-    def __get_student_testcase_test_result_view_data(
-            cls,
-            student_id: StudentID,
-            testcase_id: TestCaseID,
-    ) -> AbstractStudentTestCaseTestResultViewData:
-        return get_student_mark_view_data_get_test_result_usecase().execute(student_id, testcase_id)
+        self._project_container = project_container
 
     @property
     def _file_ids_by_testcase(self) -> dict[TestCaseID, list[FileID]]:
@@ -162,7 +153,7 @@ class MarkDialogStateCreator:
             return {}
         file_ids_by_testcase = {}
         for testcase_id in self._testcase_ids:
-            view_data = self.__get_student_testcase_test_result_view_data(
+            view_data = self._project_container.student_mark_view_data_get_test_result_usecase.execute(
                 student_id=self._state.student_id,
                 testcase_id=self._state.testcase_id,
             )
@@ -318,14 +309,13 @@ class MarkDialog(QDialog):
 
     _logger = create_logger()
 
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, project_container: ProjectContainer):
         super().__init__(parent)
+        self._project_container = project_container
 
-        self._student_ids: list[StudentID] = get_student_list_id_usecase(
-        ).execute()
+        self._student_ids: list[StudentID] = self._project_container.student_list_id_usecase.execute()
         # ^ get_student_id_list_usecase
-        self._testcase_ids: list[TestCaseID] = get_testcase_config_list_id_usecase(
-        ).execute()
+        self._testcase_ids: list[TestCaseID] = self._project_container.testcase_config_list_id_usecase.execute()
         self._state = MarkDialogState()
 
         self._init_ui()
@@ -434,46 +424,41 @@ class MarkDialog(QDialog):
             self.__b_help_clicked
         )
 
-    @classmethod
     def __get_student_mark_summary_view_data(
-            cls,
+            self,
             student_id: StudentID,
     ) -> StudentMarkSummaryViewData:
         # ユースケースの使用
-        return get_student_mark_view_data_get_mark_summary_usecase().execute(student_id)
+        return self._project_container.student_mark_view_data_get_mark_summary_usecase.execute(student_id)
 
-    @classmethod
     def __get_student_testcase_test_result_view_data(
-            cls,
+            self,
             student_id: StudentID,
             testcase_id: TestCaseID,
     ) -> AbstractStudentTestCaseTestResultViewData:
         # ユースケースの使用
-        return get_student_mark_view_data_get_test_result_usecase().execute(student_id, testcase_id)
+        return self._project_container.student_mark_view_data_get_test_result_usecase.execute(student_id, testcase_id)
 
-    @classmethod
     def __get_student_source_code(
-            cls,
+            self,
             student_id: StudentID,
     ) -> str | None:
         # ユースケースの使用
-        return get_student_source_code_get_usecase().execute(student_id)
+        return self._project_container.student_source_code_get_usecase.execute(student_id)
 
-    @classmethod
     def __get_student_mark(
-            cls,
+            self,
             student_id: StudentID,
     ) -> StudentMark:
         # ユースケースの使用
-        return get_student_mark_get_usecase().execute(student_id)
+        return self._project_container.student_mark_get_usecase.execute(student_id)
 
-    @classmethod
     def __put_student_mark(
-            cls,
+            self,
             student_mark: StudentMark,
     ) -> None:
         # ユースケースの使用
-        get_student_mark_put_usecase().execute(student_mark)
+        self._project_container.student_mark_put_usecase.execute(student_mark)
 
     @property
     def states(self) -> MarkDialogStateCreator:
@@ -481,6 +466,7 @@ class MarkDialog(QDialog):
             state=self._state,
             student_ids=self._student_ids,
             testcase_ids=self._testcase_ids,
+            project_container=self._project_container,
         )
 
     def __reflect_state(self):
