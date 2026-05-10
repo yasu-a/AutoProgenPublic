@@ -135,23 +135,9 @@ class MainWindow(QMainWindow):
                 )
             )
 
-    def __perform_reopen_project(self) -> None:
-        # noinspection PyTypeChecker
-        if QMessageBox.question(
-                self,
-                "プロジェクトを開く",
-                "別のプロジェクトを開きます。このプロジェクトを閉じてもよろしいですか？",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No,
-        ) != QMessageBox.Yes:
-            return
-        self.close()
-
     def __tool_bar_triggered(self, name):
         self._tool_bar.update_button_state(is_task_alive=True)
-        if name == "open-project":
-            self.__perform_reopen_project()
-        elif name == "run":
+        if name == "run":
             self.__enqueue_student_tasks_if_not_run(
                 parent=self,
                 task_cls=RunStagesStudentTask,

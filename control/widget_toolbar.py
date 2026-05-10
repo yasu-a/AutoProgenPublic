@@ -25,11 +25,6 @@ class ToolBar(QToolBar):
 
         # ツールバーアクションの追加
 
-        self._a_open_project = QAction(get_icon("folder"), "プロジェクトを開く", self)
-        self._a_open_project.setObjectName("open-project")
-        self._a_open_project.setEnabled(True)
-        self.addAction(self._a_open_project)
-
         self._a_settings = QAction(get_icon("settings"), "設定", self)
         self._a_settings.setObjectName("edit-settings")
         self._a_settings.setEnabled(False)
