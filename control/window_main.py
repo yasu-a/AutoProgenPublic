@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -53,7 +53,7 @@ class MainWindow(QMainWindow):
         # ツールバー
         self._tool_bar = ToolBar(
             self,
-            project_container=self._project_container,
+            task_manager=self._task_manager,
         )
         # noinspection PyUnresolvedReferences
         self.addToolBar(self._tool_bar)
@@ -62,7 +62,13 @@ class MainWindow(QMainWindow):
         # noinspection PyTypeChecker
         self._w_student_table = StudentTableWidget(
             self,
-            project_container=self._project_container,
+            student_list_id_usecase=self._project_container.student_list_id_usecase,
+            student_dynamic_take_diff_snapshot_usecase=self._project_container.student_dynamic_take_diff_snapshot_usecase,
+            student_table_get_student_id_cell_data_usecase=self._project_container.student_table_get_student_id_cell_data_usecase,
+            student_table_get_student_name_cell_data_usecase=self._project_container.student_table_get_student_name_cell_data_usecase,
+            student_table_get_student_stage_state_cell_data_usecase=self._project_container.student_table_get_student_stage_state_cell_data_usecase,
+            student_table_get_student_error_cell_data_usecase=self._project_container.student_table_get_student_error_cell_data_usecase,
+            student_mark_get_usecase=self._project_container.student_mark_get_usecase,
         )
         # noinspection PyUnresolvedReferences
         self.setCentralWidget(self._w_student_table)
@@ -72,7 +78,7 @@ class MainWindow(QMainWindow):
         # noinspection PyTypeChecker
         self._sb_task_state = TaskStateStatusBarWidget(
             self,
-            project_container=self._project_container,
+            task_manager=self._task_manager,
         )
         # noinspection PyUnresolvedReferences
         self.statusBar().addPermanentWidget(self._sb_task_state)
@@ -136,31 +142,31 @@ class MainWindow(QMainWindow):
                 task_func=self._task_manager.terminate,
             )
 
-    def __enqueue_student_tasks_if_not_run(self, parent, task_cls: type[AbstractStudentTask]):
+    def __enqueue_student_tasks_if_not_run(self, task_factory: Callable[[StudentID], AbstractStudentTask]):
         if not self._task_manager.is_empty():
             return
         for student_id in self._project_container.student_list_id_usecase.execute():
-            self._task_manager.enqueue(
-                task_cls(
-                    parent=parent,
-                    student_id=student_id,
-                    project_container=self._project_container,
-                )
-            )
+            self._task_manager.enqueue(task_factory(student_id))
 
     def __tool_bar_triggered(self, name):
         self._tool_bar.update_button_state(is_task_alive=True)
         if name == "run":
             self.__enqueue_student_tasks_if_not_run(
-                parent=self,
-                task_cls=RunStagesStudentTask,
+                lambda student_id: RunStagesStudentTask(
+                    parent=self,
+                    student_id=student_id,
+                    student_run_next_stage_usecase=self._project_container.student_run_next_stage_usecase,
+                ),
             )
         elif name == "stop":
             self.__perform_stop_tasks()
         elif name == "clear":
             self.__enqueue_student_tasks_if_not_run(
-                parent=self,
-                task_cls=CleanAllStagesStudentTask,
+                lambda student_id: CleanAllStagesStudentTask(
+                    parent=self,
+                    student_id=student_id,
+                    student_stage_result_clear_usecase=self._project_container.student_stage_result_clear_usecase,
+                ),
             )
         elif name == "edit-settings":
             # noinspection PyTypeChecker

@@ -2,18 +2,18 @@ from PyQt5.QtCore import QObject, pyqtSlot
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMessageBox, QWidget
 
-from application.container import AppContainer
 from control.delegator_testcase_files_edit import AbstractTestCaseFilesEditWidgetDelegator
 from control.widget_file_tab import FileTabWidget
 from control.widget_testcase_input_file_text_edit import TestCaseInputFileTextEdit
 from domain.model.input_file import InputFileCollection, InputFile
 from domain.model.value import FileID
 from res.icon import get_icon
+from usecase.global_settings import GlobalSettingsGetUseCase
 
 
 class TestCaseInputFilesEditWidgetDelegator(AbstractTestCaseFilesEditWidgetDelegator):
-    def __init__(self, *, app_container: AppContainer):
-        self._app_container = app_container
+    def __init__(self, *, global_settings_get_usecase: GlobalSettingsGetUseCase):
+        self._global_settings_get_usecase = global_settings_get_usecase
 
     def add_button_context_menu_titles(self, tab_widget: "FileTabWidget") \
             -> dict[str, tuple[str, QIcon | None]]:
@@ -29,7 +29,7 @@ class TestCaseInputFilesEditWidgetDelegator(AbstractTestCaseFilesEditWidgetDeleg
         _ = file_id
         widget = TestCaseInputFileTextEdit(
             tab_widget,
-            app_container=self._app_container,
+            global_settings_get_usecase=self._global_settings_get_usecase,
         )
         if content_text is None:
             content_text = ""
@@ -64,9 +64,9 @@ class TestCaseInputFilesEditWidgetDelegator(AbstractTestCaseFilesEditWidgetDeleg
 
 
 class TestCaseInputFilesEditWidget(FileTabWidget):
-    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
+    def __init__(self, parent: QObject = None, *, global_settings_get_usecase: GlobalSettingsGetUseCase):
         self.__delegator = TestCaseInputFilesEditWidgetDelegator(
-            app_container=app_container,
+            global_settings_get_usecase=global_settings_get_usecase,
         )
         super().__init__(parent, delegator=self.__delegator)
 

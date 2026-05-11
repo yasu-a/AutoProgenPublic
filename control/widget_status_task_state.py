@@ -1,19 +1,15 @@
 from PyQt5.QtCore import QObject, QTimer, pyqtSlot
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel
 
-from typing import TYPE_CHECKING
-
+from infra.task.manager import TaskManager
 from res.font import get_font
-
-if TYPE_CHECKING:
-    from application.container import ProjectContainer
 
 
 class TaskStateStatusBarWidget(QWidget):
-    def __init__(self, parent: QObject = None, *, project_container: "ProjectContainer"):
+    def __init__(self, parent: QObject = None, *, task_manager: TaskManager):
         super().__init__(parent)
 
-        self._task_manager = project_container.task_manager
+        self._task_manager = task_manager
         self.__icon_anim_state = 0
 
         self._icon_timer = QTimer(self)

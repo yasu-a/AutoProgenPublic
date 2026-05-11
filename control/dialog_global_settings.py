@@ -4,12 +4,14 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import *
 
-from application.container import AppContainer, ProjectContainer
 from control.dialog_compiler_search import CompilerSearchDialog
 from control.dialog_progress import AbstractProgressDialog
 from domain.model.global_settings import GlobalSettings
 from infra.io.compiler_location import is_compiler_location
 from res.icon import get_icon
+from usecase.compiler import CompilerSearchUseCase
+from usecase.global_settings import GlobalSettingsGetUseCase, GlobalSettingsPutUseCase
+from usecase.test_compile_stage import TestCompileStageUseCase
 from util.app_logging import create_logger
 
 
@@ -18,10 +20,10 @@ class CompilerToolPathEditWidget(QWidget):
 
     # Pathはテストしたいコンパイルツールのパス
 
-    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
+    def __init__(self, parent: QObject = None, *, compiler_search_usecase: CompilerSearchUseCase):
         super().__init__(parent)
 
-        self._app_container = app_container
+        self._compiler_search_usecase = compiler_search_usecase
         self._init_ui()
         self._init_signals()
 
@@ -84,7 +86,7 @@ class CompilerToolPathEditWidget(QWidget):
 
     @pyqtSlot()
     def __b_search_clicked(self):
-        dialog_auto_find = CompilerSearchDialog(self, app_container=self._app_container)
+        dialog_auto_find = CompilerSearchDialog(self, compiler_search_usecase=self._compiler_search_usecase)
         dialog_auto_find.exec_()
         if dialog_auto_find.get_value() is not None:
             self._le_path.setText(str(dialog_auto_find.get_value()))
@@ -171,13 +173,13 @@ class GlobalSettingsEditWidget(QWidget):
             self,
             parent: QObject = None,
             *,
-            app_container: AppContainer,
-            project_container: ProjectContainer,
+            compiler_search_usecase: CompilerSearchUseCase,
+            test_compile_stage_usecase: TestCompileStageUseCase,
     ):
         super().__init__(parent)
 
-        self._app_container = app_container
-        self._project_container = project_container
+        self._compiler_search_usecase = compiler_search_usecase
+        self._test_compile_stage_usecase = test_compile_stage_usecase
         self._init_ui()
         self._init_signals()
 
@@ -206,7 +208,7 @@ class GlobalSettingsEditWidget(QWidget):
         # noinspection PyTypeChecker
         self._w_compiler_tool_path = CompilerToolPathEditWidget(
             self,
-            app_container=self._app_container,
+            compiler_search_usecase=self._compiler_search_usecase,
         )
         add_item(
             title="Visual Studio開発者ツールのパス",
@@ -290,7 +292,7 @@ class GlobalSettingsEditWidget(QWidget):
     def __w_compiler_tool_path_compile_test_requested(self, compiler_tool_fullpath: Path):
         def task(*, progress_callback):
             progress_callback("コンパイルテストを実行しています...")
-            return self._project_container.test_compile_stage_usecase.execute(
+            return self._test_compile_stage_usecase.execute(
                 compiler_tool_fullpath=Path(compiler_tool_fullpath),
             )
 
@@ -388,13 +390,17 @@ class GlobalSettingsEditDialog(QDialog):
             self,
             parent: QObject = None,
             *,
-            app_container: AppContainer,
-            project_container: ProjectContainer,
+            compiler_search_usecase: CompilerSearchUseCase,
+            test_compile_stage_usecase: TestCompileStageUseCase,
+            global_settings_get_usecase: GlobalSettingsGetUseCase,
+            global_settings_put_usecase: GlobalSettingsPutUseCase,
     ):
         super().__init__(parent)
 
-        self._app_container = app_container
-        self._project_container = project_container
+        self._compiler_search_usecase = compiler_search_usecase
+        self._test_compile_stage_usecase = test_compile_stage_usecase
+        self._global_settings_get_usecase = global_settings_get_usecase
+        self._global_settings_put_usecase = global_settings_put_usecase
         self._init_ui()
         self._init_signals()
 
@@ -409,11 +415,11 @@ class GlobalSettingsEditDialog(QDialog):
 
         self._w_settings_edit = GlobalSettingsEditWidget(
             self,
-            app_container=self._app_container,
-            project_container=self._project_container,
+            compiler_search_usecase=self._compiler_search_usecase,
+            test_compile_stage_usecase=self._test_compile_stage_usecase,
         )  # type: ignore
         self._w_settings_edit.set_value(
-            self._app_container.global_settings_get_usecase.execute()
+            self._global_settings_get_usecase.execute()
         )
         layout.addWidget(self._w_settings_edit)
 
@@ -424,7 +430,7 @@ class GlobalSettingsEditDialog(QDialog):
     def closeEvent(self, evt: QCloseEvent):
         reason = self._w_settings_edit.validate_and_get_reason()
         if reason is None:
-            self._app_container.global_settings_put_usecase.execute(
+            self._global_settings_put_usecase.execute(
                 self._w_settings_edit.get_value()
             )
         else:

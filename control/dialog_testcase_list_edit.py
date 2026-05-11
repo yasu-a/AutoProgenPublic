@@ -1,20 +1,24 @@
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from application.container import AppContainer, ProjectContainer
 from control.dialog_testcase_config_edit import TestCaseConfigEditDialog
 from control.widget_button_box import ButtonBox
 from domain.error import UseCaseError
 from domain.model.value import TestCaseID
+from usecase.global_settings import GlobalSettingsGetUseCase
+from usecase.testcase_config import TestCaseDeleteUseCase, TestCaseGetUseCase, TestCasePutUseCase
+from usecase.testcase_list_edit import TestCaseListSummaryUseCase, TestCaseCreateNewNameUseCase, TestCaseCreateUseCase, \
+    TestCaseCopyUseCase
+from usecase.test_test_stage import TestTestStageUseCase
 from usecase.dto.testcase_list_edit import TestCaseListEditTestCaseSummary
 
 
 class TestCaseListWidget(QListWidget):
     testcase_item_double_clicked = pyqtSignal(TestCaseID, name="testcase_item_double_clicked")
 
-    def __init__(self, parent: QObject = None, *, project_container: ProjectContainer):
+    def __init__(self, parent: QObject = None, *, testcase_list_summary_usecase: TestCaseListSummaryUseCase):
         super().__init__(parent)
-        self._project_container = project_container
+        self._testcase_list_summary_usecase = testcase_list_summary_usecase
 
         self._testcase_config_summary_lst: list[TestCaseListEditTestCaseSummary] = []
 
@@ -46,7 +50,7 @@ class TestCaseListWidget(QListWidget):
     @pyqtSlot()
     def update_data(self):
         self.clear()
-        self._testcase_config_summary_lst = self._project_container.testcase_list_summary_usecase.execute()
+        self._testcase_config_summary_lst = self._testcase_list_summary_usecase.execute()
         for testcase_config_summary in self._testcase_config_summary_lst:
             self.addItem(testcase_config_summary.name)
 
@@ -58,12 +62,26 @@ class TestCaseListEditWidget(QWidget):
             self,
             parent: QObject = None,
             *,
-            app_container: AppContainer,
-            project_container: ProjectContainer,
+            global_settings_get_usecase: GlobalSettingsGetUseCase,
+            test_test_stage_usecase: TestTestStageUseCase,
+            testcase_list_summary_usecase: TestCaseListSummaryUseCase,
+            testcase_create_new_name_usecase: TestCaseCreateNewNameUseCase,
+            testcase_create_usecase: TestCaseCreateUseCase,
+            testcase_copy_usecase: TestCaseCopyUseCase,
+            testcase_delete_usecase: TestCaseDeleteUseCase,
+            testcase_get_usecase: TestCaseGetUseCase,
+            testcase_put_usecase: TestCasePutUseCase,
     ):
         super().__init__(parent)
-        self._app_container = app_container
-        self._project_container = project_container
+        self._global_settings_get_usecase = global_settings_get_usecase
+        self._test_test_stage_usecase = test_test_stage_usecase
+        self._testcase_list_summary_usecase = testcase_list_summary_usecase
+        self._testcase_create_new_name_usecase = testcase_create_new_name_usecase
+        self._testcase_create_usecase = testcase_create_usecase
+        self._testcase_copy_usecase = testcase_copy_usecase
+        self._testcase_delete_usecase = testcase_delete_usecase
+        self._testcase_get_usecase = testcase_get_usecase
+        self._testcase_put_usecase = testcase_put_usecase
 
         self._init_ui()
         self._init_signals()
@@ -74,7 +92,7 @@ class TestCaseListEditWidget(QWidget):
 
         self._w_testcase_list = TestCaseListWidget(
             self,  # type: ignore
-            project_container=self._project_container,
+            testcase_list_summary_usecase=self._testcase_list_summary_usecase,
         )
         layout.addWidget(self._w_testcase_list)
 
@@ -97,7 +115,7 @@ class TestCaseListEditWidget(QWidget):
                 self,  # type: ignore
                 "新しいテストケース",
                 "新しいテストケースの名前を入力してください",
-                text=self._project_container.testcase_create_new_name_usecase.execute(),
+                text=self._testcase_create_new_name_usecase.execute(),
             )
             if not ok:
                 return
@@ -105,7 +123,7 @@ class TestCaseListEditWidget(QWidget):
             if not testcase_name:
                 return
             try:
-                self._project_container.testcase_create_usecase.execute(testcase_name)
+                self._testcase_create_usecase.execute(testcase_name)
             except UseCaseError:
                 QMessageBox.critical(
                     self,  # type: ignore
@@ -125,7 +143,7 @@ class TestCaseListEditWidget(QWidget):
                 self,  # type: ignore
                 f"{testcase_id!s}のコピー",
                 "新しいテストケースの名前を入力してください",
-                text=self._project_container.testcase_create_new_name_usecase.execute(),
+                text=self._testcase_create_new_name_usecase.execute(),
             )
             if not ok:
                 return
@@ -133,7 +151,7 @@ class TestCaseListEditWidget(QWidget):
             if not new_testcase_name:
                 return
             try:
-                self._project_container.testcase_copy_usecase.execute(
+                self._testcase_copy_usecase.execute(
                     src_testcase_id=testcase_id,
                     new_testcase_name=new_testcase_name,
                 )
@@ -160,7 +178,7 @@ class TestCaseListEditWidget(QWidget):
         )
         if res != QMessageBox.Yes:
             return
-        self._project_container.testcase_delete_usecase.execute(testcase_id)
+        self._testcase_delete_usecase.execute(testcase_id)
         self.testcase_modified.emit()
 
     @pyqtSlot(TestCaseID)
@@ -168,8 +186,10 @@ class TestCaseListEditWidget(QWidget):
         dialog = TestCaseConfigEditDialog(
             self,
             testcase_id=testcase_id,
-            app_container=self._app_container,
-            project_container=self._project_container,
+            global_settings_get_usecase=self._global_settings_get_usecase,
+            test_test_stage_usecase=self._test_test_stage_usecase,
+            testcase_get_usecase=self._testcase_get_usecase,
+            testcase_put_usecase=self._testcase_put_usecase,
         )
         dialog.exec_()
         self.testcase_modified.emit()
@@ -202,12 +222,26 @@ class TestCaseListEditDialog(QDialog):
             self,
             parent: QObject = None,
             *,
-            app_container: AppContainer,
-            project_container: ProjectContainer,
+            global_settings_get_usecase: GlobalSettingsGetUseCase,
+            test_test_stage_usecase: TestTestStageUseCase,
+            testcase_list_summary_usecase: TestCaseListSummaryUseCase,
+            testcase_create_new_name_usecase: TestCaseCreateNewNameUseCase,
+            testcase_create_usecase: TestCaseCreateUseCase,
+            testcase_copy_usecase: TestCaseCopyUseCase,
+            testcase_delete_usecase: TestCaseDeleteUseCase,
+            testcase_get_usecase: TestCaseGetUseCase,
+            testcase_put_usecase: TestCasePutUseCase,
     ):
         super().__init__(parent)
-        self._app_container = app_container
-        self._project_container = project_container
+        self._global_settings_get_usecase = global_settings_get_usecase
+        self._test_test_stage_usecase = test_test_stage_usecase
+        self._testcase_list_summary_usecase = testcase_list_summary_usecase
+        self._testcase_create_new_name_usecase = testcase_create_new_name_usecase
+        self._testcase_create_usecase = testcase_create_usecase
+        self._testcase_copy_usecase = testcase_copy_usecase
+        self._testcase_delete_usecase = testcase_delete_usecase
+        self._testcase_get_usecase = testcase_get_usecase
+        self._testcase_put_usecase = testcase_put_usecase
 
         self._init_ui()
 
@@ -222,7 +256,14 @@ class TestCaseListEditDialog(QDialog):
 
         self._w_testcase_edit = TestCaseListEditWidget(
             self,  # type: ignore
-            app_container=self._app_container,
-            project_container=self._project_container,
+            global_settings_get_usecase=self._global_settings_get_usecase,
+            test_test_stage_usecase=self._test_test_stage_usecase,
+            testcase_list_summary_usecase=self._testcase_list_summary_usecase,
+            testcase_create_new_name_usecase=self._testcase_create_new_name_usecase,
+            testcase_create_usecase=self._testcase_create_usecase,
+            testcase_copy_usecase=self._testcase_copy_usecase,
+            testcase_delete_usecase=self._testcase_delete_usecase,
+            testcase_get_usecase=self._testcase_get_usecase,
+            testcase_put_usecase=self._testcase_put_usecase,
         )
         layout.addWidget(self._w_testcase_edit)

@@ -49,8 +49,10 @@ class Navigator(INavigator):
         assert self._current_project_container is not None
         dialog = GlobalSettingsEditDialog(
             parent,
-            app_container=self._app_container,
-            project_container=self._current_project_container,
+            compiler_search_usecase=self._app_container.compiler_search_usecase,
+            test_compile_stage_usecase=self._current_project_container.test_compile_stage_usecase,
+            global_settings_get_usecase=self._app_container.global_settings_get_usecase,
+            global_settings_put_usecase=self._app_container.global_settings_put_usecase,
         )
         dialog.exec_()
 
@@ -64,8 +66,11 @@ class Navigator(INavigator):
         assert self._current_project_container is not None
         dialog = ScoreExportDialog(
             parent,
-            app_container=self._app_container,
-            project_container=self._current_project_container,
+            create_score_excel_io=self._app_container.create_score_excel_io,
+            global_settings_get_usecase=self._app_container.global_settings_get_usecase,
+            student_list_id_usecase=self._current_project_container.student_list_id_usecase,
+            student_mark_list_usecase=self._current_project_container.student_mark_list_usecase,
+            target_id=self._current_project_container.current_project_repository.get().target_id,
         )
         dialog.exec_()
 
@@ -74,8 +79,14 @@ class Navigator(INavigator):
         assert self._current_project_container is not None
         dialog = MarkDialog(
             parent,
-            app_container=self._app_container,
-            project_container=self._current_project_container,
+            global_settings_get_usecase=self._app_container.global_settings_get_usecase,
+            student_list_id_usecase=self._current_project_container.student_list_id_usecase,
+            testcase_config_list_id_usecase=self._current_project_container.testcase_config_list_id_usecase,
+            student_mark_view_data_get_mark_summary_usecase=self._current_project_container.student_mark_view_data_get_mark_summary_usecase,
+            student_mark_view_data_get_test_result_usecase=self._current_project_container.student_mark_view_data_get_test_result_usecase,
+            student_source_code_get_usecase=self._current_project_container.student_source_code_get_usecase,
+            student_mark_get_usecase=self._current_project_container.student_mark_get_usecase,
+            student_mark_put_usecase=self._current_project_container.student_mark_put_usecase,
         )
         dialog.set_state(dialog.states.create_state_of_first_student())
         dialog.exec_()
@@ -85,8 +96,14 @@ class Navigator(INavigator):
         assert self._current_project_container is not None
         dialog = MarkDialog(
             parent,
-            app_container=self._app_container,
-            project_container=self._current_project_container,
+            global_settings_get_usecase=self._app_container.global_settings_get_usecase,
+            student_list_id_usecase=self._current_project_container.student_list_id_usecase,
+            testcase_config_list_id_usecase=self._current_project_container.testcase_config_list_id_usecase,
+            student_mark_view_data_get_mark_summary_usecase=self._current_project_container.student_mark_view_data_get_mark_summary_usecase,
+            student_mark_view_data_get_test_result_usecase=self._current_project_container.student_mark_view_data_get_test_result_usecase,
+            student_source_code_get_usecase=self._current_project_container.student_source_code_get_usecase,
+            student_mark_get_usecase=self._current_project_container.student_mark_get_usecase,
+            student_mark_put_usecase=self._current_project_container.student_mark_put_usecase,
         )
         dialog.set_state(dialog.states.create_state_by_student_id(student_id))
         dialog.exec_()
@@ -96,8 +113,15 @@ class Navigator(INavigator):
         assert self._current_project_container is not None
         dialog = TestCaseListEditDialog(
             parent,
-            app_container=self._app_container,
-            project_container=self._current_project_container,
+            global_settings_get_usecase=self._app_container.global_settings_get_usecase,
+            test_test_stage_usecase=self._app_container.test_test_stage_usecase,
+            testcase_list_summary_usecase=self._current_project_container.testcase_list_summary_usecase,
+            testcase_create_new_name_usecase=self._current_project_container.testcase_create_new_name_usecase,
+            testcase_create_usecase=self._current_project_container.testcase_create_usecase,
+            testcase_copy_usecase=self._current_project_container.testcase_copy_usecase,
+            testcase_delete_usecase=self._current_project_container.testcase_delete_usecase,
+            testcase_get_usecase=self._current_project_container.testcase_get_usecase,
+            testcase_put_usecase=self._current_project_container.testcase_put_usecase,
         )
         dialog.exec_()
 

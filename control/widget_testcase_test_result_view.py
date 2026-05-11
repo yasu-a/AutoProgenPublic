@@ -1,21 +1,21 @@
 from PyQt5.QtCore import pyqtSignal, QObject, pyqtSlot
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTabWidget, QLabel, QPlainTextEdit
 
-from application.container import AppContainer
 from control.widget_testcase_result_otuput_file_view import TestCaseResultOutputFileViewWidget
 from domain.model.student_stage_result import TestResultOutputFileCollection
 from domain.model.value import FileID, SpecialFileType
 from res.font import get_font
 from res.icon import get_icon
 from usecase.dto.student_mark_view_data import AbstractStudentTestCaseTestResultViewData
+from usecase.global_settings import GlobalSettingsGetUseCase
 
 
 class TestCaseValidTestResultViewWidget(QWidget):
     selected_file_id_changed = pyqtSignal(FileID, name="selected_file_id_changed")
 
-    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
+    def __init__(self, parent: QObject = None, *, global_settings_get_usecase: GlobalSettingsGetUseCase):
         super().__init__(parent)
-        self._app_container = app_container
+        self._global_settings_get_usecase = global_settings_get_usecase
 
         self._file_ids: list[FileID] = []
 
@@ -53,7 +53,7 @@ class TestCaseValidTestResultViewWidget(QWidget):
 
             w = TestCaseResultOutputFileViewWidget(
                 self,
-                app_container=self._app_container,
+                global_settings_get_usecase=self._global_settings_get_usecase,
             )
             w.set_data(output_file_entry)
             self._w_file_tab.addTab(w, icon, title)
@@ -108,9 +108,9 @@ class TestCaseInvalidTestResultViewWidget(QWidget):
 class TestCaseTestResultViewWidget(QWidget):
     selected_file_id_changed = pyqtSignal(FileID, name="selected_file_id_changed")
 
-    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
+    def __init__(self, parent: QObject = None, *, global_settings_get_usecase: GlobalSettingsGetUseCase):
         super().__init__(parent)
-        self._app_container = app_container
+        self._global_settings_get_usecase = global_settings_get_usecase
 
         self.__w: TestCaseValidTestResultViewWidget | TestCaseInvalidTestResultViewWidget | None \
             = None
@@ -150,7 +150,7 @@ class TestCaseTestResultViewWidget(QWidget):
             if data.is_success:
                 # 正常完了時用ウィジェットを設定
                 w = TestCaseValidTestResultViewWidget(
-                    app_container=self._app_container,
+                    global_settings_get_usecase=self._global_settings_get_usecase,
                 )
                 w.set_data(test_result_output_files=data.output_and_results)
                 self.__set_widget(w)

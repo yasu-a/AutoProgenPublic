@@ -1,23 +1,23 @@
 from PyQt5.QtCore import QObject
 from PyQt5.QtGui import QTextCharFormat, QColor, QTextCursor
 
-from application.container import AppContainer
 from control.widget_plain_text_edit import PlainTextEdit
 from domain.model.output_file_test_result import MatchedToken
 from res.font import get_font
+from usecase.global_settings import GlobalSettingsGetUseCase
 
 
 class TestCaseResultOutputFileTextView(PlainTextEdit):
-    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
+    def __init__(self, parent: QObject = None, *, global_settings_get_usecase: GlobalSettingsGetUseCase):
         super().__init__(parent)
-        self._app_container = app_container
+        self._global_settings_get_usecase = global_settings_get_usecase
 
         self._init_ui()
         self._init_signals()
 
     def _init_ui(self):
         self.setFont(get_font(monospace=True, small=True))
-        settings = self._app_container.global_settings_get_usecase.execute()
+        settings = self._global_settings_get_usecase.execute()
         self.set_show_editing_symbols(
             settings.show_editing_symbols_in_stream_content,
         )

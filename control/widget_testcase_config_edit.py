@@ -1,7 +1,6 @@
 from PyQt5.QtCore import QObject, pyqtSlot
 from PyQt5.QtWidgets import QTabWidget, QVBoxLayout, QTabBar, QLabel, QWidget, QHBoxLayout
 
-from application.container import AppContainer
 from control.widget_testcase_execute_options import TestCaseExecuteConfigOptionsEditWidget
 from control.widget_testcase_input_files_edit import TestCaseInputFilesEditWidget
 from control.widget_testcase_output_files_edit import TestCaseExpectedOutputFilesEditWidget
@@ -12,12 +11,21 @@ from domain.model.test_config import TestCaseTestConfig
 from domain.model.testcase_config import TestCaseConfig
 from res.font import get_font
 from res.icon import get_icon
+from usecase.global_settings import GlobalSettingsGetUseCase
+from usecase.test_test_stage import TestTestStageUseCase
 
 
 class TestCaseConfigEditWidget(QTabWidget):
-    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
+    def __init__(
+            self,
+            parent: QObject = None,
+            *,
+            global_settings_get_usecase: GlobalSettingsGetUseCase,
+            test_test_stage_usecase: TestTestStageUseCase,
+    ):
         super().__init__(parent)
-        self._app_container = app_container
+        self._global_settings_get_usecase = global_settings_get_usecase
+        self._test_test_stage_usecase = test_test_stage_usecase
 
         self._testcase_id = None
 
@@ -38,7 +46,7 @@ class TestCaseConfigEditWidget(QTabWidget):
 
             self._w_input_files_edit = TestCaseInputFilesEditWidget(
                 self,
-                app_container=self._app_container,
+                global_settings_get_usecase=self._global_settings_get_usecase,
             )
             layout.addWidget(self._w_input_files_edit)
 
@@ -80,7 +88,8 @@ class TestCaseConfigEditWidget(QTabWidget):
 
                 self._w_test_config_tester = TestCaseTestConfigTesterWidget(
                     self,
-                    app_container=self._app_container,
+                    global_settings_get_usecase=self._global_settings_get_usecase,
+                    test_test_stage_usecase=self._test_test_stage_usecase,
                 )
                 layout_right.addWidget(self._w_test_config_tester)
 
