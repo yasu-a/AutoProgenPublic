@@ -1,13 +1,13 @@
 import pytest
 
-from application.dependency.repository import get_student_mark_repository
+from application.dependency.repository import create_student_mark_repository
 from domain.error import RepositoryItemNotFoundError
 from domain.model.student_mark import StudentMark
 
 
 @pytest.fixture
-def repo():
-    return get_student_mark_repository()
+def repo(project_id):
+    return create_student_mark_repository(project_id)
 
 
 @pytest.fixture

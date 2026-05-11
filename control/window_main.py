@@ -1,11 +1,8 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from application.dependency.task import get_task_manager
-from application.dependency.usecase import get_student_list_id_usecase, get_student_submission_folder_show_usecase
-from control.dialog_mark import MarkDialog
 from control.dialog_progress import AbstractProgressDialog
 from control.task.clean_all_stage import CleanAllStagesStudentTask
 from control.task.run_stage import RunStagesStudentTask
@@ -21,7 +18,7 @@ from util.app_logging import create_logger
 from control.interface_navigator import INavigator
 
 if TYPE_CHECKING:
-    from application.container import ProjectContainer
+    from application.container import ProjectContainer, AppContainer
 
 
 class MainWindow(QMainWindow):
@@ -32,11 +29,14 @@ class MainWindow(QMainWindow):
             parent: QObject = None,
             *,
             navigator: INavigator,
+            app_container: "AppContainer",
             project_container: "ProjectContainer",
     ):
         super().__init__(parent)
         self._navigator = navigator
+        self._app_container = app_container
         self._project_container = project_container
+        self._task_manager = project_container.task_manager
 
         self._init_ui()
         self._init_signals()
@@ -51,32 +51,53 @@ class MainWindow(QMainWindow):
         self.resize(1500, 800)
 
         # ツールバー
-        self._tool_bar = ToolBar(self)
+        self._tool_bar = ToolBar(
+            self,
+            task_manager=self._task_manager,
+        )
         # noinspection PyUnresolvedReferences
         self.addToolBar(self._tool_bar)
 
         # 生徒のテーブル
         # noinspection PyTypeChecker
-        self._w_student_table = StudentTableWidget(self)
+        self._w_student_table = StudentTableWidget(
+            self,
+            student_list_id_usecase=self._project_container.student_list_id_usecase,
+            student_dynamic_take_diff_snapshot_usecase=self._project_container.student_dynamic_take_diff_snapshot_usecase,
+            student_table_get_student_id_cell_data_usecase=self._project_container.student_table_get_student_id_cell_data_usecase,
+            student_table_get_student_name_cell_data_usecase=self._project_container.student_table_get_student_name_cell_data_usecase,
+            student_table_get_student_stage_state_cell_data_usecase=self._project_container.student_table_get_student_stage_state_cell_data_usecase,
+            student_table_get_student_error_cell_data_usecase=self._project_container.student_table_get_student_error_cell_data_usecase,
+            student_mark_get_usecase=self._project_container.student_mark_get_usecase,
+        )
         # noinspection PyUnresolvedReferences
         self.setCentralWidget(self._w_student_table)
 
         # ステータスバー
         #  - タスクモニタ
         # noinspection PyTypeChecker
-        self._sb_task_state = TaskStateStatusBarWidget(self)
+        self._sb_task_state = TaskStateStatusBarWidget(
+            self,
+            task_manager=self._task_manager,
+        )
         # noinspection PyUnresolvedReferences
         self.statusBar().addPermanentWidget(self._sb_task_state)
         # noinspection PyUnresolvedReferences
         self.statusBar().addPermanentWidget(QLabel(self), 1)
         #  - テスト版通知
         # noinspection PyTypeChecker
-        self._sb_unstable_version_notif = UnstableVersionNotificationStatusBarWidget(self)
+        self._sb_unstable_version_notif = UnstableVersionNotificationStatusBarWidget(
+            self,
+            app_container=self._app_container,
+        )
         # noinspection PyUnresolvedReferences
         self.statusBar().addPermanentWidget(self._sb_unstable_version_notif)
         #  - リソースモニタ
         # noinspection PyTypeChecker
-        self._sb_process_resource_usage = ProcessResourceUsageStatusBarWidget(self)
+        self._sb_process_resource_usage = ProcessResourceUsageStatusBarWidget(
+            self,
+            app_container=self._app_container,
+        )
         # noinspection PyUnresolvedReferences
         self.statusBar().addPermanentWidget(self._sb_process_resource_usage)
 
@@ -93,7 +114,7 @@ class MainWindow(QMainWindow):
     def __w_student_table_student_id_cell_triggered(self, student_id: StudentID):
         # テーブルの生徒の学籍番号がクリックされたとき
         # 学生の提出データがあるフォルダを開く
-        get_student_submission_folder_show_usecase().execute(
+        self._project_container.student_submission_folder_show_usecase.execute(
             student_id=student_id,
         )
 
@@ -101,7 +122,7 @@ class MainWindow(QMainWindow):
     def __w_student_table_mark_result_cell_triggered(self, student_id: StudentID):
         # テーブルの生徒の点数がクリックされたとき
         # 生徒ごとの採点画面を開く
-        if not get_task_manager().is_empty():
+        if not self._task_manager.is_empty():
             # noinspection PyTypeChecker
             QMessageBox.warning(
                 self,
@@ -110,44 +131,42 @@ class MainWindow(QMainWindow):
             )
             return
 
-        dialog = MarkDialog(self)
-        dialog.set_state(dialog.states.create_state_by_student_id(student_id))
-        dialog.exec_()
+        self._navigator.open_scoring_dialog_for_student(self, student_id)
 
     def __perform_stop_tasks(self):
-        if not get_task_manager().is_empty():
+        if not self._task_manager.is_empty():
             AbstractProgressDialog.run_blocking_task(
                 parent=self,
                 title="タスクの停止",
                 initial_message="停止処理を開始します...",
-                task_func=get_task_manager().terminate,
+                task_func=self._task_manager.terminate,
             )
 
-    @classmethod
-    def __enqueue_student_tasks_if_not_run(cls, parent, task_cls: type[AbstractStudentTask]):
-        if not get_task_manager().is_empty():
+    def __enqueue_student_tasks_if_not_run(self, task_factory: Callable[[StudentID], AbstractStudentTask]):
+        if not self._task_manager.is_empty():
             return
-        for student_id in get_student_list_id_usecase().execute():
-            get_task_manager().enqueue(
-                task_cls(
-                    parent=parent,
-                    student_id=student_id,
-                )
-            )
+        for student_id in self._project_container.student_list_id_usecase.execute():
+            self._task_manager.enqueue(task_factory(student_id))
 
     def __tool_bar_triggered(self, name):
         self._tool_bar.update_button_state(is_task_alive=True)
         if name == "run":
             self.__enqueue_student_tasks_if_not_run(
-                parent=self,
-                task_cls=RunStagesStudentTask,
+                lambda student_id: RunStagesStudentTask(
+                    parent=self,
+                    student_id=student_id,
+                    student_run_next_stage_usecase=self._project_container.student_run_next_stage_usecase,
+                ),
             )
         elif name == "stop":
             self.__perform_stop_tasks()
         elif name == "clear":
             self.__enqueue_student_tasks_if_not_run(
-                parent=self,
-                task_cls=CleanAllStagesStudentTask,
+                lambda student_id: CleanAllStagesStudentTask(
+                    parent=self,
+                    student_id=student_id,
+                    student_stage_result_clear_usecase=self._project_container.student_stage_result_clear_usecase,
+                ),
             )
         elif name == "edit-settings":
             # noinspection PyTypeChecker

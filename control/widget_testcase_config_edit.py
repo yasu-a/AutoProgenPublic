@@ -11,11 +11,21 @@ from domain.model.test_config import TestCaseTestConfig
 from domain.model.testcase_config import TestCaseConfig
 from res.font import get_font
 from res.icon import get_icon
+from usecase.global_settings import GlobalSettingsGetUseCase
+from usecase.test_test_stage import TestTestStageUseCase
 
 
 class TestCaseConfigEditWidget(QTabWidget):
-    def __init__(self, parent: QObject = None):
+    def __init__(
+            self,
+            parent: QObject = None,
+            *,
+            global_settings_get_usecase: GlobalSettingsGetUseCase,
+            test_test_stage_usecase: TestTestStageUseCase,
+    ):
         super().__init__(parent)
+        self._global_settings_get_usecase = global_settings_get_usecase
+        self._test_test_stage_usecase = test_test_stage_usecase
 
         self._testcase_id = None
 
@@ -34,7 +44,10 @@ class TestCaseConfigEditWidget(QTabWidget):
             label.setFont(get_font(bold=True))
             layout.addWidget(label)
 
-            self._w_input_files_edit = TestCaseInputFilesEditWidget(self)
+            self._w_input_files_edit = TestCaseInputFilesEditWidget(
+                self,
+                global_settings_get_usecase=self._global_settings_get_usecase,
+            )
             layout.addWidget(self._w_input_files_edit)
 
             label = QLabel("実行のオプション", self)
@@ -73,7 +86,11 @@ class TestCaseConfigEditWidget(QTabWidget):
                 layout_right = QVBoxLayout()
                 layout.addLayout(layout_right)
 
-                self._w_test_config_tester = TestCaseTestConfigTesterWidget(self)
+                self._w_test_config_tester = TestCaseTestConfigTesterWidget(
+                    self,
+                    global_settings_get_usecase=self._global_settings_get_usecase,
+                    test_test_stage_usecase=self._test_test_stage_usecase,
+                )
                 layout_right.addWidget(self._w_test_config_tester)
 
         # タブを左横にする

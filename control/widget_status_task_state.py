@@ -1,14 +1,15 @@
 from PyQt5.QtCore import QObject, QTimer, pyqtSlot
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel
 
-from application.dependency.task import get_task_manager
+from infra.task.manager import TaskManager
 from res.font import get_font
 
 
 class TaskStateStatusBarWidget(QWidget):
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, task_manager: TaskManager):
         super().__init__(parent)
 
+        self._task_manager = task_manager
         self.__icon_anim_state = 0
 
         self._icon_timer = QTimer(self)
@@ -44,8 +45,7 @@ class TaskStateStatusBarWidget(QWidget):
 
     @pyqtSlot()
     def __icon_timer_timeout(self):
-        task_manager = get_task_manager()
-        if task_manager.is_empty():
+        if self._task_manager.is_empty():
             self._l_icon.setText("")
         else:
             self._l_icon.setText((">" * self.__icon_anim_state).ljust(10, "."))
@@ -53,8 +53,7 @@ class TaskStateStatusBarWidget(QWidget):
 
     @pyqtSlot()
     def __update_timer_timeout(self):
-        task_manager = get_task_manager()
-        if task_manager.is_empty():
+        if self._task_manager.is_empty():
             self._l_message.setText(
                 "実行中のタスクはありません"
             )
@@ -62,7 +61,7 @@ class TaskStateStatusBarWidget(QWidget):
             background_color = "none"
         else:
             self._l_message.setText(
-                f"実行中のタスク: {task_manager.count_active()}/{task_manager.count()}"
+                f"実行中のタスク: {self._task_manager.count_active()}/{self._task_manager.count()}"
             )
             color = "white"
             background_color = "#cc3300"

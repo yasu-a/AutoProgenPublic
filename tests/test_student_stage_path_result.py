@@ -4,7 +4,7 @@ from typing import Optional
 
 import pytest
 
-from application.dependency.repository import get_student_stage_path_result_repository
+from application.dependency.repository import create_student_stage_path_result_repository
 from domain.model.output_file import OutputFileCollection, OutputFile
 from domain.model.stage_path import StagePath
 from domain.model.stage import BuildStage, CompileStage, ExecuteStage, TestStage
@@ -28,8 +28,8 @@ from domain.model.value import (
 
 
 @pytest.fixture
-def repo():
-    return get_student_stage_path_result_repository()
+def repo(project_id):
+    return create_student_stage_path_result_repository(project_id)
 
 
 @pytest.fixture

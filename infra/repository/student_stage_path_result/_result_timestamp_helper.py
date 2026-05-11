@@ -48,19 +48,22 @@ class _ResultTimestampHelper:
         指定された生徒IDの記録された時刻を取得します。
         記録がない場合は None を返します。
         """
-        if student_id not in self._cache:
-            cursor.execute(
-                """
-                SELECT timestamp
-                FROM student_stage_path_result_timestamp
-                WHERE student_id = ?
-                """,
-                (str(student_id),),
-            )
-            row = cursor.fetchone()
-            if row is None:
-                timestamp = None
-            else:
-                timestamp = row["timestamp"]
-            self._cache[student_id] = timestamp
-        return self._cache[student_id]
+        # NOTE:
+        # 依存移行の途中で複数Repositoryインスタンスが共存すると、
+        # インスタンス内キャッシュのみでは最新更新を見逃すことがある。
+        # そのためここでは毎回DBを参照して整合性を優先する。
+        cursor.execute(
+            """
+            SELECT timestamp
+            FROM student_stage_path_result_timestamp
+            WHERE student_id = ?
+            """,
+            (str(student_id),),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            timestamp = None
+        else:
+            timestamp = row["timestamp"]
+        self._cache[student_id] = timestamp
+        return timestamp

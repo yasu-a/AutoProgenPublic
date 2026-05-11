@@ -5,11 +5,13 @@ from control.widget_testcase_result_output_file_text_view import \
     TestCaseResultOutputFileTextView
 from domain.model.test_result_output_file_entry import AbstractTestResultOutputFileEntry
 from domain.model.value import FileID
+from usecase.global_settings import GlobalSettingsGetUseCase
 
 
 class TestCaseResultOutputFileViewWidget(QWidget):
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, global_settings_get_usecase: GlobalSettingsGetUseCase):
         super().__init__(parent)
+        self._global_settings_get_usecase = global_settings_get_usecase
 
         self._output_file_entry: AbstractTestResultOutputFileEntry | None = None
 
@@ -27,7 +29,9 @@ class TestCaseResultOutputFileViewWidget(QWidget):
         layout.addWidget(self._l_messages)
 
         # 内容を表示するテキストエディタ
-        self._te = TestCaseResultOutputFileTextView()
+        self._te = TestCaseResultOutputFileTextView(
+            global_settings_get_usecase=self._global_settings_get_usecase,
+        )
         layout.addWidget(self._te)
 
     def _init_signals(self):

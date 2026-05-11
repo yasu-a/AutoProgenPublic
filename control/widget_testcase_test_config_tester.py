@@ -1,7 +1,6 @@
 from PyQt5.QtCore import QObject, pyqtSignal, QEvent, Qt
 from PyQt5.QtWidgets import QVBoxLayout, QLabel, QGroupBox, QPlainTextEdit, QHBoxLayout, QPushButton
 
-from application.dependency.usecase import get_test_test_stage_usecase
 from control.widget_horizontal_line import HorizontalLineWidget
 from control.widget_plain_text_edit import PlainTextEdit
 from control.widget_test_summary_indicator import TestCaseTestSummaryIndicatorWidget
@@ -10,6 +9,8 @@ from domain.model.expected_output_file import ExpectedOutputFile
 from domain.model.test_config_options import TestConfigOptions
 from domain.model.test_result_output_file_entry import AbstractTestResultOutputFileEntry
 from res.font import get_font
+from usecase.global_settings import GlobalSettingsGetUseCase
+from usecase.test_test_stage import TestTestStageUseCase
 from usecase.dto.student_mark_view_data import StudentTestCaseSummaryState
 from usecase.dto.test_test_stage import TestTestStageResult
 
@@ -17,8 +18,16 @@ from usecase.dto.test_test_stage import TestTestStageResult
 class TestCaseTestConfigTesterWidget(QGroupBox):
     run_requested = pyqtSignal(name="run_requested")  # 実行を要求する
 
-    def __init__(self, parent: QObject = None):
+    def __init__(
+            self,
+            parent: QObject = None,
+            *,
+            global_settings_get_usecase: GlobalSettingsGetUseCase,
+            test_test_stage_usecase: TestTestStageUseCase,
+    ):
         super().__init__(parent)
+        self._global_settings_get_usecase = global_settings_get_usecase
+        self._test_test_stage_usecase = test_test_stage_usecase
 
         self._init_ui()
         self._init_signals()
@@ -71,7 +80,9 @@ class TestCaseTestConfigTesterWidget(QGroupBox):
         self._l_test_result.setWordWrap(True)
         layout.addWidget(self._l_test_result)
 
-        self._result_view = TestCaseResultOutputFileTextView()
+        self._result_view = TestCaseResultOutputFileTextView(
+            global_settings_get_usecase=self._global_settings_get_usecase,
+        )
         layout.addWidget(self._result_view)
 
         # noinspection PyTypeChecker
@@ -87,7 +98,7 @@ class TestCaseTestConfigTesterWidget(QGroupBox):
             expected_output_file: ExpectedOutputFile,
             test_config_options: TestConfigOptions,
     ):
-        test_result: TestTestStageResult = get_test_test_stage_usecase().execute(
+        test_result: TestTestStageResult = self._test_test_stage_usecase.execute(
             expected_output_file=expected_output_file,
             test_config_options=test_config_options,
             content_text=self._editor.toPlainText(),

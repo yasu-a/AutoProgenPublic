@@ -25,9 +25,8 @@ if __name__ == '__main__':
 _logger = create_logger()
 
 
-def create_app() -> "QApplication":
+def create_app(*, app_version_text: str) -> "QApplication":
     from PyQt5.QtWidgets import QApplication, QProxyStyle, QStyle
-    from application.dependency.usecase import get_app_version_get_text_usecase
     from res.icon import get_icon
     from res.font import get_font
 
@@ -40,7 +39,7 @@ def create_app() -> "QApplication":
 
     app = QApplication(sys.argv)
     app.setApplicationName("プロ言採点")
-    app.setApplicationVersion(get_app_version_get_text_usecase().execute())
+    app.setApplicationVersion(app_version_text)
     app.setWindowIcon(get_icon("app"))
     # noinspection PyArgumentList
     app.setFont(get_font())
@@ -63,11 +62,13 @@ def main():
             app_logging.set_level(app_logging.DEBUG)
             _logger.info("VERBOSE LOG ENABLED")
 
+    app_container = AppContainer()
     # QApplicationを生成
-    app = create_app()
+    app = create_app(
+        app_version_text=app_container.app_version_get_text_usecase.execute(),
+    )
     app.setQuitOnLastWindowClosed(False)
 
-    app_container = AppContainer()
     navigator = Navigator(app_container=app_container)
     if navigator.start():
         sys.exit(app.exec_())

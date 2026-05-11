@@ -1,19 +1,19 @@
 import pytest
 
-from application.dependency.repository import get_student_source_repository
+from application.dependency.repository import create_student_source_repository
 from domain.model.file_item import SourceFileItem
 
 
-def test_get_not_found(sample_student_ids):
-    repo = get_student_source_repository()
+def test_get_not_found(sample_student_ids, project_id):
+    repo = create_student_source_repository(project_id)
     fake_student_id, *_ = sample_student_ids
 
     with pytest.raises(FileNotFoundError):
         repo.get(fake_student_id)
 
 
-def test_put_and_get(sample_student_ids):
-    repo = get_student_source_repository()
+def test_put_and_get(sample_student_ids, project_id):
+    repo = create_student_source_repository(project_id)
     fake_student_id, *_ = sample_student_ids
     test_content = b"some code"
     test_encoding = "utf-8"
@@ -25,8 +25,8 @@ def test_put_and_get(sample_student_ids):
     assert retrieved_item.encoding == test_encoding
 
 
-def test_put_and_get_multiple(sample_student_ids):
-    repo = get_student_source_repository()
+def test_put_and_get_multiple(sample_student_ids, project_id):
+    repo = create_student_source_repository(project_id)
     fake_student_id_1, fake_student_id_2, *_ = sample_student_ids
 
     content_1 = b"some code 1"
@@ -46,8 +46,8 @@ def test_put_and_get_multiple(sample_student_ids):
     assert retrieved_item_2.encoding == encoding_2
 
 
-def test_exists(sample_student_ids):
-    repo = get_student_source_repository()
+def test_exists(sample_student_ids, project_id):
+    repo = create_student_source_repository(project_id)
     fake_student_id, *_ = sample_student_ids
 
     assert not repo.exists(fake_student_id)
@@ -57,16 +57,16 @@ def test_exists(sample_student_ids):
     assert repo.exists(fake_student_id)
 
 
-def test_delete_not_found(sample_student_ids):
-    repo = get_student_source_repository()
+def test_delete_not_found(sample_student_ids, project_id):
+    repo = create_student_source_repository(project_id)
     fake_student_id, *_ = sample_student_ids
 
     with pytest.raises(FileNotFoundError):
         repo.delete(fake_student_id)
 
 
-def test_put_and_delete(sample_student_ids):
-    repo = get_student_source_repository()
+def test_put_and_delete(sample_student_ids, project_id):
+    repo = create_student_source_repository(project_id)
     fake_student_id, *_ = sample_student_ids
 
     repo.put(fake_student_id, SourceFileItem(content_bytes=b"more code", encoding="utf-8"))
@@ -76,8 +76,8 @@ def test_put_and_delete(sample_student_ids):
         repo.get(fake_student_id)
 
 
-def test_put_and_delete_multiple(sample_student_ids):
-    repo = get_student_source_repository()
+def test_put_and_delete_multiple(sample_student_ids, project_id):
+    repo = create_student_source_repository(project_id)
     fake_student_id_1, fake_student_id_2, *_ = sample_student_ids
 
     repo.put(fake_student_id_1,
@@ -94,8 +94,8 @@ def test_put_and_delete_multiple(sample_student_ids):
     assert retrieved_item_2.encoding == "ascii"
 
 
-def test_overwrite(sample_student_ids):
-    repo = get_student_source_repository()
+def test_overwrite(sample_student_ids, project_id):
+    repo = create_student_source_repository(project_id)
     fake_student_id, *_ = sample_student_ids
     test_content_1 = b"some code"
     test_content_2 = b"more code"

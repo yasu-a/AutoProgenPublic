@@ -1,32 +1,49 @@
 import os
 from pathlib import Path
-
 from PyQt5.QtCore import QObject, pyqtSlot, QStandardPaths
 from PyQt5.QtWidgets import QDialog, QHBoxLayout, QLabel, \
     QVBoxLayout, QPlainTextEdit, QPushButton, QLineEdit, QComboBox, \
     QFileDialog, QMessageBox
 
-from application.dependency.external_io import get_score_excel_io
-from application.dependency.service import get_current_project_get_service
-from application.dependency.usecase import get_student_list_id_usecase, \
-    get_student_mark_list_usecase, get_global_settings_get_usecase
 from control.widget_horizontal_line import HorizontalLineWidget
 from domain.model.student_mark import StudentMark
 from domain.model.value import StudentID, TargetID
 from res.font import get_font
 from res.icon import get_icon
+from usecase.global_settings import GlobalSettingsGetUseCase
+from usecase.score_excel import ScoreExcelListWorksheetStatsUseCase, ScoreExcelHasDataUseCase, ScoreExcelApplyUseCase
+from usecase.student import StudentListIDUseCase
+from usecase.student_mark import StudentMarkListUseCase
 from util.app_logging import create_logger
 
 
 class ScoreExportDialog(QDialog):  # FIXME: usecase化
     _logger = create_logger()
 
-    def __init__(self, parent: QObject = None):
+    def __init__(
+            self,
+            parent: QObject = None,
+            *,
+            global_settings_get_usecase: GlobalSettingsGetUseCase,
+            score_excel_list_worksheet_stats_usecase: ScoreExcelListWorksheetStatsUseCase,
+            score_excel_has_data_usecase: ScoreExcelHasDataUseCase,
+            score_excel_apply_usecase: ScoreExcelApplyUseCase,
+            student_list_id_usecase: StudentListIDUseCase,
+            student_mark_list_usecase: StudentMarkListUseCase,
+            target_id: TargetID,
+    ):
         super().__init__(parent)
+        self._global_settings_get_usecase = global_settings_get_usecase
+        self._score_excel_list_worksheet_stats_usecase = score_excel_list_worksheet_stats_usecase
+        self._score_excel_has_data_usecase = score_excel_has_data_usecase
+        self._score_excel_apply_usecase = score_excel_apply_usecase
 
-        self._student_ids: list[StudentID] = get_student_list_id_usecase().execute()
-        self._target_id: TargetID = get_current_project_get_service().execute().target_id
-        self._student_marks: list[StudentMark] = get_student_mark_list_usecase().execute()
+        self._student_list_id_usecase = student_list_id_usecase
+        self._student_mark_list_usecase = student_mark_list_usecase
+        self._target_id: TargetID = target_id
+
+        self._student_ids: list[StudentID] = self._student_list_id_usecase.execute()
+        self._student_marks: list[StudentMark] = self._student_mark_list_usecase.execute()
 
         self._init_ui()
         self._init_signals()
@@ -142,7 +159,8 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
             return
 
         # ワークシートの状態を読み取って正常なら選択肢に追加，そうでなければエラーを表示
-        worksheet_stats = get_score_excel_io(excel_fullpath).list_worksheet_stats(
+        worksheet_stats = self._score_excel_list_worksheet_stats_usecase.execute(
+            excel_fullpath=excel_fullpath,
             student_ids=self._student_ids,
         )
         messages = []
@@ -187,7 +205,8 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
 
         worksheet_name = self._dl_sheet_names.currentText()
 
-        if get_score_excel_io(excel_fullpath).has_data(
+        if self._score_excel_has_data_usecase.execute(
+                excel_fullpath=excel_fullpath,
                 student_ids=self._student_ids,
                 worksheet_name=worksheet_name,
                 target_id=self._target_id,
@@ -201,11 +220,12 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
             ) == QMessageBox.No:
                 return
         try:
-            backup_path = get_score_excel_io(excel_fullpath).apply(
+            backup_path = self._score_excel_apply_usecase.execute(
+                excel_fullpath=excel_fullpath,
                 worksheet_name=worksheet_name,
                 target_id=self._target_id,
                 student_marks=self._student_marks,
-                do_backup=get_global_settings_get_usecase().execute().backup_before_export,
+                do_backup=self._global_settings_get_usecase.execute().backup_before_export,
             )
         except Exception as e:
             self._logger.info("Failed to commit scores to the workbook")

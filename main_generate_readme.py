@@ -4,10 +4,24 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from application.dependency.path_provider import get_static_resource_base_path, get_icon_fullpath, \
-    get_global_base_path, get_image_fullpath
-from application.dependency.repository import get_app_version_repository
+from application.container import AppContainer
 from domain.model.app_version import ReleaseType, AppVersion
+
+
+def _get_global_base_path() -> Path:
+    return Path(__file__).resolve().parent
+
+
+def _get_static_resource_base_path() -> Path:
+    return _get_global_base_path() / "static"
+
+
+def _get_icon_fullpath(filename: str) -> Path:
+    return _get_static_resource_base_path() / "icon" / f"{filename}.png"
+
+
+def _get_image_fullpath(filename: str) -> Path:
+    return _get_static_resource_base_path() / "img" / f"{filename}.jpg"
 
 
 class VariableFactory(ABC):
@@ -21,7 +35,7 @@ class ResourceIconVariableFactory(VariableFactory):
         if not var_name.startswith("icon_"):
             raise KeyError(var_name)
         icon_filename = var_name[5:]
-        icon_path = get_icon_fullpath(icon_filename).relative_to(get_global_base_path())
+        icon_path = _get_icon_fullpath(icon_filename).relative_to(_get_global_base_path())
         return f"<img src=\"/{icon_path.as_posix()}\" width=\"15px\">"
 
 
@@ -30,12 +44,12 @@ class ResourceImageVariableFactory(VariableFactory):
         if not var_name.startswith("img_"):
             raise KeyError(var_name)
         image_filename = var_name[4:]
-        image_path = get_image_fullpath(image_filename).relative_to(get_global_base_path())
+        image_path = _get_image_fullpath(image_filename).relative_to(_get_global_base_path())
         return f"![image_filename]({image_path.as_posix()})"
 
 
 def _get_app_version() -> AppVersion:
-    return get_app_version_repository().get()
+    return AppContainer().app_version_repository.get()
 
 
 class AppInfoVariableFactory(VariableFactory):
@@ -135,7 +149,7 @@ Path("README.md").write_text(
             AppStateVariableFactory(),
         )
     ).parse(
-        (get_static_resource_base_path() / "readme" / "README.md").read_text(encoding="utf-8")
+        (_get_static_resource_base_path() / "readme" / "README.md").read_text(encoding="utf-8")
     ),
     encoding="utf-8",
 )

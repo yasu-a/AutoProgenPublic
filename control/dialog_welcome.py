@@ -2,7 +2,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import QShowEvent
 from PyQt5.QtWidgets import *
 
-from application.dependency.usecase import get_project_list_recent_summary_usecase
+from application.container import AppContainer
 from control.dto.new_project_config import NewProjectConfig
 from control.widget_new_project import NewProjectWidget
 from control.widget_recent_project import RecentProjectWidget
@@ -11,9 +11,10 @@ from res.icon import get_icon
 
 
 class WelcomeDialog(QDialog):
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
         super().__init__(parent)
 
+        self._app_container = app_container
         self._result: ProjectID | NewProjectConfig | None = None
 
         self._init_ui()
@@ -32,11 +33,11 @@ class WelcomeDialog(QDialog):
         layout_root.addWidget(self._container)
 
         # noinspection PyTypeChecker
-        self._w_new_project = NewProjectWidget(self)
+        self._w_new_project = NewProjectWidget(self, app_container=self._app_container)
         self._container.addTab(self._w_new_project, "")
 
         # noinspection PyTypeChecker
-        self._w_recent_projects = RecentProjectWidget(self)
+        self._w_recent_projects = RecentProjectWidget(self, app_container=self._app_container)
         self._container.addTab(self._w_recent_projects, "")
 
         # タブを左横にする
@@ -76,7 +77,7 @@ class WelcomeDialog(QDialog):
     # noinspection PyMethodOverriding
     def showEvent(self, evt: QShowEvent):
         # TODO: ProjectCountUseCaseを実装して置き換える　プロジェクトデータを全て読み込む必要はないため
-        if get_project_list_recent_summary_usecase().execute():
+        if self._app_container.project_list_recent_summary_usecase.execute():
             self._container.setCurrentIndex(1)
         else:
             self._container.setCurrentIndex(0)

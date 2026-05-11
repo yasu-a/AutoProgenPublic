@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+from domain.model.value import ProjectID
 
 TEST_DATA_ROOT_FULLPATH: Path = Path("~/AutoProgenProjectsTest").expanduser().absolute()
 print(f"{TEST_DATA_ROOT_FULLPATH=!s}")
@@ -33,7 +34,6 @@ def setup_test():
     set_debug(True)
     from application.state.current_project import get_current_project_id
     if get_current_project_id() is None:
-        from domain.model.value import ProjectID
         from application.state.current_project import set_current_project_id
         set_current_project_id(ProjectID("test_project_id"))
     override_dependency()
@@ -58,13 +58,18 @@ def setup_test():
 
 
 @pytest.fixture
-def sample_students():
-    from application.dependency.repository import get_student_repository
+def project_id() -> ProjectID:
+    return ProjectID("test_project_id")
+
+
+@pytest.fixture
+def sample_students(project_id: ProjectID):
+    from application.dependency.repository import create_student_repository
     from domain.model.value import StudentID
     from domain.model.student import Student
     from datetime import datetime
 
-    repo = get_student_repository()
+    repo = create_student_repository(project_id)
     students = []
     for i in range(10):
         student_id = StudentID(f"00D00{i:05d}A")

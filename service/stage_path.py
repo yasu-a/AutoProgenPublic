@@ -1,7 +1,7 @@
 from domain.model.stage_path import StagePath
 from domain.model.stage import TestStage
 from domain.model.value import TestCaseID
-from service.testcase_config import TestCaseConfigListIDSubService
+from infra.repository.testcase_config import TestCaseConfigRepository
 
 
 class StagePathListSubService:
@@ -10,14 +10,14 @@ class StagePathListSubService:
     def __init__(
             self,
             *,
-            testcase_config_list_id_sub_service: TestCaseConfigListIDSubService,
+            testcase_config_repo: TestCaseConfigRepository,
     ):
-        self._testcase_config_list_id_sub_service = testcase_config_list_id_sub_service
+        self._testcase_config_repo = testcase_config_repo
 
     def execute(self) -> list[StagePath]:
         # コンテキストが出揃っていない場合，ステージがリストに含まれない場合もある
         # 例えばテストケースがない場合はExecuteStageとTestStageが含まれない
-        testcase_ids = self._testcase_config_list_id_sub_service.execute()
+        testcase_ids = self._testcase_config_repo.list_ids()
         return StagePath.list_paths(testcase_ids=testcase_ids)
 
 

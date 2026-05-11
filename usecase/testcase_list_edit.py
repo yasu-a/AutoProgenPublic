@@ -10,11 +10,11 @@ from domain.model.test_config_options import TestConfigOptions
 from domain.model.testcase_config import TestCaseConfig
 from domain.model.value import TestCaseID
 from infra.repository.testcase_config import TestCaseConfigRepository
-from service.testcase_config import TestCaseConfigListIDSubService, TestCaseConfigCopyService
+from service.testcase_config import TestCaseConfigCopyService
 from usecase.dto.testcase_list_edit import TestCaseListEditTestCaseSummary
 
 
-class TestCaseListEditListSummaryUseCase:
+class TestCaseListSummaryUseCase:
     # テストケース構成の要約をリストアップする
     def __init__(
             self,
@@ -34,19 +34,19 @@ class TestCaseListEditListSummaryUseCase:
         ]
 
 
-class TestCaseListEditCreateNewNameUseCase:
+class TestCaseCreateNewNameUseCase:
     # 既存のテストケース名と衝突しない新しいテストケース名を生成する
 
     def __init__(
             self,
             *,
-            testcase_config_list_id_sub_service: TestCaseConfigListIDSubService,
+            testcase_config_repo: TestCaseConfigRepository,
     ):
-        self._testcase_config_list_id_sub_service = testcase_config_list_id_sub_service
+        self._testcase_config_repo = testcase_config_repo
 
     def execute(self) -> str:
         new_testcase_id_format = "テストケース{number:02d}"
-        testcase_id_set = set(self._testcase_config_list_id_sub_service.execute())
+        testcase_id_set = set(self._testcase_config_repo.list_ids())
         for i in itertools.count():
             new_testcase_id = TestCaseID(new_testcase_id_format.format(number=i + 1))
             if new_testcase_id not in testcase_id_set:
@@ -54,7 +54,7 @@ class TestCaseListEditCreateNewNameUseCase:
         assert False, "unreachable"
 
 
-class TestCaseListEditCreateTestCaseUseCase:
+class TestCaseCreateUseCase:
     # 新しいテストケースを生成する
 
     def __init__(
@@ -86,7 +86,7 @@ class TestCaseListEditCreateTestCaseUseCase:
         self._testcase_config_repo.put(config)
 
 
-class TestCaseListEditCopyTestCaseUseCase:
+class TestCaseCopyUseCase:
     # テストケースのコピーを作成する
 
     def __init__(

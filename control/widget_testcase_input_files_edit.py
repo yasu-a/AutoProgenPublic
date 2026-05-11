@@ -8,9 +8,13 @@ from control.widget_testcase_input_file_text_edit import TestCaseInputFileTextEd
 from domain.model.input_file import InputFileCollection, InputFile
 from domain.model.value import FileID
 from res.icon import get_icon
+from usecase.global_settings import GlobalSettingsGetUseCase
 
 
 class TestCaseInputFilesEditWidgetDelegator(AbstractTestCaseFilesEditWidgetDelegator):
+    def __init__(self, *, global_settings_get_usecase: GlobalSettingsGetUseCase):
+        self._global_settings_get_usecase = global_settings_get_usecase
+
     def add_button_context_menu_titles(self, tab_widget: "FileTabWidget") \
             -> dict[str, tuple[str, QIcon | None]]:
         dct = dict(
@@ -21,10 +25,12 @@ class TestCaseInputFilesEditWidgetDelegator(AbstractTestCaseFilesEditWidgetDeleg
             dct.pop("add_stdin")
         return dct
 
-    @classmethod
-    def create_widget(cls, file_id, tab_widget, content_text: str = None) -> QWidget:
+    def create_widget(self, file_id, tab_widget, content_text: str = None) -> QWidget:
         _ = file_id
-        widget = TestCaseInputFileTextEdit(tab_widget)
+        widget = TestCaseInputFileTextEdit(
+            tab_widget,
+            global_settings_get_usecase=self._global_settings_get_usecase,
+        )
         if content_text is None:
             content_text = ""
         widget.set_data(content_text)
@@ -58,8 +64,10 @@ class TestCaseInputFilesEditWidgetDelegator(AbstractTestCaseFilesEditWidgetDeleg
 
 
 class TestCaseInputFilesEditWidget(FileTabWidget):
-    def __init__(self, parent: QObject = None):
-        self.__delegator = TestCaseInputFilesEditWidgetDelegator()
+    def __init__(self, parent: QObject = None, *, global_settings_get_usecase: GlobalSettingsGetUseCase):
+        self.__delegator = TestCaseInputFilesEditWidgetDelegator(
+            global_settings_get_usecase=global_settings_get_usecase,
+        )
         super().__init__(parent, delegator=self.__delegator)
 
     def set_data(self, input_file_collection: InputFileCollection) -> None:
