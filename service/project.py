@@ -6,7 +6,7 @@ from domain.model.project import Project
 from domain.model.value import ProjectID
 from infra.io.files.project import ProjectCoreIO
 from infra.repository.app_version import AppVersionRepository
-from infra.repository.project_2 import ProjectRepository
+from infra.repository.project import ProjectRepository
 from service.dto.project import ProjectConfigState
 
 

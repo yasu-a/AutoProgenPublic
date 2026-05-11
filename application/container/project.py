@@ -12,7 +12,7 @@ from infra.io.student_folder_show_in_explorer import StudentFolderShowInExplorer
 from infra.path_layout import ProjectPathLayout
 from infra.repository.current_project import CurrentProjectRepository
 from infra.repository.global_settings import GlobalSettingsRepository
-from infra.repository.project_2 import ProjectRepository
+from infra.repository.project import ProjectRepository
 from infra.repository.storage import StorageRepository
 from infra.repository.student import StudentRepository
 from infra.repository.student_dynamic import StudentExecutableRepository, StudentSourceRepository

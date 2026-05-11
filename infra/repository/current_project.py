@@ -5,7 +5,7 @@ from PyQt5.QtCore import QMutex
 from domain.error import ProjectIOError
 from domain.model.project import Project
 from domain.model.value import ProjectID
-from infra.repository.project_2 import ProjectRepository
+from infra.repository.project import ProjectRepository
 
 
 class CurrentProjectRepository:

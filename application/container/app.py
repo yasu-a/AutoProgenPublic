@@ -9,7 +9,7 @@ from infra.io.resource_usage import ResourceUsageIO
 from infra.path_layout import AppPathConfig, AppPathLayout
 from infra.repository.app_version import AppVersionRepository
 from infra.repository.global_settings import GlobalSettingsRepository
-from infra.repository.project_2 import ProjectRepository
+from infra.repository.project import ProjectRepository
 from infra.repository.test_source import TestSourceRepository
 from service.match import MatchGetBestService
 from service.project import ProjectListIDQueryService, ProjectGetConfigStateQueryService, ProjectUpdateTimestampService, \
