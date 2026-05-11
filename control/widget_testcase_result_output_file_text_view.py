@@ -9,11 +9,8 @@ from usecase.global_settings import GlobalSettingsGetUseCase
 
 class TestCaseResultOutputFileTextView(PlainTextEdit):
     def __init__(self, parent: QObject = None, *, global_settings_get_usecase: GlobalSettingsGetUseCase):
-        super().__init__(parent)
         self._global_settings_get_usecase = global_settings_get_usecase
-
-        self._init_ui()
-        self._init_signals()
+        super().__init__(parent)
 
     def _init_ui(self):
         self.setFont(get_font(monospace=True, small=True))
