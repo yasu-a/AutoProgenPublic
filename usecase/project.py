@@ -4,7 +4,7 @@ from domain.model.project import Project
 from domain.model.value import ProjectID, TargetID
 from infra.io.project_base_folder_show_in_explorer import ProjectFolderShowInExplorerIO
 from infra.repository.app_version import AppVersionRepository
-from infra.repository.project import ProjectRepository
+from infra.repository.project_2 import ProjectRepository
 from service.dto.project import ProjectConfigState
 from service.project import ProjectGetSizeQueryService, ProjectUpdateTimestampService, \
     ProjectListIDQueryService, ProjectGetConfigStateQueryService

@@ -10,12 +10,9 @@ from infra.io.project_database import ProjectDatabaseIO
 from infra.io.report_archive import ManabaReportArchiveIO
 from infra.io.student_folder_show_in_explorer import StudentFolderShowInExplorerIO
 from infra.path_layout import ProjectPathLayout
-from infra.path_provider.current_project import TestCaseConfigPathProvider, DynamicPathProvider, DatabasePathProvider, \
-    StoragePathProvider, ProjectStaticPathProvider, StudentSubmissionPathProvider
-from infra.path_provider.project import ProjectPathProvider
 from infra.repository.current_project import CurrentProjectRepository
 from infra.repository.global_settings import GlobalSettingsRepository
-from infra.repository.project import ProjectRepository
+from infra.repository.project_2 import ProjectRepository
 from infra.repository.storage import StorageRepository
 from infra.repository.student import StudentRepository
 from infra.repository.student_dynamic import StudentExecutableRepository, StudentSourceRepository
@@ -81,7 +78,6 @@ class ProjectContainer:
             global_settings_repository: GlobalSettingsRepository,
             test_source_repository: TestSourceRepository,
             project_path_layout: ProjectPathLayout,
-            project_path_provider: ProjectPathProvider,
             project_core_io: ProjectCoreIO,
     ) -> None:
         self._project_id = project_id
@@ -90,7 +86,6 @@ class ProjectContainer:
         self._global_settings_repository = global_settings_repository
         self._test_source_repository = test_source_repository
         self._project_path_layout = project_path_layout
-        self._project_path_provider = project_path_provider
         self._project_core_io = project_core_io
 
     @property
@@ -109,48 +104,9 @@ class ProjectContainer:
         )
 
     @cached_property
-    def dynamic_path_provider(self):
-        return DynamicPathProvider(
-            current_project_id=self._project_id,
-            project_path_provider=self._project_path_provider,
-        )
-
-    @cached_property
-    def database_path_provider(self):
-        return DatabasePathProvider(
-            dynamic_path_provider=self.dynamic_path_provider,
-        )
-
-    @cached_property
     def project_database_io(self):
         return ProjectDatabaseIO(
-            database_path_provider=self.database_path_provider,
-        )
-
-    @cached_property
-    def testcase_config_path_provider(self):
-        return TestCaseConfigPathProvider(
-            current_project_id=self._project_id,
-            project_path_provider=self._project_path_provider,
-        )
-
-    @cached_property
-    def storage_path_provider(self):
-        return StoragePathProvider(
-            dynamic_path_provider=self.dynamic_path_provider,
-        )
-
-    @cached_property
-    def project_static_path_provider(self):
-        return ProjectStaticPathProvider(
-            project_path_provider=self._project_path_provider,
-            current_project_id=self._project_id,
-        )
-
-    @cached_property
-    def student_submission_path_provider(self):
-        return StudentSubmissionPathProvider(
-            project_static_path_provider=self.project_static_path_provider,
+            database_path=self.project_path_layout.database_path,
         )
 
     @cached_property
@@ -183,14 +139,14 @@ class ProjectContainer:
     @cached_property
     def testcase_config_repository(self):
         return TestCaseConfigRepository(
-            testcase_config_path_provider=self.testcase_config_path_provider,
+            project_path_layout=self.project_path_layout,
             current_project_core_io=self.current_project_core_io,
         )
 
     @cached_property
     def storage_repository(self):
         return StorageRepository(
-            storage_path_provider=self.storage_path_provider,
+            project_path_layout=self.project_path_layout,
             current_project_core_io=self.current_project_core_io,
         )
 
@@ -300,7 +256,7 @@ class ProjectContainer:
     @cached_property
     def student_submission_list_source_relative_path_query_service(self):
         return StudentSubmissionListSourceRelativePathQueryService(
-            student_submission_path_provider=self.student_submission_path_provider,
+            project_path_layout=self.project_path_layout,
             current_project_core_io=self.current_project_core_io,
             current_project_repo=self.current_project_repository,
         )
@@ -308,7 +264,7 @@ class ProjectContainer:
     @cached_property
     def student_submission_get_file_content_query_service(self):
         return StudentSubmissionGetFileContentQueryService(
-            student_submission_path_provider=self.student_submission_path_provider,
+            project_path_layout=self.project_path_layout,
             current_project_core_io=self.current_project_core_io,
         )
 
@@ -342,7 +298,7 @@ class ProjectContainer:
     @cached_property
     def student_submission_get_checksum_service(self):
         return StudentSubmissionGetChecksumService(
-            student_submission_path_provider=self.student_submission_path_provider,
+            project_path_layout=self.project_path_layout,
             current_project_core_io=self.current_project_core_io,
         )
 
@@ -470,7 +426,7 @@ class ProjectContainer:
     @cached_property
     def student_folder_show_in_explorer_io(self):
         return StudentFolderShowInExplorerIO(
-            student_submission_path_provider=self.student_submission_path_provider,
+            project_path_layout=self.project_path_layout,
         )
 
     @cached_property
@@ -493,7 +449,7 @@ class ProjectContainer:
                 student_repo=self.student_repository,
                 manaba_report_archive_io=manaba_report_archive_io,
                 current_project_core_io=self.current_project_core_io,
-                student_submission_path_provider=self.student_submission_path_provider,
+                project_path_layout=self.project_path_layout,
             ),
             current_project_set_initialized_service=self.current_project_set_initialized_service,
         )

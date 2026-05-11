@@ -9,15 +9,17 @@ from typing import Optional, Any, Iterable
 
 from domain.error import CoreIOError
 from domain.model.value import ProjectID
-from infra.path_provider.project import ProjectPathProvider
 from util.app_logging import create_logger
 
 
 class ProjectCoreIO:
     _logger = create_logger()
 
-    def __init__(self, *, project_path_provider: ProjectPathProvider):
-        self._project_path_provider = project_path_provider
+    def __init__(self, *, project_store_dir: Path):
+        self._project_store_dir = project_store_dir
+
+    def _project_root(self, project_id: ProjectID) -> Path:
+        return self._project_store_dir / str(project_id)
 
     def __check_file_location(
             self,
@@ -31,9 +33,7 @@ class ProjectCoreIO:
         if not path.is_file():
             raise CoreIOError(f"path must be a file: {path}")
         if not external_ok:
-            assert path.is_relative_to(
-                self._project_path_provider.base_folder_fullpath(project_id)
-            ), path
+            assert path.is_relative_to(self._project_root(project_id)), path
 
     def __check_folder_location(
             self,
@@ -47,9 +47,7 @@ class ProjectCoreIO:
         if not path.is_dir():
             raise CoreIOError(f"path must be a directory: {path}")
         if not external_ok:
-            assert path.is_relative_to(
-                self._project_path_provider.base_folder_fullpath(project_id)
-            ), path
+            assert path.is_relative_to(self._project_root(project_id)), path
 
     def __check_path_may_not_exist(
             self,
@@ -62,8 +60,7 @@ class ProjectCoreIO:
         if not path.is_absolute():
             raise CoreIOError(f"path must be absolute: {path}")
         if not external_ok:
-            if not path.is_relative_to(
-                    self._project_path_provider.base_folder_fullpath(project_id)):
+            if not path.is_relative_to(self._project_root(project_id)):
                 raise CoreIOError(f"path must be within project: {path}")
 
     def rmtree_folder(

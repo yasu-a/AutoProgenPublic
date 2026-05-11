@@ -1,6 +1,4 @@
-import sys
 from functools import cached_property
-from pathlib import Path
 
 from application.container.project import ProjectContainer
 from domain.model.value import ProjectID
@@ -9,8 +7,6 @@ from infra.io.files.project import ProjectCoreIO
 from infra.io.project_base_folder_show_in_explorer import ProjectFolderShowInExplorerIO
 from infra.io.resource_usage import ResourceUsageIO
 from infra.path_layout import AppPathConfig, AppPathLayout
-from infra.path_provider.global_ import GlobalPathProvider
-from infra.path_provider.project import ProjectListPathProvider, ProjectPathProvider
 from infra.repository.app_version import AppVersionRepository
 from infra.repository.global_settings import GlobalSettingsRepository
 from infra.repository.project_2 import ProjectRepository
@@ -39,7 +35,6 @@ class AppContainer:
             global_settings_repository=self.global_settings_repository,
             test_source_repository=self.test_source_repository,
             project_path_layout=self.project_repository.create_project_path_layout(project_id),
-            project_path_provider=self.project_path_provider,
             project_core_io=self.project_core_io,
         )
 
@@ -56,37 +51,19 @@ class AppContainer:
         return AppPathLayout(config=self.app_path_config)
 
     @cached_property
-    def global_path_provider(self):
-        return GlobalPathProvider(
-            global_settings_folder_fullpath=Path(sys.argv[0]).resolve().parent,
-        )
-
-    @cached_property
-    def project_list_path_provider(self):
-        return ProjectListPathProvider(
-            project_list_folder_fullpath=Path("~/AutoProgenProjects").expanduser().resolve(),
-        )
-
-    @cached_property
-    def project_path_provider(self):
-        return ProjectPathProvider(
-            project_list_path_provider=self.project_list_path_provider,
-        )
-
-    @cached_property
     def global_core_io(self):
         return GlobalCoreIO()
 
     @cached_property
     def project_core_io(self):
         return ProjectCoreIO(
-            project_path_provider=self.project_path_provider,
+            project_store_dir=self.app_path_config.project_store_dir,
         )
 
     @cached_property
     def app_version_repository(self):
         return AppVersionRepository(
-            global_path_provider=self.global_path_provider,
+            app_path_layout=self.app_path_layout,
             global_core_io=self.global_core_io,
         )
 
@@ -100,27 +77,27 @@ class AppContainer:
     @cached_property
     def test_source_repository(self):
         return TestSourceRepository(
-            global_path_provider=self.global_path_provider,
+            app_path_layout=self.app_path_layout,
             global_core_io=self.global_core_io,
         )
 
     @cached_property
     def global_settings_repository(self):
         return GlobalSettingsRepository(
-            global_path_provider=self.global_path_provider,
+            app_path_layout=self.app_path_layout,
             global_core_io=self.global_core_io,
         )
 
     @cached_property
     def project_list_id_query_service(self):
         return ProjectListIDQueryService(
-            project_list_path_provider=self.project_list_path_provider,
+            project_repo=self.project_repository,
         )
 
     @cached_property
     def project_get_config_state_query_service(self):
         return ProjectGetConfigStateQueryService(
-            project_path_provider=self.project_path_provider,
+            project_repo=self.project_repository,
             project_core_io=self.project_core_io,
             app_version_repo=self.app_version_repository,
         )
@@ -134,14 +111,14 @@ class AppContainer:
     @cached_property
     def project_get_size_query_service(self):
         return ProjectGetSizeQueryService(
-            project_path_provider=self.project_path_provider,
+            project_repo=self.project_repository,
             project_core_io=self.project_core_io,
         )
 
     @cached_property
     def project_folder_show_in_explorer_io(self):
         return ProjectFolderShowInExplorerIO(
-            project_list_path_provider=self.project_list_path_provider,
+            project_store_dir=self.app_path_config.project_store_dir,
         )
 
     @cached_property

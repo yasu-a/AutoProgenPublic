@@ -7,7 +7,7 @@ from domain.model.storage import Storage, StorageFileContentMapper, \
     FileRelativePathStatMapperType, StorageStat, CommandType
 from domain.model.value import StorageID
 from infra.io.files.current_project import CurrentProjectCoreIO
-from infra.path_provider.current_project import StoragePathProvider
+from infra.path_layout import ProjectPathLayout
 from util.app_logging import create_logger
 
 
@@ -17,10 +17,10 @@ class StorageRepository:
     def __init__(
             self,
             *,
-            storage_path_provider: StoragePathProvider,
+            project_path_layout: ProjectPathLayout,
             current_project_core_io: CurrentProjectCoreIO,
     ):
-        self._storage_path_provider = storage_path_provider
+        self._project_path_layout = project_path_layout
         self._current_project_core_io = current_project_core_io
 
     def __get_file_relative_path_list_producer(self, base_folder_fullpath: Path) \
@@ -75,7 +75,7 @@ class StorageRepository:
 
     def create(self, storage_id: StorageID) -> Storage:
         # ストレージを生成する
-        base_folder_fullpath = self._storage_path_provider.base_folder_fullpath(storage_id)
+        base_folder_fullpath = self._project_path_layout.storage_dir(storage_id)
         if base_folder_fullpath.exists():
             raise ValueError(f"IO session {storage_id} already exists")
         base_folder_fullpath.mkdir(parents=True, exist_ok=False)
@@ -103,7 +103,7 @@ class StorageRepository:
     def get(self, storage_id: StorageID) -> Storage:
         # 既存のストレージを取得する
 
-        base_folder_fullpath = self._storage_path_provider.base_folder_fullpath(
+        base_folder_fullpath = self._project_path_layout.storage_dir(
             storage_id,
         )
         if not base_folder_fullpath.exists():
@@ -133,7 +133,7 @@ class StorageRepository:
         # ストレージの変更をコミットする
         # ストレージにコミットした後のストレージインスタンスを操作してはならない！！！
 
-        base_folder_fullpath = self._storage_path_provider.base_folder_fullpath(
+        base_folder_fullpath = self._project_path_layout.storage_dir(
             storage.storage_id,
         )
         if not base_folder_fullpath.exists():
@@ -159,7 +159,7 @@ class StorageRepository:
     def delete(self, storage_id: StorageID) -> None:
         # ストレージを削除する
 
-        base_folder_fullpath = self._storage_path_provider.base_folder_fullpath(
+        base_folder_fullpath = self._project_path_layout.storage_dir(
             storage_id,
         )
         if not base_folder_fullpath.exists():

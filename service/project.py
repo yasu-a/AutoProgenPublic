@@ -5,9 +5,8 @@ from domain.model.app_version import AppVersion
 from domain.model.project import Project
 from domain.model.value import ProjectID
 from infra.io.files.project import ProjectCoreIO
-from infra.path_provider.project import ProjectPathProvider, ProjectListPathProvider
 from infra.repository.app_version import AppVersionRepository
-from infra.repository.project import ProjectRepository
+from infra.repository.project_2 import ProjectRepository
 from service.dto.project import ProjectConfigState
 
 
@@ -15,17 +14,18 @@ class ProjectGetConfigStateQueryService:
     def __init__(
             self,
             *,
-            project_path_provider: ProjectPathProvider,
+            project_repo: ProjectRepository,
             project_core_io: ProjectCoreIO,
             app_version_repo: AppVersionRepository,
     ):
-        self._project_path_provider = project_path_provider
+        self._project_repo = project_repo
         self._project_core_io = project_core_io
         self._app_version_repo = app_version_repo
 
     def execute(self, project_id: ProjectID) -> ProjectConfigState:
         # JSONのパスを取得
-        config_json_fullpath = self._project_path_provider.config_json_fullpath(project_id)
+        layout = self._project_repo.create_project_path_layout(project_id)
+        config_json_fullpath = layout.config_json
 
         # JSONが存在するか確認
         if not config_json_fullpath.exists():
@@ -73,31 +73,16 @@ class ProjectGetConfigStateQueryService:
         return ProjectConfigState.NORMAL
 
 
-class ProjectListIDQueryService:
+class ProjectListIDQueryService:  # TODO: 薄いので廃止したい
     def __init__(
             self,
             *,
-            project_list_path_provider: ProjectListPathProvider,
+            project_repo: ProjectRepository,
     ):
-        self._project_list_path_provider = project_list_path_provider
+        self._project_repo = project_repo
 
     def execute(self) -> list[ProjectID]:
-        project_list_folder_fullpath = self._project_list_path_provider.base_folder_fullpath()
-
-        project_list_folder_fullpath.mkdir(parents=True, exist_ok=True)
-
-        project_ids: list[ProjectID] = []
-        for sub_folder_fullpath in project_list_folder_fullpath.iterdir():
-            if not sub_folder_fullpath.is_dir():
-                continue
-            folder_name = sub_folder_fullpath.name
-            try:
-                maybe_project_id = ProjectID(folder_name)
-            except ValueError:  # malformed folder name
-                continue
-            project_ids.append(maybe_project_id)
-
-        return project_ids
+        return self._project_repo.list_ids()
 
 
 class ProjectUpdateTimestampService:
@@ -118,14 +103,15 @@ class ProjectGetSizeQueryService:
     def __init__(
             self,
             *,
-            project_path_provider: ProjectPathProvider,
+            project_repo: ProjectRepository,
             project_core_io: ProjectCoreIO,
     ):
-        self._project_path_provider = project_path_provider
+        self._project_repo = project_repo
         self._project_core_io = project_core_io
 
     def execute(self, project_id: ProjectID) -> int:
-        project_folder_fullpath = self._project_path_provider.base_folder_fullpath(project_id)
+        layout = self._project_repo.create_project_path_layout(project_id)
+        project_folder_fullpath = layout.root
         size = self._project_core_io.get_folder_size(
             project_id=project_id,
             folder_fullpath=project_folder_fullpath,

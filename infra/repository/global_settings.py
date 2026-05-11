@@ -4,7 +4,7 @@ from PyQt5.QtCore import QMutex
 
 from domain.model.global_settings import GlobalSettings
 from infra.io.files.global_ import GlobalCoreIO
-from infra.path_provider.global_ import GlobalPathProvider
+from infra.path_layout import AppPathLayout
 
 
 class GlobalSettingsRepository:
@@ -12,10 +12,10 @@ class GlobalSettingsRepository:
             self,
             *,
             global_core_io: GlobalCoreIO,
-            global_path_provider: GlobalPathProvider,
+            app_path_layout: AppPathLayout,
     ):
         self._global_core_io = global_core_io
-        self._global_path_provider = global_path_provider
+        self._app_path_layout = app_path_layout
 
         self.__model: GlobalSettings | None = None
         self.__lock = QMutex()
@@ -30,7 +30,7 @@ class GlobalSettingsRepository:
 
     def _get_model_unlocked(self) -> GlobalSettings:
         if self.__model is None:
-            json_fullpath = self._global_path_provider.global_settings_json_fullpath()
+            json_fullpath = self._app_path_layout.settings_json
             if not json_fullpath.exists():
                 self.__model = GlobalSettings.create_default()
             else:
@@ -44,7 +44,7 @@ class GlobalSettingsRepository:
 
     def _set_model_unlocked(self, model: GlobalSettings) -> None:
         self.__model = model
-        json_fullpath = self._global_path_provider.global_settings_json_fullpath()
+        json_fullpath = self._app_path_layout.settings_json
         self._global_core_io.write_json(
             json_fullpath=json_fullpath,
             body=self.__model.to_json(),
