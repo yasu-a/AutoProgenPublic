@@ -2,6 +2,7 @@ from PyQt5.QtCore import QObject, pyqtSlot
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMessageBox, QWidget
 
+from application.container import AppContainer
 from control.delegator_testcase_files_edit import AbstractTestCaseFilesEditWidgetDelegator
 from control.widget_file_tab import FileTabWidget
 from control.widget_testcase_input_file_text_edit import TestCaseInputFileTextEdit
@@ -11,6 +12,9 @@ from res.icon import get_icon
 
 
 class TestCaseInputFilesEditWidgetDelegator(AbstractTestCaseFilesEditWidgetDelegator):
+    def __init__(self, *, app_container: AppContainer):
+        self._app_container = app_container
+
     def add_button_context_menu_titles(self, tab_widget: "FileTabWidget") \
             -> dict[str, tuple[str, QIcon | None]]:
         dct = dict(
@@ -21,10 +25,12 @@ class TestCaseInputFilesEditWidgetDelegator(AbstractTestCaseFilesEditWidgetDeleg
             dct.pop("add_stdin")
         return dct
 
-    @classmethod
-    def create_widget(cls, file_id, tab_widget, content_text: str = None) -> QWidget:
+    def create_widget(self, file_id, tab_widget, content_text: str = None) -> QWidget:
         _ = file_id
-        widget = TestCaseInputFileTextEdit(tab_widget)
+        widget = TestCaseInputFileTextEdit(
+            tab_widget,
+            app_container=self._app_container,
+        )
         if content_text is None:
             content_text = ""
         widget.set_data(content_text)
@@ -58,8 +64,10 @@ class TestCaseInputFilesEditWidgetDelegator(AbstractTestCaseFilesEditWidgetDeleg
 
 
 class TestCaseInputFilesEditWidget(FileTabWidget):
-    def __init__(self, parent: QObject = None):
-        self.__delegator = TestCaseInputFilesEditWidgetDelegator()
+    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
+        self.__delegator = TestCaseInputFilesEditWidgetDelegator(
+            app_container=app_container,
+        )
         super().__init__(parent, delegator=self.__delegator)
 
     def set_data(self, input_file_collection: InputFileCollection) -> None:

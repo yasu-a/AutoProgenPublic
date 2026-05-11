@@ -1,23 +1,25 @@
 from PyQt5.QtCore import QObject
 
-from application.dependency.usecase import get_global_settings_get_usecase
+from application.container import AppContainer
 from control.widget_source_code_text_edit import SourceCodeTextEdit
 
 
 class StudentSourceCodeView(SourceCodeTextEdit):
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
         super().__init__(parent)
+        self._app_container = app_container
 
         self.__init_ui()
 
     def __init_ui(self):
         self.setEnabled(False)
         self.setReadOnly(True)
+        settings = self._app_container.global_settings_get_usecase.execute()
         self.set_show_editing_symbols(
-            get_global_settings_get_usecase().execute().show_editing_symbols_in_source_code,
+            settings.show_editing_symbols_in_source_code,
         )
         self.set_line_wrap(
-            get_global_settings_get_usecase().execute().enable_line_wrap_in_source_code,
+            settings.enable_line_wrap_in_source_code,
         )
         self.setPlainText("")
 

@@ -1,6 +1,7 @@
 from PyQt5.QtCore import QObject
 from PyQt5.QtWidgets import QVBoxLayout, QLabel, QWidget
 
+from application.container import AppContainer
 from control.widget_testcase_result_output_file_text_view import \
     TestCaseResultOutputFileTextView
 from domain.model.test_result_output_file_entry import AbstractTestResultOutputFileEntry
@@ -8,8 +9,9 @@ from domain.model.value import FileID
 
 
 class TestCaseResultOutputFileViewWidget(QWidget):
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
         super().__init__(parent)
+        self._app_container = app_container
 
         self._output_file_entry: AbstractTestResultOutputFileEntry | None = None
 
@@ -27,7 +29,9 @@ class TestCaseResultOutputFileViewWidget(QWidget):
         layout.addWidget(self._l_messages)
 
         # 内容を表示するテキストエディタ
-        self._te = TestCaseResultOutputFileTextView()
+        self._te = TestCaseResultOutputFileTextView(
+            app_container=self._app_container,
+        )
         layout.addWidget(self._te)
 
     def _init_signals(self):

@@ -2,7 +2,7 @@ from PyQt5.QtCore import QObject
 from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import QVBoxLayout, QDialog
 
-from application.container import ProjectContainer
+from application.container import AppContainer, ProjectContainer
 from control.widget_testcase_config_edit import TestCaseConfigEditWidget
 from domain.model.value import TestCaseID
 from util.app_logging import create_logger
@@ -16,11 +16,13 @@ class TestCaseConfigEditDialog(QDialog):
             parent: QObject = None,
             *,
             testcase_id: TestCaseID,
+            app_container: AppContainer,
             project_container: ProjectContainer,
     ):
         super().__init__(parent)
 
         self._testcase_id = testcase_id
+        self._app_container = app_container
         self._project_container = project_container
 
         self._init_ui()
@@ -33,7 +35,10 @@ class TestCaseConfigEditDialog(QDialog):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        self._w_testcase_edit = TestCaseConfigEditWidget(self)
+        self._w_testcase_edit = TestCaseConfigEditWidget(
+            self,
+            app_container=self._app_container,
+        )
         config = self._project_container.testcase_get_usecase.execute(
             testcase_id=self._testcase_id
         )

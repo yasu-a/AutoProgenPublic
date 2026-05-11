@@ -1,6 +1,7 @@
 from PyQt5.QtCore import QObject, pyqtSlot
 from PyQt5.QtWidgets import QTabWidget, QVBoxLayout, QTabBar, QLabel, QWidget, QHBoxLayout
 
+from application.container import AppContainer
 from control.widget_testcase_execute_options import TestCaseExecuteConfigOptionsEditWidget
 from control.widget_testcase_input_files_edit import TestCaseInputFilesEditWidget
 from control.widget_testcase_output_files_edit import TestCaseExpectedOutputFilesEditWidget
@@ -14,8 +15,9 @@ from res.icon import get_icon
 
 
 class TestCaseConfigEditWidget(QTabWidget):
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
         super().__init__(parent)
+        self._app_container = app_container
 
         self._testcase_id = None
 
@@ -34,7 +36,10 @@ class TestCaseConfigEditWidget(QTabWidget):
             label.setFont(get_font(bold=True))
             layout.addWidget(label)
 
-            self._w_input_files_edit = TestCaseInputFilesEditWidget(self)
+            self._w_input_files_edit = TestCaseInputFilesEditWidget(
+                self,
+                app_container=self._app_container,
+            )
             layout.addWidget(self._w_input_files_edit)
 
             label = QLabel("実行のオプション", self)
@@ -73,7 +78,10 @@ class TestCaseConfigEditWidget(QTabWidget):
                 layout_right = QVBoxLayout()
                 layout.addLayout(layout_right)
 
-                self._w_test_config_tester = TestCaseTestConfigTesterWidget(self)
+                self._w_test_config_tester = TestCaseTestConfigTesterWidget(
+                    self,
+                    app_container=self._app_container,
+                )
                 layout_right.addWidget(self._w_test_config_tester)
 
         # タブを左横にする

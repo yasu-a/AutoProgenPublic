@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from application.dependency.task import get_task_manager
 from control.dialog_progress import AbstractProgressDialog
 from control.task.clean_all_stage import CleanAllStagesStudentTask
 from control.task.run_stage import RunStagesStudentTask
@@ -37,6 +36,7 @@ class MainWindow(QMainWindow):
         self._navigator = navigator
         self._app_container = app_container
         self._project_container = project_container
+        self._task_manager = project_container.task_manager
 
         self._init_ui()
         self._init_signals()
@@ -51,7 +51,10 @@ class MainWindow(QMainWindow):
         self.resize(1500, 800)
 
         # ツールバー
-        self._tool_bar = ToolBar(self)
+        self._tool_bar = ToolBar(
+            self,
+            project_container=self._project_container,
+        )
         # noinspection PyUnresolvedReferences
         self.addToolBar(self._tool_bar)
 
@@ -67,7 +70,10 @@ class MainWindow(QMainWindow):
         # ステータスバー
         #  - タスクモニタ
         # noinspection PyTypeChecker
-        self._sb_task_state = TaskStateStatusBarWidget(self)
+        self._sb_task_state = TaskStateStatusBarWidget(
+            self,
+            project_container=self._project_container,
+        )
         # noinspection PyUnresolvedReferences
         self.statusBar().addPermanentWidget(self._sb_task_state)
         # noinspection PyUnresolvedReferences
@@ -110,7 +116,7 @@ class MainWindow(QMainWindow):
     def __w_student_table_mark_result_cell_triggered(self, student_id: StudentID):
         # テーブルの生徒の点数がクリックされたとき
         # 生徒ごとの採点画面を開く
-        if not get_task_manager().is_empty():
+        if not self._task_manager.is_empty():
             # noinspection PyTypeChecker
             QMessageBox.warning(
                 self,
@@ -122,19 +128,19 @@ class MainWindow(QMainWindow):
         self._navigator.open_scoring_dialog_for_student(self, student_id)
 
     def __perform_stop_tasks(self):
-        if not get_task_manager().is_empty():
+        if not self._task_manager.is_empty():
             AbstractProgressDialog.run_blocking_task(
                 parent=self,
                 title="タスクの停止",
                 initial_message="停止処理を開始します...",
-                task_func=get_task_manager().terminate,
+                task_func=self._task_manager.terminate,
             )
 
     def __enqueue_student_tasks_if_not_run(self, parent, task_cls: type[AbstractStudentTask]):
-        if not get_task_manager().is_empty():
+        if not self._task_manager.is_empty():
             return
         for student_id in self._project_container.student_list_id_usecase.execute():
-            get_task_manager().enqueue(
+            self._task_manager.enqueue(
                 task_cls(
                     parent=parent,
                     student_id=student_id,

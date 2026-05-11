@@ -1,16 +1,21 @@
 from PyQt5.QtCore import pyqtSignal, QObject, Qt, QSize, QTimer, pyqtSlot
 from PyQt5.QtWidgets import QToolBar, QAction, qApp
 
-from application.dependency.task import get_task_manager
+from typing import TYPE_CHECKING
+
 from res.icon import get_icon
+
+if TYPE_CHECKING:
+    from application.container import ProjectContainer
 
 
 class ToolBar(QToolBar):
     triggered = pyqtSignal(str)  # type: ignore
 
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, project_container: "ProjectContainer"):
         super().__init__(parent)
 
+        self._task_manager = project_container.task_manager
         self.__state_update_timer = QTimer(self)
         self.__state_update_timer.setInterval(1000)
 
@@ -102,4 +107,4 @@ class ToolBar(QToolBar):
 
     @pyqtSlot()
     def __state_update_timer_timeout(self):
-        self.update_button_state(is_task_alive=not get_task_manager().is_empty())
+        self.update_button_state(is_task_alive=not self._task_manager.is_empty())

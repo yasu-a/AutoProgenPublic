@@ -1,15 +1,19 @@
 from functools import cache
+from pathlib import Path
+import sys
 
 from PyQt5.QtGui import QIcon, QPixmap, QTransform
 
 __all__ = "get_icon",
 
-from application.dependency.path_provider import get_icon_fullpath
+
+def _get_icon_fullpath(filename: str) -> Path:
+    return Path(sys.argv[0]).resolve().parent / "static" / "icon" / f"{filename}.png"
 
 
 @cache
 def _get_pixmap(filename: str) -> QPixmap:
-    filepath = str(get_icon_fullpath(filename))
+    filepath = str(_get_icon_fullpath(filename))
     pixmap = QPixmap(filepath)
     if pixmap.isNull():
         raise FileNotFoundError(f"Icon '{filename}' not found.")

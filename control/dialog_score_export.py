@@ -6,9 +6,7 @@ from PyQt5.QtWidgets import QDialog, QHBoxLayout, QLabel, \
     QVBoxLayout, QPlainTextEdit, QPushButton, QLineEdit, QComboBox, \
     QFileDialog, QMessageBox
 
-from application.container import ProjectContainer
-from application.dependency.external_io import get_score_excel_io
-from application.dependency.usecase import get_global_settings_get_usecase
+from application.container import AppContainer, ProjectContainer
 from control.widget_horizontal_line import HorizontalLineWidget
 from domain.model.student_mark import StudentMark
 from domain.model.value import StudentID, TargetID
@@ -20,8 +18,15 @@ from util.app_logging import create_logger
 class ScoreExportDialog(QDialog):  # FIXME: usecase化
     _logger = create_logger()
 
-    def __init__(self, parent: QObject = None, *, project_container: ProjectContainer):
+    def __init__(
+            self,
+            parent: QObject = None,
+            *,
+            app_container: AppContainer,
+            project_container: ProjectContainer,
+    ):
         super().__init__(parent)
+        self._app_container = app_container
         self._project_container = project_container
 
         self._student_ids: list[StudentID] = self._project_container.student_list_id_usecase.execute()
@@ -30,6 +35,11 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
 
         self._init_ui()
         self._init_signals()
+
+    def _get_score_excel_io(self, *, excel_fullpath: Path):
+        return self._app_container.create_score_excel_io(
+            excel_fullpath=excel_fullpath,
+        )
 
     def _init_ui(self):
         self.setWindowTitle("採点結果のエクスポート")
@@ -142,7 +152,7 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
             return
 
         # ワークシートの状態を読み取って正常なら選択肢に追加，そうでなければエラーを表示
-        worksheet_stats = get_score_excel_io(excel_fullpath).list_worksheet_stats(
+        worksheet_stats = self._get_score_excel_io(excel_fullpath=excel_fullpath).list_worksheet_stats(
             student_ids=self._student_ids,
         )
         messages = []
@@ -187,7 +197,7 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
 
         worksheet_name = self._dl_sheet_names.currentText()
 
-        if get_score_excel_io(excel_fullpath).has_data(
+        if self._get_score_excel_io(excel_fullpath=excel_fullpath).has_data(
                 student_ids=self._student_ids,
                 worksheet_name=worksheet_name,
                 target_id=self._target_id,
@@ -201,11 +211,11 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
             ) == QMessageBox.No:
                 return
         try:
-            backup_path = get_score_excel_io(excel_fullpath).apply(
+            backup_path = self._get_score_excel_io(excel_fullpath=excel_fullpath).apply(
                 worksheet_name=worksheet_name,
                 target_id=self._target_id,
                 student_marks=self._student_marks,
-                do_backup=get_global_settings_get_usecase().execute().backup_before_export,
+                do_backup=self._app_container.global_settings_get_usecase.execute().backup_before_export,
             )
         except Exception as e:
             self._logger.info("Failed to commit scores to the workbook")

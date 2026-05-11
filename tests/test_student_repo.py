@@ -1,6 +1,6 @@
 import pytest
 
-from application.dependency.repository import get_student_repository
+from application.dependency.repository import create_student_repository
 from domain.error import RepositoryItemNotFoundError
 from domain.model.student import Student
 from domain.model.value import StudentID
@@ -17,34 +17,34 @@ def _compare_student(s_1: Student, s_2: Student):
         and s_1.submission_folder_name == s_2.submission_folder_name
 
 
-def test_no_students():
-    repo = get_student_repository()
+def test_no_students(project_id):
+    repo = create_student_repository(project_id)
     assert not repo.exists_any()
 
 
-def test_any_students(sample_student_ids):
+def test_any_students(sample_student_ids, project_id):
     _ = sample_student_ids  # use fixture to prepare students in database
-    repo = get_student_repository()
+    repo = create_student_repository(project_id)
     assert repo.exists_any()
 
 
-def test_get_not_found(sample_student_ids):
-    repo = get_student_repository()
+def test_get_not_found(sample_student_ids, project_id):
+    repo = create_student_repository(project_id)
     unknown_student_id = StudentID("00D0000000Z")
     assert unknown_student_id not in sample_student_ids
     with pytest.raises(RepositoryItemNotFoundError):
         repo.get(unknown_student_id)
 
 
-def test_get(sample_students):
-    repo = get_student_repository()
+def test_get(sample_students, project_id):
+    repo = create_student_repository(project_id)
     student, *_ = sample_students
     student_by_get = repo.get(student.student_id)
     assert _compare_student(student, student_by_get)
 
 
-def test_list(sample_students):
-    repo = get_student_repository()
+def test_list(sample_students, project_id):
+    repo = create_student_repository(project_id)
     students_by_list = repo.list()
     assert len(students_by_list) == len(sample_students)
     for student, student_by_get in zip(sample_students, students_by_list):

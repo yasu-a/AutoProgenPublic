@@ -1,21 +1,241 @@
+import sys
 from functools import cached_property
+from pathlib import Path
 
-from application.dependency.usecase import create_app_version_check_is_stable_usecase, \
-    create_resource_usage_get_usecase
 from application.container.project import ProjectContainer
 from domain.model.value import ProjectID
+from infra.io.files.global_ import GlobalCoreIO
+from infra.io.files.project import ProjectCoreIO
+from infra.io.project_base_folder_show_in_explorer import ProjectFolderShowInExplorerIO
+from infra.io.report_archive import ManabaReportArchiveIO
+from infra.io.resource_usage import ResourceUsageIO
+from infra.io.score_excel import ScoreExcelIO
+from infra.path_provider.global_ import GlobalPathProvider
+from infra.path_provider.project import ProjectListPathProvider, ProjectPathProvider
+from infra.repository.app_version import AppVersionRepository
+from infra.repository.global_settings import GlobalSettingsRepository
+from infra.repository.project import ProjectRepository
+from infra.repository.test_source import TestSourceRepository
+from service.match import MatchGetBestService
+from service.project import ProjectListIDQueryService, ProjectGetConfigStateQueryService, ProjectUpdateTimestampService, \
+    ProjectGetSizeQueryService
+from usecase.app_version import AppVersionGetTextUseCase, AppVersionCheckIsStableUseCase
+from usecase.compiler import CompilerSearchUseCase
+from usecase.global_settings import GlobalSettingsGetUseCase, GlobalSettingsPutUseCase
+from usecase.project import ProjectCreateUseCase, ProjectOpenUseCase, ProjectListRecentSummaryUseCase, \
+    ProjectCheckExistByNameUseCase, ProjectBaseFolderShowUseCase, ProjectFolderShowUseCase, ProjectDeleteUseCase, \
+    ProjectGetSizeQueryUseCase
+from usecase.resource_usage import ResourceUsageGetUseCase
+from usecase.test_test_stage import TestTestStageUseCase
 
 
 class AppContainer:
     def create_project_container(self, project_id: ProjectID) -> "ProjectContainer":
         return ProjectContainer(
             project_id=project_id,
+            match_get_best_service=self.match_get_best_service,
+            project_repository=self.project_repository,
+            global_settings_repository=self.global_settings_repository,
+            test_source_repository=self.test_source_repository,
+            project_path_provider=self.project_path_provider,
+            project_core_io=self.project_core_io,
+        )
+
+    @cached_property
+    def match_get_best_service(self):
+        return MatchGetBestService()
+
+    @cached_property
+    def global_path_provider(self):
+        return GlobalPathProvider(
+            global_settings_folder_fullpath=Path(sys.argv[0]).resolve().parent,
+        )
+
+    @cached_property
+    def project_list_path_provider(self):
+        return ProjectListPathProvider(
+            project_list_folder_fullpath=Path("~/AutoProgenProjects").expanduser().resolve(),
+        )
+
+    @cached_property
+    def project_path_provider(self):
+        return ProjectPathProvider(
+            project_list_path_provider=self.project_list_path_provider,
+        )
+
+    @cached_property
+    def global_core_io(self):
+        return GlobalCoreIO()
+
+    @cached_property
+    def project_core_io(self):
+        return ProjectCoreIO(
+            project_path_provider=self.project_path_provider,
+        )
+
+    @cached_property
+    def app_version_repository(self):
+        return AppVersionRepository(
+            global_path_provider=self.global_path_provider,
+            global_core_io=self.global_core_io,
+        )
+
+    @cached_property
+    def project_repository(self):
+        return ProjectRepository(
+            project_list_path_provider=self.project_list_path_provider,
+            project_path_provider=self.project_path_provider,
+            project_core_io=self.project_core_io,
+        )
+
+    @cached_property
+    def test_source_repository(self):
+        return TestSourceRepository(
+            global_path_provider=self.global_path_provider,
+            global_core_io=self.global_core_io,
+        )
+
+    @cached_property
+    def global_settings_repository(self):
+        return GlobalSettingsRepository(
+            global_path_provider=self.global_path_provider,
+            global_core_io=self.global_core_io,
+        )
+
+    @cached_property
+    def project_list_id_query_service(self):
+        return ProjectListIDQueryService(
+            project_list_path_provider=self.project_list_path_provider,
+        )
+
+    @cached_property
+    def project_get_config_state_query_service(self):
+        return ProjectGetConfigStateQueryService(
+            project_path_provider=self.project_path_provider,
+            project_core_io=self.project_core_io,
+            app_version_repo=self.app_version_repository,
+        )
+
+    @cached_property
+    def project_update_timestamp_service(self):
+        return ProjectUpdateTimestampService(
+            project_repo=self.project_repository,
+        )
+
+    @cached_property
+    def project_get_size_query_service(self):
+        return ProjectGetSizeQueryService(
+            project_path_provider=self.project_path_provider,
+            project_core_io=self.project_core_io,
+        )
+
+    @cached_property
+    def project_folder_show_in_explorer_io(self):
+        return ProjectFolderShowInExplorerIO(
+            project_list_path_provider=self.project_list_path_provider,
+        )
+
+    @cached_property
+    def resource_usage_io(self):
+        return ResourceUsageIO()
+
+    def create_manaba_report_archive_io(self, *, manaba_report_archive_fullpath: Path):
+        return ManabaReportArchiveIO(
+            manaba_report_archive_fullpath=manaba_report_archive_fullpath,
+        )
+
+    def create_score_excel_io(self, *, excel_fullpath: Path):
+        return ScoreExcelIO(
+            excel_fullpath=excel_fullpath,
+        )
+
+    @cached_property
+    def app_version_get_text_usecase(self):
+        return AppVersionGetTextUseCase(
+            app_version_repo=self.app_version_repository,
         )
 
     @cached_property
     def app_version_check_is_stable_usecase(self):
-        return create_app_version_check_is_stable_usecase()
+        return AppVersionCheckIsStableUseCase(
+            app_version_repo=self.app_version_repository,
+        )
+
+    @cached_property
+    def global_settings_get_usecase(self):
+        return GlobalSettingsGetUseCase(
+            global_settings_repo=self.global_settings_repository,
+        )
+
+    @cached_property
+    def global_settings_put_usecase(self):
+        return GlobalSettingsPutUseCase(
+            global_settings_repo=self.global_settings_repository,
+        )
 
     @cached_property
     def resource_usage_get_usecase(self):
-        return create_resource_usage_get_usecase()
+        return ResourceUsageGetUseCase(
+            resource_usage_io=self.resource_usage_io,
+        )
+
+    @cached_property
+    def compiler_search_usecase(self):
+        return CompilerSearchUseCase()
+
+    @cached_property
+    def test_test_stage_usecase(self):
+        return TestTestStageUseCase(
+            match_get_best_service=self.match_get_best_service,
+        )
+
+    @cached_property
+    def project_create_usecase(self):
+        return ProjectCreateUseCase(
+            project_repo=self.project_repository,
+            app_version_repo=self.app_version_repository,
+        )
+
+    @cached_property
+    def project_open_usecase(self):
+        return ProjectOpenUseCase(
+            project_update_timestamp_service=self.project_update_timestamp_service,
+        )
+
+    @cached_property
+    def project_list_recent_summary_usecase(self):
+        return ProjectListRecentSummaryUseCase(
+            project_list_id_query_service=self.project_list_id_query_service,
+            project_get_config_state_query_service=self.project_get_config_state_query_service,
+            project_repo=self.project_repository,
+        )
+
+    @cached_property
+    def project_check_exist_by_name_usecase(self):
+        return ProjectCheckExistByNameUseCase(
+            project_list_id_query_service=self.project_list_id_query_service,
+        )
+
+    @cached_property
+    def project_base_folder_show_usecase(self):
+        return ProjectBaseFolderShowUseCase(
+            project_folder_show_in_explorer_io=self.project_folder_show_in_explorer_io,
+        )
+
+    @cached_property
+    def project_folder_show_usecase(self):
+        return ProjectFolderShowUseCase(
+            project_folder_show_in_explorer_io=self.project_folder_show_in_explorer_io,
+        )
+
+    @cached_property
+    def project_delete_usecase(self):
+        return ProjectDeleteUseCase(
+            project_repo=self.project_repository,
+        )
+
+    @cached_property
+    def project_get_size_query_usecase(self):
+        return ProjectGetSizeQueryUseCase(
+            project_get_size_query_service=self.project_get_size_query_service,
+        )

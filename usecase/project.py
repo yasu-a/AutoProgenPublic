@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from application.state.current_project import set_current_project_id
 from domain.model.project import Project
 from domain.model.value import ProjectID, TargetID
 from infra.io.project_base_folder_show_in_explorer import ProjectFolderShowInExplorerIO
@@ -92,7 +91,6 @@ class ProjectOpenUseCase:
         self._project_update_timestamp_service = project_update_timestamp_service
 
     def execute(self, project_id: ProjectID) -> None:
-        set_current_project_id(project_id)
         now = datetime.now()
         self._project_update_timestamp_service.execute(
             project_id=project_id,

@@ -4,7 +4,7 @@ from PyQt5.QtCore import QObject, pyqtSlot, pyqtSignal, QThread
 from PyQt5.QtGui import QCloseEvent, QShowEvent
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QWidget, QLabel, QMessageBox, QInputDialog
 
-from application.dependency.usecase import get_compiler_search_usecase
+from application.container import AppContainer
 from res.font import get_font
 
 
@@ -12,10 +12,10 @@ class _CompilerSearchWorker(QThread):
     progress_updated = pyqtSignal(Path, name="progress_updated")
     progress_finished = pyqtSignal(list, name="progress_finished")  # list = list[Path]
 
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
         super().__init__(parent)
 
-        self._compiler_search_usecase = get_compiler_search_usecase()
+        self._compiler_search_usecase = app_container.compiler_search_usecase
 
         self._stop = False
 
@@ -42,10 +42,10 @@ class _CompilerSearchWorker(QThread):
 class _CompilerSearchWidget(QWidget):
     finished = pyqtSignal(name="finished")
 
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
         super().__init__(parent)
 
-        self._search_worker = _CompilerSearchWorker()
+        self._search_worker = _CompilerSearchWorker(app_container=app_container)
         self._path_found: Path | None = None
 
         self._init_ui()
@@ -106,9 +106,10 @@ class _CompilerSearchWidget(QWidget):
 
 
 class CompilerSearchDialog(QDialog):
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
         super().__init__(parent)
 
+        self._app_container = app_container
         self._path_found: Path | None = None
 
         self._init_ui()
@@ -122,7 +123,10 @@ class CompilerSearchDialog(QDialog):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        self._w_compiler_search = _CompilerSearchWidget(self)  # type: ignore
+        self._w_compiler_search = _CompilerSearchWidget(
+            self,
+            app_container=self._app_container,
+        )  # type: ignore
         layout.addWidget(self._w_compiler_search)
 
     def _init_signals(self):

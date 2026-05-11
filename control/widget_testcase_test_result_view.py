@@ -1,6 +1,7 @@
 from PyQt5.QtCore import pyqtSignal, QObject, pyqtSlot
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTabWidget, QLabel, QPlainTextEdit
 
+from application.container import AppContainer
 from control.widget_testcase_result_otuput_file_view import TestCaseResultOutputFileViewWidget
 from domain.model.student_stage_result import TestResultOutputFileCollection
 from domain.model.value import FileID, SpecialFileType
@@ -12,8 +13,9 @@ from usecase.dto.student_mark_view_data import AbstractStudentTestCaseTestResult
 class TestCaseValidTestResultViewWidget(QWidget):
     selected_file_id_changed = pyqtSignal(FileID, name="selected_file_id_changed")
 
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
         super().__init__(parent)
+        self._app_container = app_container
 
         self._file_ids: list[FileID] = []
 
@@ -49,7 +51,10 @@ class TestCaseValidTestResultViewWidget(QWidget):
                 title = str(file_id.deployment_relative_path)
                 icon = get_icon("article")
 
-            w = TestCaseResultOutputFileViewWidget(self)
+            w = TestCaseResultOutputFileViewWidget(
+                self,
+                app_container=self._app_container,
+            )
             w.set_data(output_file_entry)
             self._w_file_tab.addTab(w, icon, title)
             self._file_ids.append(file_id)
@@ -103,8 +108,9 @@ class TestCaseInvalidTestResultViewWidget(QWidget):
 class TestCaseTestResultViewWidget(QWidget):
     selected_file_id_changed = pyqtSignal(FileID, name="selected_file_id_changed")
 
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
         super().__init__(parent)
+        self._app_container = app_container
 
         self.__w: TestCaseValidTestResultViewWidget | TestCaseInvalidTestResultViewWidget | None \
             = None
@@ -143,7 +149,9 @@ class TestCaseTestResultViewWidget(QWidget):
         if isinstance(data, AbstractStudentTestCaseTestResultViewData):
             if data.is_success:
                 # 正常完了時用ウィジェットを設定
-                w = TestCaseValidTestResultViewWidget()
+                w = TestCaseValidTestResultViewWidget(
+                    app_container=self._app_container,
+                )
                 w.set_data(test_result_output_files=data.output_and_results)
                 self.__set_widget(w)
             else:

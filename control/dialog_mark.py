@@ -3,7 +3,7 @@ from PyQt5.QtGui import QKeyEvent, QCloseEvent
 from PyQt5.QtWidgets import QDialog, QWidget, QHBoxLayout, QLabel, \
     QVBoxLayout, QPushButton
 
-from application.container import ProjectContainer
+from application.container import AppContainer, ProjectContainer
 from control.dialog_mark_help import MarkHelpDialog
 from control.dto.dialog_mark import MarkDialogState
 from control.widget_mark_score_edit import MarkScoreEditWidget
@@ -309,8 +309,15 @@ class MarkDialog(QDialog):
 
     _logger = create_logger()
 
-    def __init__(self, parent: QObject = None, *, project_container: ProjectContainer):
+    def __init__(
+            self,
+            parent: QObject = None,
+            *,
+            app_container: AppContainer,
+            project_container: ProjectContainer,
+    ):
         super().__init__(parent)
+        self._app_container = app_container
         self._project_container = project_container
 
         self._student_ids: list[StudentID] = self._project_container.student_list_id_usecase.execute()
@@ -348,13 +355,18 @@ class MarkDialog(QDialog):
                     layout_middle_left.addLayout(layout_middle_left_inner)
 
                     # 生徒のソースコード
-                    self._w_source_code_view = StudentSourceCodeView(self)
+                    self._w_source_code_view = StudentSourceCodeView(
+                        self,
+                        app_container=self._app_container,
+                    )
                     layout_middle_left_inner.addWidget(
                         self._w_source_code_view)
 
                     # ファイルごとのテスト結果
                     self._w_testcase_test_result_view = TestCaseTestResultViewWidget(
-                        self)
+                        self,
+                        app_container=self._app_container,
+                    )
                     layout_middle_left_inner.addWidget(
                         self._w_testcase_test_result_view)
 

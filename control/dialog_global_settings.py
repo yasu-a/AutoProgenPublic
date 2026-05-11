@@ -4,8 +4,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import *
 
-from application.dependency.usecase import get_global_settings_get_usecase, \
-    get_global_settings_put_usecase, get_test_compile_stage_usecase
+from application.container import AppContainer, ProjectContainer
 from control.dialog_compiler_search import CompilerSearchDialog
 from control.dialog_progress import AbstractProgressDialog
 from domain.model.global_settings import GlobalSettings
@@ -19,9 +18,10 @@ class CompilerToolPathEditWidget(QWidget):
 
     # Pathはテストしたいコンパイルツールのパス
 
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
         super().__init__(parent)
 
+        self._app_container = app_container
         self._init_ui()
         self._init_signals()
 
@@ -84,7 +84,7 @@ class CompilerToolPathEditWidget(QWidget):
 
     @pyqtSlot()
     def __b_search_clicked(self):
-        dialog_auto_find = CompilerSearchDialog(self)
+        dialog_auto_find = CompilerSearchDialog(self, app_container=self._app_container)
         dialog_auto_find.exec_()
         if dialog_auto_find.get_value() is not None:
             self._le_path.setText(str(dialog_auto_find.get_value()))
@@ -167,9 +167,17 @@ class MaxWorkersWidget(QWidget):
 class GlobalSettingsEditWidget(QWidget):
     _logger = create_logger()
 
-    def __init__(self, parent: QObject = None):
+    def __init__(
+            self,
+            parent: QObject = None,
+            *,
+            app_container: AppContainer,
+            project_container: ProjectContainer,
+    ):
         super().__init__(parent)
 
+        self._app_container = app_container
+        self._project_container = project_container
         self._init_ui()
         self._init_signals()
 
@@ -196,7 +204,10 @@ class GlobalSettingsEditWidget(QWidget):
 
         # GlobalSettings::compiler_tool_fullpath: Path | None
         # noinspection PyTypeChecker
-        self._w_compiler_tool_path = CompilerToolPathEditWidget(self)
+        self._w_compiler_tool_path = CompilerToolPathEditWidget(
+            self,
+            app_container=self._app_container,
+        )
         add_item(
             title="Visual Studio開発者ツールのパス",
             widget=self._w_compiler_tool_path,
@@ -279,7 +290,7 @@ class GlobalSettingsEditWidget(QWidget):
     def __w_compiler_tool_path_compile_test_requested(self, compiler_tool_fullpath: Path):
         def task(*, progress_callback):
             progress_callback("コンパイルテストを実行しています...")
-            return get_test_compile_stage_usecase().execute(
+            return self._project_container.test_compile_stage_usecase.execute(
                 compiler_tool_fullpath=Path(compiler_tool_fullpath),
             )
 
@@ -373,9 +384,17 @@ class GlobalSettingsEditWidget(QWidget):
 
 
 class GlobalSettingsEditDialog(QDialog):
-    def __init__(self, parent: QObject = None):
+    def __init__(
+            self,
+            parent: QObject = None,
+            *,
+            app_container: AppContainer,
+            project_container: ProjectContainer,
+    ):
         super().__init__(parent)
 
+        self._app_container = app_container
+        self._project_container = project_container
         self._init_ui()
         self._init_signals()
 
@@ -388,8 +407,14 @@ class GlobalSettingsEditDialog(QDialog):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        self._w_settings_edit = GlobalSettingsEditWidget(self)  # type: ignore
-        self._w_settings_edit.set_value(get_global_settings_get_usecase().execute())
+        self._w_settings_edit = GlobalSettingsEditWidget(
+            self,
+            app_container=self._app_container,
+            project_container=self._project_container,
+        )  # type: ignore
+        self._w_settings_edit.set_value(
+            self._app_container.global_settings_get_usecase.execute()
+        )
         layout.addWidget(self._w_settings_edit)
 
     def _init_signals(self):
@@ -399,7 +424,9 @@ class GlobalSettingsEditDialog(QDialog):
     def closeEvent(self, evt: QCloseEvent):
         reason = self._w_settings_edit.validate_and_get_reason()
         if reason is None:
-            get_global_settings_put_usecase().execute(self._w_settings_edit.get_value())
+            self._app_container.global_settings_put_usecase.execute(
+                self._w_settings_edit.get_value()
+            )
         else:
             # ユーザーにエラーを示して変更を破棄して閉じるか閉じずに編集するかを聞く
             res = QMessageBox.warning(

@@ -2,10 +2,10 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from application.dependency.path_provider import get_global_path_provider
-from application.dependency.repository import get_storage_repository
-from application.dependency.service import get_storage_create_service, \
-    get_storage_load_test_source_service, get_storage_delete_service, \
-    get_storage_run_compiler_service, get_storage_run_executable_service
+from application.dependency.repository import create_storage_repository
+from application.dependency.service import create_storage_create_service, \
+    create_storage_load_test_source_service, create_storage_delete_service, \
+    create_storage_run_compiler_service, create_storage_run_executable_service
 from domain.error import StorageRunCompilerServiceError, StorageRunExecutableServiceError
 from domain.model.value import FileID
 
@@ -18,12 +18,12 @@ def write_test_source(source: str):
 
 # ストレージ領域
 @contextmanager
-def create_storage():
-    storage_id = get_storage_create_service().execute()
+def create_storage(project_id):
+    storage_id = create_storage_create_service(project_id).execute()
     try:
         yield storage_id
     finally:
-        get_storage_delete_service().execute(storage_id=storage_id)
+        create_storage_delete_service(project_id).execute(storage_id=storage_id)
 
 
 # Storage内のファイルのパス
@@ -31,7 +31,7 @@ SOURCE_FILE_RELATIVE_PATH = Path("main.c")
 EXECUTABLE_FILE_RELATIVE_PATH = Path("main.exe")
 
 
-def test_compile_success():
+def test_compile_success(project_id):
     write_test_source(r"""
         #include <stdio.h>
         int main() {
@@ -40,16 +40,16 @@ def test_compile_success():
         }
     """)
 
-    with create_storage() as storage_id:
+    with create_storage(project_id) as storage_id:
         # ストレージ領域にテスト用のソースコードをロード
-        get_storage_load_test_source_service().execute(
+        create_storage_load_test_source_service(project_id).execute(
             storage_id=storage_id,
             file_relative_path=SOURCE_FILE_RELATIVE_PATH,
         )
 
         # コンパイルの実行
         try:
-            service_result = get_storage_run_compiler_service().execute(
+            service_result = create_storage_run_compiler_service(project_id).execute(
                 storage_id=storage_id,
                 source_file_relative_path=SOURCE_FILE_RELATIVE_PATH,
             )
@@ -64,7 +64,7 @@ def test_compile_success():
             print(service_result.output)
 
 
-def test_compile_fail():
+def test_compile_fail(project_id):
     write_test_source(r"""
         #include <stdio.h>
         int main() {
@@ -73,16 +73,16 @@ def test_compile_fail():
         }
     """)
 
-    with create_storage() as storage_id:
+    with create_storage(project_id) as storage_id:
         # ストレージ領域にテスト用のソースコードをロード
-        get_storage_load_test_source_service().execute(
+        create_storage_load_test_source_service(project_id).execute(
             storage_id=storage_id,
             file_relative_path=SOURCE_FILE_RELATIVE_PATH,
         )
 
         # コンパイルの実行
         try:
-            service_result = get_storage_run_compiler_service().execute(
+            service_result = create_storage_run_compiler_service(project_id).execute(
                 storage_id=storage_id,
                 source_file_relative_path=SOURCE_FILE_RELATIVE_PATH,
             )
@@ -99,7 +99,7 @@ def test_compile_fail():
             assert False  # コンパイルは失敗するはず
 
 
-def test_execute_normal_source_code():
+def test_execute_normal_source_code(project_id):
     write_test_source(r"""
         #include <stdio.h>
         int main() {
@@ -108,16 +108,16 @@ def test_execute_normal_source_code():
         }
     """)
 
-    with create_storage() as storage_id:
+    with create_storage(project_id) as storage_id:
         # ストレージ領域にテスト用のソースコードをロード
-        get_storage_load_test_source_service().execute(
+        create_storage_load_test_source_service(project_id).execute(
             storage_id=storage_id,
             file_relative_path=SOURCE_FILE_RELATIVE_PATH,
         )
 
         # コンパイルの実行
         try:
-            get_storage_run_compiler_service().execute(
+            create_storage_run_compiler_service(project_id).execute(
                 storage_id=storage_id,
                 source_file_relative_path=SOURCE_FILE_RELATIVE_PATH,
             )
@@ -126,7 +126,7 @@ def test_execute_normal_source_code():
 
         # コンパイルの実効と標準出力ファイルの書き込み
         try:
-            service_result = get_storage_run_executable_service().execute(
+            service_result = create_storage_run_executable_service(project_id).execute(
                 storage_id=storage_id,
                 executable_file_relative_path=EXECUTABLE_FILE_RELATIVE_PATH,
                 timeout=2,
@@ -141,7 +141,7 @@ def test_execute_normal_source_code():
             assert service_result.stdout_text == "Hello, world!\n"
 
 
-def test_execute_normal_scanf_source_code():
+def test_execute_normal_scanf_source_code(project_id):
     write_test_source(r"""
         #include <stdio.h>
         int main() {
@@ -153,16 +153,16 @@ def test_execute_normal_scanf_source_code():
         }
     """)
 
-    with create_storage() as storage_id:
+    with create_storage(project_id) as storage_id:
         # ストレージ領域にテスト用のソースコードをロード
-        get_storage_load_test_source_service().execute(
+        create_storage_load_test_source_service(project_id).execute(
             storage_id=storage_id,
             file_relative_path=SOURCE_FILE_RELATIVE_PATH,
         )
 
         # コンパイルの実行
         try:
-            get_storage_run_compiler_service().execute(
+            create_storage_run_compiler_service(project_id).execute(
                 storage_id=storage_id,
                 source_file_relative_path=SOURCE_FILE_RELATIVE_PATH,
             )
@@ -170,14 +170,14 @@ def test_execute_normal_scanf_source_code():
             assert False  # コンパイルは成功するはず
 
         # 標準入力の準備
-        storage_repo = get_storage_repository()
+        storage_repo = create_storage_repository(project_id)
         storage = storage_repo.get(storage_id)
         storage.files[FileID.STDIN.deployment_relative_path] = b"12345\n45678\n"
         storage_repo.put(storage)
 
         # コンパイルの実効と標準出力ファイルの書き込み
         try:
-            service_result = get_storage_run_executable_service().execute(
+            service_result = create_storage_run_executable_service(project_id).execute(
                 storage_id=storage_id,
                 executable_file_relative_path=EXECUTABLE_FILE_RELATIVE_PATH,
                 timeout=2,

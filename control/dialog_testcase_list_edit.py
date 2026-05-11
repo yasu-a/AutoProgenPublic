@@ -1,7 +1,7 @@
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from application.container import ProjectContainer
+from application.container import AppContainer, ProjectContainer
 from control.dialog_testcase_config_edit import TestCaseConfigEditDialog
 from control.widget_button_box import ButtonBox
 from domain.error import UseCaseError
@@ -54,8 +54,15 @@ class TestCaseListWidget(QListWidget):
 class TestCaseListEditWidget(QWidget):
     testcase_modified = pyqtSignal(name="testcase_modified")
 
-    def __init__(self, parent: QObject = None, *, project_container: ProjectContainer):
+    def __init__(
+            self,
+            parent: QObject = None,
+            *,
+            app_container: AppContainer,
+            project_container: ProjectContainer,
+    ):
         super().__init__(parent)
+        self._app_container = app_container
         self._project_container = project_container
 
         self._init_ui()
@@ -161,6 +168,7 @@ class TestCaseListEditWidget(QWidget):
         dialog = TestCaseConfigEditDialog(
             self,
             testcase_id=testcase_id,
+            app_container=self._app_container,
             project_container=self._project_container,
         )
         dialog.exec_()
@@ -190,8 +198,15 @@ class TestCaseListEditWidget(QWidget):
 
 
 class TestCaseListEditDialog(QDialog):
-    def __init__(self, parent: QObject = None, *, project_container: ProjectContainer):
+    def __init__(
+            self,
+            parent: QObject = None,
+            *,
+            app_container: AppContainer,
+            project_container: ProjectContainer,
+    ):
         super().__init__(parent)
+        self._app_container = app_container
         self._project_container = project_container
 
         self._init_ui()
@@ -207,6 +222,7 @@ class TestCaseListEditDialog(QDialog):
 
         self._w_testcase_edit = TestCaseListEditWidget(
             self,  # type: ignore
+            app_container=self._app_container,
             project_container=self._project_container,
         )
         layout.addWidget(self._w_testcase_edit)

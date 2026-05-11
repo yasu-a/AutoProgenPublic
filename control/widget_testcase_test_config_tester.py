@@ -1,7 +1,7 @@
 from PyQt5.QtCore import QObject, pyqtSignal, QEvent, Qt
 from PyQt5.QtWidgets import QVBoxLayout, QLabel, QGroupBox, QPlainTextEdit, QHBoxLayout, QPushButton
 
-from application.dependency.usecase import get_test_test_stage_usecase
+from application.container import AppContainer
 from control.widget_horizontal_line import HorizontalLineWidget
 from control.widget_plain_text_edit import PlainTextEdit
 from control.widget_test_summary_indicator import TestCaseTestSummaryIndicatorWidget
@@ -17,8 +17,9 @@ from usecase.dto.test_test_stage import TestTestStageResult
 class TestCaseTestConfigTesterWidget(QGroupBox):
     run_requested = pyqtSignal(name="run_requested")  # 実行を要求する
 
-    def __init__(self, parent: QObject = None):
+    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
         super().__init__(parent)
+        self._app_container = app_container
 
         self._init_ui()
         self._init_signals()
@@ -71,7 +72,9 @@ class TestCaseTestConfigTesterWidget(QGroupBox):
         self._l_test_result.setWordWrap(True)
         layout.addWidget(self._l_test_result)
 
-        self._result_view = TestCaseResultOutputFileTextView()
+        self._result_view = TestCaseResultOutputFileTextView(
+            app_container=self._app_container,
+        )
         layout.addWidget(self._result_view)
 
         # noinspection PyTypeChecker
@@ -87,7 +90,7 @@ class TestCaseTestConfigTesterWidget(QGroupBox):
             expected_output_file: ExpectedOutputFile,
             test_config_options: TestConfigOptions,
     ):
-        test_result: TestTestStageResult = get_test_test_stage_usecase().execute(
+        test_result: TestTestStageResult = self._app_container.test_test_stage_usecase.execute(
             expected_output_file=expected_output_file,
             test_config_options=test_config_options,
             content_text=self._editor.toPlainText(),

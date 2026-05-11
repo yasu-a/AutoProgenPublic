@@ -3,7 +3,7 @@ from datetime import timedelta
 
 import pytest
 
-from application.dependency.service import get_match_get_best_service
+from application.dependency.service import MatchGetBestService
 from domain.model.pattern import PatternList, TextPattern, SpacePattern, EOLPattern, RegexPattern
 from domain.model.test_config_options import TestConfigOptions
 
@@ -67,7 +67,7 @@ def case_insensitive_test_config_options():
 @pytest.fixture
 def match_service():
     """マッチサービスのfixture"""
-    return get_match_get_best_service()
+    return MatchGetBestService()
 
 
 def test_basic_text_pattern_matching(match_service, test_config_options):
