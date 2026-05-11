@@ -6,12 +6,18 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import *
 
-from application.container import AppContainer
 from control.dialog_progress import AbstractProgressDialog
 from control.widget_clickable_label import ClickableLabel
 from domain.model.value import ProjectID
 from res.font import get_font
 from res.icon import get_icon
+from usecase.project import (
+    ProjectBaseFolderShowUseCase,
+    ProjectDeleteUseCase,
+    ProjectFolderShowUseCase,
+    ProjectGetSizeQueryUseCase,
+    ProjectListRecentSummaryUseCase,
+)
 from usecase.dto.project import NormalProjectSummary, AbstractProjectSummary, \
     ErrorProjectSummary
 
@@ -252,10 +258,15 @@ class RecentProjectListWidget(QListWidget):
 class _RecentProjectSizeFieldGetWorker(QThread):
     size_acquired = pyqtSignal(ProjectID, int, name="size_acquired")  # project_id and size
 
-    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
+    def __init__(
+            self,
+            parent: QObject = None,
+            *,
+            project_get_size_query_usecase: ProjectGetSizeQueryUseCase,
+    ):
         super().__init__(parent)
 
-        self._app_container = app_container
+        self._project_get_size_query_usecase = project_get_size_query_usecase
         self.__stop = False
         self._lock = QMutex()
         self._q: deque[ProjectID] = deque()
@@ -288,7 +299,7 @@ class _RecentProjectSizeFieldGetWorker(QThread):
                     time.sleep(1)
                     continue
                 project_id = self._q.popleft()
-            size = self._app_container.project_get_size_query_usecase.execute(
+            size = self._project_get_size_query_usecase.execute(
                 project_id=project_id,
             )
             self.size_acquired.emit(project_id, size)
@@ -299,12 +310,24 @@ class RecentProjectWidget(QWidget):
     # noinspection PyArgumentList
     accepted = pyqtSignal(ProjectID)
 
-    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
+    def __init__(
+            self,
+            parent: QObject = None,
+            *,
+            project_list_recent_summary_usecase: ProjectListRecentSummaryUseCase,
+            project_folder_show_usecase: ProjectFolderShowUseCase,
+            project_delete_usecase: ProjectDeleteUseCase,
+            project_base_folder_show_usecase: ProjectBaseFolderShowUseCase,
+            project_get_size_query_usecase: ProjectGetSizeQueryUseCase,
+    ):
         super().__init__(parent)
 
-        self._app_container = app_container
+        self._project_list_recent_summary_usecase = project_list_recent_summary_usecase
+        self._project_folder_show_usecase = project_folder_show_usecase
+        self._project_delete_usecase = project_delete_usecase
+        self._project_base_folder_show_usecase = project_base_folder_show_usecase
         self._project_size_field_get_worker = _RecentProjectSizeFieldGetWorker(
-            app_container=self._app_container,
+            project_get_size_query_usecase=project_get_size_query_usecase,
         )
 
         self._init_ui()
@@ -348,7 +371,7 @@ class RecentProjectWidget(QWidget):
 
     def __update_list(self) -> None:
         # プロジェクトのリストを読み込んで設定する
-        project_summary_lst = self._app_container.project_list_recent_summary_usecase.execute()
+        project_summary_lst = self._project_list_recent_summary_usecase.execute()
         self._w_list.set_data(project_summary_lst)
         # サイズ取得のスレッドにキューを追加する
         self._project_size_field_get_worker.clear_queue()
@@ -366,7 +389,7 @@ class RecentProjectWidget(QWidget):
     @pyqtSlot(ProjectID)
     def __w_list_open_folder_requested(self, project_id: ProjectID):
         # プロジェクトのフォルダを開く要求
-        self._app_container.project_folder_show_usecase.execute(project_id)
+        self._project_folder_show_usecase.execute(project_id)
 
     @pyqtSlot(ProjectID)
     def __w_list_delete_project_requested(self, project_id: ProjectID):
@@ -382,7 +405,7 @@ class RecentProjectWidget(QWidget):
             return
         def task(*, progress_callback):
             progress_callback("プロジェクトを削除しています・・・")
-            self._app_container.project_delete_usecase.execute(project_id)
+            self._project_delete_usecase.execute(project_id)
             time.sleep(0.5)  # プロジェクトのサイズが小さいとUIが一瞬で消えるので少し待つ
 
         _ = AbstractProgressDialog.run_blocking_task(
@@ -396,7 +419,7 @@ class RecentProjectWidget(QWidget):
     @pyqtSlot()
     def __b_open_projects_base_folder_clicked(self):
         # プロジェクトを管理するフォルダを開く要求
-        self._app_container.project_base_folder_show_usecase.execute()
+        self._project_base_folder_show_usecase.execute()
 
     @pyqtSlot(ProjectID, int)
     def __project_size_field_get_worker_size_acquired(self, project_id: ProjectID, size: int):

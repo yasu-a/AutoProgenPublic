@@ -1,17 +1,14 @@
 from PyQt5.QtCore import QObject, QTimer, pyqtSlot
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel
-from typing import TYPE_CHECKING
 
 from usecase.dto.resource_usage import ResourceUsageGetResult
-
-if TYPE_CHECKING:
-    from application.container import AppContainer
+from usecase.resource_usage import ResourceUsageGetUseCase
 
 
 class ProcessResourceUsageStatusBarWidget(QWidget):
-    def __init__(self, parent: QObject = None, *, app_container: "AppContainer"):
+    def __init__(self, parent: QObject = None, *, resource_usage_get_usecase: ResourceUsageGetUseCase):
         super().__init__(parent)
-        self._app_container = app_container
+        self._resource_usage_get_usecase = resource_usage_get_usecase
 
         self._timer = QTimer(self)
         self._timer.setInterval(1000)
@@ -54,7 +51,7 @@ class ProcessResourceUsageStatusBarWidget(QWidget):
 
     @pyqtSlot()
     def __timer_timeout(self):
-        result: ResourceUsageGetResult = self._app_container.resource_usage_get_usecase.execute()
+        result: ResourceUsageGetResult = self._resource_usage_get_usecase.execute()
         self._l_cpu_percent.setText(f"CPU: {result.cpu_percent}%")
         self._l_memory.setText(f"RAM: {result.memory_mega_bytes:,} MB")
         self._l_disk_read_count.setText(f"Disk read: {result.disk_read_count:,}")

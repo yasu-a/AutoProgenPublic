@@ -5,13 +5,13 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import QIntValidator, QRegExpValidator
 from PyQt5.QtWidgets import *
 
-from application.container import AppContainer
 from application.state.debug import is_debug
 from control.dto.new_project_config import NewProjectConfig
 from domain.model.value import ProjectID
 from res.font import get_font
 from res.icon import get_icon
 from usecase.manaba_report_archive import ManabaReportArchiveValidateMasterExcelExistsUseCase
+from usecase.project import ProjectCheckExistByNameUseCase
 
 
 class ProjectZipFileSelectorWidget(QWidget):
@@ -93,10 +93,15 @@ class ProjectZipFileSelectorWidget(QWidget):
 
 
 class ProjectNameLineEdit(QLineEdit):
-    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
+    def __init__(
+            self,
+            parent: QObject = None,
+            *,
+            project_check_exist_by_name_usecase: ProjectCheckExistByNameUseCase,
+    ):
         super().__init__(parent)
 
-        self._app_container = app_container
+        self._project_check_exist_by_name_usecase = project_check_exist_by_name_usecase
         self._init_ui()
 
     def _init_ui(self):
@@ -120,7 +125,7 @@ class ProjectNameLineEdit(QLineEdit):
         except ValueError:
             return "プロジェクト名に使用できない文字が含まれています"
         # noinspection PyTypeChecker
-        if self._app_container.project_check_exist_by_name_usecase.execute(project_name):
+        if self._project_check_exist_by_name_usecase.execute(project_name):
             return "プロジェクト名はすでに存在します"
         return None
 
@@ -155,10 +160,19 @@ class NewProjectWidget(QWidget):
     # noinspection PyArgumentList
     accepted = pyqtSignal(NewProjectConfig)
 
-    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
+    def __init__(
+            self,
+            parent: QObject = None,
+            *,
+            project_check_exist_by_name_usecase: ProjectCheckExistByNameUseCase,
+            manaba_report_archive_validate_master_excel_exists_usecase: ManabaReportArchiveValidateMasterExcelExistsUseCase,
+    ):
         super().__init__(parent)
 
-        self._app_container = app_container
+        self._project_check_exist_by_name_usecase = project_check_exist_by_name_usecase
+        self._manaba_report_archive_validate_master_excel_exists_usecase = (
+            manaba_report_archive_validate_master_excel_exists_usecase
+        )
         self._init_ui()
 
     def _init_ui(self):
@@ -174,7 +188,10 @@ class NewProjectWidget(QWidget):
             layout_form.addWidget(QLabel("プロジェクト名", self), 0, 0)
 
             # noinspection PyTypeChecker
-            self._w_project_id = ProjectNameLineEdit(self, app_container=self._app_container)
+            self._w_project_id = ProjectNameLineEdit(
+                self,
+                project_check_exist_by_name_usecase=self._project_check_exist_by_name_usecase,
+            )
             layout_form.addWidget(self._w_project_id, 0, 1)
 
             layout_form.addWidget(QLabel("提出データ"), 1, 0)
@@ -183,7 +200,7 @@ class NewProjectWidget(QWidget):
             self._w_project_zipfile_selector = ProjectZipFileSelectorWidget(
                 self,
                 manaba_report_archive_validate_master_excel_exists_usecase=(
-                    self._app_container.manaba_report_archive_validate_master_excel_exists_usecase
+                    self._manaba_report_archive_validate_master_excel_exists_usecase
                 ),
             )
             layout_form.addWidget(self._w_project_zipfile_selector, 1, 1)
