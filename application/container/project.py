@@ -9,6 +9,7 @@ from infra.io.files.project import ProjectCoreIO
 from infra.io.project_database import ProjectDatabaseIO
 from infra.io.report_archive import ManabaReportArchiveIO
 from infra.io.student_folder_show_in_explorer import StudentFolderShowInExplorerIO
+from infra.path_layout import ProjectPathLayout
 from infra.path_provider.current_project import TestCaseConfigPathProvider, DynamicPathProvider, DatabasePathProvider, \
     StoragePathProvider, ProjectStaticPathProvider, StudentSubmissionPathProvider
 from infra.path_provider.project import ProjectPathProvider
@@ -79,6 +80,7 @@ class ProjectContainer:
             project_repository: ProjectRepository,
             global_settings_repository: GlobalSettingsRepository,
             test_source_repository: TestSourceRepository,
+            project_path_layout: ProjectPathLayout,
             project_path_provider: ProjectPathProvider,
             project_core_io: ProjectCoreIO,
     ) -> None:
@@ -87,12 +89,17 @@ class ProjectContainer:
         self._project_repository = project_repository
         self._global_settings_repository = global_settings_repository
         self._test_source_repository = test_source_repository
+        self._project_path_layout = project_path_layout
         self._project_path_provider = project_path_provider
         self._project_core_io = project_core_io
 
     @property
     def project_id(self) -> ProjectID:
         return self._project_id
+
+    @property
+    def project_path_layout(self) -> ProjectPathLayout:
+        return self._project_path_layout
 
     @cached_property
     def current_project_core_io(self):

@@ -8,11 +8,12 @@ from infra.io.files.global_ import GlobalCoreIO
 from infra.io.files.project import ProjectCoreIO
 from infra.io.project_base_folder_show_in_explorer import ProjectFolderShowInExplorerIO
 from infra.io.resource_usage import ResourceUsageIO
+from infra.path_layout import AppPathConfig, AppPathLayout
 from infra.path_provider.global_ import GlobalPathProvider
 from infra.path_provider.project import ProjectListPathProvider, ProjectPathProvider
 from infra.repository.app_version import AppVersionRepository
 from infra.repository.global_settings import GlobalSettingsRepository
-from infra.repository.project import ProjectRepository
+from infra.repository.project_2 import ProjectRepository
 from infra.repository.test_source import TestSourceRepository
 from service.match import MatchGetBestService
 from service.project import ProjectListIDQueryService, ProjectGetConfigStateQueryService, ProjectUpdateTimestampService, \
@@ -37,6 +38,7 @@ class AppContainer:
             project_repository=self.project_repository,
             global_settings_repository=self.global_settings_repository,
             test_source_repository=self.test_source_repository,
+            project_path_layout=self.project_repository.create_project_path_layout(project_id),
             project_path_provider=self.project_path_provider,
             project_core_io=self.project_core_io,
         )
@@ -44,6 +46,14 @@ class AppContainer:
     @cached_property
     def match_get_best_service(self):
         return MatchGetBestService()
+
+    @cached_property
+    def app_path_config(self):
+        return AppPathConfig.production()
+
+    @cached_property
+    def app_path_layout(self):
+        return AppPathLayout(config=self.app_path_config)
 
     @cached_property
     def global_path_provider(self):
@@ -83,8 +93,7 @@ class AppContainer:
     @cached_property
     def project_repository(self):
         return ProjectRepository(
-            project_list_path_provider=self.project_list_path_provider,
-            project_path_provider=self.project_path_provider,
+            project_store_dir=self.app_path_config.project_store_dir,
             project_core_io=self.project_core_io,
         )
 
