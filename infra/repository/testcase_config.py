@@ -147,26 +147,6 @@ class TestCaseConfigRepository:
             for folder_name in sorted(self.__iter_testcase_folder_names())
         ]
 
-    # def __delete_execute_config(self, testcase_id: TestCaseID) -> None:
-    #     json_fullpath = self._testcase_config_path_provider.execute_config_json_fullpath(
-    #         testcase_id=testcase_id,
-    #     )
-    #     if not json_fullpath.exists():
-    #         raise FileNotFoundError("Execute config file does not exist")
-    #     self._current_project_core_io.unlink(
-    #         path=json_fullpath,
-    #     )
-    #
-    # def __delete_test_config(self, testcase_id: TestCaseID) -> None:
-    #     json_fullpath = self._testcase_config_path_provider.test_config_json_fullpath(
-    #         testcase_id=testcase_id,
-    #     )
-    #     if not json_fullpath.exists():
-    #         raise FileNotFoundError("Test config file does not exist")
-    #     self._current_project_core_io.unlink(
-    #         path=json_fullpath,
-    #     )
-
     def delete(self, testcase_id: TestCaseID) -> None:
         with self.__lock():
             self._testcase_cache.pop(testcase_id, None)
