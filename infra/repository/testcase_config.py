@@ -8,17 +8,17 @@ from domain.model.test_config import TestCaseTestConfig
 from domain.model.testcase_config import TestCaseConfig
 from domain.model.value import TestCaseID
 from infra.io.files.current_project import CurrentProjectCoreIO
-from infra.path_provider.current_project import TestCaseConfigPathProvider
+from infra.path_layout import ProjectPathLayout
 
 
 class TestCaseConfigRepository:
     def __init__(
             self,
             *,
-            testcase_config_path_provider: TestCaseConfigPathProvider,
+            project_path_layout: ProjectPathLayout,
             current_project_core_io: CurrentProjectCoreIO,
     ):
-        self._testcase_config_path_provider = testcase_config_path_provider
+        self._project_path_layout = project_path_layout
         self._current_project_core_io = current_project_core_io
 
         self._lock = QMutex()
@@ -33,12 +33,12 @@ class TestCaseConfigRepository:
             self._lock.unlock()
 
     def __ensure_testcase_folder_exists(self, testcase_id: TestCaseID) -> None:
-        testcase_folder_fullpath = self._testcase_config_path_provider.testcase_folder_fullpath(
+        testcase_folder_fullpath = self._project_path_layout.testcase_dir(
             testcase_id)
         testcase_folder_fullpath.mkdir(parents=True, exist_ok=True)
 
     def __iter_testcase_folder_names(self) -> Iterable[str]:
-        base_folder_fullpath = self._testcase_config_path_provider.base_folder_fullpath()
+        base_folder_fullpath = self._project_path_layout.testcases_dir
         base_folder_fullpath.mkdir(parents=True, exist_ok=True)
         for testcase_folder_fullpath in base_folder_fullpath.iterdir():
             if not testcase_folder_fullpath.is_dir():
@@ -57,7 +57,7 @@ class TestCaseConfigRepository:
         except FileNotFoundError:
             pass
         self.__ensure_testcase_folder_exists(testcase_id)
-        json_fullpath = self._testcase_config_path_provider.execute_config_json_fullpath(
+        json_fullpath = self._project_path_layout.execute_config_json(
             testcase_id=testcase_id,
         )
         self._current_project_core_io.write_json(
@@ -76,7 +76,7 @@ class TestCaseConfigRepository:
         except FileNotFoundError:
             pass
         self.__ensure_testcase_folder_exists(testcase_id)
-        json_fullpath = self._testcase_config_path_provider.test_config_json_fullpath(
+        json_fullpath = self._project_path_layout.test_config_json(
             testcase_id=testcase_id,
         )
         self._current_project_core_io.write_json(
@@ -99,7 +99,7 @@ class TestCaseConfigRepository:
             )
 
     def __read_execute_config(self, testcase_id: TestCaseID) -> TestCaseExecuteConfig:
-        json_fullpath = self._testcase_config_path_provider.execute_config_json_fullpath(
+        json_fullpath = self._project_path_layout.execute_config_json(
             testcase_id=testcase_id,
         )
         if not json_fullpath.exists():
@@ -108,7 +108,7 @@ class TestCaseConfigRepository:
         return TestCaseExecuteConfig.from_json(json_body)
 
     def __read_test_config(self, testcase_id: TestCaseID) -> TestCaseTestConfig:
-        json_fullpath = self._testcase_config_path_provider.test_config_json_fullpath(
+        json_fullpath = self._project_path_layout.test_config_json(
             testcase_id=testcase_id,
         )
         if not json_fullpath.exists():
@@ -147,31 +147,11 @@ class TestCaseConfigRepository:
             for folder_name in sorted(self.__iter_testcase_folder_names())
         ]
 
-    # def __delete_execute_config(self, testcase_id: TestCaseID) -> None:
-    #     json_fullpath = self._testcase_config_path_provider.execute_config_json_fullpath(
-    #         testcase_id=testcase_id,
-    #     )
-    #     if not json_fullpath.exists():
-    #         raise FileNotFoundError("Execute config file does not exist")
-    #     self._current_project_core_io.unlink(
-    #         path=json_fullpath,
-    #     )
-    #
-    # def __delete_test_config(self, testcase_id: TestCaseID) -> None:
-    #     json_fullpath = self._testcase_config_path_provider.test_config_json_fullpath(
-    #         testcase_id=testcase_id,
-    #     )
-    #     if not json_fullpath.exists():
-    #         raise FileNotFoundError("Test config file does not exist")
-    #     self._current_project_core_io.unlink(
-    #         path=json_fullpath,
-    #     )
-
     def delete(self, testcase_id: TestCaseID) -> None:
         with self.__lock():
             self._testcase_cache.pop(testcase_id, None)
 
-            base_folder_fullpath = self._testcase_config_path_provider.testcase_folder_fullpath(
+            base_folder_fullpath = self._project_path_layout.testcase_dir(
                 testcase_id=testcase_id,
             )
             if not base_folder_fullpath.exists():

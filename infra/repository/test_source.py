@@ -1,5 +1,5 @@
 from infra.io.files.global_ import GlobalCoreIO
-from infra.path_provider.global_ import GlobalPathProvider
+from infra.path_layout import AppPathLayout
 
 
 class TestSourceRepository:
@@ -8,14 +8,14 @@ class TestSourceRepository:
     def __init__(
             self,
             *,
-            global_path_provider: GlobalPathProvider,
+            app_path_layout: AppPathLayout,
             global_core_io: GlobalCoreIO,
     ):
-        self._global_path_provider = global_path_provider
+        self._app_path_layout = app_path_layout
         self._global_core_io = global_core_io
 
     def get(self) -> bytes:
-        source_file_fullpath = self._global_path_provider.test_source_file_fullpath()
+        source_file_fullpath = self._app_path_layout.compiler_test_source_file
         return self._global_core_io.read_file_content_bytes(
             file_fullpath=source_file_fullpath,
         )

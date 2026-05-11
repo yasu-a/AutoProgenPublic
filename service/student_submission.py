@@ -6,7 +6,7 @@ from domain.error import ServiceError, ManabaReportArchiveIOError, StudentSubmis
 from domain.model.value import StudentID, TargetID
 from infra.io.files.current_project import CurrentProjectCoreIO
 from infra.io.report_archive import ManabaReportArchiveIO
-from infra.path_provider.current_project import StudentSubmissionPathProvider
+from infra.path_layout import ProjectPathLayout
 from infra.repository.current_project import CurrentProjectRepository
 from infra.repository.student import StudentRepository
 from util.app_logging import create_logger
@@ -33,12 +33,12 @@ class StudentSubmissionExtractService:
             student_repo: StudentRepository,
             manaba_report_archive_io: ManabaReportArchiveIO,
             current_project_core_io: CurrentProjectCoreIO,
-            student_submission_path_provider: StudentSubmissionPathProvider,
+            project_path_layout: ProjectPathLayout,
     ):
         self._student_repo = student_repo
         self._manaba_report_archive_io = manaba_report_archive_io
         self._current_project_core_io = current_project_core_io
-        self._student_submission_path_provider = student_submission_path_provider
+        self._project_path_layout = project_path_layout
 
     def execute(self):
         if not self._student_repo.exists_any():
@@ -65,7 +65,7 @@ class StudentSubmissionExtractService:
                     student_id_to_submission_folder_name_mapping.items():
                 # 生徒の展開先のフォルダのフルパス
                 extract_base_folder_fullpath = (
-                    self._student_submission_path_provider.student_submission_folder_fullpath(
+                    self._project_path_layout.student_submission_dir(
                         student_id=student_id,
                     )
                 )
@@ -109,15 +109,14 @@ class StudentSubmissionGetChecksumService:
     def __init__(
             self,
             *,
-            student_submission_path_provider: StudentSubmissionPathProvider,
+            project_path_layout: ProjectPathLayout,
             current_project_core_io: CurrentProjectCoreIO,
     ):
-        self._student_submission_path_provider = student_submission_path_provider
+        self._project_path_layout = project_path_layout
         self._current_project_core_io = current_project_core_io
 
     def execute(self, student_id: StudentID) -> int:
-        folder_fullpath \
-            = self._student_submission_path_provider.student_submission_folder_fullpath(student_id)
+        folder_fullpath = self._project_path_layout.student_submission_dir(student_id)
         checksum = self._current_project_core_io.calculate_folder_checksum(
             folder_fullpath=folder_fullpath,
         )
@@ -133,11 +132,11 @@ class StudentSubmissionListSourceRelativePathQueryService:
     def __init__(
             self,
             *,
-            student_submission_path_provider: StudentSubmissionPathProvider,
+            project_path_layout: ProjectPathLayout,
             current_project_core_io: CurrentProjectCoreIO,
             current_project_repo: CurrentProjectRepository,
     ):
-        self._student_submission_path_provider = student_submission_path_provider
+        self._project_path_layout = project_path_layout
         self._current_project_core_io = current_project_core_io
         self._current_project_repo = current_project_repo
 
@@ -148,8 +147,9 @@ class StudentSubmissionListSourceRelativePathQueryService:
     ) -> list[Path]:  # returns paths relative to student submission folder
         target_id = self._current_project_repo.get().target_id
 
-        student_submission_folder_fullpath \
-            = self._student_submission_path_provider.student_submission_folder_fullpath(student_id)
+        student_submission_folder_fullpath = self._project_path_layout.student_submission_dir(
+            student_id
+        )
 
         source_file_fullpath_lst = []
         # 生徒の提出フォルダのソースコードと思われるファイルパスをイテレートする
@@ -196,10 +196,10 @@ class StudentSubmissionGetFileContentQueryService:
     def __init__(
             self,
             *,
-            student_submission_path_provider: StudentSubmissionPathProvider,
+            project_path_layout: ProjectPathLayout,
             current_project_core_io: CurrentProjectCoreIO,
     ):
-        self._student_submission_path_provider = student_submission_path_provider
+        self._project_path_layout = project_path_layout
         self._current_project_core_io = current_project_core_io
 
     def execute(
@@ -208,8 +208,9 @@ class StudentSubmissionGetFileContentQueryService:
             student_id: StudentID,
             file_relative_path: Path,
     ) -> bytes:
-        student_submission_folder_fullpath \
-            = self._student_submission_path_provider.student_submission_folder_fullpath(student_id)
+        student_submission_folder_fullpath = self._project_path_layout.student_submission_dir(
+            student_id
+        )
 
         file_fullpath = student_submission_folder_fullpath / file_relative_path
         if not file_fullpath.exists():

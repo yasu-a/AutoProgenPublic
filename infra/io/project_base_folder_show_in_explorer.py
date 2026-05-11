@@ -1,7 +1,7 @@
 import os
+from pathlib import Path
 
 from domain.model.value import ProjectID
-from infra.path_provider.project import ProjectListPathProvider
 
 
 class ProjectFolderShowInExplorerIO:
@@ -10,19 +10,18 @@ class ProjectFolderShowInExplorerIO:
     def __init__(
             self,
             *,
-            project_list_path_provider: ProjectListPathProvider,
+            project_store_dir: Path,
     ):
-        self._project_list_path_provider = project_list_path_provider
+        self._project_store_dir = project_store_dir
 
     def show_base_folder(self) -> None:
         # プロジェクトの管理フォルダをエクスプローラで開く
-        base_folder_fullpath = self._project_list_path_provider.base_folder_fullpath()
+        base_folder_fullpath = self._project_store_dir
         if base_folder_fullpath.exists():
             os.startfile(base_folder_fullpath)
 
     def show_folder(self, project_id: ProjectID) -> None:
         # プロジェクトの場所をエクスプローラで開く
-        project_folder_fullpath \
-            = self._project_list_path_provider.project_folder_fullpath(project_id)
+        project_folder_fullpath = self._project_store_dir / str(project_id)
         if project_folder_fullpath.exists():
             os.startfile(project_folder_fullpath)

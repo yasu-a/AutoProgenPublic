@@ -178,7 +178,17 @@ class Navigator(INavigator):
         from control.dialog_welcome import WelcomeDialog
         from control.dto.new_project_config import NewProjectConfig
 
-        welcome = WelcomeDialog(app_container=self._app_container)
+        welcome = WelcomeDialog(
+            project_check_exist_by_name_usecase=self._app_container.project_check_exist_by_name_usecase,
+            manaba_report_archive_validate_master_excel_exists_usecase=(
+                self._app_container.manaba_report_archive_validate_master_excel_exists_usecase
+            ),
+            project_list_recent_summary_usecase=self._app_container.project_list_recent_summary_usecase,
+            project_folder_show_usecase=self._app_container.project_folder_show_usecase,
+            project_delete_usecase=self._app_container.project_delete_usecase,
+            project_base_folder_show_usecase=self._app_container.project_base_folder_show_usecase,
+            project_get_size_query_usecase=self._app_container.project_get_size_query_usecase,
+        )
         if welcome.exec_() != QDialog.Accepted:
             return False
 

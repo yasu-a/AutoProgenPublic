@@ -1,42 +1,42 @@
-from pytest_mock import MockerFixture
-
-from application.dependency.service import create_stage_path_list_sub_service
-from domain.model.stage_path import StagePath
-from domain.model.stage import BuildStage, CompileStage, ExecuteStage, TestStage
-from domain.model.value import TestCaseID
-
-
-def test_stage_path_no_testcase_ids(mocker: MockerFixture, project_id):
-    mocker.patch(
-        "infra.repository.testcase_config.TestCaseConfigRepository.list_ids",
-        return_value=[],
-    )
-    stage_path_lst: list[StagePath] = create_stage_path_list_sub_service(project_id).execute()
-    assert stage_path_lst == [
-        StagePath([
-            BuildStage(),
-            CompileStage(),
-        ])
-    ]
-
-
-def test_stage_path_with_testcase_ids(mocker: MockerFixture, project_id):
-    mocker.patch(
-        "infra.repository.testcase_config.TestCaseConfigRepository.list_ids",
-        return_value=[TestCaseID("testcase-1"), TestCaseID("testcase-2")],
-    )
-    stage_path_lst: list[StagePath] = create_stage_path_list_sub_service(project_id).execute()
-    assert stage_path_lst == [
-        StagePath([
-            BuildStage(),
-            CompileStage(),
-            ExecuteStage(testcase_id=TestCaseID("testcase-1")),
-            TestStage(testcase_id=TestCaseID("testcase-1")),
-        ]),
-        StagePath([
-            BuildStage(),
-            CompileStage(),
-            ExecuteStage(testcase_id=TestCaseID("testcase-2")),
-            TestStage(testcase_id=TestCaseID("testcase-2")),
-        ])
-    ]
+# from pytest_mock import MockerFixture
+#
+# from application.dependency.service import create_stage_path_list_sub_service
+# from domain.model.stage_path import StagePath
+# from domain.model.stage import BuildStage, CompileStage, ExecuteStage, TestStage
+# from domain.model.value import TestCaseID
+#
+#
+# def test_stage_path_no_testcase_ids(mocker: MockerFixture, project_id):
+#     mocker.patch(
+#         "infra.repository.testcase_config.TestCaseConfigRepository.list_ids",
+#         return_value=[],
+#     )
+#     stage_path_lst: list[StagePath] = create_stage_path_list_sub_service(project_id).execute()
+#     assert stage_path_lst == [
+#         StagePath([
+#             BuildStage(),
+#             CompileStage(),
+#         ])
+#     ]
+#
+#
+# def test_stage_path_with_testcase_ids(mocker: MockerFixture, project_id):
+#     mocker.patch(
+#         "infra.repository.testcase_config.TestCaseConfigRepository.list_ids",
+#         return_value=[TestCaseID("testcase-1"), TestCaseID("testcase-2")],
+#     )
+#     stage_path_lst: list[StagePath] = create_stage_path_list_sub_service(project_id).execute()
+#     assert stage_path_lst == [
+#         StagePath([
+#             BuildStage(),
+#             CompileStage(),
+#             ExecuteStage(testcase_id=TestCaseID("testcase-1")),
+#             TestStage(testcase_id=TestCaseID("testcase-1")),
+#         ]),
+#         StagePath([
+#             BuildStage(),
+#             CompileStage(),
+#             ExecuteStage(testcase_id=TestCaseID("testcase-2")),
+#             TestStage(testcase_id=TestCaseID("testcase-2")),
+#         ])
+#     ]

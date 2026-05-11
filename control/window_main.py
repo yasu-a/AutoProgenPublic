@@ -88,7 +88,7 @@ class MainWindow(QMainWindow):
         # noinspection PyTypeChecker
         self._sb_unstable_version_notif = UnstableVersionNotificationStatusBarWidget(
             self,
-            app_container=self._app_container,
+            app_version_check_is_stable_usecase=self._app_container.app_version_check_is_stable_usecase,
         )
         # noinspection PyUnresolvedReferences
         self.statusBar().addPermanentWidget(self._sb_unstable_version_notif)
@@ -96,7 +96,7 @@ class MainWindow(QMainWindow):
         # noinspection PyTypeChecker
         self._sb_process_resource_usage = ProcessResourceUsageStatusBarWidget(
             self,
-            app_container=self._app_container,
+            resource_usage_get_usecase=self._app_container.resource_usage_get_usecase,
         )
         # noinspection PyUnresolvedReferences
         self.statusBar().addPermanentWidget(self._sb_process_resource_usage)
