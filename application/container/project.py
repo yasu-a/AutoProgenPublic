@@ -473,6 +473,7 @@ class ProjectContainer:
         )
 
     def create_current_project_initialize_static_usecase(self, *, manaba_report_archive_fullpath: Path):
+        # TODO: ManabaReportArchiveIO のパス依存を外し、コンテナから DI されたインスタンスを使える形へ移行する。
         manaba_report_archive_io = ManabaReportArchiveIO(
             manaba_report_archive_fullpath=manaba_report_archive_fullpath,
         )

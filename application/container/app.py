@@ -7,9 +7,7 @@ from domain.model.value import ProjectID
 from infra.io.files.global_ import GlobalCoreIO
 from infra.io.files.project import ProjectCoreIO
 from infra.io.project_base_folder_show_in_explorer import ProjectFolderShowInExplorerIO
-from infra.io.report_archive import ManabaReportArchiveIO
 from infra.io.resource_usage import ResourceUsageIO
-from infra.io.score_excel import ScoreExcelIO
 from infra.path_provider.global_ import GlobalPathProvider
 from infra.path_provider.project import ProjectListPathProvider, ProjectPathProvider
 from infra.repository.app_version import AppVersionRepository
@@ -25,7 +23,9 @@ from usecase.global_settings import GlobalSettingsGetUseCase, GlobalSettingsPutU
 from usecase.project import ProjectCreateUseCase, ProjectOpenUseCase, ProjectListRecentSummaryUseCase, \
     ProjectCheckExistByNameUseCase, ProjectBaseFolderShowUseCase, ProjectFolderShowUseCase, ProjectDeleteUseCase, \
     ProjectGetSizeQueryUseCase
+from usecase.manaba_report_archive import ManabaReportArchiveValidateMasterExcelExistsUseCase
 from usecase.resource_usage import ResourceUsageGetUseCase
+from usecase.score_excel import ScoreExcelListWorksheetStatsUseCase, ScoreExcelHasDataUseCase, ScoreExcelApplyUseCase
 from usecase.test_test_stage import TestTestStageUseCase
 
 
@@ -139,16 +139,6 @@ class AppContainer:
     def resource_usage_io(self):
         return ResourceUsageIO()
 
-    def create_manaba_report_archive_io(self, *, manaba_report_archive_fullpath: Path):
-        return ManabaReportArchiveIO(
-            manaba_report_archive_fullpath=manaba_report_archive_fullpath,
-        )
-
-    def create_score_excel_io(self, *, excel_fullpath: Path):
-        return ScoreExcelIO(
-            excel_fullpath=excel_fullpath,
-        )
-
     @cached_property
     def app_version_get_text_usecase(self):
         return AppVersionGetTextUseCase(
@@ -239,3 +229,19 @@ class AppContainer:
         return ProjectGetSizeQueryUseCase(
             project_get_size_query_service=self.project_get_size_query_service,
         )
+
+    @cached_property
+    def manaba_report_archive_validate_master_excel_exists_usecase(self):
+        return ManabaReportArchiveValidateMasterExcelExistsUseCase()
+
+    @cached_property
+    def score_excel_list_worksheet_stats_usecase(self):
+        return ScoreExcelListWorksheetStatsUseCase()
+
+    @cached_property
+    def score_excel_has_data_usecase(self):
+        return ScoreExcelHasDataUseCase()
+
+    @cached_property
+    def score_excel_apply_usecase(self):
+        return ScoreExcelApplyUseCase()

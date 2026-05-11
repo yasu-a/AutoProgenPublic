@@ -1,7 +1,5 @@
 import os
 from pathlib import Path
-from typing import Callable
-
 from PyQt5.QtCore import QObject, pyqtSlot, QStandardPaths
 from PyQt5.QtWidgets import QDialog, QHBoxLayout, QLabel, \
     QVBoxLayout, QPlainTextEdit, QPushButton, QLineEdit, QComboBox, \
@@ -10,10 +8,10 @@ from PyQt5.QtWidgets import QDialog, QHBoxLayout, QLabel, \
 from control.widget_horizontal_line import HorizontalLineWidget
 from domain.model.student_mark import StudentMark
 from domain.model.value import StudentID, TargetID
-from infra.io.score_excel import ScoreExcelIO
 from res.font import get_font
 from res.icon import get_icon
 from usecase.global_settings import GlobalSettingsGetUseCase
+from usecase.score_excel import ScoreExcelListWorksheetStatsUseCase, ScoreExcelHasDataUseCase, ScoreExcelApplyUseCase
 from usecase.student import StudentListIDUseCase
 from usecase.student_mark import StudentMarkListUseCase
 from util.app_logging import create_logger
@@ -26,15 +24,19 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
             self,
             parent: QObject = None,
             *,
-            create_score_excel_io: Callable[..., ScoreExcelIO],
             global_settings_get_usecase: GlobalSettingsGetUseCase,
+            score_excel_list_worksheet_stats_usecase: ScoreExcelListWorksheetStatsUseCase,
+            score_excel_has_data_usecase: ScoreExcelHasDataUseCase,
+            score_excel_apply_usecase: ScoreExcelApplyUseCase,
             student_list_id_usecase: StudentListIDUseCase,
             student_mark_list_usecase: StudentMarkListUseCase,
             target_id: TargetID,
     ):
         super().__init__(parent)
-        self._create_score_excel_io = create_score_excel_io
         self._global_settings_get_usecase = global_settings_get_usecase
+        self._score_excel_list_worksheet_stats_usecase = score_excel_list_worksheet_stats_usecase
+        self._score_excel_has_data_usecase = score_excel_has_data_usecase
+        self._score_excel_apply_usecase = score_excel_apply_usecase
 
         self._student_list_id_usecase = student_list_id_usecase
         self._student_mark_list_usecase = student_mark_list_usecase
@@ -45,9 +47,6 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
 
         self._init_ui()
         self._init_signals()
-
-    def _get_score_excel_io(self, *, excel_fullpath: Path) -> ScoreExcelIO:
-        return self._create_score_excel_io(excel_fullpath=excel_fullpath)
 
     def _init_ui(self):
         self.setWindowTitle("採点結果のエクスポート")
@@ -160,7 +159,8 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
             return
 
         # ワークシートの状態を読み取って正常なら選択肢に追加，そうでなければエラーを表示
-        worksheet_stats = self._get_score_excel_io(excel_fullpath=excel_fullpath).list_worksheet_stats(
+        worksheet_stats = self._score_excel_list_worksheet_stats_usecase.execute(
+            excel_fullpath=excel_fullpath,
             student_ids=self._student_ids,
         )
         messages = []
@@ -205,7 +205,8 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
 
         worksheet_name = self._dl_sheet_names.currentText()
 
-        if self._get_score_excel_io(excel_fullpath=excel_fullpath).has_data(
+        if self._score_excel_has_data_usecase.execute(
+                excel_fullpath=excel_fullpath,
                 student_ids=self._student_ids,
                 worksheet_name=worksheet_name,
                 target_id=self._target_id,
@@ -219,7 +220,8 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
             ) == QMessageBox.No:
                 return
         try:
-            backup_path = self._get_score_excel_io(excel_fullpath=excel_fullpath).apply(
+            backup_path = self._score_excel_apply_usecase.execute(
+                excel_fullpath=excel_fullpath,
                 worksheet_name=worksheet_name,
                 target_id=self._target_id,
                 student_marks=self._student_marks,

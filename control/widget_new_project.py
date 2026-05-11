@@ -11,9 +11,22 @@ from control.dto.new_project_config import NewProjectConfig
 from domain.model.value import ProjectID
 from res.font import get_font
 from res.icon import get_icon
+from usecase.manaba_report_archive import ManabaReportArchiveValidateMasterExcelExistsUseCase
 
 
 class ProjectZipFileSelectorWidget(QWidget):
+    def __init__(
+            self,
+            parent: QObject = None,
+            *,
+            manaba_report_archive_validate_master_excel_exists_usecase: ManabaReportArchiveValidateMasterExcelExistsUseCase,
+    ):
+        super().__init__(parent)
+        self._manaba_report_archive_validate_master_excel_exists_usecase = (
+            manaba_report_archive_validate_master_excel_exists_usecase
+        )
+        self._init_ui()
+
     def _is_project_zipfile_fullpath(self, folder_fullpath: Path) -> bool:
         if not folder_fullpath.is_absolute():
             return False
@@ -21,17 +34,9 @@ class ProjectZipFileSelectorWidget(QWidget):
             return False
         if not zipfile.is_zipfile(folder_fullpath):
             return False
-        if not self._app_container.create_manaba_report_archive_io(
-                manaba_report_archive_fullpath=folder_fullpath,
-        ).validate_master_excel_exists():
+        if not self._manaba_report_archive_validate_master_excel_exists_usecase.execute(folder_fullpath):
             return False
         return True
-
-    def __init__(self, parent: QObject = None, *, app_container: AppContainer):
-        super().__init__(parent)
-        self._app_container = app_container
-
-        self._init_ui()
 
     def _init_ui(self):
         layout = QHBoxLayout()
@@ -177,7 +182,9 @@ class NewProjectWidget(QWidget):
             # noinspection PyTypeChecker
             self._w_project_zipfile_selector = ProjectZipFileSelectorWidget(
                 self,
-                app_container=self._app_container,
+                manaba_report_archive_validate_master_excel_exists_usecase=(
+                    self._app_container.manaba_report_archive_validate_master_excel_exists_usecase
+                ),
             )
             layout_form.addWidget(self._w_project_zipfile_selector, 1, 1)
 

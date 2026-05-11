@@ -66,8 +66,10 @@ class Navigator(INavigator):
         assert self._current_project_container is not None
         dialog = ScoreExportDialog(
             parent,
-            create_score_excel_io=self._app_container.create_score_excel_io,
             global_settings_get_usecase=self._app_container.global_settings_get_usecase,
+            score_excel_list_worksheet_stats_usecase=self._app_container.score_excel_list_worksheet_stats_usecase,
+            score_excel_has_data_usecase=self._app_container.score_excel_has_data_usecase,
+            score_excel_apply_usecase=self._app_container.score_excel_apply_usecase,
             student_list_id_usecase=self._current_project_container.student_list_id_usecase,
             student_mark_list_usecase=self._current_project_container.student_mark_list_usecase,
             target_id=self._current_project_container.current_project_repository.get().target_id,
