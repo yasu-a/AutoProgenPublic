@@ -52,6 +52,7 @@ def main():
     from application.container import AppContainer
     from application.state.debug import set_debug
     from control.navigator import Navigator
+    from infra.path_layout import AppPathConfig
 
     # 環境変数からデバッグ用の構成を用意
     app_logging.set_level(app_logging.INFO)
@@ -62,7 +63,9 @@ def main():
             app_logging.set_level(app_logging.DEBUG)
             _logger.info("VERBOSE LOG ENABLED")
 
-    app_container = AppContainer()
+    app_container = AppContainer(
+        app_path_config=AppPathConfig.production(),
+    )
     # QApplicationを生成
     app = create_app(
         app_version_text=app_container.app_version_get_text_usecase.execute(),
