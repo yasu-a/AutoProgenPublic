@@ -36,7 +36,22 @@ class TestCaseIOError(RuntimeError):
         self.reason = reason
 
 
-class ManabaReportArchiveIOError(RuntimeError):
+class ManabaReportArchiveError(RuntimeError):
+    def __init__(self, *, reason: str):
+        self.reason = reason
+
+
+class ReadonlyExcelWorksheetGatewayError(RuntimeError):
+    def __init__(self, *, reason: str):
+        self.reason = reason
+
+
+class ManabaReportListParserError(RuntimeError):
+    def __init__(self, *, reason: str):
+        self.reason = reason
+
+
+class ManabaReportListArchiveValidateServiceError(RuntimeError):
     def __init__(self, *, reason: str):
         self.reason = reason
 
