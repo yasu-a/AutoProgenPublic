@@ -211,7 +211,7 @@ class ManabaReportArchive:
                     continue
                 rel = path.relative_to(base)
                 content_bytes = zf.read(info.filename)
-                if zipfile.is_zipfile(io.BytesIO(content_bytes)):
+                if rel.suffix.lower() == ".zip":
                     # submit.zip/prog01.c のように ZIP 名を仮想フォルダとして相対パスに残す。
                     yield from self._iter_inner_archive_files(
                         outer_zip_entry_path=rel,
