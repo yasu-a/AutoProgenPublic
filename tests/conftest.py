@@ -19,12 +19,12 @@ class ProjectInitializeRun:
     archive_fullpath: Path
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def test_root(tmp_path_factory) -> Path:
     return tmp_path_factory.mktemp("autoprogen")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def app_path_config(test_root: Path) -> AppPathConfig:
     return AppPathConfig.testing(test_root)
 
@@ -51,7 +51,7 @@ def _copy_required_app_resources(
         )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def prepared_app_path_config(app_path_config: AppPathConfig) -> AppPathConfig:
     repo_root = Path(__file__).parents[1]
 

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import PurePosixPath
 
 from tests.helpers.archive_names import normalize_archive_name
 
@@ -26,6 +27,13 @@ class ExpectedArchiveStudentMaster:
             student.student_id
             for student in self.students
         }
+
+
+@dataclass(frozen=True)
+class ExpectedSubmissionStructure:
+    student_id: str
+    expected_dirs: tuple[PurePosixPath, ...]
+    expected_files: tuple[PurePosixPath, ...]
 
 
 REPORT_TEST_1_EXPECTED_MASTER = ExpectedArchiveStudentMaster(
@@ -90,6 +98,25 @@ _EXPECTED_MASTER_BY_ARCHIVE_NAME: dict[str, ExpectedArchiveStudentMaster] = {
     "report-test-1.zip": REPORT_TEST_1_EXPECTED_MASTER,
 }
 
+_EXPECTED_SUBMISSION_STRUCTURE_BY_ARCHIVE_NAME: dict[str, tuple[ExpectedSubmissionStructure, ...]] = {
+    "report-test-1.zip": (
+        ExpectedSubmissionStructure(
+            student_id="26HG209871C",
+            expected_dirs=(
+                PurePosixPath("sbm02_1.zip"),
+                PurePosixPath("sbm02_1.zip/sbm02_1"),
+            ),
+            expected_files=(
+                PurePosixPath("sbm02_1.zip/sbm02_1/prog01.c"),
+                PurePosixPath("sbm02_1.zip/sbm02_1/prog02.c"),
+                PurePosixPath("sbm02_1.zip/sbm02_1/prog03.c"),
+                PurePosixPath("sbm02_1.zip/sbm02_1/prog04.c"),
+                PurePosixPath("sbm02_1.zip/sbm02_1/prog05.c"),
+            ),
+        ),
+    ),
+}
+
 
 def get_expected_master(archive_name: str) -> ExpectedArchiveStudentMaster:
     normalized_archive_name = normalize_archive_name(archive_name)
@@ -99,5 +126,17 @@ def get_expected_master(archive_name: str) -> ExpectedArchiveStudentMaster:
         known_names = ", ".join(sorted(_EXPECTED_MASTER_BY_ARCHIVE_NAME))
         raise AssertionError(
             f"Unknown archive expected data: {normalized_archive_name}\n"
+            f"Known archive names: {known_names}"
+        ) from None
+
+
+def get_expected_submission_structures(archive_name: str) -> tuple[ExpectedSubmissionStructure, ...]:
+    normalized_archive_name = normalize_archive_name(archive_name)
+    try:
+        return _EXPECTED_SUBMISSION_STRUCTURE_BY_ARCHIVE_NAME[normalized_archive_name]
+    except KeyError:
+        known_names = ", ".join(sorted(_EXPECTED_SUBMISSION_STRUCTURE_BY_ARCHIVE_NAME))
+        raise AssertionError(
+            f"Unknown archive expected submission structure: {normalized_archive_name}\n"
             f"Known archive names: {known_names}"
         ) from None
