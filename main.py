@@ -56,7 +56,7 @@ def main():
 
     # 環境変数からデバッグ用の構成を用意
     app_logging.set_level(app_logging.INFO)
-    if os.getenv("APP_DEBUG"):
+    if os.getenv("APP_DEBUG", "").strip() == "1":
         set_debug(True)
         _logger.info("STARTING WITH DEBUG MODE")
         if os.getenv("APP_VERBOSE_LOG"):
