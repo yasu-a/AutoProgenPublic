@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-import itertools
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -77,20 +74,15 @@ def app_container(prepared_app_path_config: AppPathConfig) -> AppContainer:
 def archive_path() -> Callable[[str], Path]:
     def _archive_path(name: str) -> Path:
         normalized_name = normalize_archive_name(name)
-        candidates = [
-            Path(__file__).parent / "testdata" / "archives" / normalized_name,
-            Path(__file__).parent / "fixtures" / "archives" / normalized_name,
-        ]
-
-        for candidate in candidates:
-            if candidate.is_file():
-                return candidate
+        archive_fullpath = Path(__file__).parent / "testdata" / "archives" / normalized_name
+        if archive_fullpath.is_file():
+            return archive_fullpath
 
         raise AssertionError(
             "Archive fixture not found: "
             + normalized_name
-            + "\nCandidates:\n"
-            + "\n".join(str(candidate) for candidate in candidates)
+            + "\nPath:\n"
+            + str(archive_fullpath)
         )
 
     return _archive_path
@@ -98,17 +90,12 @@ def archive_path() -> Callable[[str], Path]:
 
 @pytest.fixture
 def create_project(app_container: AppContainer):
-    counter = itertools.count()
-
     def _create_project(
             *,
-            project_name: str | None = None,
+            project_name: str,
             source_archive_name: str,
             target_number: int = 2,
     ) -> ProjectID:
-        if project_name is None:
-            project_name = f"test_project_{next(counter)}"
-
         return app_container.project_create_usecase.execute(
             project_name=project_name,
             target_number=target_number,
@@ -136,7 +123,7 @@ def run_project_initialize_from_archive(
     def _run_project_initialize_from_archive(
             *,
             archive_name: str,
-            project_name: str | None = None,
+            project_name: str,
             target_number: int = 2,
     ) -> ProjectInitializeRun:
         normalized_archive_name = normalize_archive_name(archive_name)
@@ -168,7 +155,7 @@ def initialized_project_from_archive(run_project_initialize_from_archive):
     def _initialized_project_from_archive(
             *,
             archive_name: str,
-            project_name: str | None = None,
+            project_name: str,
             target_number: int = 2,
     ) -> ProjectContainer:
         run = run_project_initialize_from_archive(
