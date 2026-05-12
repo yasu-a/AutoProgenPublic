@@ -185,7 +185,7 @@ def create_logger(name=None, cls: type = None) -> logging.Logger:
         raise ValueError(f"Invalid logger name: {name}")
 
     logger = logging.getLogger(name)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     ch = logging.StreamHandler()
     formatter = CustomFormatter()
     ch.setFormatter(formatter)

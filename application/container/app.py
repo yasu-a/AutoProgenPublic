@@ -27,6 +27,9 @@ from usecase.test_test_stage import TestTestStageUseCase
 
 
 class AppContainer:
+    def __init__(self, *, app_path_config: AppPathConfig) -> None:
+        self._app_path_config = app_path_config
+
     def create_project_container(self, project_id: ProjectID) -> "ProjectContainer":
         return ProjectContainer(
             project_id=project_id,
@@ -44,7 +47,7 @@ class AppContainer:
 
     @cached_property
     def app_path_config(self):
-        return AppPathConfig.production()
+        return self._app_path_config
 
     @cached_property
     def app_path_layout(self):

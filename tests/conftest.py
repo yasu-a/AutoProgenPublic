@@ -1,93 +1,184 @@
-# from pathlib import Path
-# 
-# import pytest
-# from domain.model.value import ProjectID
-# 
-# TEST_DATA_ROOT_FULLPATH: Path = Path("~/AutoProgenProjectsTest").expanduser().absolute()
-# print(f"{TEST_DATA_ROOT_FULLPATH=!s}")
-# 
-# 
-# def override_dependency():
-#     import application.dependency.path_provider
-# 
-#     def get_project_list_folder_fullpath_override():
-#         return TEST_DATA_ROOT_FULLPATH / "test_project_list"
-# 
-#     application.dependency.path_provider.get_project_list_folder_fullpath \
-#         = get_project_list_folder_fullpath_override
-# 
-#     def get_global_base_path_override():
-#         return TEST_DATA_ROOT_FULLPATH / "test_global"
-# 
-#     application.dependency.path_provider.get_global_base_path \
-#         = get_global_base_path_override
-# 
-# 
-# @pytest.fixture(autouse=True)
-# def setup_test():
-#     print("setup_test")
-# 
-#     from application.dependency import invalidate_cached_providers
-#     invalidate_cached_providers()
-# 
-#     from application.state.debug import set_debug
-#     set_debug(True)
-#     from application.state.current_project import get_current_project_id
-#     if get_current_project_id() is None:
-#         from application.state.current_project import set_current_project_id
-#         set_current_project_id(ProjectID("test_project_id"))
-#     override_dependency()
-# 
-#     import shutil
-#     from application.dependency.path_provider import get_global_base_path
-#     from application.dependency.path_provider import get_project_list_folder_fullpath
-#     teardown_folders = [
-#         get_global_base_path(),
-#         get_project_list_folder_fullpath(),
-#     ]
-#     for folder_fullpath in teardown_folders:
-#         print(folder_fullpath, TEST_DATA_ROOT_FULLPATH)
-#         assert folder_fullpath.relative_to(TEST_DATA_ROOT_FULLPATH)
-#         if folder_fullpath.exists():
-#             print("rmtree", str(folder_fullpath))
-#             shutil.rmtree(folder_fullpath)
-# 
-#     from application.dependency.path_provider import get_database_path_provider
-#     database_fullpath = get_database_path_provider().fullpath()
-#     assert not database_fullpath.exists()
-# 
-# 
-# @pytest.fixture
-# def project_id() -> ProjectID:
-#     return ProjectID("test_project_id")
-# 
-# 
-# @pytest.fixture
-# def sample_students(project_id: ProjectID):
-#     from application.dependency.repository import create_student_repository
-#     from domain.model.value import StudentID
-#     from domain.model.student import Student
-#     from datetime import datetime
-# 
-#     repo = create_student_repository(project_id)
-#     students = []
-#     for i in range(10):
-#         student_id = StudentID(f"00D00{i:05d}A")
-#         student = Student(
-#             student_id=student_id,
-#             name=f"student-{i}",
-#             name_en=f"student-{i}-en",
-#             email_address=f"student-{i}@example.com",
-#             submitted_at=datetime.fromtimestamp(i * 10000 + 86400),
-#             # ^ add 86,400 to avoid a bug in datetime.timestamp()
-#             num_submissions=i + 1,
-#             submission_folder_name=str(student_id),
-#         )
-#         students.append(student)
-#     repo.create_all(students)
-#     return students
-# 
-# 
-# @pytest.fixture
-# def sample_student_ids(sample_students):
-#     return [student.student_id for student in sample_students]
+from __future__ import annotations
+
+import itertools
+import shutil
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Callable
+
+import pytest
+
+from application.container import AppContainer, ProjectContainer
+from domain.model.value import ProjectID
+from infra.path_layout import AppPathConfig
+from tests.helpers.archive_names import normalize_archive_name
+from usecase.dto.project import ProjectInitializeResult
+
+
+@dataclass(frozen=True)
+class ProjectInitializeRun:
+    project_container: ProjectContainer
+    result: ProjectInitializeResult
+    archive_fullpath: Path
+
+
+@pytest.fixture(scope="session")
+def test_root(tmp_path_factory) -> Path:
+    return tmp_path_factory.mktemp("autoprogen")
+
+
+@pytest.fixture(scope="session")
+def app_path_config(test_root: Path) -> AppPathConfig:
+    return AppPathConfig.testing(test_root)
+
+
+def _copy_required_app_resources(
+        *,
+        repo_root: Path,
+        app_path_config: AppPathConfig,
+) -> None:
+    app_path_config.app_base_dir.mkdir(parents=True, exist_ok=True)
+    app_path_config.project_store_dir.mkdir(parents=True, exist_ok=True)
+
+    shutil.copyfile(
+        repo_root / "app_version.json",
+        app_path_config.app_base_dir / "app_version.json",
+    )
+
+    vctest_src = repo_root / "vctest"
+    if vctest_src.exists():
+        shutil.copytree(
+            vctest_src,
+            app_path_config.app_base_dir / "vctest",
+            dirs_exist_ok=True,
+        )
+
+
+@pytest.fixture(scope="session")
+def prepared_app_path_config(app_path_config: AppPathConfig) -> AppPathConfig:
+    repo_root = Path(__file__).parents[1]
+
+    _copy_required_app_resources(
+        repo_root=repo_root,
+        app_path_config=app_path_config,
+    )
+
+    return app_path_config
+
+
+@pytest.fixture
+def app_container(prepared_app_path_config: AppPathConfig) -> AppContainer:
+    return AppContainer(
+        app_path_config=prepared_app_path_config,
+    )
+
+
+@pytest.fixture
+def archive_path() -> Callable[[str], Path]:
+    def _archive_path(name: str) -> Path:
+        normalized_name = normalize_archive_name(name)
+        candidates = [
+            Path(__file__).parent / "testdata" / "archives" / normalized_name,
+            Path(__file__).parent / "fixtures" / "archives" / normalized_name,
+        ]
+
+        for candidate in candidates:
+            if candidate.is_file():
+                return candidate
+
+        raise AssertionError(
+            "Archive fixture not found: "
+            + normalized_name
+            + "\nCandidates:\n"
+            + "\n".join(str(candidate) for candidate in candidates)
+        )
+
+    return _archive_path
+
+
+@pytest.fixture
+def create_project(app_container: AppContainer):
+    counter = itertools.count()
+
+    def _create_project(
+            *,
+            project_name: str | None = None,
+            source_archive_name: str,
+            target_number: int = 2,
+    ) -> ProjectID:
+        if project_name is None:
+            project_name = f"test_project_{next(counter)}"
+
+        return app_container.project_create_usecase.execute(
+            project_name=project_name,
+            target_number=target_number,
+            zip_name=source_archive_name,
+        )
+
+    return _create_project
+
+
+@pytest.fixture
+def open_project_container(app_container: AppContainer):
+    def _open_project_container(project_id: ProjectID) -> ProjectContainer:
+        app_container.project_open_usecase.execute(project_id)
+        return app_container.create_project_container(project_id)
+
+    return _open_project_container
+
+
+@pytest.fixture
+def run_project_initialize_from_archive(
+        create_project,
+        open_project_container,
+        archive_path,
+):
+    def _run_project_initialize_from_archive(
+            *,
+            archive_name: str,
+            project_name: str | None = None,
+            target_number: int = 2,
+    ) -> ProjectInitializeRun:
+        normalized_archive_name = normalize_archive_name(archive_name)
+        archive_fullpath = archive_path(normalized_archive_name)
+
+        project_id = create_project(
+            project_name=project_name,
+            source_archive_name=normalized_archive_name,
+            target_number=target_number,
+        )
+
+        project_container = open_project_container(project_id)
+
+        result = project_container.create_current_project_initialize_static_usecase(
+            manaba_report_archive_fullpath=archive_fullpath,
+        ).execute()
+
+        return ProjectInitializeRun(
+            project_container=project_container,
+            result=result,
+            archive_fullpath=archive_fullpath,
+        )
+
+    return _run_project_initialize_from_archive
+
+
+@pytest.fixture
+def initialized_project_from_archive(run_project_initialize_from_archive):
+    def _initialized_project_from_archive(
+            *,
+            archive_name: str,
+            project_name: str | None = None,
+            target_number: int = 2,
+    ) -> ProjectContainer:
+        run = run_project_initialize_from_archive(
+            archive_name=archive_name,
+            project_name=project_name,
+            target_number=target_number,
+        )
+
+        assert not run.result.has_error, run.result.message
+
+        return run.project_container
+
+    return _initialized_project_from_archive

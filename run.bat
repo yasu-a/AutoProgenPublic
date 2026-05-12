@@ -54,13 +54,17 @@ if not exist ".venv\Lib\site-packages\PyQt5" (
 )
 
 REM Launch main application
-if %DEBUG_MODE%==1 (
-    echo デバッグモードで起動中...
+if "%DEBUG_MODE%"=="1" (
+    set "APP_DEBUG="
+    set "APP_VERBOSE_LOG="
+    echo Starting in debug mode...
 ) else (
-    echo アプリケーションを起動中...
+    set "APP_DEBUG="
+    set "APP_VERBOSE_LOG="
+    echo Starting application...
 )
 "%VENV_PYTHON%" main.py
-if %DEBUG_MODE%==1 (
+if "%DEBUG_MODE%"=="1" (
     echo.
     echo デバッグモードで終了しました。
     pause
