@@ -137,9 +137,9 @@ def run_project_initialize_from_archive(
 
         project_container = open_project_container(project_id)
 
-        result = project_container.create_current_project_initialize_static_usecase(
+        result = project_container.current_project_initialize_static_usecase.execute(
             manaba_report_archive_fullpath=archive_fullpath,
-        ).execute()
+        )
 
         return ProjectInitializeRun(
             project_container=project_container,
