@@ -126,3 +126,25 @@ def test_manaba_report_archive_raises_on_broken_nested_zip() -> None:
         _ = list(archive.iter_files_in_submission_folder(submission_folder_path=folder))
 
     assert "破損" in exc_info.value.reason
+
+
+def test_manaba_report_archive_rejects_parent_path_in_nested_zip() -> None:
+    inner_zip = _zip_bytes(
+        [
+            ("../prog01.c", b"int main(){return 0;}"),
+        ]
+    )
+    archive = ManabaReportArchive(
+        archive_bytes=_zip_bytes(
+            [
+                ("root/reportlist.xlsx", b"x"),
+                ("root/21D5109047B@21D5109047B/submit.zip", inner_zip),
+            ]
+        )
+    )
+    folder = ManabaSubmissionFolderPath(PurePosixPath("21D5109047B@21D5109047B"))
+
+    with pytest.raises(ManabaReportArchiveError) as exc_info:
+        _ = list(archive.iter_files_in_submission_folder(submission_folder_path=folder))
+
+    assert "不正なパス" in exc_info.value.reason

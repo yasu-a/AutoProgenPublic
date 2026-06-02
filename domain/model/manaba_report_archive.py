@@ -96,6 +96,7 @@ class ManabaReportArchive:
                     if info.is_dir():
                         continue
                     inner_rel = outer_zip_entry_path / PurePosixPath(info.filename)
+                    cls._validate_safe_relative_path(relative_path=inner_rel)
                     yield ManabaSubmissionFile(
                         relative_path=inner_rel,
                         content_bytes=zf_inner.read(info.filename),
@@ -118,6 +119,17 @@ class ManabaReportArchive:
             yield PurePosixPath(*relative_path.parts[:i])
 
     @classmethod
+    def _validate_safe_relative_path(
+            cls,
+            *,
+            relative_path: PurePosixPath,
+    ) -> None:
+        if relative_path.is_absolute() or ".." in relative_path.parts:
+            raise ManabaReportArchiveError(
+                reason=f"提出アーカイブ内に不正なパスが含まれています: {relative_path!s}",
+            )
+
+    @classmethod
     def _iter_inner_archive_folders(
             cls,
             *,
@@ -133,6 +145,7 @@ class ManabaReportArchive:
                     if info.is_dir():
                         rel_dir = outer_zip_entry_path / inner_path
                         rel_dir = PurePosixPath(*rel_dir.parts)
+                        cls._validate_safe_relative_path(relative_path=rel_dir)
                         if len(rel_dir.parts) == 0 or rel_dir in yielded:
                             continue
                         yielded.add(rel_dir)
@@ -140,6 +153,7 @@ class ManabaReportArchive:
                         continue
 
                     rel_file = outer_zip_entry_path / inner_path
+                    cls._validate_safe_relative_path(relative_path=rel_file)
                     for rel_dir in cls._iter_parent_dirs(relative_path=rel_file):
                         if rel_dir in yielded:
                             continue
@@ -169,11 +183,13 @@ class ManabaReportArchive:
                     continue
 
                 if info.is_dir():
+                    self._validate_safe_relative_path(relative_path=rel)
                     if rel not in yielded:
                         yielded.add(rel)
                         yield rel
                     continue
 
+                self._validate_safe_relative_path(relative_path=rel)
                 for rel_dir in self._iter_parent_dirs(relative_path=rel):
                     if rel_dir in yielded:
                         continue
@@ -210,6 +226,7 @@ class ManabaReportArchive:
                 if not path.is_relative_to(base):
                     continue
                 rel = path.relative_to(base)
+                self._validate_safe_relative_path(relative_path=rel)
                 content_bytes = zf.read(info.filename)
                 if rel.suffix.lower() == ".zip":
                     # submit.zip/prog01.c のように ZIP 名を仮想フォルダとして相対パスに残す。

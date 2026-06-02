@@ -37,6 +37,21 @@ class StudentSubmissionExtractService:
         self._current_project_core_io = current_project_core_io
         self._project_path_layout = project_path_layout
 
+    @staticmethod
+    def _ensure_path_within_base(
+            *,
+            base_folder_fullpath: Path,
+            candidate_fullpath: Path,
+    ) -> None:
+        if not candidate_fullpath.is_relative_to(base_folder_fullpath):
+            raise StudentSubmissionServiceError(
+                reason=(
+                    "提出アーカイブの展開中に不正なパスを検出しました。\n"
+                    f"base={base_folder_fullpath}\n"
+                    f"path={candidate_fullpath}"
+                ),
+            )
+
     def execute(self, *, archive: ManabaReportArchive):
         if not self._student_repo.exists_any():
             raise StudentSubmissionServiceError("生徒マスタが作成されていません")
@@ -75,9 +90,10 @@ class StudentSubmissionExtractService:
                     )
                     dst_folder_fullpath = extract_base_folder_fullpath / folder_relative_path
                     dst_folder_fullpath = dst_folder_fullpath.resolve()
-                    assert dst_folder_fullpath.is_relative_to(
-                        extract_base_folder_fullpath
-                    ), (dst_folder_fullpath, extract_base_folder_fullpath)
+                    self._ensure_path_within_base(
+                        base_folder_fullpath=extract_base_folder_fullpath,
+                        candidate_fullpath=dst_folder_fullpath,
+                    )
                     dst_folder_fullpath.mkdir(parents=True, exist_ok=True)
 
                 # 生徒のアーカイブ内のファイルを取得
@@ -97,9 +113,10 @@ class StudentSubmissionExtractService:
                     # コピー先のファイルパス
                     dst_file_fullpath = extract_base_folder_fullpath / content_relative_path
                     dst_file_fullpath = dst_file_fullpath.resolve()
-                    assert dst_file_fullpath.parent.is_relative_to(
-                        extract_base_folder_fullpath
-                    ), (dst_file_fullpath, extract_base_folder_fullpath)
+                    self._ensure_path_within_base(
+                        base_folder_fullpath=extract_base_folder_fullpath,
+                        candidate_fullpath=dst_file_fullpath.parent,
+                    )
                     # 親フォルダを生成
                     dst_file_fullpath.parent.mkdir(parents=True, exist_ok=True)
                     self._current_project_core_io.write_file_content_bytes(
