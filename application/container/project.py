@@ -1,13 +1,12 @@
 from functools import cached_property
-from pathlib import Path
-
 from domain.model.value import ProjectID
+from infra.gateway.manaba_report_archive import ManabaReportArchiveGateway
+from infra.gateway.readonly_excel_worksheet import ReadonlyExcelWorksheetGateway
 from infra.io.compile_tool import CompileToolIO
 from infra.io.executable import ExecutableIO
 from infra.io.files.current_project import CurrentProjectCoreIO
 from infra.io.files.project import ProjectCoreIO
 from infra.io.project_database import ProjectDatabaseIO
-from infra.io.report_archive import ManabaReportArchiveIO
 from infra.io.student_folder_show_in_explorer import StudentFolderShowInExplorerIO
 from infra.path_layout import ProjectPathLayout
 from infra.repository.current_project import CurrentProjectRepository
@@ -22,6 +21,8 @@ from infra.repository.test_source import TestSourceRepository
 from infra.repository.testcase_config import TestCaseConfigRepository
 from infra.task.manager import TaskManager
 from service.current_project import CurrentProjectGetService, CurrentProjectSetInitializedService
+from service.manaba_report_list_archive_validate import ManabaReportListArchiveValidateService
+from service.manaba_report_list_parser import ManabaReportListParser
 from service.match import MatchGetBestService
 from service.stage_path import StagePathListSubService, StagePathGetByTestCaseIDService
 from service.storage import StorageCreateService, StorageLoadStudentSourceService, StorageStoreStudentExecutableService, \
@@ -79,6 +80,7 @@ class ProjectContainer:
             test_source_repository: TestSourceRepository,
             project_path_layout: ProjectPathLayout,
             project_core_io: ProjectCoreIO,
+            readonly_excel_worksheet_gateway: ReadonlyExcelWorksheetGateway,
     ) -> None:
         self._project_id = project_id
         self._match_get_best_service = match_get_best_service
@@ -87,6 +89,7 @@ class ProjectContainer:
         self._test_source_repository = test_source_repository
         self._project_path_layout = project_path_layout
         self._project_core_io = project_core_io
+        self._readonly_excel_worksheet_gateway = readonly_excel_worksheet_gateway
 
     @property
     def project_id(self) -> ProjectID:
@@ -435,24 +438,39 @@ class ProjectContainer:
             current_project_get_service=self.current_project_get_service,
         )
 
-    def create_current_project_initialize_static_usecase(self, *, manaba_report_archive_fullpath: Path):
-        # TODO: ManabaReportArchiveIO のパス依存を外し、コンテナから DI されたインスタンスを使える形へ移行する。
-        manaba_report_archive_io = ManabaReportArchiveIO(
-            manaba_report_archive_fullpath=manaba_report_archive_fullpath,
-        )
+    @cached_property
+    def current_project_initialize_static_usecase(self):
         return CurrentProjectInitializeStaticUseCase(
+            manaba_report_archive_gateway=self.manaba_report_archive_gateway,
+            readonly_excel_worksheet_gateway=self.readonly_excel_worksheet_gateway,
+            manaba_report_list_parser=self.manaba_report_list_parser,
+            manaba_report_list_archive_validate_service=self.manaba_report_list_archive_validate_service,
             student_master_create_service=StudentMasterCreateService(
                 student_repo=self.student_repository,
-                manaba_report_archive_io=manaba_report_archive_io,
             ),
             student_submission_extract_service=StudentSubmissionExtractService(
                 student_repo=self.student_repository,
-                manaba_report_archive_io=manaba_report_archive_io,
                 current_project_core_io=self.current_project_core_io,
                 project_path_layout=self.project_path_layout,
             ),
             current_project_set_initialized_service=self.current_project_set_initialized_service,
         )
+
+    @cached_property
+    def manaba_report_archive_gateway(self):
+        return ManabaReportArchiveGateway()
+
+    @cached_property
+    def readonly_excel_worksheet_gateway(self):
+        return self._readonly_excel_worksheet_gateway
+
+    @cached_property
+    def manaba_report_list_parser(self):
+        return ManabaReportListParser()
+
+    @cached_property
+    def manaba_report_list_archive_validate_service(self):
+        return ManabaReportListArchiveValidateService()
 
     @cached_property
     def student_list_id_usecase(self):

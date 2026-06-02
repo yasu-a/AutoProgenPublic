@@ -1,11 +1,10 @@
 import re
 from pathlib import Path, PurePosixPath
-from typing import Iterable, IO
 
-from domain.error import ServiceError, ManabaReportArchiveIOError, StudentSubmissionServiceError
+from domain.error import ServiceError, ManabaReportArchiveError, StudentSubmissionServiceError
+from domain.model.manaba_report_archive import ManabaReportArchive, ManabaSubmissionFolderPath
 from domain.model.value import StudentID, TargetID
 from infra.io.files.current_project import CurrentProjectCoreIO
-from infra.io.report_archive import ManabaReportArchiveIO
 from infra.path_layout import ProjectPathLayout
 from infra.repository.current_project import CurrentProjectRepository
 from infra.repository.student import StudentRepository
@@ -31,16 +30,14 @@ class StudentSubmissionExtractService:
             self,
             *,
             student_repo: StudentRepository,
-            manaba_report_archive_io: ManabaReportArchiveIO,
             current_project_core_io: CurrentProjectCoreIO,
             project_path_layout: ProjectPathLayout,
     ):
         self._student_repo = student_repo
-        self._manaba_report_archive_io = manaba_report_archive_io
         self._current_project_core_io = current_project_core_io
         self._project_path_layout = project_path_layout
 
-    def execute(self):
+    def execute(self, *, archive: ManabaReportArchive):
         if not self._student_repo.exists_any():
             raise StudentSubmissionServiceError("生徒マスタが作成されていません")
 
@@ -54,13 +51,6 @@ class StudentSubmissionExtractService:
 
         # 生徒の提出物を展開する
         try:
-            self._manaba_report_archive_io.validate_master_excel_exists()
-            self._manaba_report_archive_io.validate_archive_contents(
-                student_submission_folder_names=set(
-                    student_id_to_submission_folder_name_mapping.values()
-                ),
-            )
-
             for student_id, student_submission_folder_name in \
                     student_id_to_submission_folder_name_mapping.items():
                 # 生徒の展開先のフォルダのフルパス
@@ -72,21 +62,38 @@ class StudentSubmissionExtractService:
                 # 展開先のフォルダが存在しなかったらフォルダを生成
                 extract_base_folder_fullpath.mkdir(
                     parents=True, exist_ok=False)
-                # 生徒のアーカイブ内のファイルの相対パスとファイルポインタのイテラブルを取得
-                it: Iterable[tuple[PurePosixPath, IO[bytes]]] = (
-                    self._manaba_report_archive_io.iter_student_submission_archive_contents(
-                        student_id=student_id,
-                        student_submission_folder_name=student_submission_folder_name,
+                submission_folder_path = ManabaSubmissionFolderPath(
+                    value=PurePosixPath(student_submission_folder_name),
+                )
+                # ファイル列挙ルール（入れ子 ZIP の扱い含む）は archive モデル側に集約する。
+                # 生徒のアーカイブ内のファイルを取得
+                for folder_relative_path in archive.iter_folders_in_submission_folder(
+                        submission_folder_path=submission_folder_path,
+                ):
+                    folder_relative_path = PurePosixPath(
+                        *map(str.strip, folder_relative_path.parts)
                     )
+                    dst_folder_fullpath = extract_base_folder_fullpath / folder_relative_path
+                    dst_folder_fullpath = dst_folder_fullpath.resolve()
+                    assert dst_folder_fullpath.is_relative_to(
+                        extract_base_folder_fullpath
+                    ), (dst_folder_fullpath, extract_base_folder_fullpath)
+                    dst_folder_fullpath.mkdir(parents=True, exist_ok=True)
+
+                # 生徒のアーカイブ内のファイルを取得
+                it = archive.iter_files_in_submission_folder(
+                    submission_folder_path=submission_folder_path,
                 )
                 # それぞれのファイルを展開する
-                for content_relative_path, fp in it:
+                for submission_file in it:
+                    content_relative_path = submission_file.relative_path
                     self._logger.info(
                         f"Extracting {student_id} {content_relative_path!s}")
                     # パスにスペースが含まれているとこの先のos.makedirsで失敗するので取り除く
                     content_relative_path = PurePosixPath(
                         *map(str.strip, content_relative_path.parts)
                     )
+                    # 念のため展開先を固定し、path traversal を防ぐ。
                     # コピー先のファイルパス
                     dst_file_fullpath = extract_base_folder_fullpath / content_relative_path
                     dst_file_fullpath = dst_file_fullpath.resolve()
@@ -97,9 +104,9 @@ class StudentSubmissionExtractService:
                     dst_file_fullpath.parent.mkdir(parents=True, exist_ok=True)
                     self._current_project_core_io.write_file_content_bytes(
                         file_fullpath=dst_file_fullpath,
-                        content_bytes=fp.read(),
+                        content_bytes=submission_file.content_bytes,
                     )
-        except ManabaReportArchiveIOError as e:
+        except ManabaReportArchiveError as e:
             raise StudentSubmissionServiceError(
                 reason=f"提出アーカイブの展開中にエラーが発生しました。\n{e.reason}",
             )

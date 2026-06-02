@@ -139,9 +139,8 @@ class Navigator(INavigator):
             parent=None,  # type: ignore[arg-type]
             title="プロジェクトの初期化",
             initial_message="初期化を開始しています...",
-            task_func=self._current_project_container.create_current_project_initialize_static_usecase(
-                manaba_report_archive_fullpath=new_project_config.manaba_report_archive_fullpath,
-            ).execute,
+            task_func=self._current_project_container.current_project_initialize_static_usecase.execute,
+            manaba_report_archive_fullpath=new_project_config.manaba_report_archive_fullpath,
         )
         if result is not None and result.has_error:
             QMessageBox.critical(

@@ -1,11 +1,21 @@
 from pathlib import Path
 
-from infra.io.report_archive import ManabaReportArchiveIO
+from domain.error import ManabaReportArchiveError
+from infra.gateway.manaba_report_archive import ManabaReportArchiveGateway
 
 
 class ManabaReportArchiveValidateMasterExcelExistsUseCase:
+    def __init__(self, *, manaba_report_archive_gateway: ManabaReportArchiveGateway) -> None:
+        # ZIP読み込み責務は Gateway に委譲する。
+        self._manaba_report_archive_gateway = manaba_report_archive_gateway
+
     def execute(self, manaba_report_archive_fullpath: Path) -> bool:
-        # TODO: ManabaReportArchiveIO のパス依存を外し、コンテナから DI されたインスタンスを使える形へ移行する。
-        return ManabaReportArchiveIO(
-            manaba_report_archive_fullpath=manaba_report_archive_fullpath,
-        ).validate_master_excel_exists()
+        # WELCOME 画面向けの軽量チェック。読めれば True、読めなければ False を返す。
+        try:
+            archive = self._manaba_report_archive_gateway.read_from_path(
+                archive_fullpath=manaba_report_archive_fullpath,
+            )
+            _ = archive.read_report_list_excel_bytes()
+            return True
+        except (ManabaReportArchiveError, OSError):
+            return False
