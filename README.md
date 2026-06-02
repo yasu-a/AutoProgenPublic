@@ -1,7 +1,7 @@
 <!-- このファイルは main_generate_readme.py で自動生成されています -->
 <!-- 編集する場合はテンプレート static/readme/README.md を編集して再生成します --> 
 
-# AutoProgen 1.1-beta.4
+# AutoProgen 1.1-alpha.4
 
 ![image_filename](static/img/screenshot.jpg)
 
@@ -24,14 +24,14 @@
 - Windows 11
 - Python 3.13.3
 
-# 1.1-beta.4
-
-  
+# 1.1-alpha.4
 
   
 
 > [!WARNING]
-> このバージョンは正式リリースではなくテストを目的としたベータ版です。こまめにアップデートを確認してください。
+> このバージョンは正式リリースではなくテストを目的としたアルファ版です。こまめにアップデートを確認してください。
+
+  
 
 ## 変更点
 
