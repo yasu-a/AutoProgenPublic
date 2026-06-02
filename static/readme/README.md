@@ -19,7 +19,7 @@ ${img_screenshot}
 # 確認済み動作環境
 
 - Windows 11
-- Python 3.10
+- Python 3.13.3
 
 # ${app_version}
 

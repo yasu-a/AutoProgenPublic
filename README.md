@@ -22,7 +22,7 @@
 # 確認済み動作環境
 
 - Windows 11
-- Python 3.10
+- Python 3.13.3
 
 # 1.1-beta.4
 
