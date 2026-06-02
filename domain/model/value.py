@@ -56,7 +56,10 @@ class ProjectID:
 class StudentID:
     @classmethod
     def _validate_value(cls, value: str):
-        return re.fullmatch(r"\d{2}[A-Z][A-Z\d]\d{6}[A-Z]", value) is not None
+        return re.fullmatch(
+            r"(?:\d{2}[A-Z]\d{7}[A-Z]|\d{2}[A-Z]{2}\d{6}[A-Z])",
+            value,
+        ) is not None
 
     def __init__(self, value: str):
         assert isinstance(value, str)

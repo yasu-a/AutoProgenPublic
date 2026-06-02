@@ -2,6 +2,8 @@ from functools import cached_property
 
 from application.container.project import ProjectContainer
 from domain.model.value import ProjectID
+from infra.gateway.manaba_report_archive import ManabaReportArchiveGateway
+from infra.gateway.readonly_excel_worksheet import ReadonlyExcelWorksheetGateway
 from infra.io.files.global_ import GlobalCoreIO
 from infra.io.files.project import ProjectCoreIO
 from infra.io.project_base_folder_show_in_explorer import ProjectFolderShowInExplorerIO
@@ -39,6 +41,7 @@ class AppContainer:
             test_source_repository=self.test_source_repository,
             project_path_layout=self.project_repository.create_project_path_layout(project_id),
             project_core_io=self.project_core_io,
+            readonly_excel_worksheet_gateway=self.readonly_excel_worksheet_gateway,
         )
 
     @cached_property
@@ -221,7 +224,17 @@ class AppContainer:
 
     @cached_property
     def manaba_report_archive_validate_master_excel_exists_usecase(self):
-        return ManabaReportArchiveValidateMasterExcelExistsUseCase()
+        return ManabaReportArchiveValidateMasterExcelExistsUseCase(
+            manaba_report_archive_gateway=self.manaba_report_archive_gateway,
+        )
+
+    @cached_property
+    def manaba_report_archive_gateway(self):
+        return ManabaReportArchiveGateway()
+
+    @cached_property
+    def readonly_excel_worksheet_gateway(self):
+        return ReadonlyExcelWorksheetGateway()
 
     @cached_property
     def score_excel_list_worksheet_stats_usecase(self):
