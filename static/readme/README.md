@@ -82,6 +82,12 @@ ${!skip-lines-unless} ${is_beta} ${3}
 - [JSON](https://docs.python.org/ja/3/library/json.html)
 - [Visual Studio Developer Command Prompt](https://learn.microsoft.com/ja-jp/visualstudio/ide/reference/command-prompt-powershell)
 
+# 開発・コントリビューション
+
+- 不具合報告や機能提案を行う前に、[コントリビューションガイド](CONTRIBUTING.md)を確認してください。
+- 未公開の脆弱性は公開Issueへ投稿せず、[セキュリティポリシー](SECURITY.md)に従ってください。
+- 開発課題と対応状況は[GitHub Issues](https://github.com/yasu-a/AutoProgenPublic/issues)で管理します。
+
 # FAQ
 
 ### **どうやって使うの？**

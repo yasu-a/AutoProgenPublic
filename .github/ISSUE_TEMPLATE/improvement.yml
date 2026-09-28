@@ -1,0 +1,69 @@
+name: 改善提案
+description: 性能、設計、テスト、文書、配布方法などの改善を提案します
+title: ""
+labels:
+  - enhancement
+body:
+  - type: dropdown
+    id: category
+    attributes:
+      label: 分類
+      options:
+        - 性能
+        - リファクタリング・設計
+        - テスト
+        - ドキュメント
+        - 配布・パッケージング
+        - 開発環境・運用
+        - その他
+    validations:
+      required: true
+
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景・目的
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: 現状と確認できている事実
+      description: 計測値、ログ、関連コードなどを記載し、推測とは区別してください。
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 改善後の状態
+      description: 特定の実装方法だけでなく、達成したい結果を記載してください。
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: 対応範囲・対象外
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 完了条件
+      placeholder: |
+        - [ ] 改善前後を比較できる
+        - [ ] 回帰テストが追加されている
+        - [ ] 関連文書が更新されている
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 確認事項
+      options:
+        - label: 同じ内容のIssueがないことを確認しました。
+          required: true
+        - label: 個人情報、認証情報、実際の学生の提出コードを含めていません。
+          required: true

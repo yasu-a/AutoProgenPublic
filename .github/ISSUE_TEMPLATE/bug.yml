@@ -1,0 +1,81 @@
+name: 不具合報告
+description: 再現可能な不具合や期待と異なる動作を報告します
+title: ""
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        報告ありがとうございます。同じ内容のIssueがないか、Open・Closedの両方を確認してください。
+        個人情報、認証情報、実際の学生の提出コードは記載しないでください。
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 概要
+      description: 発生している問題を簡潔に説明してください。
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+      description: 最小限の操作とデータで再現できる手順を番号付きで記載してください。
+      placeholder: |
+        1. プロジェクトを開く
+        2. …を選択する
+        3. …を実行する
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待する動作
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 実際の動作
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: AutoProgenのバージョン
+      placeholder: 例：1.1-alpha.4
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: 実行環境
+      description: OS、Python、Visual Studioなど、関係するバージョンを記載してください。
+      placeholder: 例：Windows 11 / Python 3.11.9 / Visual Studio 2022
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: ログ・補足情報
+      description: 機密情報や個人情報を除去したログ、画像、再現データなどを記載してください。
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 確認事項
+      options:
+        - label: 同じ内容のIssueがないことを確認しました。
+          required: true
+        - label: 個人情報、認証情報、実際の学生の提出コードを含めていません。
+          required: true
+        - label: 未公開の脆弱性に関する報告ではありません。
+          required: true

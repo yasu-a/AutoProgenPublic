@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: セキュリティポリシー
+    url: https://github.com/yasu-a/AutoProgenPublic/security/policy
+    about: 未公開の脆弱性を報告する前に確認してください。

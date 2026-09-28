@@ -1,0 +1,63 @@
+name: 機能提案
+description: 利用者向けの新しい機能を提案します
+title: ""
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景・目的
+      description: 誰がどのような場面で困っているかを説明してください。
+    validations:
+      required: true
+
+  - type: textarea
+    id: behavior
+    attributes:
+      label: 実現したい動作
+      description: 利用者から見た操作と結果を説明してください。
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 現在の代替手段
+      description: 現在行っている回避方法や代替操作があれば記載してください。
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: 対応範囲
+      description: このIssueで扱う内容を記載してください。
+    validations:
+      required: true
+
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: 対象外
+      description: 関連するが、このIssueでは扱わない内容を記載してください。
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 完了条件
+      description: 実装者以外でも確認できる条件をチェックリストで記載してください。
+      placeholder: |
+        - [ ] …できる
+        - [ ] 自動テストが追加されている
+        - [ ] 利用者向け文書が更新されている
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 確認事項
+      options:
+        - label: 同じ内容のIssueがないことを確認しました。
+          required: true
+        - label: 個人情報、認証情報、実際の学生の提出コードを含めていません。
+          required: true
