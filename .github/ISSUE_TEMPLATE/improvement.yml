@@ -1,6 +1,5 @@
 name: 改善提案
 description: 性能、設計、テスト、文書、配布方法などの改善を提案します
-title: ""
 labels:
   - enhancement
 body:

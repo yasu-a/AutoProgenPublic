@@ -1,6 +1,5 @@
 name: 不具合報告
 description: 再現可能な不具合や期待と異なる動作を報告します
-title: ""
 labels:
   - bug
 body:
