@@ -5,9 +5,9 @@ from functools import cache
 from pathlib import Path
 from typing import Any
 
-from application.container import AppContainer
-from domain.model.app_version import ReleaseType, AppVersion
-from infra.path_layout import AppPathConfig
+from autoprogen.application.container import AppContainer
+from autoprogen.domain.model.app_version import ReleaseType, AppVersion
+from autoprogen.infra.path_layout import AppPathConfig
 
 
 @cache

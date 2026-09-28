@@ -1,7 +1,7 @@
 from pathlib import PurePosixPath
 
-from domain.model.readonly_excel_worksheet import ReadonlyExcelWorksheet, ReadonlyExcelCell
-from service.manaba_report_list_parser import ManabaReportListParser
+from autoprogen.domain.model.readonly_excel_worksheet import ReadonlyExcelWorksheet, ReadonlyExcelCell
+from autoprogen.service.manaba_report_list_parser import ManabaReportListParser
 
 
 def test_manaba_report_list_parser_parse_success():

@@ -2,11 +2,11 @@ from pathlib import PurePosixPath
 
 import pytest
 
-from domain.error import ManabaReportListArchiveValidateServiceError
-from domain.model.manaba_report_archive import ManabaSubmissionFolderPath
-from domain.model.manaba_report_list import ManabaReportList, ManabaReportListRow
-from domain.model.value import StudentID
-from service.manaba_report_list_archive_validate import ManabaReportListArchiveValidateService
+from autoprogen.domain.error import ManabaReportListArchiveValidateServiceError
+from autoprogen.domain.model.manaba_report_archive import ManabaSubmissionFolderPath
+from autoprogen.domain.model.manaba_report_list import ManabaReportList, ManabaReportListRow
+from autoprogen.domain.model.value import StudentID
+from autoprogen.service.manaba_report_list_archive_validate import ManabaReportListArchiveValidateService
 
 
 class _ArchiveStub:

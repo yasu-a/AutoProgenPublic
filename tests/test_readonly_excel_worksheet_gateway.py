@@ -3,8 +3,8 @@ import io
 import openpyxl
 import pytest
 
-from domain.error import ReadonlyExcelWorksheetGatewayError
-from infra.gateway.readonly_excel_worksheet import ReadonlyExcelWorksheetGateway
+from autoprogen.domain.error import ReadonlyExcelWorksheetGatewayError
+from autoprogen.infra.gateway.readonly_excel_worksheet import ReadonlyExcelWorksheetGateway
 
 
 def _workbook_to_bytes(wb: openpyxl.Workbook) -> bytes:

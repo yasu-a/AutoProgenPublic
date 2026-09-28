@@ -1,6 +1,6 @@
 import pytest
 
-from domain.model.value import StudentID
+from autoprogen.domain.model.value import StudentID
 
 
 @pytest.mark.parametrize(

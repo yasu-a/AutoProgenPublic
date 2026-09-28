@@ -4,8 +4,8 @@ from pathlib import PurePosixPath
 
 import pytest
 
-from domain.error import ManabaReportArchiveError
-from domain.model.manaba_report_archive import ManabaReportArchive, ManabaSubmissionFolderPath
+from autoprogen.domain.error import ManabaReportArchiveError
+from autoprogen.domain.model.manaba_report_archive import ManabaReportArchive, ManabaSubmissionFolderPath
 
 
 def _zip_bytes(entries: list[tuple[str, bytes]]) -> bytes:

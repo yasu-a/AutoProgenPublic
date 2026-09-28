@@ -5,11 +5,11 @@ from typing import Callable
 
 import pytest
 
-from application.container import AppContainer, ProjectContainer
-from domain.model.value import ProjectID
-from infra.path_layout import AppPathConfig
+from autoprogen.application.container import AppContainer, ProjectContainer
+from autoprogen.domain.model.value import ProjectID
+from autoprogen.infra.path_layout import AppPathConfig
 from tests.helpers.archive_names import normalize_archive_name
-from usecase.dto.project import ProjectInitializeResult
+from autoprogen.usecase.dto.project import ProjectInitializeResult
 
 
 @dataclass(frozen=True)
