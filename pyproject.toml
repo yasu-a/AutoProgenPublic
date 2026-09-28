@@ -9,7 +9,7 @@ name = "autoprogen"
 version = "1.1.0a4"
 description = "A desktop application for automated grading of programming assignments."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "PyQt5~=5.15.11",
     "openpyxl~=3.1.5",
@@ -36,5 +36,4 @@ include = ["autoprogen*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-pythonpath = ["src"]
 addopts = "-ra -v"

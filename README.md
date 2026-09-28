@@ -22,7 +22,7 @@
 # 確認済み動作環境
 
 - Windows 11
-- Python 3.13.3
+- Python 3.11.9
 
 # 1.1-alpha.4
 
@@ -142,8 +142,8 @@ GUIの背後でコンパイルと実行のコマンドを呼び出していま�
 
 1. このツールをダウンロードします。
 2. ダウンロードしたファイルがZIPファイルなら展開します。
-3. このツールはPythonで動作します。
-   Pythonがインストールされていない場合はインストールする必要があります。（[Download Python | Python.org](https://www.python.org/downloads/)）
+3. このツールはPython 3.11以降で動作します。
+   Python 3.11以降がインストールされていない場合はインストールする必要があります。（[Download Python | Python.org](https://www.python.org/downloads/)）
 
 > [!NOTE]
 > Pythonをインストールするとき、画面下部に表示される「Add Python 3.X to PATH」にチェックを入れる必要があります。
