@@ -41,10 +41,11 @@ if not exist ".venv\pyvenv.cfg" (
     exit /b 1
 )
 
-REM Check package installation status (simple check)
-if not exist ".venv\Lib\site-packages\PyQt5" (
+REM Check package and dependency installation status
+"%VENV_PYTHON%" -c "import autoprogen, PyQt5, openpyxl, psutil, dateutil" >nul 2>&1
+if %ERRORLEVEL% neq 0 (
     echo 必要なパッケージをインストール中...
-    "%VENV_PYTHON%" -m pip install -r requirements.txt
+    "%VENV_PYTHON%" -m pip install --editable .
     if %ERRORLEVEL% neq 0 (
         echo エラー: パッケージのインストールに失敗しました。
         pause
@@ -55,15 +56,15 @@ if not exist ".venv\Lib\site-packages\PyQt5" (
 
 REM Launch main application
 if "%DEBUG_MODE%"=="1" (
-    set "APP_DEBUG="
-    set "APP_VERBOSE_LOG="
+    set "APP_DEBUG=1"
+    set "APP_VERBOSE_LOG=1"
     echo Starting in debug mode...
 ) else (
     set "APP_DEBUG="
     set "APP_VERBOSE_LOG="
     echo Starting application...
 )
-"%VENV_PYTHON%" main.py
+"%VENV_PYTHON%" -m autoprogen
 if "%DEBUG_MODE%"=="1" (
     echo.
     echo デバッグモードで終了しました。

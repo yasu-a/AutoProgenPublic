@@ -1,11 +1,11 @@
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
-from domain.model.value import StudentID
+from autoprogen.domain.model.value import StudentID
 from tests.helpers.archive_expected import ExpectedArchiveStudentMaster, ExpectedSubmissionStructure
 
 if TYPE_CHECKING:
-    from application.container import ProjectContainer
+    from autoprogen.application.container import ProjectContainer
 
 
 def assert_project_initialized(project_container: "ProjectContainer") -> None:

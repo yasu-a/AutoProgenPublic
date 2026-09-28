@@ -1,0 +1,1 @@
+"""AutoProgen application package."""

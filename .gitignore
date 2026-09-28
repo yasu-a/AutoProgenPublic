@@ -4,3 +4,4 @@
 /settings.json
 /db.sqlite3
 /_legacy
+*.egg-info/
