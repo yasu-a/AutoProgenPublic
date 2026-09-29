@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "autoprogen"
-# app_version.json の 1.1-alpha.4 に対応する PEP 440 表記。
+# app_version.json の 1.1-beta.4 に対応する PEP 440 表記。
 # 実行時に画面へ表示するバージョンは引き続き app_version.json を正とする。
-version = "1.1.0a4"
+version = "1.1.0b4"
 description = "A desktop application for automated grading of programming assignments."
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
