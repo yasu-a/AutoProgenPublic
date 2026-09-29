@@ -1,0 +1,113 @@
+name: Python tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Windows / Python ${{ matrix.python-version }} / run.bat twice
+    runs-on: windows-latest
+    env:
+      MATRIX_PYTHON_VERSION: ${{ matrix.python-version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "3.14"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Expose only the matrix Python through py
+        shell: pwsh
+        env:
+          MATRIX_PYTHON_PATH: ${{ steps.setup-python.outputs.python-path }}
+        run: |
+          $launcherDirectory = Join-Path $env:RUNNER_TEMP "autoprogen-python-launcher"
+          New-Item -ItemType Directory -Force -Path $launcherDirectory | Out-Null
+
+          $launcherScript = @'
+          import os
+          import subprocess
+          import sys
+
+          expected_argument = f"-{os.environ['MATRIX_PYTHON_VERSION']}"
+          if len(sys.argv) < 2 or sys.argv[1] != expected_argument:
+              raise SystemExit(1)
+
+          raise SystemExit(subprocess.run([sys.executable, *sys.argv[2:]]).returncode)
+          '@
+          $launcherScriptPath = Join-Path $launcherDirectory "py_launcher.py"
+          [System.IO.File]::WriteAllText(
+            $launcherScriptPath,
+            $launcherScript,
+            [System.Text.Encoding]::ASCII
+          )
+
+          $launcherBatch = @"
+          @echo off
+          `"$env:MATRIX_PYTHON_PATH`" `"$launcherScriptPath`" %*
+          "@
+          [System.IO.File]::WriteAllText(
+            (Join-Path $launcherDirectory "py.cmd"),
+            $launcherBatch,
+            [System.Text.Encoding]::ASCII
+          )
+
+          $launcherDirectory | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Run first setup
+        shell: cmd
+        run: run.bat setup-only
+
+      - name: Verify the created Python version
+        shell: pwsh
+        run: |
+          .\.venv\Scripts\python.exe -c "import os, sys; expected = tuple(map(int, os.environ['MATRIX_PYTHON_VERSION'].split('.'))); assert sys.version_info[:2] == expected, sys.version"
+
+      - name: Mark the existing virtual environment
+        shell: pwsh
+        run: New-Item -ItemType File -Path .venv\.ci-reuse-marker | Out-Null
+
+      - name: Run second setup
+        shell: cmd
+        run: run.bat setup-only
+
+      - name: Verify virtual environment reuse
+        shell: pwsh
+        run: |
+          if (-not (Test-Path .venv\.ci-reuse-marker)) {
+            throw "The existing .venv was not reused."
+          }
+
+      - name: Upgrade pip
+        run: .\.venv\Scripts\python.exe -m pip install --upgrade pip
+
+      - name: Install development dependencies
+        run: .\.venv\Scripts\python.exe -m pip install --editable ".[dev]"
+
+      - name: Check dependencies
+        run: .\.venv\Scripts\python.exe -m pip check
+
+      - name: Check runtime imports
+        run: .\.venv\Scripts\python.exe -c "import autoprogen, PyQt5, openpyxl, psutil, dateutil"
+
+      - name: Run tests without visible GUI tests
+        run: .\.venv\Scripts\python.exe -m pytest -m "not gui_visible"
