@@ -62,3 +62,22 @@
 - 新規コードはこの規約に従う。
 - 既存コードを変更する場合も、作業範囲を不必要に広げない範囲でこの規約に従う。
 - 規約適用のみを目的とした既存コードの一括修正は、明示的な指示がない限り行わない。
+
+## GUIテスト
+
+- すべてのpytestテストは `tests/` 配下で管理する。
+- 可視GUIを起動するテストには `gui_visible` マーカーを付け、通常のテストおよびCIでは実行しない。
+- offscreenで完結し、人の操作やデスクトップ環境を必要としないGUIテストには `gui_visible` マーカーを付けない。
+- 通常のテストは次のコマンドで実行する。このコマンドでは `gui_visible` マーカー付きテストが除外される。
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest
+```
+
+- 可視GUIテストは、Windowsのローカル環境で次のコマンドを明示的に実行する。
+
+```powershell
+$env:QT_QPA_PLATFORM = "windows"
+.\.venv\Scripts\python.exe -m pytest -m gui_visible
+$env:QT_QPA_PLATFORM = $null
+```

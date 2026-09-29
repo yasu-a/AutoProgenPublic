@@ -35,4 +35,7 @@ include = ["autoprogen*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-ra -v"
+addopts = '-ra -v -m "not gui_visible"'
+markers = [
+    "gui_visible: 可視GUIとデスクトップ環境を必要とするテスト",
+]
