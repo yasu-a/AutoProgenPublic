@@ -1,0 +1,84 @@
+name: Python tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  run-bat-reuse:
+    name: run.bat first and second setup
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Run first setup
+        shell: cmd
+        run: run.bat setup-only
+
+      - name: Mark the existing virtual environment
+        shell: pwsh
+        run: New-Item -ItemType File -Path .venv\.ci-reuse-marker
+
+      - name: Run second setup
+        shell: cmd
+        run: run.bat setup-only
+
+      - name: Verify virtual environment reuse
+        shell: pwsh
+        run: |
+          if (-not (Test-Path .venv\.ci-reuse-marker)) {
+            throw "The existing .venv was not reused."
+          }
+          .\.venv\Scripts\python.exe -c "import autoprogen, PyQt5, openpyxl, psutil, dateutil"
+
+  test:
+    name: Windows / Python ${{ matrix.python-version }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "3.14"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Show Python version
+        run: python --version
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install project and development dependencies
+        run: python -m pip install --editable ".[dev]"
+
+      - name: Check dependencies
+        run: python -m pip check
+
+      - name: Check runtime imports
+        run: python -c "import autoprogen, PyQt5, openpyxl, psutil, dateutil"
+
+      - name: Run tests
+        run: python -m pytest
