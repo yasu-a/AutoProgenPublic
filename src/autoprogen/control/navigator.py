@@ -110,7 +110,8 @@ class Navigator(INavigator):
         dialog.set_state(dialog.states.create_state_by_student_id(student_id))
         dialog.exec_()
 
-    def open_testcase_list_edit_dialog(self, parent: QWidget) -> None:
+    def open_testcase_list_edit_dialog(self, parent: QWidget) -> bool:
+        """テストケース編集画面を開き、変更の有無を呼び出し元へ返す。"""
         from autoprogen.control.dialog_testcase_list_edit import TestCaseListEditDialog
         assert self._current_project_container is not None
         dialog = TestCaseListEditDialog(
@@ -126,6 +127,7 @@ class Navigator(INavigator):
             testcase_put_usecase=self._current_project_container.testcase_put_usecase,
         )
         dialog.exec_()
+        return dialog.has_changes
 
     def _launch_new_project(self, new_project_config) -> QMainWindow | None:
         project_id = self._app_container.project_create_usecase.execute(

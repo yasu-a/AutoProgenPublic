@@ -37,9 +37,32 @@ class MainWindow(QMainWindow):
         self._app_container = app_container
         self._project_container = project_container
         self._task_manager = project_container.task_manager
+        self._table_loading = False
 
         self._init_ui()
         self._init_signals()
+        QTimer.singleShot(0, self.load_student_table)
+
+    def load_student_table(self) -> None:
+        """進捗ダイアログを表示しながら学生テーブルを全件ロードする。"""
+        if self._table_loading:
+            return
+        self._table_loading = True
+        try:
+            rows = AbstractProgressDialog.run_blocking_task(
+                parent=self,
+                title="学生テーブルの読み込み",
+                initial_message="学生の表示データを読み込み中...",
+                task_func=self._project_container.student_table_load_usecase.execute,
+            )
+            if rows is None:
+                raise RuntimeError("学生テーブルの読み込み結果がありません")
+            self._w_student_table.apply_loaded_rows(rows)
+        except Exception as error:
+            self._logger.exception("Student table loading failed")
+            QMessageBox.critical(self, "学生テーブルの読み込み", str(error))
+        finally:
+            self._table_loading = False
 
     def _init_ui(self):
         project_summary = self._project_container.current_project_summary_get_usecase.execute()
@@ -62,13 +85,8 @@ class MainWindow(QMainWindow):
         # noinspection PyTypeChecker
         self._w_student_table = StudentTableWidget(
             self,
-            student_list_id_usecase=self._project_container.student_list_id_usecase,
-            student_dynamic_take_diff_snapshot_usecase=self._project_container.student_dynamic_take_diff_snapshot_usecase,
-            student_table_get_student_id_cell_data_usecase=self._project_container.student_table_get_student_id_cell_data_usecase,
-            student_table_get_student_name_cell_data_usecase=self._project_container.student_table_get_student_name_cell_data_usecase,
-            student_table_get_student_stage_state_cell_data_usecase=self._project_container.student_table_get_student_stage_state_cell_data_usecase,
-            student_table_get_student_error_cell_data_usecase=self._project_container.student_table_get_student_error_cell_data_usecase,
-            student_mark_get_usecase=self._project_container.student_mark_get_usecase,
+            student_change_event_bus=self._project_container.student_change_event_bus,
+            student_table_load_usecase=self._project_container.student_table_load_usecase,
         )
         # noinspection PyUnresolvedReferences
         self.setCentralWidget(self._w_student_table)
@@ -173,7 +191,8 @@ class MainWindow(QMainWindow):
             self._navigator.open_setting_dialog(self)
         elif name == "edit-testcases":
             # noinspection PyTypeChecker
-            self._navigator.open_testcase_list_edit_dialog(self)
+            if self._navigator.open_testcase_list_edit_dialog(self):
+                self.load_student_table()
         elif name == "mark":
             # noinspection PyTypeChecker
             self._navigator.open_scoring_dialog(self)
