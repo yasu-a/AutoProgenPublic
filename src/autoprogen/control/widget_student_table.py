@@ -1,24 +1,27 @@
 from collections import defaultdict
 from contextlib import contextmanager
 from functools import cache
-from typing import Any, Callable, Iterable
+from typing import Any, Callable
 
 from PyQt5.QtCore import *
 from PyQt5.QtGui import QColor, QFont, QMouseEvent
 from PyQt5.QtWidgets import *
 
 from autoprogen.control.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
-from autoprogen.domain.model.stage import BuildStage, CompileStage, ExecuteStage, TestStage
+from autoprogen.control.qt_student_change_bridge import QtStudentChangeBridge
+from autoprogen.domain.model.stage import AbstractStage, BuildStage, CompileStage, ExecuteStage, TestStage
+from autoprogen.domain.model.student_mark import StudentMark
 from autoprogen.domain.model.value import StudentID
 from autoprogen.res.font import get_font
-from autoprogen.usecase.student import StudentListIDUseCase
-from autoprogen.usecase.student_dynamic import StudentDynamicTakeDiffSnapshotUseCase
-from autoprogen.usecase.student_mark import StudentMarkGetUseCase
-from autoprogen.usecase.student_table_cell_data import StudentTableGetStudentIDCellDataUseCase, \
-    StudentTableGetStudentNameCellDataUseCase, StudentTableGetStudentStageStateCellDataUseCase, \
-    StudentTableGetStudentErrorCellDataUseCase
-from autoprogen.usecase.dto.student_stage_result_diff_snapshot import StudentStageResultDiffSnapshot
-from autoprogen.usecase.dto.student_table_cell_data import StudentStageStateCellDataStageState
+from autoprogen.service.student_change_event_bus import StudentChangeEventBus
+from autoprogen.usecase.dto.student_table_cell_data import (
+    StudentErrorCellData,
+    StudentIDCellData,
+    StudentNameCellData,
+    StudentStageStateCellData,
+    StudentStageStateCellDataStageState,
+)
+from autoprogen.usecase.student_table_load import StudentTableLoadUseCase, StudentTableRowSnapshot
 from autoprogen.util.app_logging import create_logger
 
 
@@ -87,18 +90,42 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
             self,
             *,
             student_ids: list[StudentID],
-            student_table_get_student_id_cell_data_usecase: StudentTableGetStudentIDCellDataUseCase,
-            student_table_get_student_name_cell_data_usecase: StudentTableGetStudentNameCellDataUseCase,
-            student_table_get_student_stage_state_cell_data_usecase: StudentTableGetStudentStageStateCellDataUseCase,
-            student_table_get_student_error_cell_data_usecase: StudentTableGetStudentErrorCellDataUseCase,
-            student_mark_get_usecase: StudentMarkGetUseCase,
     ):
         super().__init__(student_ids)
-        self._student_table_get_student_id_cell_data_usecase = student_table_get_student_id_cell_data_usecase
-        self._student_table_get_student_name_cell_data_usecase = student_table_get_student_name_cell_data_usecase
-        self._student_table_get_student_stage_state_cell_data_usecase = student_table_get_student_stage_state_cell_data_usecase
-        self._student_table_get_student_error_cell_data_usecase = student_table_get_student_error_cell_data_usecase
-        self._student_mark_get_usecase = student_mark_get_usecase
+        self._row_snapshots: dict[StudentID, StudentTableRowSnapshot] = {}
+
+    def set_rows(self, rows: list[StudentTableRowSnapshot]) -> None:
+        """全件ロード済みの表示データを設定する。"""
+        self._student_ids = [row.student_id for row in rows]
+        self._row_snapshots = {row.student_id: row for row in rows}
+
+    def replace_row(self, row: StudentTableRowSnapshot) -> None:
+        """既存の学生行の表示データを順序を変えずに置き換える。"""
+        if row.student_id not in self._row_snapshots:
+            raise KeyError(row.student_id)
+        self._row_snapshots[row.student_id] = row
+
+    def _id_cell(self, student_id: StudentID) -> StudentIDCellData:
+        """ロード済みの学籍番号データを返す。"""
+        return self._row_snapshots[student_id].id_cell
+
+    def _name_cell(self, student_id: StudentID) -> StudentNameCellData:
+        """ロード済みの学生名データを返す。"""
+        return self._row_snapshots[student_id].name_cell
+
+    def _stage_cell(
+            self, student_id: StudentID, stage_type: type[AbstractStage]
+    ) -> StudentStageStateCellData:
+        """ロード済みのステージ状態を返す。"""
+        return self._row_snapshots[student_id].stage_cells[stage_type]
+
+    def _error_cell(self, student_id: StudentID) -> StudentErrorCellData:
+        """ロード済みのエラーデータを返す。"""
+        return self._row_snapshots[student_id].error_cell
+
+    def _mark(self, student_id: StudentID) -> StudentMark:
+        """ロード済みの採点データを返す。"""
+        return self._row_snapshots[student_id].mark
 
     @classmethod
     @cache
@@ -128,16 +155,16 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     )
     def get_data_of_student_id_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            cell_data = self._student_table_get_student_id_cell_data_usecase.execute(student_id)
+            cell_data = self._id_cell(student_id)
             return cell_data.student_number
         elif role == Qt.FontRole:
-            cell_data = self._student_table_get_student_id_cell_data_usecase.execute(student_id)
+            cell_data = self._id_cell(student_id)
             if cell_data.is_submission_folder_link_alive:
                 return self._font_link_text(monospace=True)
             else:
                 return self._font_dead_link_text(monospace=True)
         elif role == Qt.ForegroundRole:
-            cell_data = self._student_table_get_student_id_cell_data_usecase.execute(student_id)
+            cell_data = self._id_cell(student_id)
             if cell_data.is_submission_folder_link_alive:
                 return self._foreground_link_text()
             else:
@@ -150,7 +177,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     )
     def get_data_of_student_name_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            cell_data = self._student_table_get_student_name_cell_data_usecase.execute(student_id)
+            cell_data = self._name_cell(student_id)
             return cell_data.student_name
         else:
             return None
@@ -180,10 +207,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     )
     def get_data_of_stage_build_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            cell_data = self._student_table_get_student_stage_state_cell_data_usecase.execute(
-                student_id=student_id,
-                stage_type=BuildStage,
-            )
+            cell_data = self._stage_cell(student_id, BuildStage)
             for target_state, text in self._STAGE_STATE_TEXT_MAPPING.items():
                 if all(state == target_state for state in cell_data.states.values()):
                     return text
@@ -199,10 +223,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     )
     def get_data_of_stage_compile_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            cell_data = self._student_table_get_student_stage_state_cell_data_usecase.execute(
-                student_id=student_id,
-                stage_type=CompileStage,
-            )
+            cell_data = self._stage_cell(student_id, CompileStage)
             for target_state, text in self._STAGE_STATE_TEXT_MAPPING.items():
                 if all(state == target_state for state in cell_data.states.values()):
                     return text
@@ -218,10 +239,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     )
     def get_data_of_stage_execute_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            cell_data = self._student_table_get_student_stage_state_cell_data_usecase.execute(
-                student_id=student_id,
-                stage_type=ExecuteStage,
-            )
+            cell_data = self._stage_cell(student_id, ExecuteStage)
             return " ".join(
                 self._STAGE_STATE_TEXT_MAPPING[state]
                 for state in cell_data.states.values()
@@ -237,10 +255,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     )
     def get_data_of_stage_test_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            cell_data = self._student_table_get_student_stage_state_cell_data_usecase.execute(
-                student_id=student_id,
-                stage_type=TestStage,
-            )
+            cell_data = self._stage_cell(student_id, TestStage)
             return " ".join(
                 self._STAGE_STATE_TEXT_MAPPING[state]
                 for state in cell_data.states.values()
@@ -256,9 +271,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     )
     def get_data_of_error_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            cell_data = self._student_table_get_student_error_cell_data_usecase.execute(
-                student_id=student_id,
-            )
+            cell_data = self._error_cell(student_id)
             aggregated_text_entries = cell_data.aggregate_text_entries()
             if len(aggregated_text_entries) == 0:
                 return ""
@@ -268,9 +281,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
                 return aggregated_text_entries[0].summary_text \
                     + f"（他{len(aggregated_text_entries) - 1}件のエラー）"
         elif role == Qt.ToolTipRole:
-            cell_data = self._student_table_get_student_error_cell_data_usecase.execute(
-                student_id=student_id,
-            )
+            cell_data = self._error_cell(student_id)
             aggregated_text_entries = cell_data.aggregate_text_entries()
             if len(aggregated_text_entries) == 0:
                 return ""
@@ -287,9 +298,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     )
     def get_data_of_mark_result_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
-            student_mark = self._student_mark_get_usecase.execute(
-                student_id=student_id,
-            )
+            student_mark = self._mark(student_id)
             if student_mark.is_marked:
                 return str(student_mark.score)
             else:
@@ -309,7 +318,7 @@ class CachedStudentTableModelDataProvider(AbstractStudentTableModelDataProvider)
             self,
             *,
             student_ids: list[StudentID],
-            provider: AbstractStudentTableModelDataProvider,
+            provider: StudentTableModelDataProvider,
     ):
         super().__init__(student_ids)
         self._provider = provider
@@ -328,16 +337,26 @@ class CachedStudentTableModelDataProvider(AbstractStudentTableModelDataProvider)
             self._lock.unlock()
 
     @classmethod
-    def from_provider(cls, provider: AbstractStudentTableModelDataProvider):
+    def from_provider(cls, provider: StudentTableModelDataProvider):
         return cls(
             student_ids=provider._student_ids,
             provider=provider,
         )
 
-    def invalidate_cache(self, row: int):
+    def set_rows(self, rows: list[StudentTableRowSnapshot]) -> None:
+        """全行のロード結果を反映し、旧キャッシュを破棄する。"""
         with self.__lock():
-            if row in self._cache:
-                del self._cache[row]
+            self._provider.set_rows(rows)
+            self._student_ids = self._provider.student_ids
+            self._cache.clear()
+
+    def replace_row(self, row_index: int, row: StudentTableRowSnapshot) -> None:
+        """学生一人のスナップショットを差し替え、該当行の表示キャッシュを消す。"""
+        with self.__lock():
+            if self._student_ids[row_index] != row.student_id:
+                raise ValueError("更新対象の学生IDが行と一致しません")
+            self._provider.replace_row(row)
+            self._cache.pop(row_index, None)
 
     def get_data(self, row: int, column: int, role: QtRoleType):
         with self.__lock():
@@ -360,6 +379,21 @@ class StudentTableModel(QAbstractTableModel):
 
     def get_row_of_student(self, student_id: StudentID) -> int:
         return self._student_ids.index(student_id)
+
+    def set_rows(self, rows: list[StudentTableRowSnapshot]) -> None:
+        """モデルの全行をロード結果で置き換える。"""
+        self.beginResetModel()
+        self._data_provider.set_rows(rows)
+        self._student_ids = self._data_provider.student_ids
+        self.endResetModel()
+
+    def replace_row(self, row: StudentTableRowSnapshot) -> None:
+        """現在の行位置を維持して学生一人の表示データを更新する。"""
+        row_index = self.get_row_of_student(row.student_id)
+        self._data_provider.replace_row(row_index, row)
+        index_begin = self.index(row_index, 0)
+        index_end = self.index(row_index, self.columnCount() - 1)
+        self.dataChanged.emit(index_begin, index_end)
 
     COLS_STATE = (
         StudentTableColumns.COL_STAGE_BUILD,
@@ -399,69 +433,6 @@ class StudentTableModel(QAbstractTableModel):
         return self._student_ids[i_row]
 
 
-class _StudentObserver(QObject):
-    _logger = create_logger()
-
-    student_modified = pyqtSignal(StudentID, name="student_modified")
-
-    @staticmethod
-    def __student_id_cyclic_iterator(student_ids: list[StudentID]) -> Iterable[StudentID]:
-        while True:
-            for student_id in student_ids:
-                yield student_id
-
-    def __init__(
-            self,
-            parent: QObject,
-            *,
-            student_ids: list[StudentID],
-            student_dynamic_take_diff_snapshot_usecase: StudentDynamicTakeDiffSnapshotUseCase,
-    ):
-        super().__init__(parent)
-        self._student_dynamic_take_diff_snapshot_usecase = student_dynamic_take_diff_snapshot_usecase
-
-        self._student_id_iter = iter(
-            self.__student_id_cyclic_iterator(
-                student_ids
-            )
-        )
-
-        self._timer = QTimer(self)
-        self._timer.setInterval(20)
-        self._timer.timeout.connect(self._on_timer_timeout)  # type: ignore
-        self._timer.start()
-
-        self._student_id_mtime_mapping: dict[StudentID, StudentStageResultDiffSnapshot] = {}
-        self._current_student_index = 0
-        self._stopped = False
-
-    def stop(self) -> None:
-        """監視タイマーを停止する。複数回呼ばれても安全。"""
-        if self._stopped:
-            return
-        self._stopped = True
-        self._timer.stop()
-
-    @pyqtSlot()
-    def _on_timer_timeout(self):
-        # 学籍番号の取得
-        student_id = next(self._student_id_iter)
-
-        # スナップショットを取得
-        new_snapshot = self._student_dynamic_take_diff_snapshot_usecase.execute(student_id)
-
-        # 初めて巡回したとき以外は更新を確認してシグナルを送出
-        if student_id in self._student_id_mtime_mapping:
-            old_snapshot = self._student_id_mtime_mapping.get(student_id)
-            if new_snapshot.is_modified_from(old_snapshot):
-                # noinspection PyUnresolvedReferences
-                self._logger.debug(
-                    f"Student {student_id} has been modified\n{old_snapshot}\n{new_snapshot}")
-                self.student_modified.emit(student_id)
-
-        self._student_id_mtime_mapping[student_id] = new_snapshot
-
-
 class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
     _logger = create_logger()
 
@@ -472,34 +443,23 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
             self,
             parent: QObject = None,
             *,
-            student_list_id_usecase: StudentListIDUseCase,
-            student_dynamic_take_diff_snapshot_usecase: StudentDynamicTakeDiffSnapshotUseCase,
-            student_table_get_student_id_cell_data_usecase: StudentTableGetStudentIDCellDataUseCase,
-            student_table_get_student_name_cell_data_usecase: StudentTableGetStudentNameCellDataUseCase,
-            student_table_get_student_stage_state_cell_data_usecase: StudentTableGetStudentStageStateCellDataUseCase,
-            student_table_get_student_error_cell_data_usecase: StudentTableGetStudentErrorCellDataUseCase,
-            student_mark_get_usecase: StudentMarkGetUseCase,
-    ):
+            student_change_event_bus: StudentChangeEventBus,
+            student_table_load_usecase: StudentTableLoadUseCase,
+        ):
         super().__init__(parent)
-        student_ids = student_list_id_usecase.execute()
+        student_ids: list[StudentID] = []
+        self._student_table_load_usecase = student_table_load_usecase
 
-        # noinspection PyTypeChecker
-        self._student_observer = _StudentObserver(
+        self._student_change_bridge = QtStudentChangeBridge(
             self,
             student_ids=student_ids,
-            student_dynamic_take_diff_snapshot_usecase=student_dynamic_take_diff_snapshot_usecase,
+            student_change_event_bus=student_change_event_bus,
         )
-        # noinspection PyUnresolvedReferences
-        self._student_observer.student_modified.connect(self._on_student_modification_observed)
+        self._student_change_bridge.student_changed.connect(self._on_student_modification_observed)
 
         self._model_data_provider = CachedStudentTableModelDataProvider.from_provider(
             provider=StudentTableModelDataProvider(
                 student_ids=student_ids,
-                student_table_get_student_id_cell_data_usecase=student_table_get_student_id_cell_data_usecase,
-                student_table_get_student_name_cell_data_usecase=student_table_get_student_name_cell_data_usecase,
-                student_table_get_student_stage_state_cell_data_usecase=student_table_get_student_stage_state_cell_data_usecase,
-                student_table_get_student_error_cell_data_usecase=student_table_get_student_error_cell_data_usecase,
-                student_mark_get_usecase=student_mark_get_usecase,
             ),
         )
 
@@ -512,6 +472,11 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
 
         self._init_ui()
         self.__init_signals()
+
+    def apply_loaded_rows(self, rows: list[StudentTableRowSnapshot]) -> None:
+        """ワーカーが取得した全学生の表示データをGUIスレッドで反映する。"""
+        self._model.set_rows(rows)
+        self._student_change_bridge.set_student_ids([row.student_id for row in rows])
 
     def _init_ui(self):
         # self.horizontalHeader().setStretchLastSection(True)
@@ -542,17 +507,17 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
             self.mark_result_cell_triggered.emit(self._model.get_student_id_of_row(i_row))
 
     @pyqtSlot(StudentID)
-    def _on_student_modification_observed(self, student_id):
-        i_row = self._model.get_row_of_student(student_id)
-        self._logger.debug(f"Updating row {i_row} {student_id}")
-        self._model_data_provider.invalidate_cache(i_row)
-        index_begin = self._model.createIndex(i_row, 0)
-        index_end = self._model.createIndex(i_row, self._model.columnCount() - 1)
-        self.dataChanged(index_begin, index_end)
+    def _on_student_modification_observed(self, student_id: StudentID) -> None:
+        """変更された学生一人を読み直し、元の行位置へ反映する。"""
+        try:
+            row = self._student_table_load_usecase.execute_row(student_id)
+            self._model.replace_row(row)
+        except Exception:
+            self._logger.exception("学生行の再読み込みに失敗しました: %s", student_id)
 
     def shutdown(self) -> None:
-        """ウィジェット終了時の後片付けとして生徒監視を停止する。"""
-        self._student_observer.stop()
+        """ウィジェット終了時に学生変更の購読を解除する。"""
+        self._student_change_bridge.stop()
 
     def mouseMoveEvent(self, evt: QMouseEvent):
         # 特定のセルに来たらマウスカーソルの形を変える

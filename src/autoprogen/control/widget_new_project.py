@@ -2,10 +2,9 @@ import zipfile
 from pathlib import Path
 
 from PyQt5.QtCore import *
-from PyQt5.QtGui import QIntValidator, QRegExpValidator
+from PyQt5.QtGui import QIntValidator, QRegExpValidator, QShowEvent
 from PyQt5.QtWidgets import *
 
-from autoprogen.application.state.debug import is_debug
 from autoprogen.control.dto.new_project_config import NewProjectConfig
 from autoprogen.domain.model.value import ProjectID
 from autoprogen.res.font import get_font
@@ -15,13 +14,18 @@ from autoprogen.usecase.project import ProjectCheckExistByNameUseCase
 
 
 class ProjectZipFileSelectorWidget(QWidget):
+    """提出アーカイブの選択と形式検証を提供する。"""
+
     def __init__(
             self,
             parent: QObject = None,
             *,
+            initial_fullpath: Path | None,
             manaba_report_archive_validate_master_excel_exists_usecase: ManabaReportArchiveValidateMasterExcelExistsUseCase,
-    ):
+    ) -> None:
+        """提出アーカイブの初期パスと検証ユースケースを受け取る。"""
         super().__init__(parent)
+        self._initial_fullpath = initial_fullpath
         self._manaba_report_archive_validate_master_excel_exists_usecase = (
             manaba_report_archive_validate_master_excel_exists_usecase
         )
@@ -38,7 +42,8 @@ class ProjectZipFileSelectorWidget(QWidget):
             return False
         return True
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
+        """提出アーカイブを選択する入力欄を構築する。"""
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
@@ -46,10 +51,8 @@ class ProjectZipFileSelectorWidget(QWidget):
         self._le_fullpath = QLineEdit(self)
         self._le_fullpath.setReadOnly(True)
         self._le_fullpath.setPlaceholderText("reportlist.xlsxが入ったZIPファイルを選択してください")
-        if is_debug():
-            self._le_fullpath.setText(
-                str(Path("~/report_5.zip").expanduser().resolve())
-            )
+        if self._initial_fullpath is not None:
+            self._le_fullpath.setText(str(self._initial_fullpath))
         layout.addWidget(self._le_fullpath)
 
         self._b_select_folder = QPushButton(self)
@@ -93,23 +96,31 @@ class ProjectZipFileSelectorWidget(QWidget):
 
 
 class ProjectNameLineEdit(QLineEdit):
+    """プロジェクト名の入力と重複検証を提供する。"""
+
     def __init__(
             self,
             parent: QObject = None,
             *,
+            auto_generate_project_name: bool,
             project_check_exist_by_name_usecase: ProjectCheckExistByNameUseCase,
-    ):
+    ) -> None:
+        """自動生成の有無とプロジェクト名の検証処理を受け取る。"""
         super().__init__(parent)
 
+        self._auto_generate_project_name = auto_generate_project_name
         self._project_check_exist_by_name_usecase = project_check_exist_by_name_usecase
         self._init_ui()
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
+        """プロジェクト名の入力規則を設定する。"""
         self.setPlaceholderText("プロジェクト名を入力してください")
         self.setValidator(QRegExpValidator(QRegExp("[a-zA-Z0-9_-]+"), self))
 
-    def showEvent(self, *args, **kwargs):
-        if is_debug():
+    def showEvent(self, event: QShowEvent) -> None:
+        """初回表示時に指定されていればプロジェクト名を自動生成する。"""
+        super().showEvent(event)
+        if self._auto_generate_project_name and not self.text():
             import random
             self.setText(f"proj-{random.randint(0, 10000)!s}")
 
@@ -131,18 +142,26 @@ class ProjectNameLineEdit(QLineEdit):
 
 
 class TargetNumberLineEdit(QLineEdit):
-    def __init__(self, parent: QObject = None):
+    """設問番号の入力と形式検証を提供する。"""
+
+    def __init__(
+            self,
+            parent: QObject = None,
+            *,
+            initial_value: int | None,
+    ) -> None:
+        """設問番号として表示する任意の初期値を受け取る。"""
         super().__init__(parent)
 
+        self._initial_value = initial_value
         self._init_ui()
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
+        """設問番号の入力規則と初期値を設定する。"""
         self.setPlaceholderText("設問番号を入力してください")
         self.setValidator(QIntValidator(0, 99, self))
-
-    def showEvent(self, *args, **kwargs):
-        if is_debug():
-            self.setText("4")
+        if self._initial_value is not None:
+            self.setText(str(self._initial_value))
 
     def get_value(self) -> int:
         return int(self.text())
@@ -157,6 +176,8 @@ class TargetNumberLineEdit(QLineEdit):
 
 
 class NewProjectWidget(QWidget):
+    """新規プロジェクト作成に必要な入力欄と開始操作を提供する。"""
+
     # noinspection PyArgumentList
     accepted = pyqtSignal(NewProjectConfig)
 
@@ -164,18 +185,26 @@ class NewProjectWidget(QWidget):
             self,
             parent: QObject = None,
             *,
+            auto_generate_project_name: bool,
+            initial_report_archive_fullpath: Path | None,
+            initial_target_number: int | None,
             project_check_exist_by_name_usecase: ProjectCheckExistByNameUseCase,
             manaba_report_archive_validate_master_excel_exists_usecase: ManabaReportArchiveValidateMasterExcelExistsUseCase,
-    ):
+    ) -> None:
+        """画面の初期値とプロジェクト作成前の検証処理を受け取る。"""
         super().__init__(parent)
 
+        self._auto_generate_project_name = auto_generate_project_name
+        self._initial_report_archive_fullpath = initial_report_archive_fullpath
+        self._initial_target_number = initial_target_number
         self._project_check_exist_by_name_usecase = project_check_exist_by_name_usecase
         self._manaba_report_archive_validate_master_excel_exists_usecase = (
             manaba_report_archive_validate_master_excel_exists_usecase
         )
         self._init_ui()
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
+        """新規プロジェクト作成画面を構築する。"""
         layout = QVBoxLayout()
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
@@ -190,6 +219,7 @@ class NewProjectWidget(QWidget):
             # noinspection PyTypeChecker
             self._w_project_id = ProjectNameLineEdit(
                 self,
+                auto_generate_project_name=self._auto_generate_project_name,
                 project_check_exist_by_name_usecase=self._project_check_exist_by_name_usecase,
             )
             layout_form.addWidget(self._w_project_id, 0, 1)
@@ -199,6 +229,7 @@ class NewProjectWidget(QWidget):
             # noinspection PyTypeChecker
             self._w_project_zipfile_selector = ProjectZipFileSelectorWidget(
                 self,
+                initial_fullpath=self._initial_report_archive_fullpath,
                 manaba_report_archive_validate_master_excel_exists_usecase=(
                     self._manaba_report_archive_validate_master_excel_exists_usecase
                 ),
@@ -208,7 +239,10 @@ class NewProjectWidget(QWidget):
             layout_form.addWidget(QLabel("設問番号"), 2, 0)
 
             # noinspection PyTypeChecker
-            self._w_target_number_input = TargetNumberLineEdit(self)
+            self._w_target_number_input = TargetNumberLineEdit(
+                self,
+                initial_value=self._initial_target_number,
+            )
             layout_form.addWidget(self._w_target_number_input, 2, 1)
 
         if "button":

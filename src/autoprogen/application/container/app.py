@@ -1,6 +1,8 @@
 from functools import cached_property
 
 from autoprogen.application.container.project import ProjectContainer
+from autoprogen.domain.model.debug_settings import DebugSettings
+from autoprogen.domain.model.global_settings import GlobalSettings
 from autoprogen.domain.model.value import ProjectID
 from autoprogen.infra.gateway.manaba_report_archive import ManabaReportArchiveGateway
 from autoprogen.infra.gateway.readonly_excel_worksheet import ReadonlyExcelWorksheetGateway
@@ -29,8 +31,15 @@ from autoprogen.usecase.test_test_stage import TestTestStageUseCase
 
 
 class AppContainer:
-    def __init__(self, *, app_path_config: AppPathConfig) -> None:
+    def __init__(
+            self,
+            *,
+            app_path_config: AppPathConfig,
+            debug_settings: DebugSettings,
+    ) -> None:
+        """アプリケーションのパス構成と起動時に読み込んだデバッグ設定を保持する。"""
         self._app_path_config = app_path_config
+        self._debug_settings = debug_settings
 
     def create_project_container(self, project_id: ProjectID) -> "ProjectContainer":
         return ProjectContainer(
@@ -51,6 +60,11 @@ class AppContainer:
     @cached_property
     def app_path_config(self):
         return self._app_path_config
+
+    @cached_property
+    def debug_settings(self) -> DebugSettings:
+        """起動時に読み込まれたデバッグ設定を返す。"""
+        return self._debug_settings
 
     @cached_property
     def app_path_layout(self):
@@ -92,6 +106,9 @@ class AppContainer:
         return GlobalSettingsRepository(
             app_path_layout=self.app_path_layout,
             global_core_io=self.global_core_io,
+            default_model=GlobalSettings.create_default(
+                compiler_tool_fullpath=self.debug_settings.compiler_tool_fullpath,
+            ),
         )
 
     @cached_property

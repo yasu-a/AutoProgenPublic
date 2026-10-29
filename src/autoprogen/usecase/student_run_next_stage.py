@@ -8,7 +8,7 @@ from autoprogen.domain.model.value import StudentID
 from autoprogen.infra.repository.student_stage_path_result import StudentStagePathResultRepository
 from autoprogen.service.stage_path import StagePathListSubService
 from autoprogen.service.student_stage_path_result import StudentStagePathResultGetService, \
-    StudentStagePathResultCheckRollbackService
+    StudentStagePathResultCheckRollbackService, StudentStagePathResultPutService
 from autoprogen.usecase.student_run_build import StudentRunBuildStageUseCase
 from autoprogen.usecase.student_run_compile import StudentRunCompileStageUseCase
 from autoprogen.usecase.student_run_execute import StudentRunExecuteStageUseCase
@@ -24,18 +24,22 @@ class StudentRunNextStageUseCase:
             stage_path_list_sub_service: StagePathListSubService,
             student_stage_path_result_get_service: StudentStagePathResultGetService,
             student_stage_path_result_repo: StudentStagePathResultRepository,
+            student_stage_path_result_put_service: StudentStagePathResultPutService,
             student_run_build_stage_usecase: StudentRunBuildStageUseCase,  # usecase dependency
             student_run_compile_stage_usecase: StudentRunCompileStageUseCase,
             student_run_execute_stage_usecase: StudentRunExecuteStageUseCase,
             student_run_test_stage_usecase: StudentRunTestStageUseCase,
             student_stage_path_result_check_rollback_service: StudentStagePathResultCheckRollbackService,
     ):
+        """ステージ実行、ロールバック判定と保存に使う依存先を受け取る。"""
         self._stage_path_list_sub_service \
             = stage_path_list_sub_service
         self._student_stage_path_result_get_service \
             = student_stage_path_result_get_service
         self._student_stage_path_result_repo \
             = student_stage_path_result_repo
+        self._student_stage_path_result_put_service \
+            = student_stage_path_result_put_service
         self._student_run_build_stage_usecase \
             = student_run_build_stage_usecase
         self._student_run_compile_stage_usecase \
@@ -80,7 +84,7 @@ class StudentRunNextStageUseCase:
                 target_stage_path_result.delete_result(stage)
                 if isinstance(stage, rollback_stage_type):
                     break
-            self._student_stage_path_result_repo.put(target_stage_path_result)
+            self._student_stage_path_result_put_service.execute(target_stage_path_result)
         # 適用内容をログに残す
         self._logger.info(f"{student_id} rollback {rollback_stage_type} on {len(targets)} path(s)")
         return True

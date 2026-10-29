@@ -192,6 +192,7 @@ class TestCaseListEditWidget(QWidget):
             testcase_put_usecase=self._testcase_put_usecase,
         )
         dialog.exec_()
+        # TODO: 個別編集画面は変更なしでも閉じる際に保存するため、実際の変更有無を判定してから通知する。
         self.testcase_modified.emit()
 
     @pyqtSlot(str)
@@ -218,6 +219,8 @@ class TestCaseListEditWidget(QWidget):
 
 
 class TestCaseListEditDialog(QDialog):
+    """テストケース一覧の編集と、画面を閉じるまでの変更有無を管理する。"""
+
     def __init__(
             self,
             parent: QObject = None,
@@ -242,8 +245,19 @@ class TestCaseListEditDialog(QDialog):
         self._testcase_delete_usecase = testcase_delete_usecase
         self._testcase_get_usecase = testcase_get_usecase
         self._testcase_put_usecase = testcase_put_usecase
+        self._has_changes = False
 
         self._init_ui()
+
+    @property
+    def has_changes(self) -> bool:
+        """編集画面でテストケースへの変更が行われたかを返す。"""
+        return self._has_changes
+
+    @pyqtSlot()
+    def _mark_modified(self) -> None:
+        """編集画面からの変更通知をダイアログ終了時まで保持する。"""
+        self._has_changes = True
 
     def _init_ui(self):
         # noinspection PyUnresolvedReferences
@@ -267,3 +281,4 @@ class TestCaseListEditDialog(QDialog):
             testcase_put_usecase=self._testcase_put_usecase,
         )
         layout.addWidget(self._w_testcase_edit)
+        self._w_testcase_edit.testcase_modified.connect(self._mark_modified)

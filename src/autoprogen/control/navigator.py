@@ -9,7 +9,7 @@ from autoprogen.domain.model.value import ProjectID, StudentID
 
 
 class Navigator(INavigator):
-    # アプリ起動・トップレベル遷移を扱う最小Navigator
+    """アプリ起動とトップレベル画面間の遷移を管理する。"""
 
     def __init__(self, *, app_container: AppContainer):
         self._app_container = app_container
@@ -110,7 +110,8 @@ class Navigator(INavigator):
         dialog.set_state(dialog.states.create_state_by_student_id(student_id))
         dialog.exec_()
 
-    def open_testcase_list_edit_dialog(self, parent: QWidget) -> None:
+    def open_testcase_list_edit_dialog(self, parent: QWidget) -> bool:
+        """テストケース編集画面を開き、変更の有無を呼び出し元へ返す。"""
         from autoprogen.control.dialog_testcase_list_edit import TestCaseListEditDialog
         assert self._current_project_container is not None
         dialog = TestCaseListEditDialog(
@@ -126,6 +127,7 @@ class Navigator(INavigator):
             testcase_put_usecase=self._current_project_container.testcase_put_usecase,
         )
         dialog.exec_()
+        return dialog.has_changes
 
     def _launch_new_project(self, new_project_config) -> QMainWindow | None:
         project_id = self._app_container.project_create_usecase.execute(
@@ -174,10 +176,18 @@ class Navigator(INavigator):
         )
 
     def _show_welcome_dialog(self) -> bool:
+        """ランチャー画面を表示し、利用者が選択した処理へ遷移する。"""
         from autoprogen.control.dialog_welcome import WelcomeDialog
         from autoprogen.control.dto.new_project_config import NewProjectConfig
 
         welcome = WelcomeDialog(
+            auto_generate_project_name=(
+                self._app_container.debug_settings.auto_generate_project_name
+            ),
+            initial_report_archive_fullpath=(
+                self._app_container.debug_settings.report_archive_fullpath
+            ),
+            initial_target_number=self._app_container.debug_settings.target_number,
             project_check_exist_by_name_usecase=self._app_container.project_check_exist_by_name_usecase,
             manaba_report_archive_validate_master_excel_exists_usecase=(
                 self._app_container.manaba_report_archive_validate_master_excel_exists_usecase

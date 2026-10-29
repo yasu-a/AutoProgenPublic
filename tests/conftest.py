@@ -6,6 +6,7 @@ from typing import Callable
 import pytest
 
 from autoprogen.application.container import AppContainer, ProjectContainer
+from autoprogen.domain.model.debug_settings import DebugSettings
 from autoprogen.domain.model.value import ProjectID
 from autoprogen.infra.path_layout import AppPathConfig
 from tests.helpers.archive_names import normalize_archive_name
@@ -64,10 +65,25 @@ def prepared_app_path_config(app_path_config: AppPathConfig) -> AppPathConfig:
 
 
 @pytest.fixture
-def app_container(prepared_app_path_config: AppPathConfig) -> AppContainer:
-    return AppContainer(
-        app_path_config=prepared_app_path_config,
-    )
+def app_container_factory(prepared_app_path_config: AppPathConfig) -> Callable[..., AppContainer]:
+    """任意のデバッグ設定を持つAppContainerを同じテスト用パス上に生成する。"""
+    def _create_app_container(
+            *,
+            debug_settings: DebugSettings | None = None,
+    ) -> AppContainer:
+        """デバッグ設定が未指定なら入力補助なしのAppContainerを生成する。"""
+        return AppContainer(
+            app_path_config=prepared_app_path_config,
+            debug_settings=debug_settings or DebugSettings.create_default(),
+        )
+
+    return _create_app_container
+
+
+@pytest.fixture
+def app_container(app_container_factory: Callable[..., AppContainer]) -> AppContainer:
+    """入力補助なしの標準的なテスト用AppContainerを生成する。"""
+    return app_container_factory()
 
 
 @pytest.fixture

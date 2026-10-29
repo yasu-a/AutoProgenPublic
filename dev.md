@@ -12,7 +12,13 @@
 
 ## docstring
 
-- 関数には必ずdocstringを付ける。
+- クラスと関数には必ずdocstringを付ける。
+- クラスのdocstringには、そのクラスの責務と用途を記述する。
+
+## フィールド
+
+- dataclass、NamedTupleなどのモデルを構成する各フィールドには、役割が分かる日本語コメントを付ける。
+- フィールドのコメントには、値の意味と、`None`や既定値が表す状態を必要に応じて記述する。
 
 ## コメント
 
@@ -20,6 +26,12 @@
 - 長い手続きには、処理ブロックごとに意図が分かる一行コメントを書く。
 - 自明な処理を逐語的に説明するコメントは避ける。
 - コメントには必要に応じて、設計意図、前提、制約、なぜその処理が必要かを残す。
+
+## 例外クラス
+
+- 新しい例外クラスを `src/autoprogen/domain/error/__init__.py` に追加しない。
+- 例外クラスは、その例外を送出するクラスの定義の直上に定義する。
+- 対応するインターフェースがある場合は、実装クラスではなくインターフェースの定義の直上に定義する。
 
 ## プロジェクト構成
 
@@ -41,6 +53,28 @@
 ```
 
 - システムにインストールされた `python` や `pytest` を、開発作業で直接使用しない。
+
+## デバッグ用ローカル設定
+
+- 開発者ごとのデバッグ用設定は、リポジトリ直下の `.autoprogen-dev.toml` に記述する。
+- `.autoprogen-dev.toml` はGitの管理対象外とし、各開発者が自身の環境に合わせて作成する。
+- このファイルは `run-debug.bat` から起動した場合にだけ読み込まれ、通常の `run.bat` からの起動には影響しない。
+- ファイルが存在しない場合は、すべての入力補助が無効な既定値で起動する。
+- Windowsパスは、バックスラッシュをそのまま記述できるTOMLのリテラル文字列で指定する。
+
+```toml
+compiler_tool_fullpath = 'C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat'
+report_archive_fullpath = 'C:\TestData\report.zip'
+auto_generate_project_name = true
+target_number = 4
+```
+
+各項目の用途は次のとおり。
+
+- `compiler_tool_fullpath`: Visual Studio開発者ツールの起動スクリプトを、GlobalSettingsの初期値として使用する。`settings.json` に保存済みの設定がある場合は、保存済み設定を優先する。
+- `report_archive_fullpath`: 新規プロジェクト画面の「提出データ」へ初期入力するZIPファイルの絶対パス。省略時は空欄にする。
+- `auto_generate_project_name`: `true` の場合、新規プロジェクト画面へ `proj-<乱数>` 形式の名前を自動入力する。省略時は `false` とする。
+- `target_number`: 新規プロジェクト画面へ初期入力する0以上99以下の設問番号。省略時は空欄にする。
 
 ## Git運用
 
