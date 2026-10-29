@@ -13,9 +13,12 @@ class GlobalSettingsRepository:
             *,
             global_core_io: GlobalCoreIO,
             app_path_layout: AppPathLayout,
+            default_model: GlobalSettings,
     ):
+        """永続化先と設定ファイルがない場合に使用する既定値を受け取る。"""
         self._global_core_io = global_core_io
         self._app_path_layout = app_path_layout
+        self._default_model = default_model
 
         self.__model: GlobalSettings | None = None
         self.__lock = QMutex()
@@ -32,7 +35,7 @@ class GlobalSettingsRepository:
         if self.__model is None:
             json_fullpath = self._app_path_layout.settings_json
             if not json_fullpath.exists():
-                self.__model = GlobalSettings.create_default()
+                self.__model = self._default_model
             else:
                 self.__model = GlobalSettings.from_json(
                     self._global_core_io.read_json(

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from PyQt5.QtCore import *
 from PyQt5.QtGui import QShowEvent
 from PyQt5.QtWidgets import *
@@ -19,10 +21,15 @@ from autoprogen.usecase.project import (
 
 
 class WelcomeDialog(QDialog):
+    """新規プロジェクト作成と既存プロジェクト選択を提供する。"""
+
     def __init__(
             self,
             parent: QObject = None,
             *,
+            auto_generate_project_name: bool,
+            initial_report_archive_fullpath: Path | None,
+            initial_target_number: int | None,
             project_check_exist_by_name_usecase: ProjectCheckExistByNameUseCase,
             manaba_report_archive_validate_master_excel_exists_usecase: ManabaReportArchiveValidateMasterExcelExistsUseCase,
             project_list_recent_summary_usecase: ProjectListRecentSummaryUseCase,
@@ -30,9 +37,13 @@ class WelcomeDialog(QDialog):
             project_delete_usecase: ProjectDeleteUseCase,
             project_base_folder_show_usecase: ProjectBaseFolderShowUseCase,
             project_get_size_query_usecase: ProjectGetSizeQueryUseCase,
-    ):
+    ) -> None:
+        """画面の初期値と必要なユースケースを受け取って初期化する。"""
         super().__init__(parent)
 
+        self._auto_generate_project_name = auto_generate_project_name
+        self._initial_report_archive_fullpath = initial_report_archive_fullpath
+        self._initial_target_number = initial_target_number
         self._project_check_exist_by_name_usecase = project_check_exist_by_name_usecase
         self._manaba_report_archive_validate_master_excel_exists_usecase = (
             manaba_report_archive_validate_master_excel_exists_usecase
@@ -47,7 +58,8 @@ class WelcomeDialog(QDialog):
         self._init_ui()
         self._init_signals()
 
-    def _init_ui(self):
+    def _init_ui(self) -> None:
+        """ランチャー画面を構築する。"""
         # noinspection PyUnresolvedReferences
         self.setWindowTitle("WELCOME")
         self.setModal(True)
@@ -62,6 +74,9 @@ class WelcomeDialog(QDialog):
         # noinspection PyTypeChecker
         self._w_new_project = NewProjectWidget(
             self,
+            auto_generate_project_name=self._auto_generate_project_name,
+            initial_report_archive_fullpath=self._initial_report_archive_fullpath,
+            initial_target_number=self._initial_target_number,
             project_check_exist_by_name_usecase=self._project_check_exist_by_name_usecase,
             manaba_report_archive_validate_master_excel_exists_usecase=(
                 self._manaba_report_archive_validate_master_excel_exists_usecase

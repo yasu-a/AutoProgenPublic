@@ -54,6 +54,28 @@
 
 - システムにインストールされた `python` や `pytest` を、開発作業で直接使用しない。
 
+## デバッグ用ローカル設定
+
+- 開発者ごとのデバッグ用設定は、リポジトリ直下の `.autoprogen-dev.toml` に記述する。
+- `.autoprogen-dev.toml` はGitの管理対象外とし、各開発者が自身の環境に合わせて作成する。
+- このファイルは `run-debug.bat` から起動した場合にだけ読み込まれ、通常の `run.bat` からの起動には影響しない。
+- ファイルが存在しない場合は、すべての入力補助が無効な既定値で起動する。
+- Windowsパスは、バックスラッシュをそのまま記述できるTOMLのリテラル文字列で指定する。
+
+```toml
+compiler_tool_fullpath = 'C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat'
+report_archive_fullpath = 'C:\TestData\report.zip'
+auto_generate_project_name = true
+target_number = 4
+```
+
+各項目の用途は次のとおり。
+
+- `compiler_tool_fullpath`: Visual Studio開発者ツールの起動スクリプトを、GlobalSettingsの初期値として使用する。`settings.json` に保存済みの設定がある場合は、保存済み設定を優先する。
+- `report_archive_fullpath`: 新規プロジェクト画面の「提出データ」へ初期入力するZIPファイルの絶対パス。省略時は空欄にする。
+- `auto_generate_project_name`: `true` の場合、新規プロジェクト画面へ `proj-<乱数>` 形式の名前を自動入力する。省略時は `false` とする。
+- `target_number`: 新規プロジェクト画面へ初期入力する0以上99以下の設問番号。省略時は空欄にする。
+
 ## Git運用
 
 - 明示的な指示がない限り、`git add`、stage解除、commitなど、Gitのindexや履歴を変更する操作を行わない。

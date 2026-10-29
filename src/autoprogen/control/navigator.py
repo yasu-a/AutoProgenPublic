@@ -9,7 +9,7 @@ from autoprogen.domain.model.value import ProjectID, StudentID
 
 
 class Navigator(INavigator):
-    # アプリ起動・トップレベル遷移を扱う最小Navigator
+    """アプリ起動とトップレベル画面間の遷移を管理する。"""
 
     def __init__(self, *, app_container: AppContainer):
         self._app_container = app_container
@@ -174,10 +174,18 @@ class Navigator(INavigator):
         )
 
     def _show_welcome_dialog(self) -> bool:
+        """ランチャー画面を表示し、利用者が選択した処理へ遷移する。"""
         from autoprogen.control.dialog_welcome import WelcomeDialog
         from autoprogen.control.dto.new_project_config import NewProjectConfig
 
         welcome = WelcomeDialog(
+            auto_generate_project_name=(
+                self._app_container.debug_settings.auto_generate_project_name
+            ),
+            initial_report_archive_fullpath=(
+                self._app_container.debug_settings.report_archive_fullpath
+            ),
+            initial_target_number=self._app_container.debug_settings.target_number,
             project_check_exist_by_name_usecase=self._app_container.project_check_exist_by_name_usecase,
             manaba_report_archive_validate_master_excel_exists_usecase=(
                 self._app_container.manaba_report_archive_validate_master_excel_exists_usecase
