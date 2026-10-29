@@ -7,6 +7,7 @@ from typing import Any
 
 from autoprogen.application.container import AppContainer
 from autoprogen.domain.model.app_version import ReleaseType, AppVersion
+from autoprogen.domain.model.debug_settings import DebugSettings
 from autoprogen.infra.path_layout import AppPathConfig
 
 
@@ -19,6 +20,7 @@ def _get_app_path_config() -> AppPathConfig:
 def _get_app_container() -> AppContainer:
     return AppContainer(
         app_path_config=_get_app_path_config(),
+        debug_settings=DebugSettings.create_default(),
     )
 
 
