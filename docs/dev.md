@@ -12,7 +12,22 @@
 - アプリケーションコードは `src/autoprogen/` 配下に置き、`autoprogen` 名前空間からimportする。
 - アプリケーションの起動点には `src/autoprogen/__main__.py` を使用し、`python -m autoprogen` で起動できる状態を維持する。
 - Pythonプロジェクトの設定、依存関係、開発用依存関係およびpytest設定は `pyproject.toml` で管理する。
-- READMEは自動生成されるため、説明を変更する場合は原則として `static/readme/README.md` を編集し、`main_generate_readme.py` で `README.md` を再生成する。
+
+### 2.1 バージョン管理
+
+- 現在のアプリケーションバージョンは、`pyproject.toml`の`project.version`を唯一の正として管理する。
+- `project.version`にはPEP 440形式を使用し、実行時は`importlib.metadata`からインストール済みパッケージのバージョンを取得する。
+- alpha版とbeta版ではPEP 440のリリース番号を`0`とし、プレリリース番号を従来の表示上のパッチ番号として扱う。
+- 対応する記述と画面表示は次のとおりとする。
+
+| `pyproject.toml`の表記 | 画面表示 |
+|---|---|
+| `1.1.0b5` | `1.1-beta.5` |
+| `1.2.0a3` | `1.2-alpha.3` |
+| `1.2.4` | `1.2.4` |
+
+- バージョン変更後はeditable installのメタデータ更新が必要になる。通常起動では`run.bat`が`pyproject.toml`との不一致を検出して自動更新する。
+- パッケージメタデータを取得できない未インストールのソースツリーでは、開発用フォールバックとして`0.0.0`を使用する。
 
 ## 3. コーディング規約
 

@@ -82,10 +82,7 @@ class AppContainer:
 
     @cached_property
     def app_version_repository(self):
-        return AppVersionRepository(
-            app_path_layout=self.app_path_layout,
-            global_core_io=self.global_core_io,
-        )
+        return AppVersionRepository()
 
     @cached_property
     def project_repository(self):
