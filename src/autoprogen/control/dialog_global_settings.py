@@ -145,7 +145,7 @@ class MaxWorkersWidget(QWidget):
 
         self._sb_value = QSpinBox(self)
         self._sb_value.setMinimum(1)
-        self._sb_value.setMaximum(32)
+        self._sb_value.setMaximum(64)
         self._sb_value.setSingleStep(1)
         self._sb_value.setFixedWidth(100)
         layout.addWidget(self._sb_value)

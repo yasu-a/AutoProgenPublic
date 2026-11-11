@@ -6,7 +6,7 @@ from pathlib import Path
 class GlobalSettings:
     """利用者が変更・保存できるアプリケーション全体の設定を保持する。"""
 
-    # コンパイル前に実行するコンパイラー環境設定スクリプトのパス。未指定なら自動検出する。
+    # コンパイル前に実行するコンパイラー環境設定スクリプトのパス。未指定ならコンパイラー未設定として扱う。
     compiler_tool_fullpath: Path | None
     # コンパイル処理が完了するまで待機する最大秒数。
     compile_timeout: float
@@ -22,6 +22,37 @@ class GlobalSettings:
     enable_line_wrap_in_stream_content: bool
     # ソースコードの表示で行を折り返すかどうか。
     enable_line_wrap_in_source_code: bool
+
+    def __post_init__(self) -> None:
+        """設定値の型と並列タスク実行数の範囲を検証する。"""
+        if self.compiler_tool_fullpath is not None and not isinstance(
+                self.compiler_tool_fullpath,
+                Path,
+        ):
+            raise TypeError("compiler_tool_fullpathにはPathまたはNoneを指定してください")
+
+        if isinstance(self.compile_timeout, bool) or not isinstance(
+                self.compile_timeout,
+                (int, float),
+        ):
+            raise TypeError("compile_timeoutにはfloatを指定してください")
+        self.compile_timeout = float(self.compile_timeout)
+
+        if isinstance(self.max_workers, bool) or not isinstance(self.max_workers, int):
+            raise TypeError("max_workersにはintを指定してください")
+        if self.max_workers < 1:
+            raise ValueError("max_workersは1以上で指定してください")
+
+        bool_field_names = (
+            "backup_before_export",
+            "show_editing_symbols_in_stream_content",
+            "show_editing_symbols_in_source_code",
+            "enable_line_wrap_in_stream_content",
+            "enable_line_wrap_in_source_code",
+        )
+        for field_name in bool_field_names:
+            if not isinstance(getattr(self, field_name), bool):
+                raise TypeError(f"{field_name}にはboolを指定してください")
 
     @classmethod
     def create_default(
