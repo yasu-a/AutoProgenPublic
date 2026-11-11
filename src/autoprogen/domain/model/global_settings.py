@@ -72,9 +72,14 @@ class GlobalSettings:
             enable_line_wrap_in_source_code=False,
         )
 
-    def to_json(self):
+    def to_json(self) -> dict:
+        """設定値をJSONへ保存できる辞書に変換する。"""
         return dict(
-            compiler_tool_fullpath=str(self.compiler_tool_fullpath),
+            compiler_tool_fullpath=(
+                str(self.compiler_tool_fullpath)
+                if self.compiler_tool_fullpath is not None
+                else None
+            ),
             compiler_timeout=self.compile_timeout,
             max_workers=self.max_workers,
             backup_before_export=self.backup_before_export,
@@ -85,9 +90,15 @@ class GlobalSettings:
         )
 
     @classmethod
-    def from_json(cls, body):
+    def from_json(cls, body: dict) -> "GlobalSettings":
+        """JSONから読み込んだ辞書を設定値へ変換する。"""
+        compiler_tool_fullpath = body["compiler_tool_fullpath"]
         return cls(
-            compiler_tool_fullpath=Path(body["compiler_tool_fullpath"]),
+            compiler_tool_fullpath=(
+                Path(compiler_tool_fullpath)
+                if compiler_tool_fullpath is not None
+                else None
+            ),
             compile_timeout=body["compiler_timeout"],
             max_workers=body["max_workers"],
             backup_before_export=body["backup_before_export"],
