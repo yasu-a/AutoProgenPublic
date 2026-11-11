@@ -8,6 +8,7 @@ import pytest
 from autoprogen.application.container import AppContainer, ProjectContainer
 from autoprogen.domain.model.debug_settings import DebugSettings
 from autoprogen.domain.model.value import ProjectID
+from autoprogen.infra.gateway.debug_settings_toml import DebugSettingsTomlGateway
 from autoprogen.infra.path_layout import AppPathConfig
 from tests.helpers.archive_names import normalize_archive_name
 from autoprogen.usecase.dto.project import ProjectInitializeResult
@@ -28,6 +29,28 @@ def test_root(tmp_path_factory) -> Path:
 @pytest.fixture
 def app_path_config(test_root: Path) -> AppPathConfig:
     return AppPathConfig.testing(test_root)
+
+
+@pytest.fixture
+def development_compiler_tool_fullpath() -> Path:
+    """ローカル開発設定からMSVC起動スクリプトの有効なパスを取得する。"""
+    debug_settings_fullpath = (
+        AppPathConfig.production().app_base_dir / ".autoprogen-dev.toml"
+    )
+    debug_settings = DebugSettingsTomlGateway(
+        toml_fullpath=debug_settings_fullpath,
+    ).read()
+    compiler_tool_fullpath = debug_settings.compiler_tool_fullpath
+    assert compiler_tool_fullpath is not None, (
+        f"{debug_settings_fullpath!s} の compiler_tool_fullpath に"
+        " VsDevCmd.bat の絶対パスを設定してください"
+    )
+
+    resolved_fullpath = compiler_tool_fullpath.expanduser().resolve()
+    assert resolved_fullpath.is_file(), (
+        f"VsDevCmd.bat が見つかりません: {resolved_fullpath}"
+    )
+    return resolved_fullpath
 
 
 def _copy_required_app_resources(

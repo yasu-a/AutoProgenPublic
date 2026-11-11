@@ -110,4 +110,4 @@ jobs:
         run: .\.venv\Scripts\python.exe -c "import autoprogen, PyQt5, openpyxl, psutil, dateutil"
 
       - name: Run tests without visible GUI tests
-        run: .\.venv\Scripts\python.exe -m pytest -m "not gui_visible"
+        run: .\.venv\Scripts\python.exe -m pytest -m "not gui_visible and not msvc_integration"

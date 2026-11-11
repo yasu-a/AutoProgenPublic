@@ -76,6 +76,14 @@ target_number = 4
 - `auto_generate_project_name`: `true` の場合、新規プロジェクト画面へ `proj-<乱数>` 形式の名前を自動入力する。省略時は `false` とする。
 - `target_number`: 新規プロジェクト画面へ初期入力する0以上99以下の設問番号。省略時は空欄にする。
 
+ローカルで `pytest` を実行すると、MSVCを使用する採点統合テストも実行される。このテストは `.autoprogen-dev.toml` の `compiler_tool_fullpath` を読み込むため、全テストを実行する開発環境では利用する `VsDevCmd.bat` の絶対パスを必ず設定する。
+
+採点統合テストの詳細な進行状況を標準出力で確認する場合は、対象ファイルだけを `-s` 付きで実行する。
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -s tests/workflows/test_grading_smoke.py -m msvc_integration
+```
+
 ## Git運用
 
 - 明示的な指示がない限り、`git add`、stage解除、commitなど、Gitのindexや履歴を変更する操作を行わない。
