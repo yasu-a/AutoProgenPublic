@@ -544,11 +544,6 @@ class MarkDialog(QDialog):
                     student_id=self._state.student_id,
                     testcase_id=self._state.testcase_id,
                 )
-                try:
-                    if "コンパイルエラー" in testcase_result_view_data.detailed_reason:
-                        source_code_text = None
-                except ValueError:
-                    pass
                 data_of_testcase_test_result_view = testcase_result_view_data
                 selected_file_id_of_testcase_test_result_view = self._state.file_id
             else:
