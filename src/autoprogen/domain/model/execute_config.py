@@ -45,9 +45,6 @@ class TestCaseExecuteConfig:
             mtime=datetime.fromisoformat(body["mtime"]),
         )
 
-    def __hash__(self) -> int:
-        return hash((self._input_file_collection, self._options))
-
     def __eq__(self, other):
         if other is None:
             return False
