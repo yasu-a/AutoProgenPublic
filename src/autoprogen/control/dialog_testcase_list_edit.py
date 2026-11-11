@@ -183,6 +183,7 @@ class TestCaseListEditWidget(QWidget):
 
     @pyqtSlot(TestCaseID)
     def dispatch_action_edit(self, testcase_id: TestCaseID):
+        """テストケースを編集し、内容が変更された場合だけ一覧へ通知する。"""
         dialog = TestCaseConfigEditDialog(
             self,
             testcase_id=testcase_id,
@@ -192,8 +193,8 @@ class TestCaseListEditWidget(QWidget):
             testcase_put_usecase=self._testcase_put_usecase,
         )
         dialog.exec_()
-        # TODO: 個別編集画面は変更なしでも閉じる際に保存するため、実際の変更有無を判定してから通知する。
-        self.testcase_modified.emit()
+        if dialog.has_changes:
+            self.testcase_modified.emit()
 
     @pyqtSlot(str)
     def __w_buttons_triggered(self, name: str):
