@@ -152,12 +152,12 @@ REM Check the application and runtime dependencies
 REM ==============================================================================
 
 :check_packages
-"%VENV_PYTHON%" -c "import autoprogen, PyQt5, openpyxl, psutil, dateutil" >nul 2>&1
+"%VENV_PYTHON%" -c "import autoprogen, PyQt5, openpyxl, psutil, dateutil, importlib.metadata, pathlib, tomllib; expected = tomllib.loads(pathlib.Path('pyproject.toml').read_text(encoding='utf-8'))['project']['version']; actual = importlib.metadata.version('autoprogen'); raise SystemExit(actual != expected)" >nul 2>&1
 if errorlevel 1 goto install_packages
 goto packages_ready
 
 REM ------------------------------------------------------------------------------
-REM Run editable install only when a required import is unavailable
+REM Run editable install when imports are unavailable or package metadata is stale
 REM ------------------------------------------------------------------------------
 
 :install_packages

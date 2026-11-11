@@ -61,11 +61,6 @@ def _copy_required_app_resources(
     app_path_config.app_base_dir.mkdir(parents=True, exist_ok=True)
     app_path_config.project_store_dir.mkdir(parents=True, exist_ok=True)
 
-    shutil.copyfile(
-        repo_root / "app_version.json",
-        app_path_config.app_base_dir / "app_version.json",
-    )
-
     vctest_src = repo_root / "vctest"
     if vctest_src.exists():
         shutil.copytree(
