@@ -1,4 +1,5 @@
 from functools import cached_property
+from autoprogen.service.student_change_event_bus import StudentChangeEventBus
 from autoprogen.domain.model.value import ProjectID
 from autoprogen.infra.gateway.manaba_report_archive import ManabaReportArchiveGateway
 from autoprogen.infra.gateway.readonly_excel_worksheet import ReadonlyExcelWorksheetGateway
@@ -39,7 +40,7 @@ from autoprogen.service.student_mark import StudentMarkGetSubService, StudentMar
     StudentMarkCheckTimestampQueryService
 from autoprogen.service.student_stage_path_result import StudentStageResultCheckTimestampQueryService, \
     StudentStagePathResultGetService, StudentStagePathResultCheckRollbackService, StudentStageResultClearService, \
-    StudentPutStageResultService, StudentGetStageResultService
+    StudentPutStageResultService, StudentGetStageResultService, StudentStagePathResultPutService
 from autoprogen.service.student_submission import StudentSubmissionExistService, StudentSubmissionGetSourceContentService, \
     StudentSubmissionListSourceRelativePathQueryService, StudentSubmissionGetFileContentQueryService, \
     StudentSubmissionGetChecksumService, StudentSubmissionExtractService
@@ -59,9 +60,7 @@ from autoprogen.usecase.student_run_test import StudentRunTestStageUseCase
 from autoprogen.usecase.student_source_code import StudentSourceCodeGetUseCase
 from autoprogen.usecase.student_stage_result import StudentStageResultClearUseCase
 from autoprogen.usecase.student_submission_folder_show import StudentSubmissionFolderShowUseCase
-from autoprogen.usecase.student_table_cell_data import StudentTableGetStudentIDCellDataUseCase, \
-    StudentTableGetStudentNameCellDataUseCase, StudentTableGetStudentStageStateCellDataUseCase, \
-    StudentTableGetStudentErrorCellDataUseCase
+from autoprogen.usecase.student_table_load import StudentTableLoadUseCase
 from autoprogen.usecase.test_compile_stage import TestCompileStageUseCase
 from autoprogen.usecase.testcase_config import TestCaseDeleteUseCase, TestCaseGetUseCase, TestCaseListIDUseCase, \
     TestCasePutUseCase
@@ -94,6 +93,11 @@ class ProjectContainer:
     @property
     def project_id(self) -> ProjectID:
         return self._project_id
+
+    @cached_property
+    def student_change_event_bus(self) -> StudentChangeEventBus:
+        """プロジェクト固有の学生変更通知を返す。"""
+        return StudentChangeEventBus()
 
     @property
     def project_path_layout(self) -> ProjectPathLayout:
@@ -254,6 +258,7 @@ class ProjectContainer:
     def student_mark_put_service(self):
         return StudentMarkPutService(
             student_mark_repo=self.student_mark_repository,
+            student_change_event_bus=self.student_change_event_bus,
         )
 
     @cached_property
@@ -329,6 +334,14 @@ class ProjectContainer:
     def student_put_stage_result_service(self):
         return StudentPutStageResultService(
             student_stage_path_result_repo=self.student_stage_path_result_repository,
+            student_stage_path_result_put_service=self.student_stage_path_result_put_service,
+        )
+
+    @cached_property
+    def student_stage_path_result_put_service(self):
+        return StudentStagePathResultPutService(
+            student_stage_path_result_repo=self.student_stage_path_result_repository,
+            student_change_event_bus=self.student_change_event_bus,
         )
 
     @cached_property
@@ -342,6 +355,7 @@ class ProjectContainer:
         return StudentStageResultClearService(
             stage_path_list_sub_service=self.stage_path_list_sub_service,
             student_stage_path_result_repo=self.student_stage_path_result_repository,
+            student_stage_path_result_put_service=self.student_stage_path_result_put_service,
         )
 
     @cached_property
@@ -479,29 +493,13 @@ class ProjectContainer:
         )
 
     @cached_property
-    def student_table_get_student_id_cell_data_usecase(self):
-        return StudentTableGetStudentIDCellDataUseCase(
-            student_submission_exist_service=self.student_submission_exist_service,
-        )
-
-    @cached_property
-    def student_table_get_student_name_cell_data_usecase(self):
-        return StudentTableGetStudentNameCellDataUseCase(
-            student_get_service=self.student_get_service,
-        )
-
-    @cached_property
-    def student_table_get_student_stage_state_cell_data_usecase(self):
-        return StudentTableGetStudentStageStateCellDataUseCase(
+    def student_table_load_usecase(self) -> StudentTableLoadUseCase:
+        """学生テーブルの全件ロード処理を返す。"""
+        return StudentTableLoadUseCase(
+            student_repo=self.student_repository,
             stage_path_list_sub_service=self.stage_path_list_sub_service,
-            student_stage_path_result_get_service=self.student_stage_path_result_get_service,
-        )
-
-    @cached_property
-    def student_table_get_student_error_cell_data_usecase(self):
-        return StudentTableGetStudentErrorCellDataUseCase(
-            stage_path_list_sub_service=self.stage_path_list_sub_service,
-            student_stage_path_result_get_service=self.student_stage_path_result_get_service,
+            student_stage_path_result_repo=self.student_stage_path_result_repository,
+            student_mark_get_sub_service=self.student_mark_get_sub_service,
         )
 
     @cached_property
@@ -626,6 +624,7 @@ class ProjectContainer:
             stage_path_list_sub_service=self.stage_path_list_sub_service,
             student_stage_path_result_get_service=self.student_stage_path_result_get_service,
             student_stage_path_result_repo=self.student_stage_path_result_repository,
+            student_stage_path_result_put_service=self.student_stage_path_result_put_service,
             student_run_build_stage_usecase=self.student_run_build_stage_usecase,
             student_run_compile_stage_usecase=self.student_run_compile_stage_usecase,
             student_run_execute_stage_usecase=self.student_run_execute_stage_usecase,

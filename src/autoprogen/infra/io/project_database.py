@@ -48,11 +48,9 @@ class ProjectDatabaseIO:
 
     @contextmanager
     def connect(self) -> Generator[sqlite3.Connection, Any, None]:
-        self._logger.debug("Connecting to database: " + str(self._database_fullpath))
         self._database_fullpath.parent.mkdir(parents=True, exist_ok=True)
 
         con = self._create_connection()
-        self._logger.debug(f"Connection to database established ({id(con)=})")
         try:
             yield con
         except Exception as e:
@@ -61,4 +59,3 @@ class ProjectDatabaseIO:
             raise
         finally:
             con.close()
-            self._logger.debug(f"Connection closed ({id(con)=})")

@@ -242,8 +242,16 @@ class EOLPattern(AbstractPattern):
 
 
 class AbstractPatternList(ABC):
+    """出力内容との照合に使用するパターン列の共通操作を提供する。"""
+
     def __init__(self, patterns: tuple[AbstractPattern, ...]):
         self._patterns: tuple[AbstractPattern, ...] = patterns
+
+    def __eq__(self, other: object) -> bool:
+        """同じ種類かつ同じ順序のパターンで構成されているかを返す。"""
+        if type(self) is not type(other):
+            return False
+        return self._patterns == other._patterns
 
     @property
     def first_pattern_index(self) -> int:

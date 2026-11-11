@@ -183,6 +183,7 @@ class TestCaseListEditWidget(QWidget):
 
     @pyqtSlot(TestCaseID)
     def dispatch_action_edit(self, testcase_id: TestCaseID):
+        """テストケースを編集し、内容が変更された場合だけ一覧へ通知する。"""
         dialog = TestCaseConfigEditDialog(
             self,
             testcase_id=testcase_id,
@@ -192,7 +193,8 @@ class TestCaseListEditWidget(QWidget):
             testcase_put_usecase=self._testcase_put_usecase,
         )
         dialog.exec_()
-        self.testcase_modified.emit()
+        if dialog.has_changes:
+            self.testcase_modified.emit()
 
     @pyqtSlot(str)
     def __w_buttons_triggered(self, name: str):
@@ -218,6 +220,8 @@ class TestCaseListEditWidget(QWidget):
 
 
 class TestCaseListEditDialog(QDialog):
+    """テストケース一覧の編集と、画面を閉じるまでの変更有無を管理する。"""
+
     def __init__(
             self,
             parent: QObject = None,
@@ -242,8 +246,19 @@ class TestCaseListEditDialog(QDialog):
         self._testcase_delete_usecase = testcase_delete_usecase
         self._testcase_get_usecase = testcase_get_usecase
         self._testcase_put_usecase = testcase_put_usecase
+        self._has_changes = False
 
         self._init_ui()
+
+    @property
+    def has_changes(self) -> bool:
+        """編集画面でテストケースへの変更が行われたかを返す。"""
+        return self._has_changes
+
+    @pyqtSlot()
+    def _mark_modified(self) -> None:
+        """編集画面からの変更通知をダイアログ終了時まで保持する。"""
+        self._has_changes = True
 
     def _init_ui(self):
         # noinspection PyUnresolvedReferences
@@ -267,3 +282,4 @@ class TestCaseListEditDialog(QDialog):
             testcase_put_usecase=self._testcase_put_usecase,
         )
         layout.addWidget(self._w_testcase_edit)
+        self._w_testcase_edit.testcase_modified.connect(self._mark_modified)

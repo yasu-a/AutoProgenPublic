@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from autoprogen.service.student_change_event_bus import StudentChangeEventBus
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.stage import AbstractStage, BuildStage, ExecuteStage, TestStage
 from autoprogen.domain.model.student_stage_path_result import StudentStagePathResult
@@ -105,45 +106,74 @@ class StudentStageResultCheckTimestampQueryService:
         return self._student_stage_path_result_repo.get_timestamp(student_id)
 
 
+class StudentStagePathResultPutService:
+    """ステージ結果の保存に成功した後、対象学生の変更を通知する。"""
+
+    def __init__(
+            self,
+            *,
+            student_stage_path_result_repo: StudentStagePathResultRepository,
+            student_change_event_bus: StudentChangeEventBus,
+    ) -> None:
+        """保存先とプロジェクト単位の通知先を受け取る。"""
+        self._student_stage_path_result_repo = student_stage_path_result_repo
+        self._student_change_event_bus = student_change_event_bus
+
+    def execute(self, stage_path_result: StudentStagePathResult) -> None:
+        """ステージ結果を保存し、成功した場合だけ変更を通知する。"""
+        self._student_stage_path_result_repo.put(stage_path_result)
+        self._student_change_event_bus.notify(stage_path_result.student_id)
+
+
 class StudentStageResultClearService:
-    # 生徒の結果データを全削除する
+    """学生のステージ結果をすべて削除する。"""
 
     def __init__(
             self,
             *,
             stage_path_list_sub_service: StagePathListSubService,
             student_stage_path_result_repo: StudentStagePathResultRepository,
+            student_stage_path_result_put_service: StudentStagePathResultPutService,
     ):
+        """ステージ一覧、読み込み先、共通保存サービスを受け取る。"""
         self._stage_path_list_sub_service = stage_path_list_sub_service
         self._student_stage_path_result_repo = student_stage_path_result_repo
+        self._student_stage_path_result_put_service = student_stage_path_result_put_service
 
     def execute(
             self,
             *,
             student_id: StudentID,
     ) -> None:
+        """対象学生の各ステージ結果を削除して保存する。"""
         stage_paths = self._stage_path_list_sub_service.execute()
         for stage_path in stage_paths:
             stage_path_result = self._student_stage_path_result_repo.get(student_id, stage_path)
             stage_path_result.delete_all_results()
-            self._student_stage_path_result_repo.put(stage_path_result)
+            self._student_stage_path_result_put_service.execute(stage_path_result)
 
 
 class StudentPutStageResultService:
+    """単一ステージの結果を既存のステージパス結果へ反映する。"""
+
     def __init__(
             self,
             *,
             student_stage_path_result_repo: StudentStagePathResultRepository,
+            student_stage_path_result_put_service: StudentStagePathResultPutService,
     ):
+        """読み込み先と共通保存サービスを受け取る。"""
         self._student_stage_path_result_repo = student_stage_path_result_repo
+        self._student_stage_path_result_put_service = student_stage_path_result_put_service
 
     def execute(self, stage_path: StagePath, result: AbstractStudentStageResult) -> None:
+        """単一ステージの結果を反映し、共通サービス経由で保存する。"""
         stage_path_result = self._student_stage_path_result_repo.get(
             student_id=result.student_id,
             stage_path=stage_path,
         )
         stage_path_result.put_result(result)
-        self._student_stage_path_result_repo.put(stage_path_result)
+        self._student_stage_path_result_put_service.execute(stage_path_result)
 
 
 class StudentGetStageResultService:

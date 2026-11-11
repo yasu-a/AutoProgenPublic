@@ -39,5 +39,6 @@ class INavigator(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def open_testcase_list_edit_dialog(self, parent: QWidget) -> None:
+    def open_testcase_list_edit_dialog(self, parent: QWidget) -> bool:
+        """編集画面を開き、テストケースに変更があったかを返す。"""
         raise NotImplementedError()

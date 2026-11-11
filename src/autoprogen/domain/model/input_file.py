@@ -58,10 +58,18 @@ class InputFile:
 
 
 class InputFileCollection:
+    """テストケースへ渡す入力ファイルを識別子ごとに保持する。"""
+
     def __init__(self, it: Iterable[InputFile] = ()):  # デフォルト空
         self._mapping: OrderedDict[FileID, InputFile] = OrderedDict()
         for item in it:
             self.put(item)
+
+    def __eq__(self, other: object) -> bool:
+        """ファイルの識別子、順序、内容がすべて等しいかを返す。"""
+        if not isinstance(other, type(self)):
+            return False
+        return self._mapping == other._mapping
 
     def put(self, item: InputFile) -> None:
         self._mapping[item.file_id] = item

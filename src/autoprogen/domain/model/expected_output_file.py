@@ -55,10 +55,18 @@ class ExpectedOutputFile:
 
 
 class ExpectedOutputFileCollection:
+    """テストで期待する出力ファイルを識別子ごとに保持する。"""
+
     def __init__(self, it: Iterable[ExpectedOutputFile] = ()):
         self._mapping: OrderedDict[FileID, ExpectedOutputFile] = OrderedDict()
         for item in it:
             self.put(item)
+
+    def __eq__(self, other: object) -> bool:
+        """ファイルの識別子、順序、期待内容がすべて等しいかを返す。"""
+        if not isinstance(other, type(self)):
+            return False
+        return self._mapping == other._mapping
 
     def put(self, item: ExpectedOutputFile) -> None:
         self._mapping[item.file_id] = item
