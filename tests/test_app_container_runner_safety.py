@@ -209,7 +209,7 @@ def test_rejects_reserved_output_name(tmp_path: Path) -> None:
     fake_exe = tmp_path / "probe.exe"
     fake_exe.write_bytes(b"fake")
     runner = AppContainerRunner.__new__(AppContainerRunner)
-    with pytest.raises(ValueError, match="reserved"):
+    with pytest.raises(ValueError, match="unsafe file name"):
         runner.run(fake_exe, result_files=["_stderr.bin"])
 
 
@@ -255,8 +255,18 @@ def test_workspace_and_profile_cleanup_on_error(tmp_path: Path, monkeypatch: pyt
     monkeypatch.setattr(runner, "_new_profile", fake_profile)
     monkeypatch.setattr(runner, "_grant_workspace", fake_grant)
     monkeypatch.setattr(runner, "_launch", fake_launch)
-    monkeypatch.setattr(runner, "_free_sid", lambda sid: events.append("free_sid"))
-    monkeypatch.setattr(runner, "_delete_profile", lambda name: events.append("delete_profile") or 0)
+    monkeypatch.setattr(
+        runner,
+        "_free_sid",
+        lambda sid: events.append("free_sid"),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        runner,
+        "_delete_profile",
+        lambda name: events.append("delete_profile") or 0,
+        raising=False,
+    )
     with pytest.raises(OSError, match="synthetic launch failure"):
         runner.run(fake_exe)
 
