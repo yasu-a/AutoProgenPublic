@@ -50,6 +50,7 @@ from autoprogen.service.student_submission import StudentSubmissionExistService,
 from autoprogen.service.testcase_config import TestCaseConfigCopyService, TestCaseConfigGetExecuteConfigMtimeService, \
     TestCaseConfigGetTestConfigMtimeService
 from autoprogen.usecase.current_project import CurrentProjectSummaryGetUseCase, CurrentProjectInitializeStaticUseCase
+from autoprogen.usecase.project_settings import ProjectSettingsGetUseCase, ProjectSettingsPutUseCase
 from autoprogen.usecase.student import StudentListIDUseCase
 from autoprogen.usecase.student_dynamic import StudentDynamicTakeDiffSnapshotUseCase
 from autoprogen.usecase.student_mark import StudentMarkGetUseCase, StudentMarkListUseCase, StudentMarkPutUseCase
@@ -378,6 +379,20 @@ class ProjectContainer:
         return ProjectSettingsRepository(
             project_path_layout=self.project_path_layout,
             current_project_core_io=self.current_project_core_io,
+        )
+
+    @cached_property
+    def project_settings_get_usecase(self) -> ProjectSettingsGetUseCase:
+        """現在のプロジェクト設定を取得するUseCaseを返す。"""
+        return ProjectSettingsGetUseCase(
+            project_settings_repo=self.project_settings_repository,
+        )
+
+    @cached_property
+    def project_settings_put_usecase(self) -> ProjectSettingsPutUseCase:
+        """現在のプロジェクト設定を保存するUseCaseを返す。"""
+        return ProjectSettingsPutUseCase(
+            project_settings_repo=self.project_settings_repository,
         )
 
     @cached_property

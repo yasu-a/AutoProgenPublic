@@ -263,8 +263,8 @@ def test_source_code_check_detects_formatted_file_io() -> None:
     assert ("file", "read") in finding_ids
 
 
-def test_source_code_check_ignores_disabled_rule() -> None:
-    """プロジェクト設定で無効にした規則だけを検査対象から除外する。"""
+def test_source_code_check_ignores_suppressed_rule() -> None:
+    """プロジェクト設定で抑制した規則だけを検査対象から除外する。"""
     catalog = _create_source_code_check_catalog(frozenset({
         SourceCodeCheckIdentifier(group_id="process", check_id="system"),
     }))
@@ -326,22 +326,20 @@ def test_every_function_and_string_rule_can_detect_its_target() -> None:
             }, (group.group_id, entry.check_id)
 
 
-def test_source_code_check_detects_suspicious_infinite_loops() -> None:
-    """空白表記が異なる代表的な無限ループ構文を検出する。"""
+def test_source_code_check_allows_removed_common_c_rules() -> None:
+    """バッファ操作と無限ループ構文を安全性チェックでは停止しない。"""
     service = _create_source_code_check_service()
 
     result = service.execute(
-        source_code_bytes=b"while ( 1 ) {}\nfor ( ; ; ) {}\n",
+        source_code_bytes=(
+            b"strcpy(destination, source);\n"
+            b"while ( 1 ) {}\n"
+            b"for ( ; ; ) {}\n"
+        ),
         catalog=_create_source_code_check_catalog(),
     )
 
-    loop_findings = [
-        finding
-        for finding in result.findings
-        if finding.group_id == "common_c"
-        and finding.check_id == "suspicious_loop"
-    ]
-    assert [finding.line_number for finding in loop_findings] == [1, 2]
+    assert result.is_safe
 
 
 def test_compile_checks_actual_source_before_running_compiler() -> None:
@@ -359,7 +357,7 @@ def test_compile_checks_actual_source_before_running_compiler() -> None:
     source_code_check_catalog_factory = SourceCodeCheckCatalogFactory()
     project_settings_repository = Mock()
     project_settings = ProjectSettings(
-        disabled_source_code_checks=frozenset({
+        suppressed_source_code_checks=frozenset({
             SourceCodeCheckIdentifier(group_id="process", check_id="system"),
         }),
         source_code_check_skips=frozenset(),

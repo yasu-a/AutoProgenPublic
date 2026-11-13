@@ -189,6 +189,9 @@ class MainWindow(QMainWindow):
         elif name == "edit-settings":
             # noinspection PyTypeChecker
             self._navigator.open_setting_dialog(self)
+        elif name == "edit-project-settings":
+            # noinspection PyTypeChecker
+            self._navigator.open_project_settings_dialog(self)
         elif name == "edit-testcases":
             # noinspection PyTypeChecker
             if self._navigator.open_testcase_list_edit_dialog(self):

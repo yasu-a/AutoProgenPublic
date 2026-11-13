@@ -40,9 +40,9 @@ def _create_repository(
 
 
 def test_project_settings_survive_json_round_trip() -> None:
-    """無効化した規則のグループIDとチェックIDをJSON往復後も維持する。"""
+    """抑制した規則のグループIDとチェックIDをJSON往復後も維持する。"""
     settings = ProjectSettings(
-        disabled_source_code_checks=frozenset({
+        suppressed_source_code_checks=frozenset({
             SourceCodeCheckIdentifier(group_id="file", check_id="write"),
             SourceCodeCheckIdentifier(group_id="process", check_id="system"),
         }),
@@ -58,6 +58,22 @@ def test_project_settings_survive_json_round_trip() -> None:
     restored = ProjectSettings.from_json(json_body)
 
     assert restored == settings
+
+
+def test_project_settings_reads_legacy_disabled_key() -> None:
+    """旧名称で保存された抑制規則を新しいフィールドへ復元する。"""
+    settings = ProjectSettings.from_json({
+        "disabled_source_code_checks": [
+            {"group_id": "process", "check_id": "system"},
+        ],
+        "source_code_check_skips": [],
+    })
+
+    assert settings.suppressed_source_code_checks == frozenset({
+        SourceCodeCheckIdentifier(group_id="process", check_id="system"),
+    })
+    assert "suppressed_source_code_checks" in settings.to_json()
+    assert "disabled_source_code_checks" not in settings.to_json()
 
 
 def test_project_settings_adds_source_code_check_skip() -> None:
@@ -101,7 +117,7 @@ def test_project_settings_repository_keeps_projects_independent(
     repository_a = _create_repository(tmp_path, "project-a")
     repository_b = _create_repository(tmp_path, "project-b")
     settings_a = ProjectSettings(
-        disabled_source_code_checks=frozenset({
+        suppressed_source_code_checks=frozenset({
             SourceCodeCheckIdentifier(group_id="process", check_id="system"),
         }),
         source_code_check_skips=frozenset({
@@ -112,7 +128,7 @@ def test_project_settings_repository_keeps_projects_independent(
         }),
     )
     settings_b = ProjectSettings(
-        disabled_source_code_checks=frozenset({
+        suppressed_source_code_checks=frozenset({
             SourceCodeCheckIdentifier(group_id="file", check_id="write"),
         }),
         source_code_check_skips=frozenset({

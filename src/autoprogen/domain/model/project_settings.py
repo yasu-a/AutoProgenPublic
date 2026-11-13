@@ -80,21 +80,21 @@ class SourceCodeCheckSkip:
 class ProjectSettings:
     """一つのプロジェクトにだけ適用する設定を保持する。"""
 
-    # プロジェクト内で無効にするソースコードチェック規則の識別子。
-    disabled_source_code_checks: frozenset[SourceCodeCheckIdentifier]
+    # プロジェクト内で抑制するソースコードチェック規則の識別子。
+    suppressed_source_code_checks: frozenset[SourceCodeCheckIdentifier]
     # 学生とソースコードの組み合わせごとに保存したチェック省略情報。
     source_code_check_skips: frozenset[SourceCodeCheckSkip]
 
     def __post_init__(self) -> None:
         """プロジェクト設定のフィールド型を検証する。"""
-        if not isinstance(self.disabled_source_code_checks, frozenset):
-            raise TypeError("disabled_source_code_checksにはfrozensetを指定してください")
+        if not isinstance(self.suppressed_source_code_checks, frozenset):
+            raise TypeError("suppressed_source_code_checksにはfrozensetを指定してください")
         if any(
                 not isinstance(identifier, SourceCodeCheckIdentifier)
-                for identifier in self.disabled_source_code_checks
+                for identifier in self.suppressed_source_code_checks
         ):
             raise TypeError(
-                "disabled_source_code_checksの要素には"
+                "suppressed_source_code_checksの要素には"
                 "SourceCodeCheckIdentifierを指定してください"
             )
         if not isinstance(self.source_code_check_skips, frozenset):
@@ -109,9 +109,22 @@ class ProjectSettings:
 
     @classmethod
     def create_default(cls) -> "ProjectSettings":
-        """すべてのソースコードチェック規則を有効にした既定設定を返す。"""
+        """授業で一般的な操作は初期オフにした設定を返す。"""
+        # 保存されたプロジェクト設定には影響しない。新規・設定ファイルなしの場合のみ使用する。
+        suppressed_by_default = {
+            "file": (
+                "open", "read", "write", "close",
+            ),
+            "common_c": (
+                "malloc", "calloc", "realloc", "free", "terminate",
+            ),
+        }
         return cls(
-            disabled_source_code_checks=frozenset(),
+            suppressed_source_code_checks=frozenset(
+                SourceCodeCheckIdentifier(group_id=group_id, check_id=check_id)
+                for group_id, check_ids in suppressed_by_default.items()
+                for check_id in check_ids
+            ),
             source_code_check_skips=frozenset(),
         )
 
@@ -127,14 +140,14 @@ class ProjectSettings:
             source_sha256=source_sha256,
         )
         return ProjectSettings(
-            disabled_source_code_checks=self.disabled_source_code_checks,
+            suppressed_source_code_checks=self.suppressed_source_code_checks,
             source_code_check_skips=self.source_code_check_skips | {skip},
         )
 
     def to_json(self) -> dict[str, list[dict[str, str]]]:
         """設定値をJSONへ保存できる辞書に変換する。"""
         identifiers = sorted(
-            self.disabled_source_code_checks,
+            self.suppressed_source_code_checks,
             key=lambda identifier: (identifier.group_id, identifier.check_id),
         )
         skips = sorted(
@@ -142,7 +155,7 @@ class ProjectSettings:
             key=lambda skip: (str(skip.student_id), skip.source_sha256),
         )
         return {
-            "disabled_source_code_checks": [
+            "suppressed_source_code_checks": [
                 identifier.to_json()
                 for identifier in identifiers
             ],
@@ -155,10 +168,15 @@ class ProjectSettings:
     @classmethod
     def from_json(cls, body: dict) -> "ProjectSettings":
         """JSONから読み込んだ辞書をプロジェクト設定へ変換する。"""
+        # 旧名称で保存されたプロジェクト設定も引き続き読み込む。
+        suppressed_json = body.get(
+            "suppressed_source_code_checks",
+            body.get("disabled_source_code_checks", []),
+        )
         return cls(
-            disabled_source_code_checks=frozenset(
+            suppressed_source_code_checks=frozenset(
                 SourceCodeCheckIdentifier.from_json(identifier)
-                for identifier in body["disabled_source_code_checks"]
+                for identifier in suppressed_json
             ),
             source_code_check_skips=frozenset(
                 SourceCodeCheckSkip.from_json(skip)

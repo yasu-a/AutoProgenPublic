@@ -23,6 +23,11 @@ class INavigator(ABC):
         raise NotImplementedError()
 
     @abstractmethod
+    def open_project_settings_dialog(self, parent: QWidget) -> None:
+        """現在のプロジェクト専用の設定画面を開く。"""
+        raise NotImplementedError()
+
+    @abstractmethod
     def open_about_dialog(self, parent: QWidget) -> None:
         raise NotImplementedError()
 

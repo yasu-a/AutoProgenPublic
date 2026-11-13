@@ -59,7 +59,7 @@ class StudentRunCompileStageUseCase:
             catalog = self._source_code_check_catalog_factory.create().filter(
                 exclude=(
                     (identifier.group_id, identifier.check_id)
-                    for identifier in project_settings.disabled_source_code_checks
+                    for identifier in project_settings.suppressed_source_code_checks
                 ),
             )
 
