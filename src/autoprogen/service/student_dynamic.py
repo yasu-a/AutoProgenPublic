@@ -1,7 +1,7 @@
-from autoprogen.domain.model.file_item import SourceFileItem
+from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.value import StudentID
-from autoprogen.infra.repository.student_dynamic import StudentSourceRepository, \
-    StudentExecutableRepository
+from autoprogen.infra.repository.student_executable import StudentExecutableRepository
+from autoprogen.infra.repository.student_source_code import StudentSourceRepository
 
 
 class StudentDynamicClearService:
@@ -24,7 +24,9 @@ class StudentDynamicClearService:
             self._student_execute_repo.delete(student_id)
 
 
-class StudentDynamicSetSourceContentService:
+class StudentDynamicSetSourceCodeService:
+    """正規化済みソースコードを学生の動的データへ保存する。"""
+
     def __init__(
             self,
             *,
@@ -32,17 +34,17 @@ class StudentDynamicSetSourceContentService:
     ):
         self._student_source_repo = student_source_repo
 
-    def execute(self, *, student_id: StudentID, source_content_text: str) -> None:
+    def execute(self, *, student_id: StudentID, source_code: SourceCode) -> None:
+        """指定した学生のソースコードを保存する。"""
         self._student_source_repo.put(
             student_id=student_id,
-            file_item=SourceFileItem(
-                content_bytes=source_content_text.encode("utf-8"),
-                encoding="utf-8",
-            )
+            source_code=source_code,
         )
 
 
-class StudentDynamicGetSourceContentService:
+class StudentDynamicGetSourceCodeService:
+    """学生の動的データから正規化済みソースコードを取得する。"""
+
     def __init__(
             self,
             *,
@@ -50,12 +52,13 @@ class StudentDynamicGetSourceContentService:
     ):
         self._student_source_repo = student_source_repo
 
-    def execute(self, student_id: StudentID) -> str:
+    def execute(self, student_id: StudentID) -> SourceCode:
+        """指定した学生のソースコードを返す。"""
         if not self._student_source_repo.exists(student_id):
             raise FileNotFoundError()
 
-        content_text = self._student_source_repo.get(
+        source_code = self._student_source_repo.get(
             student_id=student_id,
-        ).content_text
+        )
 
-        return content_text
+        return source_code

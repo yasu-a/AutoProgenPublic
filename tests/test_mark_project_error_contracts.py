@@ -1,4 +1,4 @@
-"""Phase 2 / Patch C: 採点画面とプロジェクト操作のエラー表示契約を固定する。"""
+"""採点画面とプロジェクト操作のエラー表示契約を固定する。"""
 
 from collections import OrderedDict
 from datetime import datetime

@@ -1,4 +1,3 @@
-import hashlib
 import re
 from dataclasses import dataclass
 
@@ -9,6 +8,7 @@ from autoprogen.domain.model.source_code_check import (
     SourceCodeCheckMatchType,
     SourceCodeCheckResult,
 )
+from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.util.app_logging import create_logger
 
 
@@ -32,10 +32,6 @@ class _LexicalView:
     without_comments: str
     # ソースコードから抽出した文字列リテラル。
     string_literals: tuple[_StringLiteral, ...]
-
-
-class SourceCodeCheckDecodeError(UnicodeError):
-    """コンパイル対象をUTF-8ソースコードとして解釈できない場合のエラー。"""
 
 
 class SourceCodeCheckService:
@@ -381,23 +377,16 @@ class SourceCodeCheckService:
     def execute(
             self,
             *,
-            source_code_bytes: bytes,
+            source_code: SourceCode,
             catalog: SourceCodeCheckCatalog,
     ) -> SourceCodeCheckResult:
-        """UTF-8ソースコードを検査し、SHA-256と検出結果を返す。"""
-        source_sha256 = hashlib.sha256(source_code_bytes).hexdigest()
-        try:
-            source_code_text = source_code_bytes.decode(
-                "utf-8", errors="strict")
-        except UnicodeDecodeError as error:
-            raise SourceCodeCheckDecodeError(
-                "source code must be valid UTF-8"
-            ) from error
+        """正規化済みソースコードを検査し、SHA-256と検出結果を返す。"""
+        source_code_text = source_code.text
+        source_sha256 = source_code.calculate_sha256()
 
         self._logger.info(
             "SOURCE CODE SAFETY CHECK STARTED "
-            f"(source_size={len(source_code_bytes)}, "
-            f"group_count={len(catalog.groups)}, "
+            f"(group_count={len(catalog.groups)}, "
             f"check_count={catalog.entry_count})"
         )
 

@@ -3,7 +3,12 @@ from pathlib import Path, PurePosixPath
 
 from autoprogen.domain.error import ServiceError, ManabaReportArchiveError, StudentSubmissionServiceError
 from autoprogen.domain.model.manaba_report_archive import ManabaReportArchive, ManabaSubmissionFolderPath
+from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.value import StudentID, TargetID
+from autoprogen.domain.service.source_code_factory import (
+    SourceCodeDecodeError,
+    SourceCodeFactory,
+)
 from autoprogen.infra.io.files.current_project import CurrentProjectCoreIO
 from autoprogen.infra.path_layout import ProjectPathLayout
 from autoprogen.infra.repository.current_project import CurrentProjectRepository
@@ -216,70 +221,32 @@ class StudentSubmissionListSourceRelativePathQueryService:
         return source_file_fullpath_lst
 
 
-class StudentSubmissionGetFileContentQueryService:
-    def __init__(
-            self,
-            *,
-            project_path_layout: ProjectPathLayout,
-            current_project_core_io: CurrentProjectCoreIO,
-    ):
-        self._project_path_layout = project_path_layout
-        self._current_project_core_io = current_project_core_io
-
-    def execute(
-            self,
-            *,
-            student_id: StudentID,
-            file_relative_path: Path,
-    ) -> bytes:
-        student_submission_folder_fullpath = self._project_path_layout.student_submission_dir(
-            student_id
-        )
-
-        file_fullpath = student_submission_folder_fullpath / file_relative_path
-        if not file_fullpath.exists():
-            raise FileNotFoundError()
-
-        content_src: bytes = self._current_project_core_io.read_file_content_bytes(
-            file_fullpath=file_fullpath,
-        )
-
-        try:
-            content_str_utf8 = content_src.decode("utf-8", errors="strict")
-        except UnicodeDecodeError:
-            try:
-                content_str_shift_jis = content_src.decode(
-                    "shift-jis", errors="strict")
-            except UnicodeDecodeError:
-                raise UnicodeError("source file is not UTF-8 or Shift-JIS")
-            else:
-                content_str = content_str_shift_jis
-        else:
-            content_str = content_str_utf8
-
-        content_utf8_bytes = content_str.encode("utf-8")
-
-        return content_utf8_bytes
-
-
 class StudentSubmissionGetSourceFileServiceError(ServiceError):
     def __init__(self, reason: str) -> None:
         self.reason = reason
 
 
-class StudentSubmissionGetSourceContentService:
+class StudentSubmissionGetSourceCodeService:
+    """提出物から対象Cファイルを選び、正規化済みソースコードを返す。"""
+
     def __init__(
             self,
             *,
             student_submission_list_source_relative_path_query_service: StudentSubmissionListSourceRelativePathQueryService,
-            student_submission_get_file_content_query_service: StudentSubmissionGetFileContentQueryService,
             student_repo: StudentRepository,
+            source_code_factory: SourceCodeFactory,
+            project_path_layout: ProjectPathLayout,
+            current_project_core_io: CurrentProjectCoreIO,
     ):
+        """対象ファイルの特定、読込、正規化に必要な依存を受け取る。"""
         self._student_submission_list_source_relative_path_query_service = student_submission_list_source_relative_path_query_service
-        self._student_submission_get_file_content_query_service = student_submission_get_file_content_query_service
         self._student_repo = student_repo
+        self._source_code_factory = source_code_factory
+        self._project_path_layout = project_path_layout
+        self._current_project_core_io = current_project_core_io
 
-    def execute(self, student_id: StudentID) -> str:
+    def execute(self, student_id: StudentID) -> SourceCode:
+        """学生の対象Cファイルを特定し、正規化済みモデルへ変換する。"""
         # 未提出の場合はエラー
         if not self._student_repo.get(student_id).is_submitted:
             raise StudentSubmissionGetSourceFileServiceError(
@@ -314,34 +281,19 @@ class StudentSubmissionGetSourceContentService:
 
         # ソースコードを読み込む
         source_file_relative_path = source_file_relative_path_lst[0]
+        source_file_fullpath = (
+            self._project_path_layout.student_submission_dir(student_id)
+            / source_file_relative_path
+        )
+        source_code_bytes = self._current_project_core_io.read_file_content_bytes(
+            file_fullpath=source_file_fullpath,
+        )
+
+        # 対象Cファイルが確定した後、一度だけ文字コードと改行を正規化する。
         try:
-            content_bytes = self._student_submission_get_file_content_query_service.execute(
-                student_id=student_id,
-                file_relative_path=source_file_relative_path,
-            )
-        except UnicodeError:
+            return self._source_code_factory.create(source_code_bytes)
+        except SourceCodeDecodeError:
             raise StudentSubmissionGetSourceFileServiceError(
                 reason=f"ソースファイルの文字コードが判定できません。\n"
                 f"ファイル名: {source_file_relative_path}\n"
             )
-        
-        # エンコーディングを見つける
-        # NOTE: エンコーディングはStudentSubmissionGetFileContentQueryServiceで見つけるようにした
-        #       なのでこの段階でcontent_bytesはutf-8でエンコードされている
-        content_text = content_bytes.decode("utf-8")
-        # try:
-        #     content_text = content_bytes.decode("utf-8", errors="strict")
-        # except UnicodeDecodeError:
-        #     try:
-        #         content_text = content_bytes.decode(
-        #             "shift-jis", errors="strict")
-        #     except UnicodeDecodeError:
-        #         raise StudentSubmissionGetSourceFileServiceError(
-        #             reason=f"ソースファイルの文字コードが判定できません。\n"
-        #             f"ファイル名: {source_file_relative_path}\n"
-        #         )
-
-        # 改行コードを\nに置き換える
-        content_text = re.sub(r"\n|\r\n", "\n", content_text)
-
-        return content_text

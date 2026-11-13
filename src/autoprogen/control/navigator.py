@@ -1,4 +1,3 @@
-import hashlib
 from typing import TYPE_CHECKING, Callable
 
 from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QMessageBox, QWidget
@@ -7,6 +6,7 @@ from autoprogen.application.container import AppContainer, ProjectContainer
 from autoprogen.control.dialog_progress import AbstractProgressDialog
 from autoprogen.control.interface_navigator import INavigator
 from autoprogen.domain.model.project_settings import SourceCodeCheckSkip
+from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.value import ProjectID, StudentID
 from autoprogen.util.app_logging import create_logger
 
@@ -96,9 +96,9 @@ class Navigator(INavigator):
         if safety_error is not None:
             from autoprogen.control.widget_source_safety_error import SourceSafetyErrorWidget
             try:
-                source_code_text = container.student_source_code_get_usecase.execute(student_id)
+                source_code = container.student_source_code_get_usecase.execute(student_id)
             except UnicodeError:
-                source_code_text = None
+                source_code = None
             global_settings = self._app_container.global_settings_get_usecase.execute()
             project_settings = container.project_settings_get_usecase.execute()
             already_approved = (
@@ -108,7 +108,7 @@ class Navigator(INavigator):
             )
             widget = SourceSafetyErrorWidget(
                 dialog,
-                source_code_text=source_code_text,
+                source_code=source_code,
                 safety_error=safety_error,
                 show_editing_symbols=global_settings.show_editing_symbols_in_source_code,
                 enable_line_wrap=global_settings.enable_line_wrap_in_source_code,
@@ -120,17 +120,12 @@ class Navigator(INavigator):
                     parent=widget,
                     widget=widget,
                     student_id=student_id,
-                    displayed_source_code=source_code_text,
+                    displayed_source_code=source_code,
                     expected_sha256=safety_error.source_sha256,
                 )
             )
             dialog.set_extension_widget(widget)
         dialog.exec_()
-
-    @staticmethod
-    def _hash_source_code(source_code_text: str) -> str:
-        """COMPILEステージと同じUTF-8バイト列からSHA-256を計算する。"""
-        return hashlib.sha256(source_code_text.encode("utf-8")).hexdigest()
 
     def _approve_source_code_check_skip(
         self,
@@ -138,7 +133,7 @@ class Navigator(INavigator):
         parent: QWidget,
         widget: "SourceSafetyErrorWidget",
         student_id: StudentID,
-        displayed_source_code: str | None,
+        displayed_source_code: SourceCode | None,
         expected_sha256: str | None,
     ) -> None:
         """表示したソースの同一性を確認し、安全性チェックの省略を保存する。"""
@@ -151,7 +146,7 @@ class Navigator(INavigator):
             current_source_code = container.student_source_code_get_usecase.execute(student_id)
             if (
                     current_source_code != displayed_source_code
-                    or self._hash_source_code(current_source_code) != expected_sha256
+                    or current_source_code.calculate_sha256() != expected_sha256
             ):
                 widget.set_approval_state(
                     "ソースコードが更新されました。再実行してから許可してください。",
@@ -175,7 +170,7 @@ class Navigator(INavigator):
             current_source_code = container.student_source_code_get_usecase.execute(student_id)
             if (
                     current_source_code != displayed_source_code
-                    or self._hash_source_code(current_source_code) != expected_sha256
+                    or current_source_code.calculate_sha256() != expected_sha256
             ):
                 widget.set_approval_state(
                     "ソースコードが更新されました。再実行してから許可してください。",

@@ -1,4 +1,4 @@
-"""Phase 2 / Patch C: 学生テーブルとエラー詳細表示の既存契約を固定する。"""
+"""学生テーブルとエラー詳細表示の既存契約を固定する。"""
 
 import hashlib
 from collections import OrderedDict
@@ -20,6 +20,7 @@ from autoprogen.domain.model.stage import (
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.student import Student
 from autoprogen.domain.model.student_mark import StudentMark
+from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.student_stage_path_result import StudentStagePathResult
 from autoprogen.domain.model.student_stage_result import (
     BuildSuccessStudentStageResult,
@@ -330,7 +331,7 @@ def test_source_safety_widget_already_approved_message(qt_app) -> None:
     source = "int main(void) { return 0; }\n"
     sha = hashlib.sha256(source.encode("utf-8")).hexdigest()
     widget = SourceSafetyErrorWidget(
-        source_code_text=source,
+        source_code=SourceCode(text=source),
         safety_error=SourceSafetyErrorDetails(sha, (1,)),
         show_editing_symbols=False,
         enable_line_wrap=False,

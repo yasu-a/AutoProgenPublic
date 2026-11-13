@@ -5,7 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from autoprogen.domain.model.file_item import SourceFileItem
+from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.project_settings import (
     ProjectSettings,
     SourceCodeCheckIdentifier,
@@ -17,10 +17,7 @@ from autoprogen.domain.model.source_code_check import (
 )
 from autoprogen.domain.model.value import StudentID
 from autoprogen.service.storage import StorageLoadStudentSourceService
-from autoprogen.domain.service.source_code_check import (
-    SourceCodeCheckDecodeError,
-    SourceCodeCheckService,
-)
+from autoprogen.domain.service.source_code_check import SourceCodeCheckService
 from autoprogen.domain.service.source_code_check_factory import SourceCodeCheckCatalogFactory
 from autoprogen.service.dto.storage_run_compiler import StorageCompileServiceResult
 from autoprogen.usecase.student_run_compile import StudentRunCompileStageUseCase
@@ -42,6 +39,11 @@ def _create_source_code_check_catalog(
             for identifier in exclude
         ),
     )
+
+
+def _source_code(source_code_bytes: bytes) -> SourceCode:
+    """UTF-8のテストデータから正規化済みソースコードを作る。"""
+    return SourceCode(text=source_code_bytes.decode("utf-8"))
 
 
 def test_source_code_check_catalog_has_unique_ids() -> None:
@@ -95,7 +97,7 @@ def test_source_code_check_catalog_filter_can_exclude_every_rule() -> None:
 
     filtered = catalog.filter(exclude=all_ids)
     result = SourceCodeCheckService().execute(
-        source_code_bytes=b"system(\"echo test\");",
+        source_code=_source_code(b"system(\"echo test\");"),
         catalog=filtered,
     )
 
@@ -140,7 +142,7 @@ def test_source_code_check_service_logs_start(
 
     with caplog.at_level(logging.INFO):
         service.execute(
-            source_code_bytes=b"int main(void) { return 0; }",
+            source_code=_source_code(b"int main(void) { return 0; }"),
             catalog=_create_source_code_check_catalog(),
         )
 
@@ -158,7 +160,7 @@ def test_source_code_check_detects_function_calls_and_hash() -> None:
     service = _create_source_code_check_service()
 
     result = service.execute(
-        source_code_bytes=source_code_bytes,
+        source_code=_source_code(source_code_bytes),
         catalog=_create_source_code_check_catalog(),
     )
 
@@ -183,7 +185,7 @@ def test_source_code_check_ignores_function_names_in_comments_and_strings() -> N
     service = _create_source_code_check_service()
 
     result = service.execute(
-        source_code_bytes=source_code_bytes,
+        source_code=_source_code(source_code_bytes),
         catalog=_create_source_code_check_catalog(),
     )
 
@@ -205,7 +207,7 @@ def test_source_code_check_detects_dangerous_string_literals() -> None:
     service = _create_source_code_check_service()
 
     result = service.execute(
-        source_code_bytes=source_code_bytes,
+        source_code=_source_code(source_code_bytes),
         catalog=_create_source_code_check_catalog(),
     )
     finding_ids = {
@@ -228,7 +230,7 @@ def test_source_code_check_detects_preprocessor_rules() -> None:
     service = _create_source_code_check_service()
 
     result = service.execute(
-        source_code_bytes=source_code_bytes,
+        source_code=_source_code(source_code_bytes),
         catalog=_create_source_code_check_catalog(),
     )
     finding_ids = {
@@ -252,7 +254,7 @@ def test_source_code_check_detects_formatted_file_io() -> None:
     service = _create_source_code_check_service()
 
     result = service.execute(
-        source_code_bytes=source_code_bytes,
+        source_code=_source_code(source_code_bytes),
         catalog=_create_source_code_check_catalog(),
     )
     finding_ids = {
@@ -278,7 +280,7 @@ def test_source_code_check_ignores_suppressed_rule() -> None:
     )
 
     result = service.execute(
-        source_code_bytes=source_code_bytes,
+        source_code=_source_code(source_code_bytes),
         catalog=catalog,
     )
     finding_ids = {
@@ -288,17 +290,6 @@ def test_source_code_check_ignores_suppressed_rule() -> None:
 
     assert ("process", "system") not in finding_ids
     assert ("file", "write") in finding_ids
-
-
-def test_source_code_check_rejects_non_utf8_source() -> None:
-    """UTF-8へ正規化されていないコンパイル対象を検査エラーにする。"""
-    service = _create_source_code_check_service()
-
-    with pytest.raises(SourceCodeCheckDecodeError):
-        service.execute(
-            source_code_bytes=b"\x82\xa0",
-            catalog=_create_source_code_check_catalog(),
-        )
 
 
 def test_every_function_and_string_rule_can_detect_its_target() -> None:
@@ -318,7 +309,7 @@ def test_every_function_and_string_rule_can_detect_its_target() -> None:
                 continue
 
             result = service.execute(
-                source_code_bytes=source_code_text.encode("utf-8"),
+                source_code=SourceCode(text=source_code_text),
                 catalog=catalog,
             )
             assert (group.group_id, entry.check_id) in {
@@ -332,7 +323,7 @@ def test_source_code_check_allows_removed_common_c_rules() -> None:
     service = _create_source_code_check_service()
 
     result = service.execute(
-        source_code_bytes=(
+        source_code=_source_code(
             b"strcpy(destination, source);\n"
             b"while ( 1 ) {}\n"
             b"for ( ; ; ) {}\n"
@@ -347,12 +338,13 @@ def test_compile_checks_actual_source_before_running_compiler() -> None:
     """COMPILEが配置済みソースを検査してからコンパイラを呼ぶことを確認する。"""
     call_order: list[str] = []
     source_code_bytes = b"int main(void) { return 0; }"
+    source_code = _source_code(source_code_bytes)
     storage_id = Mock()
 
     storage_create_service = Mock()
     storage_create_service.execute.return_value = storage_id
     storage_load_student_source_service = Mock()
-    storage_load_student_source_service.execute.return_value = source_code_bytes
+    storage_load_student_source_service.execute.return_value = source_code
     storage_store_student_executable_service = Mock()
     source_code_check_service = Mock()
     source_code_check_service.execute.return_value.findings = ()
@@ -409,20 +401,19 @@ def test_compile_checks_actual_source_before_running_compiler() -> None:
         exclude=(("process", "system"),),
     )
     source_code_check_service.execute.assert_called_once_with(
-        source_code_bytes=source_code_bytes,
+        source_code=source_code,
         catalog=expected_catalog,
     )
     storage_delete_service.execute.assert_called_once_with(storage_id)
     project_settings_repository.get.assert_called_once_with()
 
 
-def test_storage_load_student_source_returns_loaded_bytes() -> None:
-    """一時ストレージへ配置したソースコードと同じバイト列を返すことを確認する。"""
+def test_storage_load_student_source_returns_source_code() -> None:
+    """一時ストレージへ配置した元のソースコードモデルを返すことを確認する。"""
     source_code_bytes = b"int main(void) { return 0; }"
     student_source_repo = Mock()
-    student_source_repo.get.return_value = SourceFileItem(
-        content_bytes=source_code_bytes,
-        encoding="utf-8",
+    student_source_repo.get.return_value = SourceCode(
+        text=source_code_bytes.decode("utf-8"),
     )
     storage = Mock()
     storage.files = {}
@@ -433,12 +424,12 @@ def test_storage_load_student_source_returns_loaded_bytes() -> None:
         storage_repo=storage_repo,
     )
 
-    loaded_bytes = service.execute(
+    loaded_source_code = service.execute(
         student_id=StudentID("00A0000000A"),
         storage_id=Mock(),
         file_relative_path=Path("main.c"),
     )
 
-    assert loaded_bytes == source_code_bytes
+    assert loaded_source_code == student_source_repo.get.return_value
     assert storage.files[Path("main.c")] == source_code_bytes
     storage_repo.put.assert_called_once_with(storage)

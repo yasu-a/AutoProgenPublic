@@ -1,4 +1,4 @@
-"""Phase 2 / Patch B: ステージ結果のSQLite保存・復元契約を固定する。"""
+"""ステージ結果のSQLite保存・復元契約を固定する。"""
 
 from datetime import datetime
 from pathlib import Path

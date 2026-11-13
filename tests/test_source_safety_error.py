@@ -1,4 +1,4 @@
-"""Phase 1: エラー詳細表示とソース単位の許可を検証する。"""
+"""安全性チェックのエラー詳細表示とソース単位の許可を検証する。"""
 
 import hashlib
 from unittest.mock import Mock
@@ -11,6 +11,7 @@ from autoprogen.control.student_error_detail_parser import (
     parse_safety_check_error,
 )
 from autoprogen.domain.model.project_settings import ProjectSettings, SourceCodeCheckSkip
+from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.value import StudentID
 from autoprogen.usecase.dto.student_table_cell_data import StudentErrorCellDataTextEntry
 
@@ -18,6 +19,11 @@ from autoprogen.usecase.dto.student_table_cell_data import StudentErrorCellDataT
 STUDENT = StudentID("21D5109047B")
 SOURCE = 'int main(void) {\n    system("echo hello");\n    return 0;\n}\n'
 SOURCE_SHA = hashlib.sha256(SOURCE.encode("utf-8")).hexdigest()
+
+
+def _source_code(source: str | None = SOURCE) -> SourceCode | None:
+    """画面テスト用のソースコードモデルを作る。"""
+    return SourceCode(text=source) if source is not None else None
 
 
 def _entry(message: str) -> StudentErrorCellDataTextEntry:
@@ -72,7 +78,7 @@ def _make_widget(*, source: str | None = SOURCE, sha: str | None = SOURCE_SHA,
     from autoprogen.control.widget_source_safety_error import SourceSafetyErrorWidget
 
     widget = SourceSafetyErrorWidget(
-        source_code_text=source,
+        source_code=_source_code(source),
         safety_error=SourceSafetyErrorDetails(sha, (2, 4)),
         show_editing_symbols=False,
         enable_line_wrap=False,
@@ -142,7 +148,7 @@ def _make_navigator_for_approval(source: str = SOURCE):
     from autoprogen.control.navigator import Navigator
 
     container = Mock()
-    container.student_source_code_get_usecase.execute.return_value = source
+    container.student_source_code_get_usecase.execute.return_value = SourceCode(text=source)
     container.project_settings_get_usecase.execute.return_value = ProjectSettings.create_default()
     navigator = Navigator(app_container=Mock())
     navigator._current_project_container = container
@@ -160,7 +166,7 @@ def test_approval_records_only_student_and_hash(qt_app, monkeypatch) -> None:
         parent=widget,
         widget=widget,
         student_id=STUDENT,
-        displayed_source_code=SOURCE,
+        displayed_source_code=SourceCode(text=SOURCE),
         expected_sha256=SOURCE_SHA,
     )
     updated = container.project_settings_put_usecase.execute.call_args.args[0]
@@ -181,7 +187,7 @@ def test_approval_rechecks_source_before_saving(qt_app) -> None:
         parent=widget,
         widget=widget,
         student_id=STUDENT,
-        displayed_source_code=SOURCE,
+        displayed_source_code=SourceCode(text=SOURCE),
         expected_sha256=SOURCE_SHA,
     )
     container.project_settings_put_usecase.execute.assert_not_called()

@@ -14,6 +14,7 @@ from autoprogen.domain.error import (
 )
 from autoprogen.domain.model.output_file import OutputFile, OutputFileCollection
 from autoprogen.domain.model.project_settings import ProjectSettings
+from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.student_stage_result import (
     BuildFailureStudentStageResult,
@@ -27,8 +28,9 @@ from autoprogen.domain.model.student_stage_result import (
 from autoprogen.domain.model.value import FileID, StudentID, TestCaseID as CaseID
 from autoprogen.domain.service.source_code_check import SourceCodeCheckService
 from autoprogen.domain.service.source_code_check_factory import SourceCodeCheckCatalogFactory
+from autoprogen.domain.service.source_code_factory import SourceCodeFactory
 from autoprogen.service.student_submission import (
-    StudentSubmissionGetSourceContentService,
+    StudentSubmissionGetSourceCodeService,
     StudentSubmissionListSourceRelativePathQueryServiceError,
 )
 from autoprogen.usecase.student_run_build import StudentRunBuildStageUseCase
@@ -57,8 +59,12 @@ def _build_case(case: str):
     student_repo.get.return_value.is_submitted = case != "not_submitted"
     source_list = Mock()
     source_list.execute.return_value = [Path("prog02.c")]
-    file_content = Mock()
-    file_content.execute.return_value = b"int main(void) {return 0;}\n"
+    project_path_layout = Mock()
+    project_path_layout.student_submission_dir.return_value = Path("submission")
+    current_project_core_io = Mock()
+    current_project_core_io.read_file_content_bytes.return_value = (
+        b"int main(void) {return 0;}\n"
+    )
 
     if case == "no_source":
         source_list.execute.return_value = []
@@ -70,12 +76,14 @@ def _build_case(case: str):
             "ファイル名に数字が複数含まれています: 2, 3"
         )
     elif case == "invalid_encoding":
-        file_content.execute.side_effect = UnicodeError("decode failed")
+        current_project_core_io.read_file_content_bytes.return_value = b"\xff"
 
-    source_service = StudentSubmissionGetSourceContentService(
+    source_service = StudentSubmissionGetSourceCodeService(
         student_submission_list_source_relative_path_query_service=source_list,
-        student_submission_get_file_content_query_service=file_content,
         student_repo=student_repo,
+        source_code_factory=SourceCodeFactory(),
+        project_path_layout=project_path_layout,
+        current_project_core_io=current_project_core_io,
     )
     clear = Mock()
     set_source = Mock()
@@ -83,9 +91,9 @@ def _build_case(case: str):
     checksum.execute.return_value = 103
     put = Mock()
     usecase = StudentRunBuildStageUseCase(
-        student_submission_get_source_content_service=source_service,
+        student_submission_get_source_code_service=source_service,
         student_dynamic_clear_service=clear,
-        student_dynamic_set_source_content_service=set_source,
+        student_dynamic_set_source_code_service=set_source,
         student_submission_get_checksum_service=checksum,
         student_put_stage_result_service=put,
     )
@@ -126,7 +134,8 @@ def test_build_success_contrast() -> None:
     assert result.submission_folder_checksum == 103
     clear.execute.assert_called_once()
     set_source.execute.assert_called_once_with(
-        student_id=STUDENT, source_content_text="int main(void) {return 0;}\n"
+        student_id=STUDENT,
+        source_code=SourceCode(text="int main(void) {return 0;}\n"),
     )
     checksum.execute.assert_called_once_with(student_id=STUDENT)
 
@@ -146,7 +155,7 @@ def _compile_case(source: bytes):
     storage_create = Mock()
     storage_create.execute.return_value = "storage-1"
     storage_load = Mock()
-    storage_load.execute.return_value = source
+    storage_load.execute.return_value = SourceCode(text=source.decode("utf-8"))
     storage_store = Mock()
     compiler = Mock()
     storage_delete = Mock()
@@ -181,22 +190,6 @@ def test_compile_safety_check_failure_message_and_short_circuit() -> None:
         "1行目: [process.system] 外部コマンドの実行"
     )
     assert result.detailed_text == result.reason + "\n"
-    compiler.execute.assert_not_called()
-    store.execute.assert_not_called()
-    delete.execute.assert_called_once_with("storage-1")
-
-
-def test_compile_decode_failure_message_and_cleanup() -> None:
-    """検査不能な文字コードの文言と一時ストレージ削除を固定する。"""
-    usecase, compiler, store, delete, put = _compile_case(b"\x80\x81")
-    usecase.execute(STUDENT, STAGE_PATH)
-    result = _saved_result(put)
-    assert type(result) is CompileFailureStudentStageResult
-    assert result.reason == (
-        "ソースコードの安全性チェックに失敗しました。\n"
-        "ソースコードをUTF-8として読み込めませんでした。"
-    )
-    assert result.output == ""
     compiler.execute.assert_not_called()
     store.execute.assert_not_called()
     delete.execute.assert_called_once_with("storage-1")

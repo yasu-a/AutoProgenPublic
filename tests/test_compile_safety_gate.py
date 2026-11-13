@@ -7,6 +7,7 @@ from autoprogen.domain.model.project_settings import (
     SourceCodeCheckIdentifier,
     SourceCodeCheckSkip,
 )
+from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.student_stage_result import (
     CompileFailureStudentStageResult,
     CompileSuccessStudentStageResult,
@@ -26,7 +27,7 @@ def _create_usecase(source: bytes, settings: ProjectSettings):
     storage_create = Mock()
     storage_create.execute.return_value = "storage-test"
     storage_load = Mock()
-    storage_load.execute.return_value = source
+    storage_load.execute.return_value = SourceCode(text=source.decode("utf-8"))
     storage_store = Mock()
     compiler = Mock()
     compiler.execute.return_value = StorageCompileServiceResult(output="compiled")
@@ -142,17 +143,6 @@ def test_different_student_is_not_approved() -> None:
     compiler, _, result = _execute(source, settings)
     compiler.execute.assert_not_called()
     assert isinstance(result, CompileFailureStudentStageResult)
-
-
-def test_invalid_utf8_stops_before_compiler() -> None:
-    """UTF-8として解釈できないソースも正常にCOMPILE失敗へ変換する。"""
-    compiler, storage_store, result = _execute(
-        b"\x80\x81\x82", ProjectSettings.create_default(),
-    )
-    compiler.execute.assert_not_called()
-    storage_store.execute.assert_not_called()
-    assert isinstance(result, CompileFailureStudentStageResult)
-    assert "UTF-8" in result.reason
 
 
 def test_safe_code_is_compiled() -> None:

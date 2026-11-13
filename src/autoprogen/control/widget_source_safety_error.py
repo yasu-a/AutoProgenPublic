@@ -1,7 +1,5 @@
 """安全性チェックの検出内容とソース単位の許可操作を表示する。"""
 
-import hashlib
-
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QTextCursor, QTextFormat
 from PyQt5.QtWidgets import (
@@ -14,6 +12,7 @@ from PyQt5.QtWidgets import (
 
 from autoprogen.control.student_error_detail_parser import SourceSafetyErrorDetails
 from autoprogen.control.widget_source_code_text_edit import SourceCodeTextEdit
+from autoprogen.domain.model.source_code import SourceCode
 
 
 class SourceSafetyErrorWidget(QWidget):
@@ -25,7 +24,7 @@ class SourceSafetyErrorWidget(QWidget):
             self,
             parent: QWidget = None,
             *,
-            source_code_text: str | None,
+            source_code: SourceCode | None,
             safety_error: SourceSafetyErrorDetails,
             show_editing_symbols: bool,
             enable_line_wrap: bool,
@@ -34,7 +33,7 @@ class SourceSafetyErrorWidget(QWidget):
     ) -> None:
         """表示対象のソース、検出情報、表示状態を設定する。"""
         super().__init__(parent)
-        self._source_code_text = source_code_text
+        self._source_code = source_code
         self._safety_error = safety_error
         self._can_approve = can_approve
         self._already_approved = already_approved
@@ -48,8 +47,8 @@ class SourceSafetyErrorWidget(QWidget):
         self._source_view.setReadOnly(True)
         self._source_view.set_show_editing_symbols(show_editing_symbols)
         self._source_view.set_line_wrap(enable_line_wrap)
-        self._source_view.setPlainText(source_code_text or "")
-        self._source_view.setEnabled(source_code_text is not None)
+        self._source_view.setPlainText(source_code.text if source_code is not None else "")
+        self._source_view.setEnabled(source_code is not None)
         layout.addWidget(self._source_view, 1)
         self._highlight_lines(safety_error.line_numbers)
 
@@ -62,13 +61,6 @@ class SourceSafetyErrorWidget(QWidget):
         self._approve_button.clicked.connect(self._request_approval)
         layout.addWidget(self._approve_button, 0, Qt.AlignRight)
         self._update_approval_state()
-
-    @staticmethod
-    def _hash_source(source_code_text: str | None) -> str | None:
-        """BUILDで保存したUTF-8のソースを、COMPILEと同じバイト列へ戻す。"""
-        if source_code_text is None:
-            return None
-        return hashlib.sha256(source_code_text.encode("utf-8")).hexdigest()
 
     def _highlight_lines(self, line_numbers: tuple[int, ...]) -> None:
         """検出行全体の背景を黄色にし、最初の検出行を中央へ表示する。"""
@@ -91,8 +83,12 @@ class SourceSafetyErrorWidget(QWidget):
     def _update_approval_state(self) -> None:
         """検査対象の一致と既存の許可情報に基づきボタンを切り替える。"""
         expected_sha = self._safety_error.source_sha256
-        current_sha = self._hash_source(self._source_code_text)
-        if self._source_code_text is None:
+        current_sha = (
+            self._source_code.calculate_sha256()
+            if self._source_code is not None
+            else None
+        )
+        if self._source_code is None:
             message = "ソースコードを取得できないため、許可できません。"
         elif expected_sha is None:
             message = "検査時のSHA-256が記録されていません。再実行してから許可してください。"

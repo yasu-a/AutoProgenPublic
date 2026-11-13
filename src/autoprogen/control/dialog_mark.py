@@ -12,6 +12,7 @@ from autoprogen.control.widget_testcase_test_result_list import TestCaseTestResu
 from autoprogen.control.widget_testcase_test_result_view import TestCaseTestResultViewWidget
 from autoprogen.domain.model.student import Student
 from autoprogen.domain.model.student_mark import StudentMark
+from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.value import StudentID, TestCaseID, FileID
 from autoprogen.res.font import get_font
 from autoprogen.res.icon import get_icon
@@ -471,7 +472,7 @@ class MarkDialog(QDialog):
     def __get_student_source_code(
             self,
             student_id: StudentID,
-    ) -> str | None:
+    ) -> SourceCode | None:
         # ユースケースの使用
         return self._student_source_code_get_usecase.execute(student_id)
 
@@ -521,9 +522,9 @@ class MarkDialog(QDialog):
             )
 
         if self._state.student_id is None:
-            source_code_text = None
+            source_code = None
         else:
-            source_code_text = self.__get_student_source_code(
+            source_code = self.__get_student_source_code(
                 self._state.student_id
             )
 
@@ -556,7 +557,7 @@ class MarkDialog(QDialog):
             self._w_testcase_test_result_view.set_selected(
                 selected_file_id_of_testcase_test_result_view)
         self._w_source_code_view.set_data(
-            source_code_text=source_code_text,
+            source_code_text=source_code.text if source_code is not None else None,
         )
 
         # self._w_testcase_result_list: TestCaseTestResultListWidget(self)

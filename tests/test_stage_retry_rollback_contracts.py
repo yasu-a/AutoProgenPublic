@@ -1,4 +1,4 @@
-"""Phase 2 / Patch B: ステージの再試行・ロールバック動作を固定する。"""
+"""ステージの再試行・ロールバック動作を固定する。"""
 
 from datetime import datetime
 from unittest.mock import Mock
