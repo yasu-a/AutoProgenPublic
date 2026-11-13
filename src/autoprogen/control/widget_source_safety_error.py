@@ -3,6 +3,7 @@
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QTextCursor, QTextFormat
 from PyQt5.QtWidgets import (
+    QHBoxLayout,
     QLabel,
     QPushButton,
     QTextEdit,
@@ -52,14 +53,17 @@ class SourceSafetyErrorWidget(QWidget):
         layout.addWidget(self._source_view, 1)
         self._highlight_lines(safety_error.line_numbers)
 
-        self._status_label = QLabel(self)
-        self._status_label.setObjectName("sourceSafetyStatus")
-        self._status_label.setWordWrap(True)
-        layout.addWidget(self._status_label)
+        bottom = QHBoxLayout()
+        layout.addLayout(bottom)
+        bottom.addStretch(1)
         self._approve_button = QPushButton("このソースコードを許可", self)
         self._approve_button.setObjectName("approveSourceSafetySkip")
         self._approve_button.clicked.connect(self._request_approval)
-        layout.addWidget(self._approve_button, 0, Qt.AlignRight)
+        bottom.addWidget(self._approve_button)
+        self._status_label = QLabel(self)
+        self._status_label.setObjectName("sourceSafetyStatus")
+        bottom.addWidget(self._status_label)
+        bottom.addStretch(1)
         self._update_approval_state()
 
     def _highlight_lines(self, line_numbers: tuple[int, ...]) -> None:
