@@ -17,10 +17,10 @@ from autoprogen.domain.model.source_code_check import (
 from autoprogen.domain.model.value import StudentID
 from autoprogen.service.storage import StorageLoadStudentSourceService
 from autoprogen.service.source_code_check import (
-    SourceCodeCheckCatalogFactory,
     SourceCodeCheckDecodeError,
     SourceCodeCheckService,
 )
+from autoprogen.service.source_code_check_factory import SourceCodeCheckCatalogFactory
 from autoprogen.service.dto.storage_run_compiler import StorageCompileServiceResult
 from autoprogen.usecase.student_run_compile import StudentRunCompileStageUseCase
 

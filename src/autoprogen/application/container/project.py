@@ -33,7 +33,8 @@ from autoprogen.service.storage import StorageCreateService, StorageLoadStudentS
     StorageLoadTestSourceService
 from autoprogen.service.storage_run_compiler import StorageRunCompilerService
 from autoprogen.service.storage_run_executable import StorageRunExecutableService
-from autoprogen.service.source_code_check import SourceCodeCheckCatalogFactory, SourceCodeCheckService
+from autoprogen.service.source_code_check import SourceCodeCheckService
+from autoprogen.service.source_code_check_factory import SourceCodeCheckCatalogFactory
 from autoprogen.service.student_master_create import StudentMasterCreateService
 from autoprogen.service.student import StudentListSubService, StudentGetService
 from autoprogen.service.student_dynamic import StudentDynamicGetSourceContentService, StudentDynamicClearService, \
