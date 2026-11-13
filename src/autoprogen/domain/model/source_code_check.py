@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 
@@ -73,11 +74,31 @@ class SourceCodeCheckCatalog:
 
     def __post_init__(self) -> None:
         """カタログ全体でグループIDが一意であることを保証する。"""
-        if not self.groups:
-            raise ValueError("groups must not be empty")
         group_ids = [group.group_id for group in self.groups]
         if len(group_ids) != len(set(group_ids)):
             raise ValueError("group_id must be unique")
+
+    def filter(
+            self,
+            *,
+            exclude: Iterable[tuple[str, str]],
+    ) -> "SourceCodeCheckCatalog":
+        """指定されたグループIDとチェックIDの組を除いた新しいカタログを返す。"""
+        excluded_ids = set(exclude)
+        groups: list[SourceCodeCheckGroup] = []
+        for group in self.groups:
+            entries = tuple(
+                entry
+                for entry in group.entries
+                if (group.group_id, entry.check_id) not in excluded_ids
+            )
+            if entries:
+                groups.append(SourceCodeCheckGroup(
+                    group_id=group.group_id,
+                    name=group.name,
+                    entries=entries,
+                ))
+        return SourceCodeCheckCatalog(groups=tuple(groups))
 
     @property
     def entry_count(self) -> int:

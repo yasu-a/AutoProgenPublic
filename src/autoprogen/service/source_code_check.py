@@ -544,14 +544,6 @@ class SourceCodeCheckService:
     _logger = create_logger()
     _IDENTIFIER_CHARACTER_PATTERN = r"A-Za-z0-9_"
 
-    def __init__(
-            self,
-            *,
-            catalog_factory: SourceCodeCheckCatalogFactory,
-    ) -> None:
-        """チェック規則カタログを構成するファクトリを受け取る。"""
-        self._catalog_factory = catalog_factory
-
     @staticmethod
     def _mask_character(characters: list[str], index: int) -> None:
         """行位置を維持したまま、指定位置の字句を空白化する。"""
@@ -877,9 +869,13 @@ class SourceCodeCheckService:
             )
         raise ValueError(f"Unsupported match type: {entry.match_type}")
 
-    def execute(self, *, source_code_bytes: bytes) -> SourceCodeCheckResult:
+    def execute(
+            self,
+            *,
+            source_code_bytes: bytes,
+            catalog: SourceCodeCheckCatalog,
+    ) -> SourceCodeCheckResult:
         """UTF-8ソースコードを検査し、SHA-256と検出結果を返す。"""
-        catalog = self._catalog_factory.create()
         source_sha256 = hashlib.sha256(source_code_bytes).hexdigest()
         try:
             source_code_text = source_code_bytes.decode("utf-8", errors="strict")

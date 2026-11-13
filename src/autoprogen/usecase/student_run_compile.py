@@ -5,11 +5,15 @@ from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.student_stage_result import CompileFailureStudentStageResult, \
     CompileSuccessStudentStageResult
 from autoprogen.domain.model.value import StudentID
+from autoprogen.infra.repository.project_settings import ProjectSettingsRepository
 from autoprogen.service.storage import StorageCreateService, \
     StorageDeleteService, StorageLoadStudentSourceService, \
     StorageStoreStudentExecutableService
 from autoprogen.service.storage_run_compiler import StorageRunCompilerService
-from autoprogen.service.source_code_check import SourceCodeCheckService
+from autoprogen.service.source_code_check import (
+    SourceCodeCheckCatalogFactory,
+    SourceCodeCheckService,
+)
 from autoprogen.service.student_stage_path_result import StudentPutStageResultService
 
 
@@ -20,7 +24,9 @@ class StudentRunCompileStageUseCase:
             storage_create_service: StorageCreateService,
             storage_load_student_source_service: StorageLoadStudentSourceService,
             storage_store_student_executable_service: StorageStoreStudentExecutableService,
+            source_code_check_catalog_factory: SourceCodeCheckCatalogFactory,
             source_code_check_service: SourceCodeCheckService,
+            project_settings_repository: ProjectSettingsRepository,
             storage_run_compiler_service: StorageRunCompilerService,
             storage_delete_service: StorageDeleteService,
             student_put_stage_result_service: StudentPutStageResultService,
@@ -28,7 +34,9 @@ class StudentRunCompileStageUseCase:
         self._storage_create_service = storage_create_service
         self._storage_load_student_source_service = storage_load_student_source_service
         self._storage_store_student_executable_service = storage_store_student_executable_service
+        self._source_code_check_catalog_factory = source_code_check_catalog_factory
         self._source_code_check_service = source_code_check_service
+        self._project_settings_repository = project_settings_repository
         self._storage_run_compiler_service = storage_run_compiler_service
         self._storage_delete_service = storage_delete_service
         self._student_put_stage_result_service = student_put_stage_result_service
@@ -48,9 +56,19 @@ class StudentRunCompileStageUseCase:
         )
 
         try:
+            # プロジェクトの設定で有効化されているcode check catalogを作る
+            project_settings = self._project_settings_repository.get()
+            catalog = self._source_code_check_catalog_factory.create().filter(
+                exclude=(
+                    (identifier.group_id, identifier.check_id)
+                    for identifier in project_settings.disabled_source_code_checks
+                ),
+            )
+
             # ストレージへ配置したものと同じバイト列を静的安全性チェックへ渡す。
             self._source_code_check_service.execute(
                 source_code_bytes=source_code_bytes,
+                catalog=catalog,
             )
 
             # コンパイルの実行と結果の生成

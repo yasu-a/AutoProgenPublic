@@ -387,9 +387,7 @@ class ProjectContainer:
     @cached_property
     def source_code_check_service(self):
         """コンパイル前のソースコードチェックサービスを返す。"""
-        return SourceCodeCheckService(
-            catalog_factory=self.source_code_check_catalog_factory,
-        )
+        return SourceCodeCheckService()
 
     @cached_property
     def storage_load_test_source_service(self):
@@ -600,7 +598,9 @@ class ProjectContainer:
             storage_create_service=self.storage_create_service,
             storage_load_student_source_service=self.storage_load_student_source_service,
             storage_store_student_executable_service=self.storage_store_student_executable_service,
+            source_code_check_catalog_factory=self.source_code_check_catalog_factory,
             source_code_check_service=self.source_code_check_service,
+            project_settings_repository=self.project_settings_repository,
             storage_run_compiler_service=self.storage_run_compiler_service,
             storage_delete_service=self.storage_delete_service,
             student_put_stage_result_service=self.student_put_stage_result_service,
