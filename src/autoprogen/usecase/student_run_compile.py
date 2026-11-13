@@ -6,8 +6,10 @@ from autoprogen.domain.model.student_stage_result import CompileFailureStudentSt
     CompileSuccessStudentStageResult
 from autoprogen.domain.model.value import StudentID
 from autoprogen.service.storage import StorageCreateService, \
-    StorageDeleteService, StorageLoadStudentSourceService, StorageStoreStudentExecutableService
+    StorageDeleteService, StorageLoadStudentSourceService, \
+    StorageStoreStudentExecutableService
 from autoprogen.service.storage_run_compiler import StorageRunCompilerService
+from autoprogen.service.source_code_check import SourceCodeCheckService
 from autoprogen.service.student_stage_path_result import StudentPutStageResultService
 
 
@@ -18,6 +20,7 @@ class StudentRunCompileStageUseCase:
             storage_create_service: StorageCreateService,
             storage_load_student_source_service: StorageLoadStudentSourceService,
             storage_store_student_executable_service: StorageStoreStudentExecutableService,
+            source_code_check_service: SourceCodeCheckService,
             storage_run_compiler_service: StorageRunCompilerService,
             storage_delete_service: StorageDeleteService,
             student_put_stage_result_service: StudentPutStageResultService,
@@ -25,6 +28,7 @@ class StudentRunCompileStageUseCase:
         self._storage_create_service = storage_create_service
         self._storage_load_student_source_service = storage_load_student_source_service
         self._storage_store_student_executable_service = storage_store_student_executable_service
+        self._source_code_check_service = source_code_check_service
         self._storage_run_compiler_service = storage_run_compiler_service
         self._storage_delete_service = storage_delete_service
         self._student_put_stage_result_service = student_put_stage_result_service
@@ -37,14 +41,19 @@ class StudentRunCompileStageUseCase:
         storage_id = self._storage_create_service.execute()
 
         # ストレージ領域に生徒のソースコードをロード
-        self._storage_load_student_source_service.execute(
+        source_code_bytes = self._storage_load_student_source_service.execute(
             student_id=student_id,
             storage_id=storage_id,
             file_relative_path=self.__SOURCE_FILE_RELATIVE_PATH,
         )
 
-        # コンパイルの実行と結果の生成
         try:
+            # ストレージへ配置したものと同じバイト列を静的安全性チェックへ渡す。
+            self._source_code_check_service.execute(
+                source_code_bytes=source_code_bytes,
+            )
+
+            # コンパイルの実行と結果の生成
             service_result = self._storage_run_compiler_service.execute(
                 storage_id=storage_id,
                 source_file_relative_path=self.__SOURCE_FILE_RELATIVE_PATH,

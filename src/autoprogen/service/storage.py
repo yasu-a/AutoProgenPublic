@@ -85,7 +85,8 @@ class StorageLoadStudentSourceService:
             student_id: StudentID,
             storage_id: StorageID,
             file_relative_path: Path,
-    ) -> None:
+    ) -> bytes:
+        """生徒のソースコードを配置し、配置したバイト列を返す。"""
         # 生徒のソースコードを読み込む
         content_bytes = self._student_source_repo.get(student_id).content_bytes
 
@@ -93,6 +94,7 @@ class StorageLoadStudentSourceService:
         storage = self._storage_repo.get(storage_id)
         storage.files[file_relative_path] = content_bytes
         self._storage_repo.put(storage)
+        return content_bytes
 
 
 class StorageLoadStudentExecutableService:

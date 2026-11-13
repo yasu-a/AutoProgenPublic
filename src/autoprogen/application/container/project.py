@@ -32,6 +32,7 @@ from autoprogen.service.storage import StorageCreateService, StorageLoadStudentS
     StorageLoadTestSourceService
 from autoprogen.service.storage_run_compiler import StorageRunCompilerService
 from autoprogen.service.storage_run_executable import StorageRunExecutableService
+from autoprogen.service.source_code_check import SourceCodeCheckCatalogFactory, SourceCodeCheckService
 from autoprogen.service.student_master_create import StudentMasterCreateService
 from autoprogen.service.student import StudentListSubService, StudentGetService
 from autoprogen.service.student_dynamic import StudentDynamicGetSourceContentService, StudentDynamicClearService, \
@@ -370,6 +371,18 @@ class ProjectContainer:
         )
 
     @cached_property
+    def source_code_check_catalog_factory(self):
+        """固定のソースコードチェック規則を構成するファクトリを返す。"""
+        return SourceCodeCheckCatalogFactory()
+
+    @cached_property
+    def source_code_check_service(self):
+        """コンパイル前のソースコードチェックサービスを返す。"""
+        return SourceCodeCheckService(
+            catalog_factory=self.source_code_check_catalog_factory,
+        )
+
+    @cached_property
     def storage_load_test_source_service(self):
         return StorageLoadTestSourceService(
             test_source_repo=self._test_source_repository,
@@ -578,6 +591,7 @@ class ProjectContainer:
             storage_create_service=self.storage_create_service,
             storage_load_student_source_service=self.storage_load_student_source_service,
             storage_store_student_executable_service=self.storage_store_student_executable_service,
+            source_code_check_service=self.source_code_check_service,
             storage_run_compiler_service=self.storage_run_compiler_service,
             storage_delete_service=self.storage_delete_service,
             student_put_stage_result_service=self.student_put_stage_result_service,
