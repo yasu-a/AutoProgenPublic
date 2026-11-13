@@ -73,6 +73,11 @@ class ProjectPathLayout:
         return self.root / "config.json"
 
     @property
+    def settings_json(self) -> Path:
+        """プロジェクト固有の設定ファイルパスを返す。"""
+        return self.root / "settings.json"
+
+    @property
     def database_path(self) -> Path:
         return self.dynamic_dir / "database.sqlite3"
 

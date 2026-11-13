@@ -13,6 +13,7 @@ from autoprogen.infra.path_layout import ProjectPathLayout
 from autoprogen.infra.repository.current_project import CurrentProjectRepository
 from autoprogen.infra.repository.global_settings import GlobalSettingsRepository
 from autoprogen.infra.repository.project import ProjectRepository
+from autoprogen.infra.repository.project_settings import ProjectSettingsRepository
 from autoprogen.infra.repository.storage import StorageRepository
 from autoprogen.infra.repository.student import StudentRepository
 from autoprogen.infra.repository.student_dynamic import StudentExecutableRepository, StudentSourceRepository
@@ -368,6 +369,14 @@ class ProjectContainer:
         return StorageLoadStudentSourceService(
             student_source_repo=self.student_source_repository,
             storage_repo=self.storage_repository,
+        )
+
+    @cached_property
+    def project_settings_repository(self) -> ProjectSettingsRepository:
+        """現在のプロジェクトに属する設定Repositoryを返す。"""
+        return ProjectSettingsRepository(
+            project_path_layout=self.project_path_layout,
+            current_project_core_io=self.current_project_core_io,
         )
 
     @cached_property
