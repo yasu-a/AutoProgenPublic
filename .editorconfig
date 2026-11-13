@@ -1,0 +1,13 @@
+root = true
+
+[*.{py,c,h,hpp,md,txt,json,toml,yml,yaml,sh,ini,cfg}]
+end_of_line = lf
+
+[.gitattributes]
+end_of_line = lf
+
+[.gitignore]
+end_of_line = lf
+
+[*.{ps1,bat,cmd}]
+end_of_line = crlf
