@@ -73,6 +73,10 @@ def test_detected_rule_stops_before_compiler() -> None:
     assert "安全性チェック" in result.reason
     assert "process.system" in result.reason
     assert "1行目" in result.reason
+    assert "検査対象SHA-256: " in result.reason
+    assert hashlib.sha256(
+        b'int main(void) { system("echo test"); return 0; }\n'
+    ).hexdigest() in result.reason
 
 
 def test_suppressed_rule_does_not_stop_compile() -> None:

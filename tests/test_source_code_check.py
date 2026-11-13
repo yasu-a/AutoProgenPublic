@@ -413,6 +413,7 @@ def test_compile_checks_actual_source_before_running_compiler() -> None:
         catalog=expected_catalog,
     )
     storage_delete_service.execute.assert_called_once_with(storage_id)
+    project_settings_repository.get.assert_called_once_with()
 
 
 def test_storage_load_student_source_returns_loaded_bytes() -> None:

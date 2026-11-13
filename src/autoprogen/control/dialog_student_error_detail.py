@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import (
     QDialogButtonBox,
     QPlainTextEdit,
     QVBoxLayout,
+    QWidget,
 )
 
 from autoprogen.domain.model.value import StudentID
@@ -31,12 +32,35 @@ class StudentErrorDetailDialog(QDialog):
         layout = QVBoxLayout(self)
         self._message_edit = QPlainTextEdit(self)
         self._message_edit.setReadOnly(True)
-        layout.addWidget(self._message_edit)
+        layout.addWidget(self._message_edit, 1)
+
+        # エラーの種類に応じた専用ウィジェットを共通メッセージと閉じるボタンの間に置く。
+        self._extension_container = QWidget(self)
+        self._extension_container.setObjectName("studentErrorExtensionContainer")
+        self._extension_layout = QVBoxLayout(self._extension_container)
+        self._extension_layout.setContentsMargins(0, 0, 0, 0)
+        self._extension_widget: QWidget | None = None
+        self._extension_container.hide()
+        layout.addWidget(self._extension_container, 2)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Close, parent=self)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
         self.set_data(error_entries)
+
+    def set_extension_widget(self, widget: QWidget | None) -> None:
+        """エラー固有のウィジェットを差し替える。Noneなら共通表示だけに戻す。"""
+        if self._extension_widget is not None:
+            self._extension_layout.removeWidget(self._extension_widget)
+            self._extension_widget.setParent(None)
+            self._extension_widget.deleteLater()
+        self._extension_widget = widget
+        if widget is None:
+            self._extension_container.hide()
+            return
+        self._extension_layout.addWidget(widget)
+        self._extension_container.show()
+        self.resize(max(self.width(), 960), max(self.height(), 710))
 
     def set_data(self, error_entries: Sequence[StudentErrorCellDataTextEntry]) -> None:
         """既存の詳細メッセージを、そのまま複数件まとめて表示する。"""

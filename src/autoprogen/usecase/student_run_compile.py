@@ -2,6 +2,7 @@ import hashlib
 from pathlib import Path
 
 from autoprogen.domain.error import StorageRunCompilerServiceError
+from autoprogen.domain.model.project_settings import ProjectSettings
 from autoprogen.domain.model.source_code_check import SourceCodeCheckCatalog, SourceCodeCheckResult
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.student_stage_result import CompileFailureStudentStageResult, CompileStageResultType, \
@@ -60,9 +61,12 @@ class StudentRunCompileStageUseCase:
             file_relative_path=self.__SOURCE_FILE_RELATIVE_PATH,
         )
 
-    def _is_skip_security_check_approved(self, student_id: StudentID, source_code_bytes: bytes) -> bool:
-        """学生とソースの組み合わせが検査省略を許可されているか返す。"""
-        project_settings = self._project_settings_repository.get()
+    def _is_skip_security_check_approved(
+        self, student_id: StudentID,
+        source_code_bytes: bytes,
+        project_settings: ProjectSettings,
+    ) -> bool:
+        """一度取得した設定を用いて学生とソースの検査省略許可を調べる。"""
         source_sha256 = hashlib.sha256(source_code_bytes).hexdigest()
         is_approved = any(
             skip.student_id == student_id and skip.source_sha256 == source_sha256
@@ -70,9 +74,10 @@ class StudentRunCompileStageUseCase:
         )
         return is_approved
 
-    def _get_check_catalog_suppress_preference_applied(self) -> SourceCodeCheckCatalog:
-        """プロジェクトの抑制設定を反映した検査カタログを返す。"""
-        project_settings = self._project_settings_repository.get()
+    def _get_check_catalog_suppress_preference_applied(
+        self, project_settings: ProjectSettings,
+    ) -> SourceCodeCheckCatalog:
+        """一度取得した設定から、抑制規則を取り除いたカタログを返す。"""
         catalog = self._source_code_check_catalog_factory.create().filter(
             exclude=(
                 (identifier.group_id, identifier.check_id)
@@ -81,7 +86,11 @@ class StudentRunCompileStageUseCase:
         )
         return catalog
 
-    def _run_security_check(self, source_code_bytes: bytes, catalog: SourceCodeCheckCatalog) -> SourceCodeCheckResult:
+    def _run_security_check(
+        self,
+        source_code_bytes: bytes,
+        catalog: SourceCodeCheckCatalog,
+    ) -> SourceCodeCheckResult:
         """実際にコンパイルするソースコードを検査する。"""
         return self._source_code_check_service.execute(
             source_code_bytes=source_code_bytes,
@@ -115,6 +124,7 @@ class StudentRunCompileStageUseCase:
             reason=(
                 "ソースコードの安全性チェックで問題が検出されたため、"
                 "コンパイルを停止しました。\n"
+                f"検査対象SHA-256: {check_result.source_sha256}\n"
                 + "\n".join(detail_lines)
             ),
             output="",
@@ -126,10 +136,13 @@ class StudentRunCompileStageUseCase:
         source_code_bytes: bytes,
     ) -> CompileFailureStudentStageResult | None:
         """許可済みソースを除外して検査し、問題があれば失敗結果を返す。"""
-        if self._is_skip_security_check_approved(student_id, source_code_bytes):
+        # 一度取得した設定を許可判定と規則抑制の両方に使用する。
+        project_settings = self._project_settings_repository.get()
+        if self._is_skip_security_check_approved(student_id, source_code_bytes, project_settings):
             return None
 
-        catalog = self._get_check_catalog_suppress_preference_applied()
+        catalog = self._get_check_catalog_suppress_preference_applied(
+            project_settings)
         check_result = self._run_security_check(source_code_bytes, catalog)
         if check_result.is_safe:
             return None
@@ -229,7 +242,8 @@ class StudentRunCompileStageUseCase:
             service_result = self._run_compile(storage_id)
         except SourceCodeCheckDecodeError:
             # 検査できない文字コードをCOMPILE失敗として記録する。
-            result = self._create_security_check_decode_failure_result(student_id)
+            result = self._create_security_check_decode_failure_result(
+                student_id)
             self._save_result(stage_path, result)
         except StorageRunCompilerServiceError as e:
             # コンパイラのエラーをCOMPILE失敗として記録する。
@@ -240,7 +254,8 @@ class StudentRunCompileStageUseCase:
             self._store_student_executable(student_id, storage_id)
 
             # コンパイル成功結果を学生データへ記録する。
-            result = self._create_compile_success_result(student_id, service_result)
+            result = self._create_compile_success_result(
+                student_id, service_result)
             self._save_result(stage_path, result)
         finally:
             # 成否にかかわらず一時ストレージを削除する。

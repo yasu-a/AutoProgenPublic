@@ -1,15 +1,23 @@
-from typing import Callable
+import hashlib
+from typing import TYPE_CHECKING, Callable
 
 from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QMessageBox, QWidget
 
 from autoprogen.application.container import AppContainer, ProjectContainer
 from autoprogen.control.dialog_progress import AbstractProgressDialog
 from autoprogen.control.interface_navigator import INavigator
+from autoprogen.domain.model.project_settings import SourceCodeCheckSkip
 from autoprogen.domain.model.value import ProjectID, StudentID
+from autoprogen.util.app_logging import create_logger
+
+if TYPE_CHECKING:
+    from autoprogen.control.widget_source_safety_error import SourceSafetyErrorWidget
 
 
 class Navigator(INavigator):
     """アプリ起動とトップレベル画面間の遷移を管理する。"""
+
+    _logger = create_logger()
 
     def __init__(self, *, app_container: AppContainer):
         self._app_container = app_container
@@ -73,7 +81,9 @@ class Navigator(INavigator):
         """学生のエラー詳細を取得し、編集不可のダイアログに表示する。"""
         from autoprogen.control.dialog_student_error_detail import StudentErrorDetailDialog
         assert self._current_project_container is not None
-        row = self._current_project_container.student_table_load_usecase.execute_row(student_id)
+        from autoprogen.control.student_error_detail_parser import parse_safety_check_error
+        container = self._current_project_container
+        row = container.student_table_load_usecase.execute_row(student_id)
         if not row.error_cell.text_entries:
             return
         dialog = StudentErrorDetailDialog(
@@ -81,7 +91,120 @@ class Navigator(INavigator):
             student_id=student_id,
             error_entries=row.error_cell.text_entries,
         )
+        # 現在はDBのエラーコードを使わず、従来の失敗理由から専用表示を判定する。
+        safety_error = parse_safety_check_error(row.error_cell.text_entries)
+        if safety_error is not None:
+            from autoprogen.control.widget_source_safety_error import SourceSafetyErrorWidget
+            try:
+                source_code_text = container.student_source_code_get_usecase.execute(student_id)
+            except UnicodeError:
+                source_code_text = None
+            global_settings = self._app_container.global_settings_get_usecase.execute()
+            project_settings = container.project_settings_get_usecase.execute()
+            already_approved = (
+                safety_error.source_sha256 is not None
+                and SourceCodeCheckSkip(student_id, safety_error.source_sha256)
+                in project_settings.source_code_check_skips
+            )
+            widget = SourceSafetyErrorWidget(
+                dialog,
+                source_code_text=source_code_text,
+                safety_error=safety_error,
+                show_editing_symbols=global_settings.show_editing_symbols_in_source_code,
+                enable_line_wrap=global_settings.enable_line_wrap_in_source_code,
+                can_approve=container.task_manager.is_empty(),
+                already_approved=already_approved,
+            )
+            widget.approval_requested.connect(
+                lambda: self._approve_source_code_check_skip(
+                    parent=widget,
+                    widget=widget,
+                    student_id=student_id,
+                    displayed_source_code=source_code_text,
+                    expected_sha256=safety_error.source_sha256,
+                )
+            )
+            dialog.set_extension_widget(widget)
         dialog.exec_()
+
+    @staticmethod
+    def _hash_source_code(source_code_text: str) -> str:
+        """COMPILEステージと同じUTF-8バイト列からSHA-256を計算する。"""
+        return hashlib.sha256(source_code_text.encode("utf-8")).hexdigest()
+
+    def _approve_source_code_check_skip(
+        self,
+        *,
+        parent: QWidget,
+        widget: "SourceSafetyErrorWidget",
+        student_id: StudentID,
+        displayed_source_code: str | None,
+        expected_sha256: str | None,
+    ) -> None:
+        """表示したソースの同一性を確認し、安全性チェックの省略を保存する。"""
+        assert self._current_project_container is not None
+        if displayed_source_code is None or expected_sha256 is None:
+            return
+        container = self._current_project_container
+        try:
+            # 確認前に保存済みソースが表示内容と一致しているか検証する。
+            current_source_code = container.student_source_code_get_usecase.execute(student_id)
+            if (
+                    current_source_code != displayed_source_code
+                    or self._hash_source_code(current_source_code) != expected_sha256
+            ):
+                widget.set_approval_state(
+                    "ソースコードが更新されました。再実行してから許可してください。",
+                    enabled=False,
+                )
+                return
+
+            # 採点者へ省略対象が現在の学生とソースだけであることを確認する。
+            decision = QMessageBox.question(
+                parent,
+                "安全性チェックの許可",
+                "この学生の現在のソースコードだけを許可しますか？\n"
+                "次回実行時に安全性チェックを省略します。",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if decision != QMessageBox.Yes:
+                return
+
+            # 確認中にソースが変更されていないか保存直前に再検証する。
+            current_source_code = container.student_source_code_get_usecase.execute(student_id)
+            if (
+                    current_source_code != displayed_source_code
+                    or self._hash_source_code(current_source_code) != expected_sha256
+            ):
+                widget.set_approval_state(
+                    "ソースコードが更新されました。再実行してから許可してください。",
+                    enabled=False,
+                )
+                return
+
+            # 現在のプロジェクト設定へ学生とソースの組み合わせを追加する。
+            settings = container.project_settings_get_usecase.execute()
+            updated = settings.with_source_code_check_skip(
+                student_id=student_id,
+                source_sha256=expected_sha256,
+            )
+            if updated != settings:
+                container.project_settings_put_usecase.execute(updated)
+        except Exception as error:
+            self._logger.exception("ソースコードの許可を保存できませんでした")
+            QMessageBox.critical(
+                parent,
+                "安全性チェックの許可",
+                f"設定を保存できませんでした。\n{error}",
+            )
+            return
+
+        # 保存完了を表示し、同じ許可操作を繰り返せないようにする。
+        widget.set_approval_state(
+            "許可を保存しました。次に「実行」を押すとCOMPILEを再試行します。",
+            enabled=False,
+        )
 
     def open_about_dialog(self, parent: QWidget) -> None:
         from autoprogen.control.dialog_about import AboutDialog
