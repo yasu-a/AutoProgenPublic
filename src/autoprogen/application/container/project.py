@@ -35,6 +35,7 @@ from autoprogen.service.storage_run_compiler import StorageRunCompilerService
 from autoprogen.service.storage_run_executable import StorageRunExecutableService
 from autoprogen.service.source_code_check import SourceCodeCheckService
 from autoprogen.service.source_code_check_factory import SourceCodeCheckCatalogFactory
+from autoprogen.service.student_security_settings_hash import StudentSecuritySettingsHashService
 from autoprogen.service.student_master_create import StudentMasterCreateService
 from autoprogen.service.student import StudentListSubService, StudentGetService
 from autoprogen.service.student_dynamic import StudentDynamicGetSourceContentService, StudentDynamicClearService, \
@@ -404,6 +405,14 @@ class ProjectContainer:
     def source_code_check_service(self):
         """コンパイル前のソースコードチェックサービスを返す。"""
         return SourceCodeCheckService()
+
+    @cached_property
+    def student_security_settings_hash_service(self) -> StudentSecuritySettingsHashService:
+        """学生ごとの安全性チェック設定ハッシュを計算するServiceを返す。"""
+        return StudentSecuritySettingsHashService(
+            project_settings_repository=self.project_settings_repository,
+            source_code_check_catalog_factory=self.source_code_check_catalog_factory,
+        )
 
     @cached_property
     def storage_load_test_source_service(self):
