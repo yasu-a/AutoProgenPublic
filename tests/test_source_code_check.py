@@ -354,6 +354,7 @@ def test_compile_checks_actual_source_before_running_compiler() -> None:
     storage_load_student_source_service.execute.return_value = source_code_bytes
     storage_store_student_executable_service = Mock()
     source_code_check_service = Mock()
+    source_code_check_service.execute.return_value.findings = ()
     source_code_check_catalog_factory = SourceCodeCheckCatalogFactory()
     project_settings_repository = Mock()
     project_settings = ProjectSettings(

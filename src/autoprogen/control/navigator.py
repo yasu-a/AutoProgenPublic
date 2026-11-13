@@ -69,6 +69,20 @@ class Navigator(INavigator):
         )
         dialog.exec_()
 
+    def open_student_error_detail_dialog(self, parent: QWidget, student_id: StudentID) -> None:
+        """学生のエラー詳細を取得し、編集不可のダイアログに表示する。"""
+        from autoprogen.control.dialog_student_error_detail import StudentErrorDetailDialog
+        assert self._current_project_container is not None
+        row = self._current_project_container.student_table_load_usecase.execute_row(student_id)
+        if not row.error_cell.text_entries:
+            return
+        dialog = StudentErrorDetailDialog(
+            parent,
+            student_id=student_id,
+            error_entries=row.error_cell.text_entries,
+        )
+        dialog.exec_()
+
     def open_about_dialog(self, parent: QWidget) -> None:
         from autoprogen.control.dialog_about import AboutDialog
         dialog = AboutDialog(parent)

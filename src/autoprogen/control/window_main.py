@@ -127,6 +127,9 @@ class MainWindow(QMainWindow):
         self._w_student_table.mark_result_cell_triggered.connect(
             self.__w_student_table_mark_result_cell_triggered
         )
+        self._w_student_table.error_cell_triggered.connect(
+            self.__w_student_table_error_cell_triggered
+        )
 
     @pyqtSlot(StudentID)
     def __w_student_table_student_id_cell_triggered(self, student_id: StudentID):
@@ -150,6 +153,11 @@ class MainWindow(QMainWindow):
             return
 
         self._navigator.open_scoring_dialog_for_student(self, student_id)
+
+    @pyqtSlot(StudentID)
+    def __w_student_table_error_cell_triggered(self, student_id: StudentID) -> None:
+        """エラー欄が押された学生の詳細メッセージを表示する。"""
+        self._navigator.open_student_error_detail_dialog(self, student_id)
 
     def __perform_stop_tasks(self):
         if not self._task_manager.is_empty():
