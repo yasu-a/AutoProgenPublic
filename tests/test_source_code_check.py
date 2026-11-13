@@ -13,6 +13,7 @@ from autoprogen.domain.model.project_settings import (
 from autoprogen.domain.model.source_code_check import (
     SourceCodeCheckCatalog,
     SourceCodeCheckMatchType,
+    SourceCodeCheckResult,
 )
 from autoprogen.domain.model.value import StudentID
 from autoprogen.service.storage import StorageLoadStudentSourceService
@@ -365,9 +366,13 @@ def test_compile_checks_actual_source_before_running_compiler() -> None:
     )
     project_settings_repository.get.return_value = project_settings
 
-    def record_check(**_: object) -> None:
-        """静的安全性チェックが呼ばれた順序を記録する。"""
+    def record_check(**_: object) -> SourceCodeCheckResult:
+        """静的安全性チェックの呼び出し順を記録して安全な結果を返す。"""
         call_order.append("check")
+        return SourceCodeCheckResult(
+            source_sha256=hashlib.sha256(source_code_bytes).hexdigest(),
+            findings=(),
+        )
 
     source_code_check_service.execute.side_effect = record_check
     storage_run_compiler_service = Mock()
