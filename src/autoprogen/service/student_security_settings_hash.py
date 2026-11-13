@@ -3,7 +3,7 @@ import json
 
 from autoprogen.domain.model.value import StudentID
 from autoprogen.infra.repository.project_settings import ProjectSettingsRepository
-from autoprogen.service.source_code_check_factory import SourceCodeCheckCatalogFactory
+from autoprogen.domain.service.source_code_check_factory import SourceCodeCheckCatalogFactory
 
 
 class StudentSecuritySettingsHashService:

@@ -15,7 +15,7 @@ from autoprogen.infra.repository.app_version import AppVersionRepository
 from autoprogen.infra.repository.global_settings import GlobalSettingsRepository
 from autoprogen.infra.repository.project import ProjectRepository
 from autoprogen.infra.repository.test_source import TestSourceRepository
-from autoprogen.service.match import MatchGetBestService
+from autoprogen.domain.service.match import MatchGetBestService
 from autoprogen.service.project import ProjectListIDQueryService, ProjectGetConfigStateQueryService, ProjectUpdateTimestampService, \
     ProjectGetSizeQueryService
 from autoprogen.usecase.app_version import AppVersionGetTextUseCase, AppVersionCheckIsStableUseCase

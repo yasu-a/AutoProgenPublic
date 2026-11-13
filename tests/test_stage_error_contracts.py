@@ -25,8 +25,8 @@ from autoprogen.domain.model.student_stage_result import (
     TestSuccessStudentStageResult as StudentTestSuccessStageResult,
 )
 from autoprogen.domain.model.value import FileID, StudentID, TestCaseID as CaseID
-from autoprogen.service.source_code_check import SourceCodeCheckService
-from autoprogen.service.source_code_check_factory import SourceCodeCheckCatalogFactory
+from autoprogen.domain.service.source_code_check import SourceCodeCheckService
+from autoprogen.domain.service.source_code_check_factory import SourceCodeCheckCatalogFactory
 from autoprogen.service.student_submission import (
     StudentSubmissionGetSourceContentService,
     StudentSubmissionListSourceRelativePathQueryServiceError,

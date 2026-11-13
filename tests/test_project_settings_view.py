@@ -8,7 +8,7 @@ from autoprogen.domain.model.project_settings import (
     SourceCodeCheckSkip,
 )
 from autoprogen.domain.model.value import StudentID
-from autoprogen.service.source_code_check_factory import SourceCodeCheckCatalogFactory
+from autoprogen.domain.service.source_code_check_factory import SourceCodeCheckCatalogFactory
 from autoprogen.usecase.project_settings import ProjectSettingsGetUseCase, ProjectSettingsPutUseCase
 
 

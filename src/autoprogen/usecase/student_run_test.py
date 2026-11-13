@@ -9,7 +9,7 @@ from autoprogen.domain.model.test_result_output_file_entry import TestResultTest
 from autoprogen.domain.model.value import FileID
 from autoprogen.domain.model.value import StudentID
 from autoprogen.infra.repository.testcase_config import TestCaseConfigRepository
-from autoprogen.service.match import MatchGetBestService
+from autoprogen.domain.service.match import MatchGetBestService
 from autoprogen.service.student_stage_path_result import StudentPutStageResultService, \
     StudentGetStageResultService
 from autoprogen.service.testcase_config import TestCaseConfigGetTestConfigMtimeService

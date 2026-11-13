@@ -14,8 +14,8 @@ from autoprogen.service.storage import StorageCreateService, \
     StorageDeleteService, StorageLoadStudentSourceService, \
     StorageStoreStudentExecutableService
 from autoprogen.service.storage_run_compiler import StorageRunCompilerService
-from autoprogen.service.source_code_check import SourceCodeCheckDecodeError, SourceCodeCheckService
-from autoprogen.service.source_code_check_factory import SourceCodeCheckCatalogFactory
+from autoprogen.domain.service.source_code_check import SourceCodeCheckDecodeError, SourceCodeCheckService
+from autoprogen.domain.service.source_code_check_factory import SourceCodeCheckCatalogFactory
 from autoprogen.service.student_stage_path_result import StudentPutStageResultService
 
 

@@ -13,8 +13,8 @@ from autoprogen.domain.model.student_stage_result import (
 )
 from autoprogen.domain.model.value import StudentID
 from autoprogen.service.dto.storage_run_compiler import StorageCompileServiceResult
-from autoprogen.service.source_code_check import SourceCodeCheckService
-from autoprogen.service.source_code_check_factory import SourceCodeCheckCatalogFactory
+from autoprogen.domain.service.source_code_check import SourceCodeCheckService
+from autoprogen.domain.service.source_code_check_factory import SourceCodeCheckCatalogFactory
 from autoprogen.usecase.student_run_compile import StudentRunCompileStageUseCase
 
 

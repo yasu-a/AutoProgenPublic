@@ -3,7 +3,7 @@ from autoprogen.domain.model.expected_output_file import ExpectedOutputFile
 from autoprogen.domain.model.output_file import OutputFile
 from autoprogen.domain.model.test_config_options import TestConfigOptions
 from autoprogen.domain.model.test_result_output_file_entry import TestResultTestedOutputFileEntry
-from autoprogen.service.match import MatchGetBestService
+from autoprogen.domain.service.match import MatchGetBestService
 from autoprogen.usecase.dto.test_test_stage import TestTestStageResult
 
 

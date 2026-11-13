@@ -23,9 +23,9 @@ from autoprogen.infra.repository.test_source import TestSourceRepository
 from autoprogen.infra.repository.testcase_config import TestCaseConfigRepository
 from autoprogen.infra.task.manager import TaskManager
 from autoprogen.service.current_project import CurrentProjectGetService, CurrentProjectSetInitializedService
-from autoprogen.service.manaba_report_list_archive_validate import ManabaReportListArchiveValidateService
-from autoprogen.service.manaba_report_list_parser import ManabaReportListParser
-from autoprogen.service.match import MatchGetBestService
+from autoprogen.domain.service.manaba_report_list_archive_validate import ManabaReportListArchiveValidateService
+from autoprogen.domain.service.manaba_report_list_parser import ManabaReportListParser
+from autoprogen.domain.service.match import MatchGetBestService
 from autoprogen.service.stage_path import StagePathListSubService, StagePathGetByTestCaseIDService
 from autoprogen.service.storage import StorageCreateService, StorageLoadStudentSourceService, StorageStoreStudentExecutableService, \
     StorageDeleteService, StorageLoadStudentExecutableService, StorageLoadExecuteConfigInputFilesService, \
@@ -33,8 +33,8 @@ from autoprogen.service.storage import StorageCreateService, StorageLoadStudentS
     StorageLoadTestSourceService
 from autoprogen.service.storage_run_compiler import StorageRunCompilerService
 from autoprogen.service.storage_run_executable import StorageRunExecutableService
-from autoprogen.service.source_code_check import SourceCodeCheckService
-from autoprogen.service.source_code_check_factory import SourceCodeCheckCatalogFactory
+from autoprogen.domain.service.source_code_check import SourceCodeCheckService
+from autoprogen.domain.service.source_code_check_factory import SourceCodeCheckCatalogFactory
 from autoprogen.service.student_security_settings_hash import StudentSecuritySettingsHashService
 from autoprogen.service.student_master_create import StudentMasterCreateService
 from autoprogen.service.student import StudentListSubService, StudentGetService
