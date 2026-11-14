@@ -29,16 +29,6 @@ class ProjectIOError(RuntimeError):
         self.reason = reason
 
 
-class ProjectServiceError(ServiceError):
-    def __init__(self, reason: str):
-        self.reason = reason
-
-
-class TestCaseIOError(RuntimeError):
-    def __init__(self, reason: str):
-        self.reason = reason
-
-
 class ManabaReportArchiveError(RuntimeError):
     def __init__(self, *, reason: str):
         self.reason = reason
@@ -64,11 +54,6 @@ class StudentSubmissionServiceError(ServiceError):
         self.reason = reason
 
 
-class BuildServiceError(RuntimeError):
-    def __init__(self, reason: str):
-        self.reason = reason
-
-
 class StorageRunCompilerServiceError(RuntimeError):
     """コンパイル処理の構造化エラーとコンパイラ出力を伝える。"""
 
@@ -78,26 +63,6 @@ class StorageRunCompilerServiceError(RuntimeError):
         self.output = output
 
 
-class StorageRunExecutableServiceError(RuntimeError):
-    def __init__(self, *, reason: str):
-        self.reason = reason
-
-
-class ExecuteServiceError(RuntimeError):
-    def __init__(self, *, reason: str):
-        self.reason = reason
-
-
-class TestServiceError(RuntimeError):
-    def __init__(self, *, reason: str):
-        self.reason = reason
-
-
-class ProjectListServiceError(RuntimeError):
-    def __init__(self, *, reason: str):
-        self.reason = reason
-
-
 class CompileToolIOError(RuntimeError):
     """コンパイラIOの構造化エラーと生出力をServiceへ伝える。"""
 
@@ -105,21 +70,6 @@ class CompileToolIOError(RuntimeError):
         """原因となったStageErrorと、取得できた生出力を保持する。"""
         self.error = error
         self.output = output
-
-
-class StudentServiceError(ServiceError):
-    def __init__(self, message: str):
-        self.message = message
-
-
-class StudentUseCaseError(UseCaseError):
-    def __init__(self, message: str):
-        self.message = message
-
-
-class TaskOperationError(RuntimeError):
-    def __init__(self, reason: str):
-        self.reason = reason
 
 
 class StopTask(RuntimeError):
