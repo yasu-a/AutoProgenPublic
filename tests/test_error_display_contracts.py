@@ -6,13 +6,9 @@ from unittest.mock import Mock
 
 import pytest
 
+from autoprogen.domain.error.stage.base import StageError
 from autoprogen.domain.error.stage.compile import CompilerNotConfiguredError, SourceSafetyViolationError
 from autoprogen.domain.error.stage.execute import ExecutableNotFoundError, ExecutionTimeoutError
-from autoprogen.control.student_error_detail_parser import (
-    SAFETY_ERROR_PREFIX,
-    SourceSafetyErrorDetails,
-    parse_safety_check_error,
-)
 from autoprogen.domain.model.stage import (
     BuildStage,
     CompileStage,
@@ -63,9 +59,17 @@ def qt_app(monkeypatch: pytest.MonkeyPatch):
     return app
 
 
-def _entry(summary: str, detail: str) -> StudentErrorCellDataTextEntry:
+def _entry(
+        summary: str,
+        detail: str,
+        error: StageError | None = None,
+) -> StudentErrorCellDataTextEntry:
     """要約と詳細を指定した表示用データを返す。"""
-    return StudentErrorCellDataTextEntry(summary_text=summary, detailed_text=detail)
+    return StudentErrorCellDataTextEntry(
+        summary_text=summary,
+        detailed_text=detail,
+        error=error,
+    )
 
 
 def _row(entries: list[StudentErrorCellDataTextEntry]) -> StudentTableRowSnapshot:
@@ -281,7 +285,11 @@ def test_table_load_preserves_error_order_and_stage_states() -> None:
 
     row = usecase.execute(progress_callback=lambda _: None)[0]
     assert row.error_cell.text_entries == [
-        _entry("実行対象が存在しません", "実行対象が存在しません"),
+        _entry(
+            "実行対象が存在しません",
+            "実行対象が存在しません",
+            failures[0].error,
+        ),
         _entry(
             "実行がタイムアウトしました\n"
             "この環境のスペックに対して並列タスク数が多すぎる・"
@@ -289,6 +297,7 @@ def test_table_load_preserves_error_order_and_stage_states() -> None:
             "実行がタイムアウトしました\n"
             "この環境のスペックに対して並列タスク数が多すぎる・"
             "プログラムが入力を待っている・無限ループしているなどの可能性があります",
+            failures[1].error,
         ),
     ]
     state = StudentStageStateCellDataStageState
@@ -335,6 +344,7 @@ def test_table_load_preserves_compile_output_in_detail(output: str) -> None:
         _entry(
             "コンパイルに失敗しました。\nコンパイラが設定されていません",
             "コンパイルに失敗しました。\nコンパイラが設定されていません\n" + output,
+            failure.error,
         ),
     ]
 
@@ -359,17 +369,38 @@ def test_safety_error_display_limits_findings_and_uses_current_rule_name() -> No
     assert text.endswith("ほか1件の検出があります。")
 
 
-def test_parser_keeps_sorted_detected_lines_from_multiple_errors() -> None:
-    """安全性チェックの検出行はエラーをまたいでも重複なし・昇順にまとめる。"""
+def test_widget_keeps_sorted_detected_lines_from_multiple_errors(qt_app) -> None:
+    """安全性チェックの検出行は構造化エラーから重複なし・昇順にまとめる。"""
+    from autoprogen.control.widget_source_safety_error import SourceSafetyErrorWidget
+
     source_sha = hashlib.sha256(b"source").hexdigest()
-    prefix = SAFETY_ERROR_PREFIX + f"\n検査対象SHA-256: {source_sha}\n"
-    entries = [
-        _entry(prefix + "8行目: [process.system] 検出\n2行目: [file.read] 検出", ""),
-        _entry(prefix + "8行目: [process.system] 検出\n10行目: [file.write] 検出", ""),
+    errors = [
+        SourceSafetyViolationError(
+            source_sha256=source_sha,
+            findings=(
+                SourceCodeCheckFinding(8, "process", "system"),
+                SourceCodeCheckFinding(2, "file", "read"),
+            ),
+        ),
+        SourceSafetyViolationError(
+            source_sha256=source_sha,
+            findings=(
+                SourceCodeCheckFinding(8, "process", "system"),
+                SourceCodeCheckFinding(10, "file", "write"),
+            ),
+        ),
     ]
-    assert parse_safety_check_error(entries) == SourceSafetyErrorDetails(
-        source_sha256=source_sha, line_numbers=(2, 8, 10),
+    widget = SourceSafetyErrorWidget(
+        source_code=SourceCode(text="\n" * 10),
+        safety_errors=errors,
+        show_editing_symbols=False,
+        enable_line_wrap=False,
     )
+    try:
+        selections = widget._source_view.extraSelections()
+        assert [selection.cursor.blockNumber() + 1 for selection in selections] == [2, 8, 10]
+    finally:
+        widget.close()
 
 
 def test_source_safety_widget_already_approved_message(qt_app) -> None:
@@ -380,7 +411,10 @@ def test_source_safety_widget_already_approved_message(qt_app) -> None:
     sha = hashlib.sha256(source.encode("utf-8")).hexdigest()
     widget = SourceSafetyErrorWidget(
         source_code=SourceCode(text=source),
-        safety_error=SourceSafetyErrorDetails(sha, (1,)),
+        safety_errors=(SourceSafetyViolationError(
+            source_sha256=sha,
+            findings=(SourceCodeCheckFinding(1, "process", "system"),),
+        ),),
         show_editing_symbols=False,
         enable_line_wrap=False,
         already_approved=True,

@@ -85,7 +85,11 @@ class StudentTableLoadUseCase:
             if isinstance(last_result, AbstractFailureStudentStageResult):
                 summary = self._stage_error_text_formatter.format_summary(last_result.error)
                 detail = self._stage_error_text_formatter.format_detail(last_result)
-                error_entries.append(StudentErrorCellDataTextEntry(summary, detail))
+                error_entries.append(StudentErrorCellDataTextEntry(
+                    summary_text=summary,
+                    detailed_text=detail,
+                    error=last_result.error,
+                ))
 
         return StudentTableRowSnapshot(
             student_id=student_id,

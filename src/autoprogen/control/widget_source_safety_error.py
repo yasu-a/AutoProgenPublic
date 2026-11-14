@@ -1,5 +1,7 @@
 """安全性チェックの検出内容とソース単位の許可操作を表示する。"""
 
+from collections.abc import Sequence
+
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QTextCursor, QTextFormat
 from PyQt5.QtWidgets import (
@@ -11,8 +13,8 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from autoprogen.control.student_error_detail_parser import SourceSafetyErrorDetails
 from autoprogen.control.widget_source_code_text_edit import SourceCodeTextEdit
+from autoprogen.domain.error.stage.compile import SourceSafetyViolationError
 from autoprogen.domain.model.source_code import SourceCode
 
 
@@ -26,7 +28,7 @@ class SourceSafetyErrorWidget(QWidget):
             parent: QWidget = None,
             *,
             source_code: SourceCode | None,
-            safety_error: SourceSafetyErrorDetails,
+            safety_errors: Sequence[SourceSafetyViolationError],
             show_editing_symbols: bool,
             enable_line_wrap: bool,
             can_approve: bool = True,
@@ -35,7 +37,11 @@ class SourceSafetyErrorWidget(QWidget):
         """表示対象のソース、検出情報、表示状態を設定する。"""
         super().__init__(parent)
         self._source_code = source_code
-        self._safety_error = safety_error
+        errors = tuple(safety_errors)
+        source_hashes = {error.source_sha256 for error in errors}
+        self._source_sha256 = (
+            next(iter(source_hashes)) if len(source_hashes) == 1 else None
+        )
         self._can_approve = can_approve
         self._already_approved = already_approved
 
@@ -51,7 +57,14 @@ class SourceSafetyErrorWidget(QWidget):
         self._source_view.setPlainText(source_code.text if source_code is not None else "")
         self._source_view.setEnabled(source_code is not None)
         layout.addWidget(self._source_view, 1)
-        self._highlight_lines(safety_error.line_numbers)
+        self._highlight_lines(tuple(
+            sorted({
+                finding.line_number
+                for error in errors
+                for finding in error.findings
+                if finding.line_number > 0
+            })
+        ))
 
         bottom = QHBoxLayout()
         layout.addLayout(bottom)
@@ -86,7 +99,7 @@ class SourceSafetyErrorWidget(QWidget):
 
     def _update_approval_state(self) -> None:
         """検査対象の一致と既存の許可情報に基づきボタンを切り替える。"""
-        expected_sha = self._safety_error.source_sha256
+        expected_sha = self._source_sha256
         current_sha = (
             self._source_code.calculate_sha256()
             if self._source_code is not None

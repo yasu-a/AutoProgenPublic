@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 
+from autoprogen.domain.error.stage.base import StageError
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.stage import AbstractStage
 from autoprogen.domain.model.value import StudentID
@@ -35,8 +36,12 @@ class StudentStageStateCellData:
 
 @dataclass(frozen=True)
 class StudentErrorCellDataTextEntry:
+    # 一覧と詳細画面へ表示する短い説明。
     summary_text: str
+    # エラー固有情報を含む詳細な説明。
     detailed_text: str
+    # 表示内容の生成元となった構造化ステージエラー。表示専用データではNoneを許容する。
+    error: StageError | None = None
 
 
 @dataclass

@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QMessageBox, QWi
 from autoprogen.application.container import AppContainer, ProjectContainer
 from autoprogen.control.dialog_progress import AbstractProgressDialog
 from autoprogen.control.interface_navigator import INavigator
+from autoprogen.domain.error.stage.compile import SourceSafetyViolationError
 from autoprogen.domain.model.project_settings import SourceCodeCheckSkip
 from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.value import ProjectID, StudentID
@@ -81,7 +82,6 @@ class Navigator(INavigator):
         """学生のエラー詳細を取得し、編集不可のダイアログに表示する。"""
         from autoprogen.control.dialog_student_error_detail import StudentErrorDetailDialog
         assert self._current_project_container is not None
-        from autoprogen.control.student_error_detail_parser import parse_safety_check_error
         container = self._current_project_container
         row = container.student_table_load_usecase.execute_row(student_id)
         if not row.error_cell.text_entries:
@@ -91,9 +91,13 @@ class Navigator(INavigator):
             student_id=student_id,
             error_entries=row.error_cell.text_entries,
         )
-        # 現在はDBのエラーコードを使わず、従来の失敗理由から専用表示を判定する。
-        safety_error = parse_safety_check_error(row.error_cell.text_entries)
-        if safety_error is not None:
+        # 構造化エラーから安全性チェック停止だけを専用表示の対象にする。
+        safety_errors = tuple(
+            entry.error
+            for entry in row.error_cell.text_entries
+            if isinstance(entry.error, SourceSafetyViolationError)
+        )
+        if safety_errors:
             from autoprogen.control.widget_source_safety_error import SourceSafetyErrorWidget
             try:
                 source_code = container.student_source_code_get_usecase.execute(student_id)
@@ -101,15 +105,19 @@ class Navigator(INavigator):
                 source_code = None
             global_settings = self._app_container.global_settings_get_usecase.execute()
             project_settings = container.project_settings_get_usecase.execute()
+            source_hashes = {error.source_sha256 for error in safety_errors}
+            source_sha256 = (
+                next(iter(source_hashes)) if len(source_hashes) == 1 else None
+            )
             already_approved = (
-                safety_error.source_sha256 is not None
-                and SourceCodeCheckSkip(student_id, safety_error.source_sha256)
+                source_sha256 is not None
+                and SourceCodeCheckSkip(student_id, source_sha256)
                 in project_settings.source_code_check_skips
             )
             widget = SourceSafetyErrorWidget(
                 dialog,
                 source_code=source_code,
-                safety_error=safety_error,
+                safety_errors=safety_errors,
                 show_editing_symbols=global_settings.show_editing_symbols_in_source_code,
                 enable_line_wrap=global_settings.enable_line_wrap_in_source_code,
                 can_approve=container.task_manager.is_empty(),
@@ -121,7 +129,7 @@ class Navigator(INavigator):
                     widget=widget,
                     student_id=student_id,
                     displayed_source_code=source_code,
-                    expected_sha256=safety_error.source_sha256,
+                    expected_sha256=source_sha256,
                 )
             )
             dialog.set_extension_widget(widget)
