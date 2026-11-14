@@ -10,7 +10,24 @@ from autoprogen.domain.error import (
     CompileToolIOError,
     StopTask,
     StorageRunCompilerServiceError,
-    StorageRunExecutableServiceError,
+)
+from autoprogen.domain.error.stage.build import (
+    SourceFilenameMultipleNumbersError,
+    SourceFilenameNoNumberError,
+)
+from autoprogen.domain.error.stage.compile import (
+    CompileSourceNotFoundError,
+    CompilerDiagnosticError,
+    CompilerExecutionFailedError,
+    CompilerInputFileNotFoundError,
+    CompilerNotConfiguredError,
+    CompilerTimeoutError,
+    CompilerWorkingDirectoryNotFoundError,
+    VsDevToolNotFoundError,
+)
+from autoprogen.domain.error.stage.execute import (
+    ExecutableNotFoundError,
+    ExecutionTimeoutError,
 )
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.value import StudentID, TestCaseID as CaseID, TargetID
@@ -20,7 +37,6 @@ from autoprogen.service.storage_run_compiler import StorageRunCompilerService
 from autoprogen.service.storage_run_executable import StorageRunExecutableService
 from autoprogen.service.student_submission import (
     StudentSubmissionListSourceRelativePathQueryService,
-    StudentSubmissionListSourceRelativePathQueryServiceError,
 )
 from autoprogen.usecase.student_run_next_stage import StudentRunNextStageUseCase
 
@@ -48,18 +64,20 @@ def _compiler_service(*, configured: bool = True, source_exists: bool = True):
     return service, compiler_tool, storage_repo
 
 
-@pytest.mark.parametrize("configured,source_exists,expected", [
-    (False, True, "コンパイラが設定されていません"),
-    (True, False, "コンパイル対象が存在しません"),
+@pytest.mark.parametrize("configured,source_exists,error_type", [
+    (False, True, CompilerNotConfiguredError),
+    (True, False, CompileSourceNotFoundError),
 ])
-def test_compiler_preconditions_preserve_reasons(
-        configured: bool, source_exists: bool, expected: str,
+def test_compiler_preconditions_raise_specific_errors(
+        configured: bool,
+        source_exists: bool,
+        error_type: type[CompilerNotConfiguredError | CompileSourceNotFoundError],
 ) -> None:
-    """コンパイラ未設定・対象不在では正確な理由を持つ例外を返す。"""
+    """コンパイラ未設定・対象不在を具体的なCOMPILEエラーで区別する。"""
     service, tool, _ = _compiler_service(configured=configured, source_exists=source_exists)
     with pytest.raises(StorageRunCompilerServiceError) as raised:
         service.execute(storage_id="storage-id", source_file_relative_path=SOURCE_PATH)
-    assert raised.value.reason == expected
+    assert isinstance(raised.value.error, error_type)
     assert raised.value.output is None
     tool.run_and_get_output.assert_not_called()
 
@@ -69,15 +87,11 @@ def test_compiler_io_failure_preserves_reason_and_raw_output(output: str | None)
     """IOの失敗をService例外へ変換しても、コンパイラ生出力を失わない。"""
     service, tool, _ = _compiler_service()
     tool.run_and_get_output.side_effect = CompileToolIOError(
-        reason="コンパイルエラーが発生しました", output=output,
+        error=CompilerDiagnosticError(), output=output,
     )
     with pytest.raises(StorageRunCompilerServiceError) as raised:
         service.execute(storage_id="storage-id", source_file_relative_path=SOURCE_PATH)
-    assert raised.value.reason == (
-        "コンパイルに失敗しました。ソースコードを直接Visual Studioで開いて実行してください．\n"
-        "文字コードが原因の場合、Visual Studioで実行すると正常に動作することがあります。\n"
-        "コンパイルエラーが発生しました"
-    )
+    assert isinstance(raised.value.error, CompilerDiagnosticError)
     assert raised.value.output == output
 
 
@@ -108,8 +122,82 @@ def test_compile_tool_io_timeout_conversion(tmp_path: Path, monkeypatch: pytest.
             cwd_fullpath=tmp_path,
             target_relative_path=Path("main.c"),
         )
-    assert raised.value.reason == "コンパイラからの応答がタイムアウトしました"
+    assert isinstance(raised.value.error, CompilerTimeoutError)
     assert raised.value.output is None
+
+
+@pytest.mark.parametrize("case,error_type", [
+    ("devtool", VsDevToolNotFoundError),
+    ("working_directory", CompilerWorkingDirectoryNotFoundError),
+    ("input_file", CompilerInputFileNotFoundError),
+])
+def test_compile_tool_paths_raise_specific_errors(
+        tmp_path: Path,
+        case: str,
+        error_type: type[
+            VsDevToolNotFoundError
+            | CompilerWorkingDirectoryNotFoundError
+            | CompilerInputFileNotFoundError
+        ],
+) -> None:
+    """コンパイラ起動前のパス検証を具体的なCOMPILEエラーで区別する。"""
+    devcmd = tmp_path / "VsDevCmd.bat"
+    cwd = tmp_path
+    target = Path("main.c")
+    if case != "devtool":
+        devcmd.write_text("@echo off\n", encoding="utf-8")
+    if case == "working_directory":
+        cwd = tmp_path / "missing"
+    elif case == "input_file":
+        target = Path("missing.c")
+
+    with pytest.raises(CompileToolIOError) as raised:
+        CompileToolIO.run_and_get_output(
+            compiler_tool_fullpath=devcmd,
+            timeout=3,
+            cwd_fullpath=cwd,
+            target_relative_path=target,
+        )
+
+    assert isinstance(raised.value.error, error_type)
+    assert raised.value.error.path == (
+        devcmd if case == "devtool" else cwd if case == "working_directory" else cwd / target
+    )
+    assert raised.value.output is None
+
+
+@pytest.mark.parametrize("output,error_type", [
+    ("Microsoft (R) C/C++ Compiler\nCopyright (C) Microsoft Corporation\n",
+     CompilerDiagnosticError),
+    ("'cl' is not recognized\n", CompilerExecutionFailedError),
+])
+def test_compile_tool_process_failure_raises_specific_error(
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        output: str,
+        error_type: type[CompilerDiagnosticError | CompilerExecutionFailedError],
+) -> None:
+    """プロセス失敗をコンパイラ診断と起動失敗に分類する。"""
+    devcmd = tmp_path / "VsDevCmd.bat"
+    devcmd.write_text("@echo off\n", encoding="utf-8")
+    source = tmp_path / "main.c"
+    source.write_text("int main(void) {return 0;}\n", encoding="utf-8")
+
+    def _fail(self):
+        """実際のコンパイラを起動せず指定した出力で失敗させる。"""
+        raise subprocess.CalledProcessError(1, "cl", output=output)
+
+    monkeypatch.setattr(_VSDevTool, "_run_and_get_output", _fail)
+    with pytest.raises(CompileToolIOError) as raised:
+        CompileToolIO.run_and_get_output(
+            compiler_tool_fullpath=devcmd,
+            timeout=3,
+            cwd_fullpath=tmp_path,
+            target_relative_path=Path("main.c"),
+        )
+
+    assert isinstance(raised.value.error, error_type)
+    assert raised.value.output == output
 
 
 def _executable_service(*, exists: bool):
@@ -125,29 +213,23 @@ def _executable_service(*, exists: bool):
 
 
 def test_execute_missing_executable_reason() -> None:
-    """実行対象不在ではIOを呼ばず、従来のService例外を返す。"""
+    """実行対象不在ではIOを呼ばず、具体的なEXECUTEエラーを返す。"""
     service, io = _executable_service(exists=False)
-    with pytest.raises(StorageRunExecutableServiceError) as raised:
+    with pytest.raises(ExecutableNotFoundError):
         service.execute(
             storage_id="storage-id", executable_file_relative_path=Path("main.exe"), timeout=1.0
         )
-    assert raised.value.reason == "実行対象が存在しません"
     io.run.assert_not_called()
 
 
 def test_execute_io_timeout_reason_is_exact() -> None:
-    """IOタイムアウトは規定の改行を含む実行Service例外へ変換する。"""
+    """IOタイムアウトを具体的なEXECUTEエラーへ変換する。"""
     service, io = _executable_service(exists=True)
     io.run.side_effect = ExecutableIOTimeoutError()
-    with pytest.raises(StorageRunExecutableServiceError) as raised:
+    with pytest.raises(ExecutionTimeoutError):
         service.execute(
             storage_id="storage-id", executable_file_relative_path=Path("main.exe"), timeout=1.0
         )
-    assert raised.value.reason == (
-        "実行がタイムアウトしました\n"
-        "この環境のスペックに対して並列タスク数が多すぎる・"
-        "プログラムが入力を待っている・無限ループしているなどの可能性があります"
-    )
     io.run.assert_called_once()
 
 
@@ -161,14 +243,15 @@ def test_execute_unexpected_io_error_propagates() -> None:
         )
 
 
-@pytest.mark.parametrize("filename,expected_detail", [
-    ("prog.c", "ファイル名に数字が含まれていません。"),
-    ("prog2_3.c", "ファイル名に数字が複数含まれています: 2, 3"),
+@pytest.mark.parametrize("filename,error_type", [
+    ("prog.c", SourceFilenameNoNumberError),
+    ("prog2_3.c", SourceFilenameMultipleNumbersError),
 ])
-def test_source_filename_validation_preserves_error_details(
-        filename: str, expected_detail: str,
+def test_source_filename_validation_raises_specific_error(
+        filename: str,
+        error_type: type[SourceFilenameNoNumberError | SourceFilenameMultipleNumbersError],
 ) -> None:
-    """ファイル名不正は分類された例外と元の詳細メッセージを返す。"""
+    """ファイル名不正は原因を表す具体的なBUILDエラーとして通知する。"""
     layout = Mock()
     layout.student_submission_dir.return_value = Path("/fake/reports")
     core_io = Mock()
@@ -180,12 +263,11 @@ def test_source_filename_validation_preserves_error_details(
         current_project_core_io=core_io,
         current_project_repo=project_repo,
     )
-    with pytest.raises(StudentSubmissionListSourceRelativePathQueryServiceError) as raised:
+    with pytest.raises(error_type) as raised:
         service.execute(student_id=STUDENT)
-    assert raised.value.reason == (
-        f"ファイル名{filename}から設問番号を判別できません。\n"
-        + expected_detail
-    )
+    assert raised.value.file_relative_path == Path(filename)
+    if isinstance(raised.value, SourceFilenameMultipleNumbersError):
+        assert raised.value.numbers == ("2", "3")
 
 
 def test_stop_task_propagates_without_writing_student_failure() -> None:

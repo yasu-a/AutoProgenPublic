@@ -88,12 +88,6 @@ class SourceSafetyViolationError(CompileStageError):
         )
 
 
-class SourceSafetyDecodeError(CompileStageError):
-    """安全性チェックのためにソースコードをUTF-8で復号できなかった。"""
-
-    error_type_id: ClassVar[str] = "safety_decode_error"
-
-
 class CompilerNotConfiguredError(CompileStageError):
     """使用するコンパイラが設定されていない。"""
 

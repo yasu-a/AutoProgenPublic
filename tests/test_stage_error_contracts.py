@@ -10,8 +10,16 @@ import pytest
 from autoprogen.domain.error import (
     MatchServiceError,
     StorageRunCompilerServiceError,
-    StorageRunExecutableServiceError,
 )
+from autoprogen.domain.error.stage.build import (
+    SourceFilenameMultipleNumbersError,
+    SourceFilenameNoNumberError,
+)
+from autoprogen.domain.error.stage.compile import (
+    CompilerTimeoutError,
+    SourceSafetyViolationError,
+)
+from autoprogen.domain.error.stage.execute import ExecutionTimeoutError
 from autoprogen.domain.model.output_file import OutputFile, OutputFileCollection
 from autoprogen.domain.model.project_settings import ProjectSettings
 from autoprogen.domain.model.source_code import SourceCode
@@ -31,7 +39,6 @@ from autoprogen.domain.service.source_code_check_factory import SourceCodeCheckC
 from autoprogen.domain.service.source_code_factory import SourceCodeFactory
 from autoprogen.service.student_submission import (
     StudentSubmissionGetSourceCodeService,
-    StudentSubmissionListSourceRelativePathQueryServiceError,
 )
 from autoprogen.usecase.student_run_build import StudentRunBuildStageUseCase
 from autoprogen.usecase.student_run_compile import StudentRunCompileStageUseCase
@@ -70,10 +77,14 @@ def _build_case(case: str):
         source_list.execute.return_value = []
     elif case == "multiple_sources":
         source_list.execute.return_value = [Path("prog02.c"), Path("prog2.c")]
-    elif case == "invalid_filename":
-        source_list.execute.side_effect = StudentSubmissionListSourceRelativePathQueryServiceError(
-            "ファイル名prog2_3.cから設問番号を判別できません。\n"
-            "ファイル名に数字が複数含まれています: 2, 3"
+    elif case == "filename_multiple_numbers":
+        source_list.execute.side_effect = SourceFilenameMultipleNumbersError(
+            file_relative_path=Path("prog2_3.c"),
+            numbers=("2", "3"),
+        )
+    elif case == "filename_no_number":
+        source_list.execute.side_effect = SourceFilenameNoNumberError(
+            file_relative_path=Path("prog.c"),
         )
     elif case == "invalid_encoding":
         current_project_core_io.read_file_content_bytes.return_value = b"\xff"
@@ -104,9 +115,14 @@ def _build_case(case: str):
     ("not_submitted", "未提出の学生です。"),
     ("no_source", "提出物にソースファイルが見つかりませんでした。"),
     ("multiple_sources", "提出物に複数のソースファイルが見つかりました。\nprog02.c\nprog2.c"),
-    ("invalid_filename", "提出フォルダからソースファイルを抽出中にエラーが発生しました。\n"
-                         "ファイル名prog2_3.cから設問番号を判別できません。\n"
-                         "ファイル名に数字が複数含まれています: 2, 3"),
+    ("filename_multiple_numbers",
+     "提出フォルダからソースファイルを抽出中にエラーが発生しました。\n"
+     "ファイル名prog2_3.cから設問番号を判別できません。\n"
+     "ファイル名に数字が複数含まれています: 2, 3"),
+    ("filename_no_number",
+     "提出フォルダからソースファイルを抽出中にエラーが発生しました。\n"
+     "ファイル名prog.cから設問番号を判別できません。\n"
+     "ファイル名に数字が含まれていません。"),
     ("invalid_encoding", "ソースファイルの文字コードが判定できません。\nファイル名: prog02.c\n"),
 ])
 def test_build_failure_contract(case: str, expected: str) -> None:
@@ -195,17 +211,41 @@ def test_compile_safety_check_failure_message_and_short_circuit() -> None:
     delete.execute.assert_called_once_with("storage-1")
 
 
+def test_compile_safety_check_returns_structured_error() -> None:
+    """安全性チェックの検出内容を構造化COMPILEエラーに保持する。"""
+    usecase, _, _, _, _ = _compile_case(BLOCKED_SOURCE)
+    failure = usecase._run_security_check_if_required(
+        STUDENT,
+        SourceCode(text=BLOCKED_SOURCE.decode("utf-8")),
+    )
+
+    assert failure is not None
+    error, _ = failure
+    assert isinstance(error, SourceSafetyViolationError)
+    assert error.source_sha256 == hashlib.sha256(BLOCKED_SOURCE).hexdigest()
+    assert len(error.findings) == 1
+    assert error.findings[0].group_id == "process"
+    assert error.findings[0].check_id == "system"
+
+
 @pytest.mark.parametrize("compiler_output", ["fatal error C1004\n", None])
 def test_compile_service_exception_becomes_failure(compiler_output: str | None) -> None:
     """コンパイラServiceの失敗理由と生出力をそのまま記録する。"""
     usecase, compiler, store, delete, put = _compile_case(SAFE_SOURCE)
     compiler.execute.side_effect = StorageRunCompilerServiceError(
-        reason="コンパイラからの応答がタイムアウトしました", output=compiler_output,
+        error=CompilerTimeoutError(), output=compiler_output,
     )
     usecase.execute(STUDENT, STAGE_PATH)
     result = _saved_result(put)
     assert type(result) is CompileFailureStudentStageResult
-    assert result.reason == "コンパイルに失敗しました。\nコンパイラからの応答がタイムアウトしました"
+    assert result.reason == (
+        "コンパイルに失敗しました。\n"
+        "コンパイルに失敗しました。ソースコードを直接Visual Studioで開いて"
+        "実行してください．\n"
+        "文字コードが原因の場合、Visual Studioで実行すると正常に動作することが"
+        "あります。\n"
+        "コンパイラからの応答がタイムアウトしました"
+    )
     assert result.output == (compiler_output or "")
     assert result.detailed_text == result.reason + "\n" + result.output
     store.execute.assert_not_called()
@@ -254,17 +294,18 @@ def _execute_case(error: Exception):
 
 def test_execute_expected_exception_becomes_failure() -> None:
     """プログラム実行のタイムアウトはEXECUTE失敗に変換される。"""
-    message = "実行がタイムアウトしました\n理由は入力待ちかもしれません"
-    usecase, runner, stdout, delete, put = _execute_case(
-        StorageRunExecutableServiceError(reason=message)
-    )
+    usecase, runner, stdout, delete, put = _execute_case(ExecutionTimeoutError())
     usecase.execute(STUDENT, STAGE_PATH)
     result = _saved_result(put)
     assert type(result) is ExecuteFailureStudentStageResult
     assert not result.is_success
     assert result.testcase_id == TESTCASE
-    assert result.reason == message
-    assert result.detailed_text == message
+    assert result.reason == (
+        "実行がタイムアウトしました\n"
+        "この環境のスペックに対して並列タスク数が多すぎる・"
+        "プログラムが入力を待っている・無限ループしているなどの可能性があります"
+    )
+    assert result.detailed_text == result.reason
     runner.execute.assert_called_once_with(
         storage_id="storage-1", executable_file_relative_path=Path("main.exe"), timeout=1.5
     )

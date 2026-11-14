@@ -48,7 +48,6 @@ _ERROR_TYPES: tuple[type[StageError], ...] = (
     build_errors.SubmissionSourceNotFoundError,
     build_errors.SourceEncodingUnknownError,
     compile_errors.SourceSafetyViolationError,
-    compile_errors.SourceSafetyDecodeError,
     compile_errors.CompilerNotConfiguredError,
     compile_errors.CompileSourceNotFoundError,
     compile_errors.VsDevToolNotFoundError,

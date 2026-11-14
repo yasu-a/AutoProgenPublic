@@ -1,7 +1,15 @@
 import re
 from pathlib import Path, PurePosixPath
 
-from autoprogen.domain.error import ServiceError, ManabaReportArchiveError, StudentSubmissionServiceError
+from autoprogen.domain.error import ManabaReportArchiveError, StudentSubmissionServiceError
+from autoprogen.domain.error.stage.build import (
+    MultipleSourceFilesError,
+    SourceEncodingUnknownError,
+    SourceFilenameMultipleNumbersError,
+    SourceFilenameNoNumberError,
+    SubmissionNotFoundError,
+    SubmissionSourceNotFoundError,
+)
 from autoprogen.domain.model.manaba_report_archive import ManabaReportArchive, ManabaSubmissionFolderPath
 from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.value import StudentID, TargetID
@@ -152,11 +160,6 @@ class StudentSubmissionGetChecksumService:
         return checksum
 
 
-class StudentSubmissionListSourceRelativePathQueryServiceError(ServiceError):
-    def __init__(self, reason: str) -> None:
-        self.reason = reason
-
-
 class StudentSubmissionListSourceRelativePathQueryService:
     def __init__(
             self,
@@ -202,14 +205,13 @@ class StudentSubmissionListSourceRelativePathQueryService:
             numbers_str = re.findall(
                 r"(?<!\()\d+(?!\))", file_relative_path.stem)
             if len(numbers_str) > 1:
-                raise StudentSubmissionListSourceRelativePathQueryServiceError(
-                    reason=f"ファイル名{file_relative_path!s}から設問番号を判別できません。\n"
-                    f"ファイル名に数字が複数含まれています: {', '.join(numbers_str)}",
+                raise SourceFilenameMultipleNumbersError(
+                    file_relative_path=file_relative_path,
+                    numbers=numbers_str,
                 )
             elif len(numbers_str) == 0:
-                raise StudentSubmissionListSourceRelativePathQueryServiceError(
-                    reason=f"ファイル名{file_relative_path!s}から設問番号を判別できません。\n"
-                    f"ファイル名に数字が含まれていません。",
+                raise SourceFilenameNoNumberError(
+                    file_relative_path=file_relative_path,
                 )
             number = int(numbers_str[0])
 
@@ -219,11 +221,6 @@ class StudentSubmissionListSourceRelativePathQueryService:
             source_file_fullpath_lst.append(file_relative_path)
 
         return source_file_fullpath_lst
-
-
-class StudentSubmissionGetSourceFileServiceError(ServiceError):
-    def __init__(self, reason: str) -> None:
-        self.reason = reason
 
 
 class StudentSubmissionGetSourceCodeService:
@@ -249,35 +246,24 @@ class StudentSubmissionGetSourceCodeService:
         """学生の対象Cファイルを特定し、正規化済みモデルへ変換する。"""
         # 未提出の場合はエラー
         if not self._student_repo.get(student_id).is_submitted:
-            raise StudentSubmissionGetSourceFileServiceError(
-                reason=f"未提出の学生です。"
-            )
+            raise SubmissionNotFoundError()
 
         # 設問に回答したソースコードを探す
-        try:
-            source_file_relative_path_lst = (
-                self._student_submission_list_source_relative_path_query_service.execute(
-                    student_id=student_id,
-                )
+        source_file_relative_path_lst = (
+            self._student_submission_list_source_relative_path_query_service.execute(
+                student_id=student_id,
             )
-        except StudentSubmissionListSourceRelativePathQueryServiceError as e:
-            raise StudentSubmissionGetSourceFileServiceError(
-                reason=f"提出フォルダからソースファイルを抽出中にエラーが発生しました。\n{e.reason}",
-            )
+        )
 
         # ソースコードが複数見つかったらエラー
         if len(source_file_relative_path_lst) > 1:
-            raise StudentSubmissionGetSourceFileServiceError(
-                reason="提出物に複数のソースファイルが見つかりました。\n" + '\n'.join(
-                    map(str, source_file_relative_path_lst)
-                ),
+            raise MultipleSourceFilesError(
+                file_relative_paths=source_file_relative_path_lst,
             )
 
         # ソースコードが見つからなかったらエラー
         elif len(source_file_relative_path_lst) == 0:
-            raise StudentSubmissionGetSourceFileServiceError(
-                reason=f"提出物にソースファイルが見つかりませんでした。"
-            )
+            raise SubmissionSourceNotFoundError()
 
         # ソースコードを読み込む
         source_file_relative_path = source_file_relative_path_lst[0]
@@ -293,7 +279,6 @@ class StudentSubmissionGetSourceCodeService:
         try:
             return self._source_code_factory.create(source_code_bytes)
         except SourceCodeDecodeError:
-            raise StudentSubmissionGetSourceFileServiceError(
-                reason=f"ソースファイルの文字コードが判定できません。\n"
-                f"ファイル名: {source_file_relative_path}\n"
+            raise SourceEncodingUnknownError(
+                file_relative_path=source_file_relative_path,
             )

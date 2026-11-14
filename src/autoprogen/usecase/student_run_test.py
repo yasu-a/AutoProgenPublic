@@ -1,4 +1,10 @@
-from autoprogen.domain.error import TestServiceError, MatchServiceError
+from autoprogen.domain.error import MatchServiceError
+from autoprogen.domain.error.stage.test import (
+    ExecuteResultFailedError,
+    ExecuteResultNotFoundError,
+    OutputMatchingError,
+    TestStageError,
+)
 from autoprogen.domain.model.output_file import OutputFile
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.stage import ExecuteStage
@@ -15,7 +21,20 @@ from autoprogen.service.student_stage_path_result import StudentPutStageResultSe
 from autoprogen.service.testcase_config import TestCaseConfigGetTestConfigMtimeService
 
 
+def _format_test_stage_error(error: TestStageError) -> str:
+    """TESTの構造化エラーを従来の保存用メッセージへ変換する。"""
+    if isinstance(error, ExecuteResultNotFoundError):
+        return "実行結果が見つかりません"
+    if isinstance(error, ExecuteResultFailedError):
+        return "失敗した実行のテストはできません"
+    if isinstance(error, OutputMatchingError):
+        return error.detail
+    raise TypeError(f"未対応のTESTエラーです: {type(error).__name__}")
+
+
 class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestServiceを分離
+    """EXECUTE結果を期待値と照合してTEST結果を保存する。"""
+
     def __init__(
             self,
             *,
@@ -24,7 +43,8 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
             student_get_stage_result_service: StudentGetStageResultService,
             testcase_config_get_test_config_mtime_service: TestCaseConfigGetTestConfigMtimeService,
             match_get_best_service: MatchGetBestService,
-    ):
+    ) -> None:
+        """TESTステージで使用するRepositoryとServiceを受け取る。"""
         self._testcase_config_repo = testcase_config_repo
         self._student_put_stage_result_service = student_put_stage_result_service
         self._student_get_stage_result_service = student_get_stage_result_service
@@ -32,6 +52,7 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
         self._match_get_best_service = match_get_best_service
 
     def execute(self, student_id: StudentID, stage_path: StagePath) -> None:
+        """学生一人分のTESTステージを実行して結果を保存する。"""
         try:
             # 実行結果を取得する
             execute_result = self._student_get_stage_result_service.execute(
@@ -40,13 +61,9 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
                 stage=stage_path.get_stage_by_stage_type(ExecuteStage),
             )
             if execute_result is None:
-                raise TestServiceError(
-                    reason="実行結果が見つかりません",
-                )
+                raise ExecuteResultNotFoundError()
             if not execute_result.is_success:
-                raise TestServiceError(
-                    reason="失敗した実行のテストはできません",
-                )
+                raise ExecuteResultFailedError()
             assert isinstance(execute_result, ExecuteSuccessStudentStageResult)
 
             # テストケースのテスト構成を読み込む
@@ -99,9 +116,7 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
                             patterns=expected_output_file.patterns,
                         )
                     except MatchServiceError as e:
-                        raise TestServiceError(
-                            reason=e.reason,
-                        )
+                        raise OutputMatchingError(detail=e.reason)
                     file_test_result = TestResultTestedOutputFileEntry(
                         file_id=file_id,
                         actual=actual_output_file,
@@ -111,13 +126,13 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
                 else:
                     assert False, "unreachable"
                 test_result_output_file_collection.put(file_test_result)
-        except TestServiceError as e:
+        except TestStageError as e:
             self._student_put_stage_result_service.execute(
                 stage_path=stage_path,
                 result=TestFailureStudentStageResult.create_instance(
                     student_id=student_id,
                     testcase_id=stage_path.testcase_id,
-                    reason=e.reason,
+                    reason=_format_test_stage_error(e),
                 )
             )
         else:

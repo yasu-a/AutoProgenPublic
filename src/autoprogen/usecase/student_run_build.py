@@ -1,3 +1,12 @@
+from autoprogen.domain.error.stage.build import (
+    BuildStageError,
+    MultipleSourceFilesError,
+    SourceEncodingUnknownError,
+    SourceFilenameMultipleNumbersError,
+    SourceFilenameNoNumberError,
+    SubmissionNotFoundError,
+    SubmissionSourceNotFoundError,
+)
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.student_stage_result import BuildSuccessStudentStageResult, \
     BuildFailureStudentStageResult
@@ -6,7 +15,36 @@ from autoprogen.service.student_dynamic import StudentDynamicSetSourceCodeServic
     StudentDynamicClearService
 from autoprogen.service.student_stage_path_result import StudentPutStageResultService
 from autoprogen.service.student_submission import StudentSubmissionGetSourceCodeService, \
-    StudentSubmissionGetSourceFileServiceError, StudentSubmissionGetChecksumService
+    StudentSubmissionGetChecksumService
+
+
+def _format_build_stage_error(error: BuildStageError) -> str:
+    """BUILDの構造化エラーを従来の保存用メッセージへ変換する。"""
+    if isinstance(error, SubmissionNotFoundError):
+        return "未提出の学生です。"
+    if isinstance(error, SourceFilenameMultipleNumbersError):
+        return (
+            f"提出フォルダからソースファイルを抽出中にエラーが発生しました。\n"
+            f"ファイル名{error.file_relative_path!s}から設問番号を判別できません。\n"
+            f"ファイル名に数字が複数含まれています: {', '.join(error.numbers)}"
+        )
+    if isinstance(error, SourceFilenameNoNumberError):
+        return (
+            f"提出フォルダからソースファイルを抽出中にエラーが発生しました。\n"
+            f"ファイル名{error.file_relative_path!s}から設問番号を判別できません。\n"
+            "ファイル名に数字が含まれていません。"
+        )
+    if isinstance(error, MultipleSourceFilesError):
+        paths = "\n".join(map(str, error.file_relative_paths))
+        return f"提出物に複数のソースファイルが見つかりました。\n{paths}"
+    if isinstance(error, SubmissionSourceNotFoundError):
+        return "提出物にソースファイルが見つかりませんでした。"
+    if isinstance(error, SourceEncodingUnknownError):
+        return (
+            "ソースファイルの文字コードが判定できません。\n"
+            f"ファイル名: {error.file_relative_path!s}\n"
+        )
+    raise TypeError(f"未対応のBUILDエラーです: {type(error).__name__}")
 
 
 class StudentRunBuildStageUseCase:
@@ -40,13 +78,13 @@ class StudentRunBuildStageUseCase:
             source_code = self._student_submission_get_source_code_service.execute(
                 student_id=student_id,
             )
-        except StudentSubmissionGetSourceFileServiceError as e:
+        except BuildStageError as e:
             # 失敗したら異常終了の結果を書きこむ
             self._student_put_stage_result_service.execute(
                 stage_path=stage_path,
                 result=BuildFailureStudentStageResult.create_instance(
                     student_id=student_id,
-                    reason=e.reason,
+                    reason=_format_build_stage_error(e),
                 )
             )
         else:

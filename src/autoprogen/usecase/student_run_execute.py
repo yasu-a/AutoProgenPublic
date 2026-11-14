@@ -1,6 +1,10 @@
 from pathlib import Path
 
-from autoprogen.domain.error import StorageRunExecutableServiceError
+from autoprogen.domain.error.stage.execute import (
+    ExecutableNotFoundError,
+    ExecuteStageError,
+    ExecutionTimeoutError,
+)
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.student_stage_result import ExecuteFailureStudentStageResult, \
     ExecuteSuccessStudentStageResult
@@ -15,6 +19,19 @@ from autoprogen.service.storage_run_executable import StorageRunExecutableServic
 from autoprogen.service.student_stage_path_result import StudentPutStageResultService
 from autoprogen.service.testcase_config import TestCaseConfigGetExecuteConfigMtimeService
 from autoprogen.util.app_logging import create_logger
+
+
+def _format_execute_stage_error(error: ExecuteStageError) -> str:
+    """EXECUTEの構造化エラーを従来の保存用メッセージへ変換する。"""
+    if isinstance(error, ExecutableNotFoundError):
+        return "実行対象が存在しません"
+    if isinstance(error, ExecutionTimeoutError):
+        return (
+            "実行がタイムアウトしました\n"
+            "この環境のスペックに対して並列タスク数が多すぎる・"
+            "プログラムが入力を待っている・無限ループしているなどの可能性があります"
+        )
+    raise TypeError(f"未対応のEXECUTEエラーです: {type(error).__name__}")
 
 
 class StudentRunExecuteStageUseCase:
@@ -60,6 +77,7 @@ class StudentRunExecuteStageUseCase:
     __EXECUTABLE_FILE_RELATIVE_PATH = Path("main.exe")
 
     def execute(self, student_id: StudentID, stage_path: StagePath) -> None:
+        """学生一人分のEXECUTEステージを実行して結果を保存する。"""
         # ストレージ領域の生成
         storage_id = self._storage_create_service.execute()
 
@@ -93,14 +111,14 @@ class StudentRunExecuteStageUseCase:
                 executable_file_relative_path=self.__EXECUTABLE_FILE_RELATIVE_PATH,
                 timeout=execute_options.timeout,
             )
-        except StorageRunExecutableServiceError as e:
+        except ExecuteStageError as e:
             # 失敗したら異常終了の結果を書きこむ
             self._student_put_stage_result_service.execute(
                 stage_path=stage_path,
                 result=ExecuteFailureStudentStageResult.create_instance(
                     student_id=student_id,
                     testcase_id=stage_path.testcase_id,
-                    reason=e.reason,
+                    reason=_format_execute_stage_error(e),
                 )
             )
             return

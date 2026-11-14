@@ -1,5 +1,8 @@
 # TODO: リファクタリング！！！
 
+from autoprogen.domain.error.stage.base import StageError
+
+
 class CoreIOError(RuntimeError):
     def __init__(self, message):
         self.message = message
@@ -67,8 +70,11 @@ class BuildServiceError(RuntimeError):
 
 
 class StorageRunCompilerServiceError(RuntimeError):
-    def __init__(self, *, reason: str, output: str | None):
-        self.reason = reason
+    """コンパイル処理の構造化エラーとコンパイラ出力を伝える。"""
+
+    def __init__(self, *, error: StageError, output: str | None):
+        """原因となったStageErrorと、取得できた生出力を保持する。"""
+        self.error = error
         self.output = output
 
 
@@ -93,8 +99,11 @@ class ProjectListServiceError(RuntimeError):
 
 
 class CompileToolIOError(RuntimeError):
-    def __init__(self, reason: str, output: str | None):
-        self.reason = reason
+    """コンパイラIOの構造化エラーと生出力をServiceへ伝える。"""
+
+    def __init__(self, *, error: StageError, output: str | None):
+        """原因となったStageErrorと、取得できた生出力を保持する。"""
+        self.error = error
         self.output = output
 
 
