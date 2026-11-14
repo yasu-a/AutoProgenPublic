@@ -1,10 +1,6 @@
 from autoprogen.domain.error import MatchServiceError
-from autoprogen.domain.error.stage.test import (
-    ExecuteResultFailedError,
-    ExecuteResultNotFoundError,
-    OutputMatchingError,
-    TestStageError,
-)
+from autoprogen.domain.error.stage.test import ExecuteResultFailedError, ExecuteResultNotFoundError, \
+    OutputMatchingError, TestStageError
 from autoprogen.domain.model.output_file import OutputFile
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.stage import ExecuteStage
@@ -19,17 +15,6 @@ from autoprogen.domain.service.match import MatchGetBestService
 from autoprogen.service.student_stage_path_result import StudentPutStageResultService, \
     StudentGetStageResultService
 from autoprogen.service.testcase_config import TestCaseConfigGetTestConfigMtimeService
-
-
-def _format_test_stage_error(error: TestStageError) -> str:
-    """TESTの構造化エラーを従来の保存用メッセージへ変換する。"""
-    if isinstance(error, ExecuteResultNotFoundError):
-        return "実行結果が見つかりません"
-    if isinstance(error, ExecuteResultFailedError):
-        return "失敗した実行のテストはできません"
-    if isinstance(error, OutputMatchingError):
-        return error.detail
-    raise TypeError(f"未対応のTESTエラーです: {type(error).__name__}")
 
 
 class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestServiceを分離
@@ -132,7 +117,7 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
                 result=TestFailureStudentStageResult.create_instance(
                     student_id=student_id,
                     testcase_id=stage_path.testcase_id,
-                    reason=_format_test_stage_error(e),
+                    error=e,
                 )
             )
         else:

@@ -6,6 +6,8 @@ from unittest.mock import Mock
 
 import pytest
 
+from autoprogen.domain.error.stage.compile import CompilerNotConfiguredError, SourceSafetyViolationError
+from autoprogen.domain.error.stage.execute import ExecutableNotFoundError, ExecutionTimeoutError
 from autoprogen.control.student_error_detail_parser import (
     SAFETY_ERROR_PREFIX,
     SourceSafetyErrorDetails,
@@ -21,6 +23,7 @@ from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.student import Student
 from autoprogen.domain.model.student_mark import StudentMark
 from autoprogen.domain.model.source_code import SourceCode
+from autoprogen.domain.model.source_code_check import SourceCodeCheckFinding
 from autoprogen.domain.model.student_stage_path_result import StudentStagePathResult
 from autoprogen.domain.model.student_stage_result import (
     BuildSuccessStudentStageResult,
@@ -29,6 +32,8 @@ from autoprogen.domain.model.student_stage_result import (
     ExecuteFailureStudentStageResult,
 )
 from autoprogen.domain.model.value import StudentID, TestCaseID as CaseID
+from autoprogen.domain.service.source_code_check_factory import SourceCodeCheckCatalogFactory
+from autoprogen.service.stage_error_text import StageErrorTextFormatter
 from autoprogen.usecase.dto.student_table_cell_data import (
     StudentErrorCellData,
     StudentErrorCellDataTextEntry,
@@ -99,6 +104,13 @@ def _stage_path_result(stage_path: StagePath, *results) -> StudentStagePathResul
         stage_results=OrderedDict(
             (stage, by_stage.get(stage)) for stage in stage_path
         ),
+    )
+
+
+def _formatter() -> StageErrorTextFormatter:
+    """本番カタログを使う表示用フォーマッタを返す。"""
+    return StageErrorTextFormatter(
+        source_code_check_catalog_factory=SourceCodeCheckCatalogFactory(),
     )
 
 
@@ -236,10 +248,14 @@ def test_table_load_preserves_error_order_and_stage_states() -> None:
     )
     failures = [
         ExecuteFailureStudentStageResult.create_instance(
-            student_id=STUDENT, testcase_id=CaseID("case_a"), reason="実行Aが失敗\n原因A",
+            student_id=STUDENT,
+            testcase_id=CaseID("case_a"),
+            error=ExecutableNotFoundError(),
         ),
         ExecuteFailureStudentStageResult.create_instance(
-            student_id=STUDENT, testcase_id=CaseID("case_b"), reason="実行Bが失敗\n原因B",
+            student_id=STUDENT,
+            testcase_id=CaseID("case_b"),
+            error=ExecutionTimeoutError(),
         ),
     ]
     stage_results = [
@@ -260,12 +276,20 @@ def test_table_load_preserves_error_order_and_stage_states() -> None:
         stage_path_list_sub_service=path_service,
         student_stage_path_result_repo=repository,
         student_mark_get_sub_service=mark_service,
+        stage_error_text_formatter=_formatter(),
     )
 
     row = usecase.execute(progress_callback=lambda _: None)[0]
     assert row.error_cell.text_entries == [
-        _entry("実行Aが失敗\n原因A", "実行Aが失敗\n原因A"),
-        _entry("実行Bが失敗\n原因B", "実行Bが失敗\n原因B"),
+        _entry("実行対象が存在しません", "実行対象が存在しません"),
+        _entry(
+            "実行がタイムアウトしました\n"
+            "この環境のスペックに対して並列タスク数が多すぎる・"
+            "プログラムが入力を待っている・無限ループしているなどの可能性があります",
+            "実行がタイムアウトしました\n"
+            "この環境のスペックに対して並列タスク数が多すぎる・"
+            "プログラムが入力を待っている・無限ループしているなどの可能性があります",
+        ),
     ]
     state = StudentStageStateCellDataStageState
     assert list(row.stage_cells[BuildStage].states.values()) == [
@@ -288,7 +312,7 @@ def test_table_load_preserves_compile_output_in_detail(output: str) -> None:
         student_id=STUDENT, submission_folder_checksum=123,
     )
     failure = CompileFailureStudentStageResult.create_instance(
-        student_id=STUDENT, reason="コンパイルに失敗しました。", output=output,
+        student_id=STUDENT, error=CompilerNotConfiguredError(), output=output,
     )
     students = Mock()
     students.get.return_value = _student()
@@ -303,12 +327,36 @@ def test_table_load_preserves_compile_output_in_detail(output: str) -> None:
         stage_path_list_sub_service=path_service,
         student_stage_path_result_repo=repository,
         student_mark_get_sub_service=mark_service,
+        stage_error_text_formatter=_formatter(),
     )
 
     row = usecase.execute_row(STUDENT)
     assert row.error_cell.text_entries == [
-        _entry("コンパイルに失敗しました。", "コンパイルに失敗しました。\n" + output),
+        _entry(
+            "コンパイルに失敗しました。\nコンパイラが設定されていません",
+            "コンパイルに失敗しました。\nコンパイラが設定されていません\n" + output,
+        ),
     ]
+
+
+def test_safety_error_display_limits_findings_and_uses_current_rule_name() -> None:
+    """安全性チェック表示は現在の規則名を使い、51件目以降を件数表示へまとめる。"""
+    error = SourceSafetyViolationError(
+        source_sha256="a" * 64,
+        findings=tuple(
+            SourceCodeCheckFinding(
+                line_number=line_number,
+                group_id="process",
+                check_id="system",
+            )
+            for line_number in range(1, 52)
+        ),
+    )
+    text = _formatter().format_summary(error)
+    assert "1行目: [process.system] 外部コマンドの実行" in text
+    assert "50行目: [process.system] 外部コマンドの実行" in text
+    assert "51行目:" not in text
+    assert text.endswith("ほか1件の検出があります。")
 
 
 def test_parser_keeps_sorted_detected_lines_from_multiple_errors() -> None:

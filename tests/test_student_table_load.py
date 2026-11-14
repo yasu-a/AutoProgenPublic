@@ -34,8 +34,7 @@ def test_load_reuses_each_stage_path_result_for_all_columns() -> None:
         result.get_result_by_stage_type.side_effect = lambda stage_type: (
             Mock(is_success=True) if stage_type is BuildStage else None
         )
-        result.last_stage_main_reason = None
-        result.last_stage_detailed_reason = None
+        result.last_stage_result = None
     result_repo.get.side_effect = stage_results
     mark_service = Mock()
     mark_service.execute.return_value = StudentMark(student_id=student_id, score=75)
@@ -45,6 +44,7 @@ def test_load_reuses_each_stage_path_result_for_all_columns() -> None:
         stage_path_list_sub_service=path_service,
         student_stage_path_result_repo=result_repo,
         student_mark_get_sub_service=mark_service,
+        stage_error_text_formatter=Mock(),
     )
 
     rows = usecase.execute(progress_callback=progress.append)
@@ -78,6 +78,7 @@ def test_load_empty_student_list() -> None:
         stage_path_list_sub_service=Mock(),
         student_stage_path_result_repo=Mock(),
         student_mark_get_sub_service=Mock(),
+        stage_error_text_formatter=Mock(),
     )
     progress: list[str] = []
 
@@ -109,6 +110,7 @@ def test_load_one_student_reuses_row_builder_without_listing_students() -> None:
         stage_path_list_sub_service=path_service,
         student_stage_path_result_repo=Mock(),
         student_mark_get_sub_service=mark_service,
+        stage_error_text_formatter=Mock(),
     )
 
     expected = usecase.execute(progress_callback=lambda _: None)[0]

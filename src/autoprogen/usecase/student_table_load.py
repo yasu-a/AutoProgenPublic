@@ -6,11 +6,13 @@ from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.student import Student
 from autoprogen.domain.model.student_mark import StudentMark
 from autoprogen.domain.model.student_stage_path_result import StudentStagePathResult
+from autoprogen.domain.model.student_stage_result import AbstractFailureStudentStageResult
 from autoprogen.domain.model.value import StudentID
 from autoprogen.infra.repository.student import StudentRepository
 from autoprogen.infra.repository.student_stage_path_result import StudentStagePathResultRepository
 from autoprogen.service.stage_path import StagePathListSubService
 from autoprogen.service.student_mark import StudentMarkGetSubService
+from autoprogen.service.stage_error_text import StageErrorTextFormatter
 from autoprogen.usecase.dto.student_table_cell_data import (
     StudentErrorCellData,
     StudentErrorCellDataTextEntry,
@@ -45,12 +47,14 @@ class StudentTableLoadUseCase:
             stage_path_list_sub_service: StagePathListSubService,
             student_stage_path_result_repo: StudentStagePathResultRepository,
             student_mark_get_sub_service: StudentMarkGetSubService,
+            stage_error_text_formatter: StageErrorTextFormatter,
     ) -> None:
         """名簿、ステージ構成、実行結果、採点結果の取得先を受け取る。"""
         self._student_repo = student_repo
         self._stage_path_list_sub_service = stage_path_list_sub_service
         self._student_stage_path_result_repo = student_stage_path_result_repo
         self._student_mark_get_sub_service = student_mark_get_sub_service
+        self._stage_error_text_formatter = stage_error_text_formatter
 
     def _load_row(
             self,
@@ -77,9 +81,10 @@ class StudentTableLoadUseCase:
                     state = StudentStageStateCellDataStageState.FINISHED_FAILURE
                 states_by_type[stage_type][stage_path] = state
 
-            summary = stage_result.last_stage_main_reason or ""
-            detail = stage_result.last_stage_detailed_reason or ""
-            if summary or detail:
+            last_result = stage_result.last_stage_result
+            if isinstance(last_result, AbstractFailureStudentStageResult):
+                summary = self._stage_error_text_formatter.format_summary(last_result.error)
+                detail = self._stage_error_text_formatter.format_detail(last_result)
                 error_entries.append(StudentErrorCellDataTextEntry(summary, detail))
 
         return StudentTableRowSnapshot(

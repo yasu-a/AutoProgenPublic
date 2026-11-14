@@ -7,6 +7,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from autoprogen.domain.error.stage.compile import CompilerNotConfiguredError
 from autoprogen.domain.error import (
     ManabaReportArchiveError,
     ManabaReportListArchiveValidateServiceError,
@@ -40,6 +41,8 @@ from autoprogen.domain.model.value import (
     TargetID,
     TestCaseID as CaseID,
 )
+from autoprogen.domain.service.source_code_check_factory import SourceCodeCheckCatalogFactory
+from autoprogen.service.stage_error_text import StageErrorTextFormatter
 from autoprogen.service.dto.project import ProjectConfigState
 from autoprogen.usecase.current_project import CurrentProjectInitializeStaticUseCase
 from autoprogen.usecase.dto.student_mark_view_data import (
@@ -138,6 +141,9 @@ def _mark_testcase_usecase(stage_result: StudentStagePathResult):
     return StudentMarkViewDataGetTestResultUseCase(
         stage_path_get_by_testcase_id_service=path_service,
         student_stage_path_result_get_service=stage_service,
+        stage_error_text_formatter=StageErrorTextFormatter(
+            source_code_check_catalog_factory=SourceCodeCheckCatalogFactory(),
+        ),
     )
 
 
@@ -147,7 +153,7 @@ def test_marking_screen_uses_compiler_output_as_untestable_reason() -> None:
         _build_success(),
         CompileFailureStudentStageResult.create_instance(
             student_id=STUDENT,
-            reason="コンパイルに失敗しました。",
+            error=CompilerNotConfiguredError(),
             output="main.c(5): error C2143\n",
         ),
     )
@@ -155,7 +161,11 @@ def test_marking_screen_uses_compiler_output_as_untestable_reason() -> None:
     assert view.state is StudentTestCaseSummaryState.UNTESTABLE
     assert view.title_text == "テストできません"
     assert not view.is_success
-    assert view.detailed_reason == "コンパイルに失敗しました。\nmain.c(5): error C2143\n"
+    assert view.detailed_reason == (
+        "コンパイルに失敗しました。\n"
+        "コンパイラが設定されていません\n"
+        "main.c(5): error C2143\n"
+    )
     with pytest.raises(ValueError, match="output and results not provided"):
         _ = view.output_and_results
 

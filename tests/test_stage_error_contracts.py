@@ -40,6 +40,7 @@ from autoprogen.domain.service.source_code_factory import SourceCodeFactory
 from autoprogen.service.student_submission import (
     StudentSubmissionGetSourceCodeService,
 )
+from autoprogen.service.stage_error_text import StageErrorTextFormatter
 from autoprogen.usecase.student_run_build import StudentRunBuildStageUseCase
 from autoprogen.usecase.student_run_compile import StudentRunCompileStageUseCase
 from autoprogen.usecase.student_run_execute import StudentRunExecuteStageUseCase
@@ -51,6 +52,13 @@ TESTCASE = CaseID("case01")
 STAGE_PATH = StagePath.list_paths([TESTCASE])[0]
 SAFE_SOURCE = b"int main(void) { return 0; }\n"
 BLOCKED_SOURCE = b'int main(void) { system("echo test"); return 0; }\n'
+
+
+def _formatter() -> StageErrorTextFormatter:
+    """本番カタログを使う表示用フォーマッタを返す。"""
+    return StageErrorTextFormatter(
+        source_code_check_catalog_factory=SourceCodeCheckCatalogFactory(),
+    )
 
 
 def _saved_result(put_service: Mock):
@@ -133,8 +141,8 @@ def test_build_failure_contract(case: str, expected: str) -> None:
     assert type(result) is BuildFailureStudentStageResult
     assert not result.is_success
     assert result.student_id == STUDENT
-    assert result.reason == expected
-    assert result.detailed_text == expected
+    assert _formatter().format_summary(result.error) == expected
+    assert _formatter().format_detail(result) == expected
     clear.execute.assert_called_once_with(student_id=STUDENT)
     set_source.execute.assert_not_called()
     checksum.execute.assert_not_called()
@@ -200,12 +208,13 @@ def test_compile_safety_check_failure_message_and_short_circuit() -> None:
     assert type(result) is CompileFailureStudentStageResult
     assert not result.is_success
     assert result.output == ""
-    assert result.reason == (
+    expected = (
         "ソースコードの安全性チェックで問題が検出されたため、コンパイルを停止しました。\n"
         f"検査対象SHA-256: {hashlib.sha256(BLOCKED_SOURCE).hexdigest()}\n"
         "1行目: [process.system] 外部コマンドの実行"
     )
-    assert result.detailed_text == result.reason + "\n"
+    assert _formatter().format_summary(result.error) == expected
+    assert _formatter().format_detail(result) == expected + "\n"
     compiler.execute.assert_not_called()
     store.execute.assert_not_called()
     delete.execute.assert_called_once_with("storage-1")
@@ -217,15 +226,15 @@ def test_compile_safety_check_returns_structured_error() -> None:
     failure = usecase._run_security_check_if_required(
         STUDENT,
         SourceCode(text=BLOCKED_SOURCE.decode("utf-8")),
+        ProjectSettings.create_default(),
     )
 
     assert failure is not None
-    error, _ = failure
-    assert isinstance(error, SourceSafetyViolationError)
-    assert error.source_sha256 == hashlib.sha256(BLOCKED_SOURCE).hexdigest()
-    assert len(error.findings) == 1
-    assert error.findings[0].group_id == "process"
-    assert error.findings[0].check_id == "system"
+    assert isinstance(failure, SourceSafetyViolationError)
+    assert failure.source_sha256 == hashlib.sha256(BLOCKED_SOURCE).hexdigest()
+    assert len(failure.findings) == 1
+    assert failure.findings[0].group_id == "process"
+    assert failure.findings[0].check_id == "system"
 
 
 @pytest.mark.parametrize("compiler_output", ["fatal error C1004\n", None])
@@ -238,7 +247,7 @@ def test_compile_service_exception_becomes_failure(compiler_output: str | None) 
     usecase.execute(STUDENT, STAGE_PATH)
     result = _saved_result(put)
     assert type(result) is CompileFailureStudentStageResult
-    assert result.reason == (
+    expected = (
         "コンパイルに失敗しました。\n"
         "コンパイルに失敗しました。ソースコードを直接Visual Studioで開いて"
         "実行してください．\n"
@@ -246,8 +255,9 @@ def test_compile_service_exception_becomes_failure(compiler_output: str | None) 
         "あります。\n"
         "コンパイラからの応答がタイムアウトしました"
     )
+    assert _formatter().format_summary(result.error) == expected
     assert result.output == (compiler_output or "")
-    assert result.detailed_text == result.reason + "\n" + result.output
+    assert _formatter().format_detail(result) == expected + "\n" + result.output
     store.execute.assert_not_called()
     delete.execute.assert_called_once_with("storage-1")
 
@@ -300,12 +310,13 @@ def test_execute_expected_exception_becomes_failure() -> None:
     assert type(result) is ExecuteFailureStudentStageResult
     assert not result.is_success
     assert result.testcase_id == TESTCASE
-    assert result.reason == (
+    expected = (
         "実行がタイムアウトしました\n"
         "この環境のスペックに対して並列タスク数が多すぎる・"
         "プログラムが入力を待っている・無限ループしているなどの可能性があります"
     )
-    assert result.detailed_text == result.reason
+    assert _formatter().format_summary(result.error) == expected
+    assert _formatter().format_detail(result) == expected
     runner.execute.assert_called_once_with(
         storage_id="storage-1", executable_file_relative_path=Path("main.exe"), timeout=1.5
     )
@@ -350,14 +361,14 @@ def _test_case(execute_result):
 def test_test_stage_cannot_test_unavailable_execution(found: bool, expected: str) -> None:
     """EXECUTE結果なし・失敗の両方がTEST失敗に変換される。"""
     prior = None if not found else ExecuteFailureStudentStageResult.create_instance(
-        student_id=STUDENT, testcase_id=TESTCASE, reason="実行がタイムアウトしました"
+        student_id=STUDENT, testcase_id=TESTCASE, error=ExecutionTimeoutError()
     )
     usecase, _, put = _test_case(prior)
     usecase.execute(STUDENT, STAGE_PATH)
     result = _saved_result(put)
     assert type(result) is StudentTestFailureStageResult
     assert not result.is_success
-    assert result.reason == expected
+    assert _formatter().format_summary(result.error) == expected
     assert result.testcase_id == TESTCASE
 
 
@@ -382,7 +393,7 @@ def test_test_stage_match_error_is_converted_to_failure() -> None:
     usecase.execute(STUDENT, STAGE_PATH)
     result = _saved_result(put)
     assert type(result) is StudentTestFailureStageResult
-    assert result.reason == "マッチング失敗の理由"
+    assert _formatter().format_summary(result.error) == "マッチング失敗の理由"
     matcher.execute.assert_called_once()
 
 

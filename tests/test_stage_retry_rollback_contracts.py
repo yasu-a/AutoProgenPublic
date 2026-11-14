@@ -6,6 +6,10 @@ from unittest.mock import Mock
 import pytest
 
 from autoprogen.domain.error import StopTask
+from autoprogen.domain.error.stage.build import SubmissionNotFoundError
+from autoprogen.domain.error.stage.compile import CompilerDiagnosticError
+from autoprogen.domain.error.stage.execute import ExecutionTimeoutError
+from autoprogen.domain.error.stage.test import OutputMatchingError
 from autoprogen.domain.model.output_file import OutputFileCollection
 from autoprogen.domain.model.stage import (
     BuildStage,
@@ -87,16 +91,23 @@ def _failure_result(stage_index: int, case_id: CaseID = CASE_A):
     """各ステージに対応する失敗結果を作る。"""
     return (
         BuildFailureStudentStageResult.create_instance(
-            student_id=STUDENT, reason="BUILD失敗",
+            student_id=STUDENT,
+            error=SubmissionNotFoundError(),
         ),
         CompileFailureStudentStageResult.create_instance(
-            student_id=STUDENT, reason="COMPILE失敗", output="compiler stderr\n",
+            student_id=STUDENT,
+            error=CompilerDiagnosticError(),
+            output="compiler stderr\n",
         ),
         ExecuteFailureStudentStageResult.create_instance(
-            student_id=STUDENT, testcase_id=case_id, reason="EXECUTE失敗",
+            student_id=STUDENT,
+            testcase_id=case_id,
+            error=ExecutionTimeoutError(),
         ),
         StageTestFailureResult.create_instance(
-            student_id=STUDENT, testcase_id=case_id, reason="TEST失敗",
+            student_id=STUDENT,
+            testcase_id=case_id,
+            error=OutputMatchingError(detail="TEST失敗"),
         ),
     )[stage_index]
 
@@ -248,7 +259,10 @@ def test_failed_stage_without_progress_does_not_loop_forever(repository) -> None
     usecase, _, runners = _make_runner(repository, [_path()], rollback)
     usecase.execute(student_id=STUDENT, stop_producer=lambda: False)
     runners[0].execute.assert_called_once()
-    assert repository.get(STUDENT, _path()).last_stage_main_reason == "BUILD失敗"
+    assert isinstance(
+        repository.get(STUDENT, _path()).last_stage_result.error,
+        SubmissionNotFoundError,
+    )
 
 
 def test_unexpected_exception_propagates_without_overwriting_failure(repository) -> None:
@@ -260,7 +274,10 @@ def test_unexpected_exception_propagates_without_overwriting_failure(repository)
     runners[1].execute.side_effect = RuntimeError("unexpected")
     with pytest.raises(RuntimeError, match="unexpected"):
         usecase.execute(student_id=STUDENT, stop_producer=lambda: False)
-    assert repository.get(STUDENT, _path()).last_stage_main_reason == "COMPILE失敗"
+    assert isinstance(
+        repository.get(STUDENT, _path()).last_stage_result.error,
+        CompilerDiagnosticError,
+    )
 
 
 def test_stop_before_first_step_leaves_results_unchanged(repository) -> None:

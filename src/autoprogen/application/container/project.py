@@ -1,5 +1,6 @@
 from functools import cached_property
 from autoprogen.service.student_change_event_bus import StudentChangeEventBus
+from autoprogen.service.stage_error_text import StageErrorTextFormatter
 from autoprogen.domain.model.value import ProjectID
 from autoprogen.infra.gateway.manaba_report_archive import ManabaReportArchiveGateway
 from autoprogen.infra.gateway.readonly_excel_worksheet import ReadonlyExcelWorksheetGateway
@@ -538,6 +539,14 @@ class ProjectContainer:
             stage_path_list_sub_service=self.stage_path_list_sub_service,
             student_stage_path_result_repo=self.student_stage_path_result_repository,
             student_mark_get_sub_service=self.student_mark_get_sub_service,
+            stage_error_text_formatter=self.stage_error_text_formatter,
+        )
+
+    @cached_property
+    def stage_error_text_formatter(self) -> StageErrorTextFormatter:
+        """構造化ステージエラーの画面表示用フォーマッタを返す。"""
+        return StageErrorTextFormatter(
+            source_code_check_catalog_factory=self.source_code_check_catalog_factory,
         )
 
     @cached_property
@@ -570,6 +579,7 @@ class ProjectContainer:
         return StudentMarkViewDataGetTestResultUseCase(
             stage_path_get_by_testcase_id_service=self.stage_path_get_by_testcase_id_service,
             student_stage_path_result_get_service=self.student_stage_path_result_get_service,
+            stage_error_text_formatter=self.stage_error_text_formatter,
         )
 
     @cached_property

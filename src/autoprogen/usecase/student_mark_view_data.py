@@ -2,10 +2,12 @@ from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.stage import TestStage
 from autoprogen.domain.model.student_stage_path_result import StudentStagePathResult
 from autoprogen.domain.model.student_stage_result import TestSuccessStudentStageResult
+from autoprogen.domain.model.student_stage_result import AbstractFailureStudentStageResult
 from autoprogen.domain.model.value import StudentID, TestCaseID
 from autoprogen.service.stage_path import StagePathListSubService, StagePathGetByTestCaseIDService
 from autoprogen.service.student import StudentGetService
 from autoprogen.service.student_mark import StudentMarkGetSubService
+from autoprogen.service.stage_error_text import StageErrorTextFormatter
 from autoprogen.service.student_stage_path_result import StudentStagePathResultGetService, \
     StudentStagePathResultCheckRollbackService
 from autoprogen.usecase.dto.student_mark_view_data import AbstractStudentTestCaseTestResultViewData, \
@@ -20,11 +22,15 @@ class StudentMarkViewDataGetTestResultUseCase:
             *,
             stage_path_get_by_testcase_id_service: StagePathGetByTestCaseIDService,
             student_stage_path_result_get_service: StudentStagePathResultGetService,
+            stage_error_text_formatter: StageErrorTextFormatter,
     ):
+        """ステージ結果の取得処理とエラー表示用フォーマッタを受け取る。"""
         self._stage_path_get_by_testcase_id_service \
             = stage_path_get_by_testcase_id_service
         self._student_stage_path_result_get_service \
             = student_stage_path_result_get_service
+        self._stage_error_text_formatter \
+            = stage_error_text_formatter
 
     def execute(
             self,
@@ -32,7 +38,9 @@ class StudentMarkViewDataGetTestResultUseCase:
             testcase_id: TestCaseID,
     ) -> AbstractStudentTestCaseTestResultViewData:
         # 対象のステージパスを見つける
-        stage_path = self._stage_path_get_by_testcase_id_service.execute(testcase_id)
+        stage_path = self._stage_path_get_by_testcase_id_service.execute(
+            testcase_id,
+        )
 
         # このステージパスの結果を取得
         stage_path_result: StudentStagePathResult \
@@ -40,8 +48,11 @@ class StudentMarkViewDataGetTestResultUseCase:
 
         if stage_path_result.are_all_finished:
             # すべてのステージが成功しているとき
-            test_stage_result = stage_path_result.get_result_by_stage_type(TestStage)
-            assert isinstance(test_stage_result, TestSuccessStudentStageResult), test_stage_result
+            test_stage_result = stage_path_result.get_result_by_stage_type(
+                TestStage,
+            )
+            assert isinstance(test_stage_result, TestSuccessStudentStageResult), \
+                test_stage_result
             if test_stage_result.is_accepted:
                 return StudentTestCaseTestResultAcceptedViewData(
                     student_id=student_id,
@@ -56,8 +67,12 @@ class StudentMarkViewDataGetTestResultUseCase:
                 )
         else:
             # 失敗しているとき
-            reason = stage_path_result.last_stage_detailed_reason
-            if reason is None:
+            last_result = stage_path_result.last_stage_result
+            if isinstance(last_result, AbstractFailureStudentStageResult):
+                reason = self._stage_error_text_formatter.format_detail(
+                    last_result,
+                )
+            else:
                 reason = "処理が未完了です"
             return StudentTestCaseTestResultUntestableViewData(
                 student_id=student_id,
@@ -88,7 +103,8 @@ class StudentMarkViewDataGetMarkSummaryUseCase:
             = student_stage_path_result_check_rollback_service
 
     def execute(self, student_id: StudentID) -> StudentMarkSummaryViewData:
-        stage_path_lst: list[StagePath] = self._stage_path_list_sub_service.execute()
+        stage_path_lst: list[StagePath] \
+            = self._stage_path_list_sub_service.execute()
 
         state: StudentMarkState = StudentMarkState.NO_TEST_FOUND
         detailed_text = None

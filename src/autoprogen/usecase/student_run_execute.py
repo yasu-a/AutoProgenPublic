@@ -1,10 +1,6 @@
 from pathlib import Path
 
-from autoprogen.domain.error.stage.execute import (
-    ExecutableNotFoundError,
-    ExecuteStageError,
-    ExecutionTimeoutError,
-)
+from autoprogen.domain.error.stage.execute import ExecuteStageError
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.student_stage_result import ExecuteFailureStudentStageResult, \
     ExecuteSuccessStudentStageResult
@@ -19,19 +15,6 @@ from autoprogen.service.storage_run_executable import StorageRunExecutableServic
 from autoprogen.service.student_stage_path_result import StudentPutStageResultService
 from autoprogen.service.testcase_config import TestCaseConfigGetExecuteConfigMtimeService
 from autoprogen.util.app_logging import create_logger
-
-
-def _format_execute_stage_error(error: ExecuteStageError) -> str:
-    """EXECUTEの構造化エラーを従来の保存用メッセージへ変換する。"""
-    if isinstance(error, ExecutableNotFoundError):
-        return "実行対象が存在しません"
-    if isinstance(error, ExecutionTimeoutError):
-        return (
-            "実行がタイムアウトしました\n"
-            "この環境のスペックに対して並列タスク数が多すぎる・"
-            "プログラムが入力を待っている・無限ループしているなどの可能性があります"
-        )
-    raise TypeError(f"未対応のEXECUTEエラーです: {type(error).__name__}")
 
 
 class StudentRunExecuteStageUseCase:
@@ -118,7 +101,7 @@ class StudentRunExecuteStageUseCase:
                 result=ExecuteFailureStudentStageResult.create_instance(
                     student_id=student_id,
                     testcase_id=stage_path.testcase_id,
-                    reason=_format_execute_stage_error(e),
+                    error=e,
                 )
             )
             return

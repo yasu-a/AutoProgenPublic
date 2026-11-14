@@ -2,6 +2,7 @@ import hashlib
 from pathlib import Path
 from unittest.mock import Mock
 
+from autoprogen.domain.error.stage.compile import SourceSafetyViolationError
 from autoprogen.domain.model.project_settings import (
     ProjectSettings,
     SourceCodeCheckIdentifier,
@@ -71,13 +72,13 @@ def test_detected_rule_stops_before_compiler() -> None:
     compiler.execute.assert_not_called()
     storage_store.execute.assert_not_called()
     assert isinstance(result, CompileFailureStudentStageResult)
-    assert "安全性チェック" in result.reason
-    assert "process.system" in result.reason
-    assert "1行目" in result.reason
-    assert "検査対象SHA-256: " in result.reason
+    assert isinstance(result.error, SourceSafetyViolationError)
     assert hashlib.sha256(
         b'int main(void) { system("echo test"); return 0; }\n'
-    ).hexdigest() in result.reason
+    ).hexdigest() == result.error.source_sha256
+    assert result.error.findings[0].group_id == "process"
+    assert result.error.findings[0].check_id == "system"
+    assert result.error.findings[0].line_number == 1
 
 
 def test_suppressed_rule_does_not_stop_compile() -> None:
@@ -95,6 +96,8 @@ def test_suppressed_rule_does_not_stop_compile() -> None:
     compiler.execute.assert_called_once()
     storage_store.execute.assert_called_once()
     assert isinstance(result, CompileSuccessStudentStageResult)
+    assert result.security_check_policy == settings.suppressed_source_code_checks
+    assert result.security_check_skipped is False
 
 
 def test_approved_student_and_hash_bypass_check() -> None:
@@ -112,6 +115,8 @@ def test_approved_student_and_hash_bypass_check() -> None:
     compiler, _, result = _execute(source, settings)
     compiler.execute.assert_called_once()
     assert isinstance(result, CompileSuccessStudentStageResult)
+    assert result.security_check_policy == settings.suppressed_source_code_checks
+    assert result.security_check_skipped is True
 
 
 def test_different_hash_is_not_approved() -> None:
@@ -155,3 +160,5 @@ def test_safe_code_is_compiled() -> None:
     )
     storage_store.execute.assert_called_once()
     assert isinstance(result, CompileSuccessStudentStageResult)
+    assert result.security_check_policy == ProjectSettings.create_default().suppressed_source_code_checks
+    assert result.security_check_skipped is False

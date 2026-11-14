@@ -2,23 +2,15 @@ from pathlib import Path
 
 from autoprogen.domain.error import StorageRunCompilerServiceError
 from autoprogen.domain.error.stage.compile import (
-    CompileSourceNotFoundError,
     CompileStageError,
-    CompilerDiagnosticError,
-    CompilerExecutionFailedError,
-    CompilerInputFileNotFoundError,
-    CompilerNotConfiguredError,
-    CompilerTimeoutError,
-    CompilerWorkingDirectoryNotFoundError,
     SourceSafetyViolationError,
-    VsDevToolNotFoundError,
 )
 from autoprogen.domain.model.project_settings import ProjectSettings
 from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.source_code_check import SourceCodeCheckCatalog, SourceCodeCheckResult
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.student_stage_result import CompileFailureStudentStageResult, CompileStageResultType, \
-    CompileSuccessStudentStageResult
+    CompileSuccessStudentStageResult, SourceCodeCheckPolicy
 from autoprogen.domain.model.value import StorageID, StudentID
 from autoprogen.infra.repository.project_settings import ProjectSettingsRepository
 from autoprogen.service.dto.storage_run_compiler import StorageCompileServiceResult
@@ -29,36 +21,6 @@ from autoprogen.service.storage_run_compiler import StorageRunCompilerService
 from autoprogen.domain.service.source_code_check import SourceCodeCheckService
 from autoprogen.domain.service.source_code_check_factory import SourceCodeCheckCatalogFactory
 from autoprogen.service.student_stage_path_result import StudentPutStageResultService
-
-
-def _format_compile_stage_error(error: CompileStageError) -> str:
-    """COMPILEの構造化エラーを従来の保存用メッセージへ変換する。"""
-    if isinstance(error, CompilerNotConfiguredError):
-        return "コンパイラが設定されていません"
-    if isinstance(error, CompileSourceNotFoundError):
-        return "コンパイル対象が存在しません"
-
-    if isinstance(error, VsDevToolNotFoundError):
-        detail = f"Visual Studio 開発者ツールが存在しません: {error.path!s}"
-    elif isinstance(error, CompilerWorkingDirectoryNotFoundError):
-        detail = f"コンパイル先のディレクトリが存在しません: {error.path!s}"
-    elif isinstance(error, CompilerInputFileNotFoundError):
-        detail = f"コンパイル対象のファイルが存在しません: {error.path!s}"
-    elif isinstance(error, CompilerDiagnosticError):
-        detail = "コンパイルエラーが発生しました"
-    elif isinstance(error, CompilerExecutionFailedError):
-        detail = "コンパイラを実行できません"
-    elif isinstance(error, CompilerTimeoutError):
-        detail = "コンパイラからの応答がタイムアウトしました"
-    else:
-        raise TypeError(f"未対応のCOMPILEエラーです: {type(error).__name__}")
-
-    return (
-        "コンパイルに失敗しました。ソースコードを直接Visual Studioで開いて"
-        "実行してください．\n"
-        "文字コードが原因の場合、Visual Studioで実行すると正常に動作することが"
-        f"あります。\n{detail}"
-    )
 
 
 class StudentRunCompileStageUseCase:
@@ -146,33 +108,12 @@ class StudentRunCompileStageUseCase:
     def _create_security_check_failure_stage_result(
         self,
         student_id: StudentID,
-        catalog: SourceCodeCheckCatalog,
         error: SourceSafetyViolationError,
     ) -> CompileFailureStudentStageResult:
-        """検出された規則を列挙したCOMPILE失敗結果を作成する。"""
-        rule_names = {
-            (group.group_id, entry.check_id): entry.name
-            for group in catalog.groups
-            for entry in group.entries
-        }
-        detail_lines = [
-            f"{finding.line_number}行目: "
-            f"[{finding.group_id}.{finding.check_id}] "
-            f"{rule_names.get((finding.group_id, finding.check_id), '検出した規則')}"
-            for finding in error.findings[:50]
-        ]
-        if len(error.findings) > 50:
-            detail_lines.append(
-                f"ほか{len(error.findings) - 50}件の検出があります。"
-            )
+        """構造化された安全性チェックのCOMPILE失敗結果を作成する。"""
         return CompileFailureStudentStageResult.create_instance(
             student_id=student_id,
-            reason=(
-                "ソースコードの安全性チェックで問題が検出されたため、"
-                "コンパイルを停止しました。\n"
-                f"検査対象SHA-256: {error.source_sha256}\n"
-                + "\n".join(detail_lines)
-            ),
+            error=error,
             output="",
         )
 
@@ -180,10 +121,9 @@ class StudentRunCompileStageUseCase:
         self,
         student_id: StudentID,
         source_code: SourceCode,
-    ) -> tuple[SourceSafetyViolationError, SourceCodeCheckCatalog] | None:
-        """許可済みソースを除外して検査し、問題があればエラーと規則を返す。"""
-        # 一度取得した設定を許可判定と規則抑制の両方に使用する。
-        project_settings = self._project_settings_repository.get()
+        project_settings: ProjectSettings,
+    ) -> SourceSafetyViolationError | None:
+        """許可済みソースを除外して検査し、問題があれば構造化エラーを返す。"""
         if self._is_skip_security_check_approved(student_id, source_code, project_settings):
             return None
 
@@ -193,12 +133,9 @@ class StudentRunCompileStageUseCase:
         if check_result.is_safe:
             return None
 
-        return (
-            SourceSafetyViolationError(
-                source_sha256=check_result.source_sha256,
-                findings=check_result.findings,
-            ),
-            catalog,
+        return SourceSafetyViolationError(
+            source_sha256=check_result.source_sha256,
+            findings=check_result.findings,
         )
 
     def _run_compile(self, storage_id: StorageID) -> StorageCompileServiceResult:
@@ -220,10 +157,7 @@ class StudentRunCompileStageUseCase:
             )
         return CompileFailureStudentStageResult.create_instance(
             student_id=student_id,
-            reason=(
-                "コンパイルに失敗しました。\n"
-                f"{_format_compile_stage_error(error.error)}"
-            ),
+            error=error.error,
             output=error.output or "",
         )
 
@@ -239,11 +173,17 @@ class StudentRunCompileStageUseCase:
         self,
         student_id: StudentID,
         service_result: StorageCompileServiceResult,
+        project_settings: ProjectSettings,
+        security_check_skipped: bool,
     ) -> CompileSuccessStudentStageResult:
-        """コンパイラの出力を保持したCOMPILE成功結果を作成する。"""
+        """コンパイラ出力と実行時の安全性設定を保持した成功結果を作成する。"""
         return CompileSuccessStudentStageResult.create_instance(
             student_id=student_id,
             output=service_result.output,
+            security_check_policy=SourceCodeCheckPolicy(
+                project_settings.suppressed_source_code_checks,
+            ),
+            security_check_skipped=security_check_skipped,
         )
 
     def _save_result(self, stage_path: StagePath, result: CompileStageResultType) -> None:
@@ -269,18 +209,25 @@ class StudentRunCompileStageUseCase:
                 storage_id,
             )
 
+            # 許可判定と規則抑制に同じプロジェクト設定を使用する。
+            project_settings = self._project_settings_repository.get()
+            security_check_skipped = self._is_skip_security_check_approved(
+                student_id,
+                source_code,
+                project_settings,
+            )
+
             # 許可状態とプロジェクト設定に従ってソースコードを検査する。
             safety_failure = self._run_security_check_if_required(
                 student_id,
                 source_code,
+                project_settings,
             )
             if safety_failure is not None:
-                error, catalog = safety_failure
                 # 安全性チェックの失敗結果を保存して処理を終了する。
                 failure_result = self._create_security_check_failure_stage_result(
                     student_id,
-                    catalog,
-                    error,
+                    safety_failure,
                 )
                 self._save_result(stage_path, failure_result)
                 return
@@ -297,7 +244,11 @@ class StudentRunCompileStageUseCase:
 
             # コンパイル成功結果を学生データへ記録する。
             result = self._create_compile_success_result(
-                student_id, service_result)
+                student_id,
+                service_result,
+                project_settings,
+                security_check_skipped,
+            )
             self._save_result(stage_path, result)
         finally:
             # 成否にかかわらず一時ストレージを削除する。
