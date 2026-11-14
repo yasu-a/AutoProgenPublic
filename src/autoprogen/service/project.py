@@ -30,7 +30,6 @@ class ProjectGetConfigStateQueryService:
         # JSONが存在するか確認
         if not config_json_fullpath.exists():
             # JSONが存在しないただのフォルダはUNOPENABLEとする
-            # raise ProjectServiceError(f"Project \"{project_id}\" not found")
             return ProjectConfigState.UNOPENABLE
 
         # JSONを読み込む

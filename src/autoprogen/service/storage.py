@@ -4,10 +4,11 @@ from pathlib import Path
 from autoprogen.domain.model.file_item import ExecutableFileItem
 from autoprogen.domain.model.input_file import InputFileCollection
 from autoprogen.domain.model.output_file import OutputFileCollection, OutputFile
+from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.value import StorageID, StudentID, TestCaseID, FileID
 from autoprogen.infra.repository.storage import StorageRepository
-from autoprogen.infra.repository.student_dynamic import StudentSourceRepository, \
-    StudentExecutableRepository
+from autoprogen.infra.repository.student_executable import StudentExecutableRepository
+from autoprogen.infra.repository.student_source_code import StudentSourceRepository
 from autoprogen.infra.repository.test_source import TestSourceRepository
 from autoprogen.infra.repository.testcase_config import TestCaseConfigRepository
 from autoprogen.service.dto.storage_diff_snapshot import StorageDiff, StorageFileSnapshot, \
@@ -85,14 +86,17 @@ class StorageLoadStudentSourceService:
             student_id: StudentID,
             storage_id: StorageID,
             file_relative_path: Path,
-    ) -> None:
+    ) -> SourceCode:
+        """生徒のソースコードを配置し、元のドメインモデルを返す。"""
         # 生徒のソースコードを読み込む
-        content_bytes = self._student_source_repo.get(student_id).content_bytes
+        source_code = self._student_source_repo.get(student_id)
+        content_bytes = source_code.to_utf8_bytes()
 
         # ストレージ領域に配置する
         storage = self._storage_repo.get(storage_id)
         storage.files[file_relative_path] = content_bytes
         self._storage_repo.put(storage)
+        return source_code
 
 
 class StorageLoadStudentExecutableService:

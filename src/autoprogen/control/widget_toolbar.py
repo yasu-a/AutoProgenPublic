@@ -31,6 +31,11 @@ class ToolBar(QToolBar):
         self._a_settings.setEnabled(False)
         self.addAction(self._a_settings)
 
+        self._a_project_settings = QAction(get_icon("settings"), "プロジェクト設定", self)
+        self._a_project_settings.setObjectName("edit-project-settings")
+        self._a_project_settings.setEnabled(False)
+        self.addAction(self._a_project_settings)
+
         self.addSeparator()
 
         self._a_edit_testcases = QAction(get_icon("research"), "テストケースの編集", self)
@@ -89,6 +94,7 @@ class ToolBar(QToolBar):
             self._a_stop.setEnabled(True)
             self._a_delete.setEnabled(False)
             self._a_settings.setEnabled(False)
+            self._a_project_settings.setEnabled(False)
             self._a_edit_testcases.setEnabled(False)
             self._a_mark.setEnabled(False)
             self._a_export_scores.setEnabled(False)
@@ -97,6 +103,7 @@ class ToolBar(QToolBar):
             self._a_stop.setEnabled(False)
             self._a_delete.setEnabled(True)
             self._a_settings.setEnabled(True)
+            self._a_project_settings.setEnabled(True)
             self._a_edit_testcases.setEnabled(True)
             self._a_mark.setEnabled(True)
             self._a_export_scores.setEnabled(True)

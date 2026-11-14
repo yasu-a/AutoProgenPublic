@@ -1,6 +1,10 @@
 from pathlib import Path
 
 from autoprogen.domain.error import StorageRunCompilerServiceError, CompileToolIOError
+from autoprogen.domain.error.stage.compile import (
+    CompilerNotConfiguredError,
+    CompileSourceNotFoundError,
+)
 from autoprogen.domain.model.value import StorageID
 from autoprogen.infra.io.compile_tool import CompileToolIO
 from autoprogen.infra.repository.global_settings import GlobalSettingsRepository
@@ -9,14 +13,16 @@ from autoprogen.service.dto.storage_run_compiler import StorageCompileServiceRes
 
 
 class StorageRunCompilerService:
-    # ストレージ領域内でコンパイルを行う
+    """一時ストレージ内のソースコードをコンパイルする。"""
+
     def __init__(
             self,
             *,
             compile_tool_io: CompileToolIO,
             global_settings_repo: GlobalSettingsRepository,
             storage_repo: StorageRepository,
-    ):
+    ) -> None:
+        """コンパイラIO、設定、ストレージRepositoryを受け取る。"""
         self._compile_tool_io = compile_tool_io
         self._global_settings_repo = global_settings_repo
         self._storage_repo = storage_repo
@@ -26,14 +32,15 @@ class StorageRunCompilerService:
             *,
             storage_id: StorageID,
             source_file_relative_path: Path,
-            compiler_tool_fullpath: Path = None,
+            compiler_tool_fullpath: Path | None = None,
     ) -> StorageCompileServiceResult:
+        """対象ソースをコンパイルし、出力または構造化エラーを返す。"""
         # コンパイラのパスを取得する
         if compiler_tool_fullpath is None:
             compiler_tool_fullpath = self._global_settings_repo.get().compiler_tool_fullpath
         if compiler_tool_fullpath is None:
             raise StorageRunCompilerServiceError(
-                reason="コンパイラが設定されていません",
+                error=CompilerNotConfiguredError(),
                 output=None,
             )
 
@@ -41,7 +48,7 @@ class StorageRunCompilerService:
         storage = self._storage_repo.get(storage_id)
         if source_file_relative_path not in storage.files:
             raise StorageRunCompilerServiceError(
-                reason="コンパイル対象が存在しません",
+                error=CompileSourceNotFoundError(),
                 output=None,
             )
 
@@ -64,7 +71,7 @@ class StorageRunCompilerService:
             output = self._compile_tool_io.run_and_get_output(**kwargs)
         except CompileToolIOError as e:
             raise StorageRunCompilerServiceError(
-                reason=f"コンパイルに失敗しました。ソースコードを直接Visual Studioで開いて実行してください．\n文字コードが原因の場合、Visual Studioで実行すると正常に動作することがあります。\n{e.reason}",
+                error=e.error,
                 output=e.output,
             )
 

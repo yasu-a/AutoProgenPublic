@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from autoprogen.domain.error import StorageRunExecutableServiceError
+from autoprogen.domain.error.stage.execute import ExecuteStageError
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.student_stage_result import ExecuteFailureStudentStageResult, \
     ExecuteSuccessStudentStageResult
@@ -60,6 +60,7 @@ class StudentRunExecuteStageUseCase:
     __EXECUTABLE_FILE_RELATIVE_PATH = Path("main.exe")
 
     def execute(self, student_id: StudentID, stage_path: StagePath) -> None:
+        """学生一人分のEXECUTEステージを実行して結果を保存する。"""
         # ストレージ領域の生成
         storage_id = self._storage_create_service.execute()
 
@@ -93,14 +94,14 @@ class StudentRunExecuteStageUseCase:
                 executable_file_relative_path=self.__EXECUTABLE_FILE_RELATIVE_PATH,
                 timeout=execute_options.timeout,
             )
-        except StorageRunExecutableServiceError as e:
+        except ExecuteStageError as e:
             # 失敗したら異常終了の結果を書きこむ
             self._student_put_stage_result_service.execute(
                 stage_path=stage_path,
                 result=ExecuteFailureStudentStageResult.create_instance(
                     student_id=student_id,
                     testcase_id=stage_path.testcase_id,
-                    reason=e.reason,
+                    error=e,
                 )
             )
             return

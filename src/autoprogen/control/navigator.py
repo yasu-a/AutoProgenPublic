@@ -1,15 +1,24 @@
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QMessageBox, QWidget
 
 from autoprogen.application.container import AppContainer, ProjectContainer
 from autoprogen.control.dialog_progress import AbstractProgressDialog
 from autoprogen.control.interface_navigator import INavigator
+from autoprogen.domain.error.stage.compile import SourceSafetyViolationError
+from autoprogen.domain.model.project_settings import SourceCodeCheckSkip
+from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.value import ProjectID, StudentID
+from autoprogen.util.app_logging import create_logger
+
+if TYPE_CHECKING:
+    from autoprogen.control.widget_source_safety_error import SourceSafetyErrorWidget
 
 
 class Navigator(INavigator):
     """アプリ起動とトップレベル画面間の遷移を管理する。"""
+
+    _logger = create_logger()
 
     def __init__(self, *, app_container: AppContainer):
         self._app_container = app_container
@@ -55,6 +64,150 @@ class Navigator(INavigator):
             global_settings_put_usecase=self._app_container.global_settings_put_usecase,
         )
         dialog.exec_()
+
+    def open_project_settings_dialog(self, parent: QWidget) -> None:
+        """現在のプロジェクト専用の静的チェック設定を編集する。"""
+        from autoprogen.control.dialog_project_settings import ProjectSettingsEditDialog
+        assert self._current_project_container is not None
+        container = self._current_project_container
+        dialog = ProjectSettingsEditDialog(
+            parent,
+            catalog=container.source_code_check_catalog_factory.create(),
+            project_settings_get_usecase=container.project_settings_get_usecase,
+            project_settings_put_usecase=container.project_settings_put_usecase,
+        )
+        dialog.exec_()
+
+    def open_student_error_detail_dialog(self, parent: QWidget, student_id: StudentID) -> None:
+        """学生のエラー詳細を取得し、編集不可のダイアログに表示する。"""
+        from autoprogen.control.dialog_student_error_detail import StudentErrorDetailDialog
+        assert self._current_project_container is not None
+        container = self._current_project_container
+        row = container.student_table_load_usecase.execute_row(student_id)
+        if not row.error_cell.text_entries:
+            return
+        dialog = StudentErrorDetailDialog(
+            parent,
+            student_id=student_id,
+            error_entries=row.error_cell.text_entries,
+        )
+        # 構造化エラーから安全性チェック停止だけを専用表示の対象にする。
+        safety_errors = tuple(
+            entry.error
+            for entry in row.error_cell.text_entries
+            if isinstance(entry.error, SourceSafetyViolationError)
+        )
+        if safety_errors:
+            from autoprogen.control.widget_source_safety_error import SourceSafetyErrorWidget
+            try:
+                source_code = container.student_source_code_get_usecase.execute(student_id)
+            except UnicodeError:
+                source_code = None
+            global_settings = self._app_container.global_settings_get_usecase.execute()
+            project_settings = container.project_settings_get_usecase.execute()
+            source_hashes = {error.source_sha256 for error in safety_errors}
+            source_sha256 = (
+                next(iter(source_hashes)) if len(source_hashes) == 1 else None
+            )
+            already_approved = (
+                source_sha256 is not None
+                and SourceCodeCheckSkip(student_id, source_sha256)
+                in project_settings.source_code_check_skips
+            )
+            widget = SourceSafetyErrorWidget(
+                dialog,
+                source_code=source_code,
+                safety_errors=safety_errors,
+                show_editing_symbols=global_settings.show_editing_symbols_in_source_code,
+                enable_line_wrap=global_settings.enable_line_wrap_in_source_code,
+                can_approve=container.task_manager.is_empty(),
+                already_approved=already_approved,
+            )
+            widget.approval_requested.connect(
+                lambda: self._approve_source_code_check_skip(
+                    parent=widget,
+                    widget=widget,
+                    student_id=student_id,
+                    displayed_source_code=source_code,
+                    expected_sha256=source_sha256,
+                )
+            )
+            dialog.set_extension_widget(widget)
+        dialog.exec_()
+
+    def _approve_source_code_check_skip(
+        self,
+        *,
+        parent: QWidget,
+        widget: "SourceSafetyErrorWidget",
+        student_id: StudentID,
+        displayed_source_code: SourceCode | None,
+        expected_sha256: str | None,
+    ) -> None:
+        """表示したソースの同一性を確認し、安全性チェックの省略を保存する。"""
+        assert self._current_project_container is not None
+        if displayed_source_code is None or expected_sha256 is None:
+            return
+        container = self._current_project_container
+        try:
+            # 確認前に保存済みソースが表示内容と一致しているか検証する。
+            current_source_code = container.student_source_code_get_usecase.execute(student_id)
+            if (
+                    current_source_code != displayed_source_code
+                    or current_source_code.calculate_sha256() != expected_sha256
+            ):
+                widget.set_approval_state(
+                    "ソースコードが更新されました。再実行してから許可してください。",
+                    enabled=False,
+                )
+                return
+
+            # 採点者へ省略対象が現在の学生とソースだけであることを確認する。
+            decision = QMessageBox.question(
+                parent,
+                "安全性チェックの許可",
+                "この学生の現在のソースコードだけを許可しますか？\n"
+                "次回実行時に安全性チェックを省略します。",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if decision != QMessageBox.Yes:
+                return
+
+            # 確認中にソースが変更されていないか保存直前に再検証する。
+            current_source_code = container.student_source_code_get_usecase.execute(student_id)
+            if (
+                    current_source_code != displayed_source_code
+                    or current_source_code.calculate_sha256() != expected_sha256
+            ):
+                widget.set_approval_state(
+                    "ソースコードが更新されました。再実行してから許可してください。",
+                    enabled=False,
+                )
+                return
+
+            # 現在のプロジェクト設定へ学生とソースの組み合わせを追加する。
+            settings = container.project_settings_get_usecase.execute()
+            updated = settings.with_source_code_check_skip(
+                student_id=student_id,
+                source_sha256=expected_sha256,
+            )
+            if updated != settings:
+                container.project_settings_put_usecase.execute(updated)
+        except Exception as error:
+            self._logger.exception("ソースコードの許可を保存できませんでした")
+            QMessageBox.critical(
+                parent,
+                "安全性チェックの許可",
+                f"設定を保存できませんでした。\n{error}",
+            )
+            return
+
+        # 保存完了を表示し、同じ許可操作を繰り返せないようにする。
+        widget.set_approval_state(
+            "許可を保存しました。次に「実行」を押すとCOMPILEを再試行します。",
+            enabled=False,
+        )
 
     def open_about_dialog(self, parent: QWidget) -> None:
         from autoprogen.control.dialog_about import AboutDialog

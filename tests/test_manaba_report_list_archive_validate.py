@@ -6,7 +6,7 @@ from autoprogen.domain.error import ManabaReportListArchiveValidateServiceError
 from autoprogen.domain.model.manaba_report_archive import ManabaSubmissionFolderPath
 from autoprogen.domain.model.manaba_report_list import ManabaReportList, ManabaReportListRow
 from autoprogen.domain.model.value import StudentID
-from autoprogen.service.manaba_report_list_archive_validate import ManabaReportListArchiveValidateService
+from autoprogen.domain.service.manaba_report_list_archive_validate import ManabaReportListArchiveValidateService
 
 
 class _ArchiveStub:

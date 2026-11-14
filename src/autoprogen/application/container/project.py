@@ -1,5 +1,6 @@
 from functools import cached_property
 from autoprogen.service.student_change_event_bus import StudentChangeEventBus
+from autoprogen.service.stage_error_text import StageErrorTextFormatter
 from autoprogen.domain.model.value import ProjectID
 from autoprogen.infra.gateway.manaba_report_archive import ManabaReportArchiveGateway
 from autoprogen.infra.gateway.readonly_excel_worksheet import ReadonlyExcelWorksheetGateway
@@ -13,18 +14,20 @@ from autoprogen.infra.path_layout import ProjectPathLayout
 from autoprogen.infra.repository.current_project import CurrentProjectRepository
 from autoprogen.infra.repository.global_settings import GlobalSettingsRepository
 from autoprogen.infra.repository.project import ProjectRepository
+from autoprogen.infra.repository.project_settings import ProjectSettingsRepository
 from autoprogen.infra.repository.storage import StorageRepository
 from autoprogen.infra.repository.student import StudentRepository
-from autoprogen.infra.repository.student_dynamic import StudentExecutableRepository, StudentSourceRepository
+from autoprogen.infra.repository.student_executable import StudentExecutableRepository
+from autoprogen.infra.repository.student_source_code import StudentSourceRepository
 from autoprogen.infra.repository.student_mark import StudentMarkRepository
 from autoprogen.infra.repository.student_stage_path_result import StudentStagePathResultRepository
 from autoprogen.infra.repository.test_source import TestSourceRepository
 from autoprogen.infra.repository.testcase_config import TestCaseConfigRepository
 from autoprogen.infra.task.manager import TaskManager
 from autoprogen.service.current_project import CurrentProjectGetService, CurrentProjectSetInitializedService
-from autoprogen.service.manaba_report_list_archive_validate import ManabaReportListArchiveValidateService
-from autoprogen.service.manaba_report_list_parser import ManabaReportListParser
-from autoprogen.service.match import MatchGetBestService
+from autoprogen.domain.service.manaba_report_list_archive_validate import ManabaReportListArchiveValidateService
+from autoprogen.domain.service.manaba_report_list_parser import ManabaReportListParser
+from autoprogen.domain.service.match import MatchGetBestService
 from autoprogen.service.stage_path import StagePathListSubService, StagePathGetByTestCaseIDService
 from autoprogen.service.storage import StorageCreateService, StorageLoadStudentSourceService, StorageStoreStudentExecutableService, \
     StorageDeleteService, StorageLoadStudentExecutableService, StorageLoadExecuteConfigInputFilesService, \
@@ -32,21 +35,25 @@ from autoprogen.service.storage import StorageCreateService, StorageLoadStudentS
     StorageLoadTestSourceService
 from autoprogen.service.storage_run_compiler import StorageRunCompilerService
 from autoprogen.service.storage_run_executable import StorageRunExecutableService
+from autoprogen.domain.service.source_code_check import SourceCodeCheckService
+from autoprogen.domain.service.source_code_check_factory import SourceCodeCheckCatalogFactory
+from autoprogen.domain.service.source_code_factory import SourceCodeFactory
 from autoprogen.service.student_master_create import StudentMasterCreateService
 from autoprogen.service.student import StudentListSubService, StudentGetService
-from autoprogen.service.student_dynamic import StudentDynamicGetSourceContentService, StudentDynamicClearService, \
-    StudentDynamicSetSourceContentService
+from autoprogen.service.student_dynamic import StudentDynamicGetSourceCodeService, StudentDynamicClearService, \
+    StudentDynamicSetSourceCodeService
 from autoprogen.service.student_mark import StudentMarkGetSubService, StudentMarkPutService, StudentMarkListService, \
     StudentMarkCheckTimestampQueryService
 from autoprogen.service.student_stage_path_result import StudentStageResultCheckTimestampQueryService, \
     StudentStagePathResultGetService, StudentStagePathResultCheckRollbackService, StudentStageResultClearService, \
     StudentPutStageResultService, StudentGetStageResultService, StudentStagePathResultPutService
-from autoprogen.service.student_submission import StudentSubmissionExistService, StudentSubmissionGetSourceContentService, \
-    StudentSubmissionListSourceRelativePathQueryService, StudentSubmissionGetFileContentQueryService, \
-    StudentSubmissionGetChecksumService, StudentSubmissionExtractService
+from autoprogen.service.student_submission import StudentSubmissionExistService, StudentSubmissionGetSourceCodeService, \
+    StudentSubmissionListSourceRelativePathQueryService, StudentSubmissionGetChecksumService, \
+    StudentSubmissionExtractService
 from autoprogen.service.testcase_config import TestCaseConfigCopyService, TestCaseConfigGetExecuteConfigMtimeService, \
     TestCaseConfigGetTestConfigMtimeService
 from autoprogen.usecase.current_project import CurrentProjectSummaryGetUseCase, CurrentProjectInitializeStaticUseCase
+from autoprogen.usecase.project_settings import ProjectSettingsGetUseCase, ProjectSettingsPutUseCase
 from autoprogen.usecase.student import StudentListIDUseCase
 from autoprogen.usecase.student_dynamic import StudentDynamicTakeDiffSnapshotUseCase
 from autoprogen.usecase.student_mark import StudentMarkGetUseCase, StudentMarkListUseCase, StudentMarkPutUseCase
@@ -270,18 +277,13 @@ class ProjectContainer:
         )
 
     @cached_property
-    def student_submission_get_file_content_query_service(self):
-        return StudentSubmissionGetFileContentQueryService(
+    def student_submission_get_source_code_service(self):
+        return StudentSubmissionGetSourceCodeService(
+            student_submission_list_source_relative_path_query_service=self.student_submission_list_source_relative_path_query_service,
+            student_repo=self.student_repository,
+            source_code_factory=self.source_code_factory,
             project_path_layout=self.project_path_layout,
             current_project_core_io=self.current_project_core_io,
-        )
-
-    @cached_property
-    def student_submission_get_source_content_service(self):
-        return StudentSubmissionGetSourceContentService(
-            student_submission_list_source_relative_path_query_service=self.student_submission_list_source_relative_path_query_service,
-            student_submission_get_file_content_query_service=self.student_submission_get_file_content_query_service,
-            student_repo=self.student_repository,
         )
 
     @cached_property
@@ -292,14 +294,14 @@ class ProjectContainer:
         )
 
     @cached_property
-    def student_dynamic_set_source_content_service(self):
-        return StudentDynamicSetSourceContentService(
+    def student_dynamic_set_source_code_service(self):
+        return StudentDynamicSetSourceCodeService(
             student_source_repo=self.student_source_repository,
         )
 
     @cached_property
-    def student_dynamic_get_source_content_service(self):
-        return StudentDynamicGetSourceContentService(
+    def student_dynamic_get_source_code_service(self):
+        return StudentDynamicGetSourceCodeService(
             student_source_repo=self.student_source_repository,
         )
 
@@ -368,6 +370,43 @@ class ProjectContainer:
             student_source_repo=self.student_source_repository,
             storage_repo=self.storage_repository,
         )
+
+    @cached_property
+    def project_settings_repository(self) -> ProjectSettingsRepository:
+        """現在のプロジェクトに属する設定Repositoryを返す。"""
+        return ProjectSettingsRepository(
+            project_path_layout=self.project_path_layout,
+            current_project_core_io=self.current_project_core_io,
+        )
+
+    @cached_property
+    def project_settings_get_usecase(self) -> ProjectSettingsGetUseCase:
+        """現在のプロジェクト設定を取得するUseCaseを返す。"""
+        return ProjectSettingsGetUseCase(
+            project_settings_repo=self.project_settings_repository,
+        )
+
+    @cached_property
+    def project_settings_put_usecase(self) -> ProjectSettingsPutUseCase:
+        """現在のプロジェクト設定を保存するUseCaseを返す。"""
+        return ProjectSettingsPutUseCase(
+            project_settings_repo=self.project_settings_repository,
+        )
+
+    @cached_property
+    def source_code_check_catalog_factory(self):
+        """固定のソースコードチェック規則を構成するファクトリを返す。"""
+        return SourceCodeCheckCatalogFactory()
+
+    @cached_property
+    def source_code_factory(self):
+        """提出時のバイト列を正規化するファクトリを返す。"""
+        return SourceCodeFactory()
+
+    @cached_property
+    def source_code_check_service(self):
+        """コンパイル前のソースコードチェックサービスを返す。"""
+        return SourceCodeCheckService()
 
     @cached_property
     def storage_load_test_source_service(self):
@@ -500,6 +539,14 @@ class ProjectContainer:
             stage_path_list_sub_service=self.stage_path_list_sub_service,
             student_stage_path_result_repo=self.student_stage_path_result_repository,
             student_mark_get_sub_service=self.student_mark_get_sub_service,
+            stage_error_text_formatter=self.stage_error_text_formatter,
+        )
+
+    @cached_property
+    def stage_error_text_formatter(self) -> StageErrorTextFormatter:
+        """構造化ステージエラーの画面表示用フォーマッタを返す。"""
+        return StageErrorTextFormatter(
+            source_code_check_catalog_factory=self.source_code_check_catalog_factory,
         )
 
     @cached_property
@@ -532,6 +579,7 @@ class ProjectContainer:
         return StudentMarkViewDataGetTestResultUseCase(
             stage_path_get_by_testcase_id_service=self.stage_path_get_by_testcase_id_service,
             student_stage_path_result_get_service=self.student_stage_path_result_get_service,
+            stage_error_text_formatter=self.stage_error_text_formatter,
         )
 
     @cached_property
@@ -547,7 +595,7 @@ class ProjectContainer:
     @cached_property
     def student_source_code_get_usecase(self):
         return StudentSourceCodeGetUseCase(
-            student_source_code_get_query_service=self.student_dynamic_get_source_content_service,
+            student_dynamic_get_source_code_service=self.student_dynamic_get_source_code_service,
         )
 
     @cached_property
@@ -565,9 +613,9 @@ class ProjectContainer:
     @cached_property
     def student_run_build_stage_usecase(self):
         return StudentRunBuildStageUseCase(
-            student_submission_get_source_content_service=self.student_submission_get_source_content_service,
+            student_submission_get_source_code_service=self.student_submission_get_source_code_service,
             student_dynamic_clear_service=self.student_dynamic_clear_service,
-            student_dynamic_set_source_content_service=self.student_dynamic_set_source_content_service,
+            student_dynamic_set_source_code_service=self.student_dynamic_set_source_code_service,
             student_submission_get_checksum_service=self.student_submission_get_checksum_service,
             student_put_stage_result_service=self.student_put_stage_result_service,
         )
@@ -578,6 +626,9 @@ class ProjectContainer:
             storage_create_service=self.storage_create_service,
             storage_load_student_source_service=self.storage_load_student_source_service,
             storage_store_student_executable_service=self.storage_store_student_executable_service,
+            source_code_check_catalog_factory=self.source_code_check_catalog_factory,
+            source_code_check_service=self.source_code_check_service,
+            project_settings_repository=self.project_settings_repository,
             storage_run_compiler_service=self.storage_run_compiler_service,
             storage_delete_service=self.storage_delete_service,
             student_put_stage_result_service=self.student_put_stage_result_service,

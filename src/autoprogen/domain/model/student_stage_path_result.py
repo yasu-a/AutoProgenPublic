@@ -4,8 +4,7 @@ from typing import Iterable
 
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.stage import AbstractStage
-from autoprogen.domain.model.student_stage_result import AbstractStudentStageResult, \
-    AbstractFailureStudentStageResult
+from autoprogen.domain.model.student_stage_result import AbstractStudentStageResult
 from autoprogen.domain.model.value import StudentID
 
 
@@ -130,8 +129,8 @@ class StudentStagePathResult:
         return latest_stage
 
     @property
-    def _last_stage_result(self) -> AbstractStudentStageResult | None:  # None if unstarted
-        # 最新の結果を取得する．まだ開始されていない場合はNoneを返す
+    def last_stage_result(self) -> AbstractStudentStageResult | None:  # None if unstarted
+        """最新の結果を返し、まだ開始されていない場合はNoneを返す。"""
         if self._last_stage is None:
             return None
         return self._stage_results[self._last_stage]
@@ -144,7 +143,7 @@ class StudentStagePathResult:
     @property
     def is_last_stage_success(self) -> bool | None:  # None if unstarted
         # 成功したかどうかを返す．まだ開始されていない場合はNoneを返す
-        last_result = self._last_stage_result
+        last_result = self.last_stage_result
         if last_result is None:
             return None
         return last_result.is_success
@@ -162,33 +161,10 @@ class StudentStagePathResult:
         # 次のステージを返す（次がなければNone）
         return self.stage_path.get_next_stage_of(self._last_stage)
 
-    @property
-    def last_stage_main_reason(self) -> str | None:  # None if unstarted or no error occurred
-        # 主な理由を取得する．まだ開始されていない場合，またはエラーが発生していない場合はNoneを返す
-        last_result = self._last_stage_result
-        if last_result is None:
-            return None
-        if last_result.is_success:
-            return None
-        assert isinstance(last_result, AbstractFailureStudentStageResult)
-        return last_result.reason
-
-    @property
-    def last_stage_detailed_reason(self) -> str | None:  # None if unstarted or no error occurred
-        # 詳細な理由を取得する．まだ開始されていない場合，またはエラーが発生していない場合はNoneを返す
-        last_result = self._last_stage_result
-        if last_result is None:
-            return None
-        if last_result.is_success:
-            return None
-        assert isinstance(last_result, AbstractFailureStudentStageResult)
-        return last_result.detailed_text
-
     def __repr__(self) -> str:
         # オブジェクトの文字列表現を返す
         return (
             f"{type(self).__name__}("
-            f"success={self.is_last_stage_success}, "
-            f"reason={self.last_stage_main_reason}"
+            f"success={self.is_last_stage_success}"
             f")"
         )

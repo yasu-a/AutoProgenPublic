@@ -438,6 +438,7 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
 
     student_id_cell_triggered = pyqtSignal(StudentID, name="student_id_cell_triggered")
     mark_result_cell_triggered = pyqtSignal(StudentID, name="mark_result_cell_triggered")
+    error_cell_triggered = pyqtSignal(StudentID, name="error_cell_triggered")
 
     def __init__(
             self,
@@ -505,6 +506,10 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
             self.student_id_cell_triggered.emit(self._model.get_student_id_of_row(i_row))
         elif i_col == StudentTableColumns.COL_SCORE:
             self.mark_result_cell_triggered.emit(self._model.get_student_id_of_row(i_row))
+        elif i_col == StudentTableColumns.COL_ERROR:
+            index = self._model.index(i_row, StudentTableColumns.COL_ERROR)
+            if self._model.data(index, Qt.DisplayRole):
+                self.error_cell_triggered.emit(self._model.get_student_id_of_row(i_row))
 
     @pyqtSlot(StudentID)
     def _on_student_modification_observed(self, student_id: StudentID) -> None:
@@ -524,7 +529,11 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
         index = self.indexAt(evt.pos())
         if not index.isValid():
             return
-        if index.column() in (StudentTableColumns.COL_STUDENT_ID, StudentTableColumns.COL_SCORE):
+        is_error_link = (
+            index.column() == StudentTableColumns.COL_ERROR
+            and bool(self._model.data(index, Qt.DisplayRole))
+        )
+        if index.column() in (StudentTableColumns.COL_STUDENT_ID, StudentTableColumns.COL_SCORE) or is_error_link:
             # noinspection PyTypeChecker
             self.viewport().setCursor(Qt.PointingHandCursor)
         else:
