@@ -197,12 +197,11 @@ def test_table_error_cell_cache_is_invalidated_on_row_update(qt_app) -> None:
     assert provider.get_data(0, col, Qt.ToolTipRole) == ""
 
 
-def test_dialog_exact_message_joining_and_order(qt_app) -> None:
+def test_detail_widget_exact_message_joining_and_order(qt_app) -> None:
     """要約と詳細の結合規則、空行、複数エラーの順序を全文一致で固定する。"""
-    from autoprogen.control.dialog_student_error_detail import StudentErrorDetailDialog
+    from autoprogen.control.widget_student_error_detail import StudentErrorDetailWidget
 
-    dialog = StudentErrorDetailDialog(
-        student_id=STUDENT,
+    widget = StudentErrorDetailWidget(
         error_entries=[
             _entry("最初", "最初\n詳細A"),
             _entry("次", "本文B"),
@@ -212,46 +211,40 @@ def test_dialog_exact_message_joining_and_order(qt_app) -> None:
         ],
     )
     try:
-        assert dialog.windowTitle() == f"エラーの詳細 - {STUDENT}"
-        assert dialog.isModal()
-        assert dialog._message_edit.isReadOnly()
-        assert dialog._message_edit.toPlainText() == (
+        assert widget._message_edit.isReadOnly()
+        assert widget._message_edit.toPlainText() == (
             "最初\n詳細A\n\n次\n本文B\n\n要約のみ\n\n詳細のみ"
         )
     finally:
-        dialog.close()
+        widget.close()
 
 
-def test_dialog_does_not_automatically_deduplicate_equal_entries(qt_app) -> None:
-    """詳細ダイアログは受け取った同一メッセージを独自に間引かない。"""
-    from autoprogen.control.dialog_student_error_detail import StudentErrorDetailDialog
+def test_detail_widget_does_not_automatically_deduplicate_equal_entries(qt_app) -> None:
+    """詳細Widgetは受け取った同一メッセージを独自に間引かない。"""
+    from autoprogen.control.widget_student_error_detail import StudentErrorDetailWidget
 
     item = _entry("同じ失敗", "同じ失敗\n詳細")
-    dialog = StudentErrorDetailDialog(student_id=STUDENT, error_entries=[item, item])
+    widget = StudentErrorDetailWidget(error_entries=[item, item])
     try:
-        assert dialog._message_edit.toPlainText() == "同じ失敗\n詳細\n\n同じ失敗\n詳細"
-        dialog.set_data([])
-        assert dialog._message_edit.toPlainText() == ""
+        assert widget._message_edit.toPlainText() == "同じ失敗\n詳細\n\n同じ失敗\n詳細"
+        widget.set_data([])
+        assert widget._message_edit.toPlainText() == ""
     finally:
-        dialog.close()
+        widget.close()
 
 
-def test_dialog_close_button_rejects_dialog(qt_app) -> None:
-    """閲覧専用のエラー詳細を閉じる操作は従来どおり拒否終了する。"""
-    from PyQt5.QtWidgets import QDialog, QDialogButtonBox
-    from autoprogen.control.dialog_student_error_detail import StudentErrorDetailDialog
+def test_error_detail_widget_uses_horizontal_layout(qt_app) -> None:
+    """下部ドックでは詳細と追加Widgetを横方向に配置する。"""
+    from PyQt5.QtCore import Qt
+    from autoprogen.control.widget_student_error_detail import StudentErrorDetailWidget
 
-    dialog = StudentErrorDetailDialog(
-        student_id=STUDENT,
-        error_entries=[_entry("失敗", "失敗")],
+    widget = StudentErrorDetailWidget(
+        error_entries=[_entry("エラー", "詳細")],
     )
-    buttons = dialog.findChild(QDialogButtonBox)
-    assert buttons is not None
-    close_button = buttons.button(QDialogButtonBox.Close)
-    assert close_button is not None
-    close_button.click()
-    assert dialog.result() == QDialog.Rejected
-    dialog.close()
+    try:
+        assert widget._splitter.orientation() == Qt.Horizontal
+    finally:
+        widget.close()
 
 
 def test_table_load_preserves_error_order_and_stage_states() -> None:

@@ -78,19 +78,22 @@ class Navigator(INavigator):
         )
         dialog.exec_()
 
-    def open_student_error_detail_dialog(self, parent: QWidget, student_id: StudentID) -> None:
-        """学生のエラー詳細を取得し、編集不可のダイアログに表示する。"""
-        from autoprogen.control.dialog_student_error_detail import StudentErrorDetailDialog
+    def create_student_error_detail_widget(
+            self,
+            parent: QWidget,
+            student_id: StudentID,
+    ) -> QWidget | None:
+        """学生のエラー詳細を取得し、ドックへ配置するWidgetを生成する。"""
+        from autoprogen.control.widget_student_error_detail import StudentErrorDetailWidget
         assert self._current_project_container is not None
         container = self._current_project_container
         row = container.student_table_load_usecase.execute_row(student_id)
         if not row.error_cell.text_entries:
-            return
+            return None
         # 共有ステージの同一エラーが複数パスに保存されていても一度だけ表示する。
         error_entries = row.error_cell.distinct_text_entries()
-        dialog = StudentErrorDetailDialog(
+        detail_widget = StudentErrorDetailWidget(
             parent,
-            student_id=student_id,
             error_entries=error_entries,
         )
         # 構造化エラーから安全性チェック停止だけを専用表示の対象にする。
@@ -117,7 +120,7 @@ class Navigator(INavigator):
                 in project_settings.source_code_check_skips
             )
             widget = SourceSafetyErrorWidget(
-                dialog,
+                detail_widget,
                 source_code=source_code,
                 safety_errors=safety_errors,
                 show_editing_symbols=global_settings.show_editing_symbols_in_source_code,
@@ -134,8 +137,8 @@ class Navigator(INavigator):
                     expected_sha256=source_sha256,
                 )
             )
-            dialog.set_extension_widget(widget)
-        dialog.exec_()
+            detail_widget.set_extension_widget(widget)
+        return detail_widget
 
     def _approve_source_code_check_skip(
         self,

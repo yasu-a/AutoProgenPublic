@@ -91,6 +91,14 @@ class MainWindow(QMainWindow):
         # noinspection PyUnresolvedReferences
         self.setCentralWidget(self._w_student_table)
 
+        # エラー詳細は表を操作したまま確認できる下部ドックとして配置する。
+        self._student_error_dock = QDockWidget("エラーの詳細", self)
+        self._student_error_dock.setObjectName("studentErrorDetailDock")
+        self._student_error_dock.setAllowedAreas(Qt.BottomDockWidgetArea)
+        self._student_error_dock.setFeatures(QDockWidget.DockWidgetClosable)
+        self.addDockWidget(Qt.BottomDockWidgetArea, self._student_error_dock)
+        self._student_error_dock.hide()
+
         # ステータスバー
         #  - タスクモニタ
         # noinspection PyTypeChecker
@@ -157,7 +165,21 @@ class MainWindow(QMainWindow):
     @pyqtSlot(StudentID)
     def __w_student_table_error_cell_triggered(self, student_id: StudentID) -> None:
         """エラー欄が押された学生の詳細メッセージを表示する。"""
-        self._navigator.open_student_error_detail_dialog(self, student_id)
+        detail_widget = self._navigator.create_student_error_detail_widget(
+            self._student_error_dock,
+            student_id,
+        )
+        if detail_widget is None:
+            self._student_error_dock.hide()
+            return
+
+        previous_widget = self._student_error_dock.widget()
+        self._student_error_dock.setWidget(detail_widget)
+        if previous_widget is not None:
+            previous_widget.deleteLater()
+        self._student_error_dock.setWindowTitle(f"エラーの詳細 - {student_id}")
+        self._student_error_dock.show()
+        self._student_error_dock.raise_()
 
     def __perform_stop_tasks(self):
         if not self._task_manager.is_empty():
