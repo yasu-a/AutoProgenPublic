@@ -1,12 +1,6 @@
 import itertools
 
 from autoprogen.domain.error import UseCaseError, ServiceError
-from autoprogen.domain.model.execute_config import TestCaseExecuteConfig
-from autoprogen.domain.model.execute_config_options import ExecuteConfigOptions
-from autoprogen.domain.model.expected_output_file import ExpectedOutputFileCollection
-from autoprogen.domain.model.input_file import InputFileCollection
-from autoprogen.domain.model.test_config import TestCaseTestConfig
-from autoprogen.domain.model.test_config_options import TestConfigOptions
 from autoprogen.domain.model.testcase_config import TestCaseConfig
 from autoprogen.domain.model.value import TestCaseID
 from autoprogen.infra.repository.testcase_config import TestCaseConfigRepository
@@ -65,21 +59,7 @@ class TestCaseCreateUseCase:
         self._testcase_config_repo = testcase_config_repo
 
     def execute(self, testcase_name: str) -> None:
-        config = TestCaseConfig(
-            testcase_id=TestCaseID(testcase_name),
-            execute_config=TestCaseExecuteConfig(
-                input_file_collection=InputFileCollection(),
-                options=ExecuteConfigOptions(
-                    timeout=5.0,
-                ),
-            ),
-            test_config=TestCaseTestConfig(
-                expected_output_file_collection=ExpectedOutputFileCollection(),
-                options=TestConfigOptions(
-                    ignore_case=True,
-                ),
-            ),
-        )
+        config = TestCaseConfig.create_default(TestCaseID(testcase_name))
 
         if self._testcase_config_repo.exists(config.testcase_id):
             raise UseCaseError("testcase already exists")

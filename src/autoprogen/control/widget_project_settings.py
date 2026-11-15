@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import (
     QAbstractItemView,
     QHeaderView,
     QHBoxLayout,
+    QLabel,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
@@ -41,6 +42,13 @@ class ProjectSettingsEditWidget(QTabWidget):
         """チェック項目と除外項目を別タブへ表示する。"""
         rules_page = QWidget(self)
         rules_layout = QVBoxLayout(rules_page)
+        rules_description = QLabel(
+            "学生のソースコードに適用するチェック規則を選択します。"
+            "チェックを外した規則は、このプロジェクトでは検査しません。",
+            rules_page,
+        )
+        rules_description.setWordWrap(True)
+        rules_layout.addWidget(rules_description)
         self._rules_table = QTableWidget(0, 4, rules_page)
         self._rules_table.setObjectName("sourceCodeCheckTable")
         self._rules_table.horizontalHeader().hide()
@@ -82,6 +90,14 @@ class ProjectSettingsEditWidget(QTabWidget):
 
         skips_page = QWidget(self)
         skips_layout = QHBoxLayout(skips_page)
+        skips_content_layout = QVBoxLayout()
+        skips_description = QLabel(
+            "安全性を確認して個別に許可したソースコードの一覧です。"
+            "削除すると、次回のCOMPILE時から安全性チェックを再び実行します。",
+            skips_page,
+        )
+        skips_description.setWordWrap(True)
+        skips_content_layout.addWidget(skips_description)
         self._skips_table = QTableWidget(0, 2, skips_page)
         self._skips_table.setObjectName("sourceCodeCheckSkipsTable")
         self._skips_table.horizontalHeader().hide()
@@ -92,7 +108,8 @@ class ProjectSettingsEditWidget(QTabWidget):
         self._skips_table.setAlternatingRowColors(True)
         self._skips_table.setColumnWidth(0, 160)
         self._skips_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        skips_layout.addWidget(self._skips_table, 1)
+        skips_content_layout.addWidget(self._skips_table, 1)
+        skips_layout.addLayout(skips_content_layout, 1)
 
         side_layout = QVBoxLayout()
         self._delete_button = QPushButton("削除", skips_page)

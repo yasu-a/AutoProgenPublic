@@ -79,7 +79,10 @@ def test_project_settings_view_reset_replaces_previous_state(qt_app) -> None:
     view.close()
 
 
-def test_project_settings_dialog_saves_only_on_save(qt_app) -> None:
+def test_project_settings_dialog_saves_only_on_save(
+        qt_app,
+        monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """キャンセルでは保存せず、保存後のみRepositoryへの更新が発生する。"""
     from PyQt5.QtCore import Qt
     from PyQt5.QtWidgets import QDialog
@@ -100,6 +103,7 @@ def test_project_settings_dialog_saves_only_on_save(qt_app) -> None:
     row = dialog._settings_view._rule_ids.index(SourceCodeCheckIdentifier("process", "system"))
     checkbox = dialog._settings_view._rules_table.item(row, 0)
     checkbox.setCheckState(Qt.Unchecked if checkbox.checkState() == Qt.Checked else Qt.Checked)
+    monkeypatch.setattr(dialog, "_confirm_close_without_saving", Mock(return_value=True))
     dialog.reject()
     repository.put.assert_not_called()
 
@@ -141,10 +145,12 @@ def test_default_suppressed_ids_are_in_catalog() -> None:
     assert set(ProjectSettings.create_default().suppressed_source_code_checks) <= known
 
 
-def test_project_settings_dialog_canceled_delete_is_not_saved(qt_app) -> None:
+def test_project_settings_dialog_canceled_delete_is_not_saved(
+        qt_app,
+        monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """除外ハッシュの削除は、キャンセルした場合に永続化されない。"""
     from autoprogen.control.dialog_project_settings import ProjectSettingsEditDialog
-
     settings = ProjectSettings.create_default().with_source_code_check_skip(
         student_id=StudentID("00A0000000A"),
         source_sha256="d" * 64,
@@ -159,6 +165,7 @@ def test_project_settings_dialog_canceled_delete_is_not_saved(qt_app) -> None:
     dialog._settings_view._skips_table.selectRow(0)
     dialog._settings_view._delete_button.click()
     assert not dialog._settings_view.get_data().source_code_check_skips
+    monkeypatch.setattr(dialog, "_confirm_close_without_saving", Mock(return_value=True))
     dialog.reject()
     repository.put.assert_not_called()
     dialog.close()
