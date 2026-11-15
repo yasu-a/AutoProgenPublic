@@ -7,7 +7,7 @@ from autoprogen.domain.model.stage import AbstractStage, BuildStage, CompileStag
 from autoprogen.domain.model.student_stage_path_result import StudentStagePathResult
 from autoprogen.domain.model.student_stage_result import BuildSuccessStudentStageResult, \
     CompileSuccessStudentStageResult, ExecuteSuccessStudentStageResult, \
-    TestSuccessStudentStageResult, AbstractStudentStageResult, SourceCodeCheckPolicy
+    TestSuccessStudentStageResult, AbstractStudentStageResult
 from autoprogen.domain.model.value import StudentID
 from autoprogen.infra.repository.project_settings import ProjectSettingsRepository
 from autoprogen.infra.repository.student_stage_path_result import StudentStagePathResultRepository
@@ -78,10 +78,6 @@ class StudentStagePathResultCheckRollbackService:
             assert isinstance(result, CompileSuccessStudentStageResult)
             # 実行時と現在の安全性チェック抑制規則が異なればロールバックする。
             project_settings = self._project_settings_repository.get()
-            current_policy = SourceCodeCheckPolicy(
-                project_settings.suppressed_source_code_checks,
-            )
-
             # 同じ学生とソースコードに対する省略許可の有無を比較する。
             try:
                 source_code = self._student_dynamic_get_source_code_service.execute(
@@ -94,12 +90,14 @@ class StudentStagePathResultCheckRollbackService:
                 student_id=student_id,
                 source_sha256=source_code.calculate_sha256(),
             )
-            is_security_check_skipped = (
+            is_source_code_check_skipped = (
                 current_skip in project_settings.source_code_check_skips
             )
             if result.is_outdated(
-                current_security_check_policy=current_policy,
-                current_security_check_skipped=is_security_check_skipped,
+                current_suppressed_source_code_checks=(
+                    project_settings.suppressed_source_code_checks
+                ),
+                current_source_code_check_skipped=is_source_code_check_skipped,
             ):
                 return CompileStage
 

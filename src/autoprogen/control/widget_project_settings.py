@@ -15,6 +15,7 @@ from autoprogen.domain.model.project_settings import (
     ProjectSettings,
     SourceCodeCheckIdentifier,
     SourceCodeCheckSkip,
+    SourceCodeCheckSuppressions,
 )
 from autoprogen.domain.model.source_code_check import SourceCodeCheckCatalog
 
@@ -46,12 +47,11 @@ class ProjectSettingsEditWidget(QTabWidget):
         self._rules_table.verticalHeader().hide()
         self._rules_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._rules_table.setSelectionMode(QAbstractItemView.NoSelection)
-        self._rules_table.setAlternatingRowColors(True)
         self._rules_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
         self._rules_table.setColumnWidth(0, 55)
         self._rules_table.setColumnWidth(1, 215)
         self._rules_table.setColumnWidth(2, 205)
-        self._rules_table.verticalHeader().setDefaultSectionSize(34)
+        self._rules_table.verticalHeader().setDefaultSectionSize(23)
         rules_layout.addWidget(self._rules_table)
         self.addTab(rules_page, "ソースコードの静的セキュリティチェック")
 
@@ -121,7 +121,11 @@ class ProjectSettingsEditWidget(QTabWidget):
         if not isinstance(settings, ProjectSettings):
             raise TypeError("settingsにはProjectSettingsを指定してください")
         known_ids = frozenset(self._rule_ids)
-        self._unknown_suppressed_ids = settings.suppressed_source_code_checks - known_ids
+        self._unknown_suppressed_ids = frozenset(
+            identifier
+            for identifier in settings.suppressed_source_code_checks
+            if identifier not in known_ids
+        )
         for row, identifier in enumerate(self._rule_ids):
             checkbox = self._rules_table.item(row, 0)
             checkbox.setCheckState(
@@ -152,7 +156,7 @@ class ProjectSettingsEditWidget(QTabWidget):
             if self._rules_table.item(row, 0).checkState() != Qt.Checked:
                 suppressed_ids.add(identifier)
         return ProjectSettings(
-            suppressed_source_code_checks=frozenset(suppressed_ids),
+            suppressed_source_code_checks=SourceCodeCheckSuppressions(suppressed_ids),
             source_code_check_skips=frozenset(self._skips),
         )
 

@@ -11,7 +11,10 @@ from autoprogen.domain.error.stage.execute import ExecutionTimeoutError
 from autoprogen.domain.error.stage.test import OutputMatchingError
 from autoprogen.domain.model.expected_output_file import ExpectedOutputFile
 from autoprogen.domain.model.output_file import OutputFile, OutputFileCollection
-from autoprogen.domain.model.project_settings import SourceCodeCheckIdentifier
+from autoprogen.domain.model.project_settings import (
+    SourceCodeCheckIdentifier,
+    SourceCodeCheckSuppressions,
+)
 from autoprogen.domain.model.stage import BuildStage, CompileStage, ExecuteStage, TestStage as StageTest
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.student_stage_result import (
@@ -19,7 +22,6 @@ from autoprogen.domain.model.student_stage_result import (
     BuildSuccessStudentStageResult,
     CompileFailureStudentStageResult,
     CompileSuccessStudentStageResult,
-    SourceCodeCheckPolicy,
     ExecuteFailureStudentStageResult,
     ExecuteSuccessStudentStageResult,
     TestFailureStudentStageResult as StageTestFailureResult,
@@ -42,28 +44,27 @@ EXECUTE_MTIME = datetime(2026, 11, 1, 12, 34, 56, 123456)
 TEST_MTIME = datetime(2026, 11, 2, 14, 15, 16, 654321)
 
 
-def test_source_code_check_policy_encapsulates_frozenset_and_json_contract() -> None:
-    """安全性チェック方針が不変集合の基本操作とJSON正規化を提供する。"""
+def test_source_code_check_suppressions_encapsulates_set_and_json_contract() -> None:
+    """安全性チェック抑制設定が集合操作とJSON正規化を提供する。"""
     system = SourceCodeCheckIdentifier(group_id="process", check_id="system")
     write = SourceCodeCheckIdentifier(group_id="file", check_id="write")
-    policy = SourceCodeCheckPolicy([system, write, system])
+    suppressions = SourceCodeCheckSuppressions([system, write, system])
 
-    assert len(policy) == 2
-    assert policy
-    assert system in policy
-    assert set(policy) == {system, write}
-    assert policy == frozenset({system, write})
-    assert hash(policy) == hash(frozenset({system, write}))
-    assert policy.to_json() == [write.to_json(), system.to_json()]
-    assert SourceCodeCheckPolicy.from_json(policy.to_json()) == policy
+    assert len(suppressions) == 2
+    assert suppressions
+    assert system in suppressions
+    assert set(suppressions) == {system, write}
+    assert hash(suppressions) == hash(frozenset({system, write}))
+    assert suppressions.to_json() == [write.to_json(), system.to_json()]
+    assert SourceCodeCheckSuppressions.from_json(suppressions.to_json()) == suppressions
 
 
-def test_source_code_check_policy_rejects_invalid_element_and_json_shape() -> None:
-    """安全性チェック方針自身が要素型とJSON全体の形式を検証する。"""
+def test_source_code_check_suppressions_rejects_invalid_element_and_json_shape() -> None:
+    """安全性チェック抑制設定が要素型とJSON全体の形式を検証する。"""
     with pytest.raises(TypeError, match="SourceCodeCheckIdentifier"):
-        SourceCodeCheckPolicy(["process.system"])
+        SourceCodeCheckSuppressions(["process.system"])
     with pytest.raises(TypeError, match="list"):
-        SourceCodeCheckPolicy.from_json({})
+        SourceCodeCheckSuppressions.from_json({})
 
 
 @pytest.fixture
@@ -98,10 +99,10 @@ def _compile_ok(student_id: StudentID = STUDENT_A, output: str = "MSVC: ok\n"):
     return CompileSuccessStudentStageResult.create_instance(
         student_id=student_id,
         output=output,
-        security_check_policy=SourceCodeCheckPolicy({
+        suppressed_source_code_checks=SourceCodeCheckSuppressions({
             SourceCodeCheckIdentifier(group_id="process", check_id="system"),
         }),
-        security_check_skipped=True,
+        source_code_check_skipped=True,
     )
 
 
@@ -215,8 +216,27 @@ def test_compile_security_state_roundtrip(repository) -> None:
     _save_through(repo, 1)
     restored = repo.get(STUDENT_A, _path()).get_result(CompileStage())
     assert type(restored) is CompileSuccessStudentStageResult
-    assert restored.security_check_policy == _compile_ok().security_check_policy
-    assert restored.security_check_skipped is True
+    assert (
+        restored.suppressed_source_code_checks
+        == _compile_ok().suppressed_source_code_checks
+    )
+    assert restored.source_code_check_skipped is True
+
+
+def test_compile_result_table_uses_source_code_check_column_names(repository) -> None:
+    """COMPILE結果テーブルが現在の安全性チェック用カラム名を使用する。"""
+    _, database = repository
+
+    with database.connect() as connection:
+        columns = {
+            row[1]
+            for row in connection.execute("PRAGMA table_info(student_compile_result)")
+        }
+
+    assert "suppressed_source_code_checks_json" in columns
+    assert "source_code_check_skipped" in columns
+    assert "security_check_policy_json" not in columns
+    assert "security_check_skipped" not in columns
 
 
 def test_test_result_success_and_wrong_answer_are_distinct(repository) -> None:

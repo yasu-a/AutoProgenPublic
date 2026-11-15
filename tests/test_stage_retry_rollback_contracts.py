@@ -15,6 +15,7 @@ from autoprogen.domain.model.project_settings import (
     ProjectSettings,
     SourceCodeCheckIdentifier,
     SourceCodeCheckSkip,
+    SourceCodeCheckSuppressions,
 )
 from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.stage import (
@@ -34,7 +35,6 @@ from autoprogen.domain.model.student_stage_result import (
     TestFailureStudentStageResult as StageTestFailureResult,
     TestResultOutputFileCollection as StageTestOutputCollection,
     TestSuccessStudentStageResult as StageTestSuccessResult,
-    SourceCodeCheckPolicy,
 )
 from autoprogen.domain.model.value import StudentID, TestCaseID as CaseID
 from autoprogen.infra.io.project_database import ProjectDatabaseIO
@@ -60,7 +60,7 @@ SUPPRESSED_CHECK = SourceCodeCheckIdentifier(
     check_id="system",
 )
 PROJECT_SETTINGS = ProjectSettings(
-    suppressed_source_code_checks=frozenset({SUPPRESSED_CHECK}),
+    suppressed_source_code_checks=SourceCodeCheckSuppressions({SUPPRESSED_CHECK}),
     source_code_check_skips=frozenset(),
 )
 
@@ -84,10 +84,10 @@ def _path(case_id: CaseID = CASE_A) -> StagePath:
 def _success_results(
         case_id: CaseID = CASE_A,
         *,
-        security_check_policy: SourceCodeCheckPolicy = SourceCodeCheckPolicy(
-            PROJECT_SETTINGS.suppressed_source_code_checks,
+        suppressed_source_code_checks: SourceCodeCheckSuppressions = (
+            PROJECT_SETTINGS.suppressed_source_code_checks
         ),
-        security_check_skipped: bool = False,
+        source_code_check_skipped: bool = False,
 ):
     """成功した4ステージの結果を順番に生成する。"""
     return (
@@ -96,8 +96,8 @@ def _success_results(
         ),
         CompileSuccessStudentStageResult.create_instance(
             student_id=STUDENT, output="compile output\n",
-            security_check_policy=security_check_policy,
-            security_check_skipped=security_check_skipped,
+            suppressed_source_code_checks=suppressed_source_code_checks,
+            source_code_check_skipped=source_code_check_skipped,
         ),
         ExecuteSuccessStudentStageResult.create_instance(
             student_id=STUDENT, testcase_id=case_id,
@@ -142,13 +142,13 @@ def _seed(
         case_id: CaseID,
         *,
         failure_stage_index: int | None = None,
-        security_check_skipped: bool = False,
+        source_code_check_skipped: bool = False,
 ):
     """成功または指定箇所で失敗するステージの履歴をDBへ保存する。"""
     aggregate = repository.get(STUDENT, _path(case_id))
     for index, success in enumerate(_success_results(
             case_id,
-            security_check_skipped=security_check_skipped,
+            source_code_check_skipped=source_code_check_skipped,
     )):
         if failure_stage_index is not None and index > failure_stage_index:
             break
@@ -259,7 +259,7 @@ def test_compile_policy_change_rolls_back(repository) -> None:
     """抑制規則が変わった場合はCOMPILEへ戻す。"""
     _seed(repository, CASE_A)
     changed_settings = ProjectSettings(
-        suppressed_source_code_checks=frozenset(),
+        suppressed_source_code_checks=SourceCodeCheckSuppressions(),
         source_code_check_skips=frozenset(),
     )
     checker, _, settings, dynamic_source, _, _ = _rollback_checker(
@@ -299,7 +299,7 @@ def test_compile_skip_change_rolls_back(
         current_skip: bool,
 ) -> None:
     """対象学生・対象ソースへの省略許可変更ではCOMPILEへ戻す。"""
-    _seed(repository, CASE_A, security_check_skipped=stored_skip)
+    _seed(repository, CASE_A, source_code_check_skipped=stored_skip)
     skip = SourceCodeCheckSkip(
         student_id=STUDENT,
         source_sha256=SOURCE_CODE.calculate_sha256(),
@@ -349,7 +349,7 @@ def test_build_change_takes_priority_over_compile_change(repository) -> None:
     """BUILDが変わった場合はCOMPILE設定を読み込まずBUILDへ戻す。"""
     _seed(repository, CASE_A)
     changed_settings = ProjectSettings(
-        suppressed_source_code_checks=frozenset(),
+        suppressed_source_code_checks=SourceCodeCheckSuppressions(),
         source_code_check_skips=frozenset(),
     )
     checker, _, settings, dynamic_source, _, _ = _rollback_checker(

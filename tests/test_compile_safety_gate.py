@@ -7,6 +7,7 @@ from autoprogen.domain.model.project_settings import (
     ProjectSettings,
     SourceCodeCheckIdentifier,
     SourceCodeCheckSkip,
+    SourceCodeCheckSuppressions,
 )
 from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.student_stage_result import (
@@ -84,7 +85,7 @@ def test_detected_rule_stops_before_compiler() -> None:
 def test_suppressed_rule_does_not_stop_compile() -> None:
     """プロジェクトで抑制した規則に一致してもコンパイルする。"""
     settings = ProjectSettings(
-        suppressed_source_code_checks=frozenset({
+        suppressed_source_code_checks=SourceCodeCheckSuppressions({
             SourceCodeCheckIdentifier(group_id="process", check_id="system"),
         }),
         source_code_check_skips=frozenset(),
@@ -96,15 +97,15 @@ def test_suppressed_rule_does_not_stop_compile() -> None:
     compiler.execute.assert_called_once()
     storage_store.execute.assert_called_once()
     assert isinstance(result, CompileSuccessStudentStageResult)
-    assert result.security_check_policy == settings.suppressed_source_code_checks
-    assert result.security_check_skipped is False
+    assert result.suppressed_source_code_checks == settings.suppressed_source_code_checks
+    assert result.source_code_check_skipped is False
 
 
 def test_approved_student_and_hash_bypass_check() -> None:
     """同一学生・同一ソースの許可履歴だけが検査を省略する。"""
     source = b'int main(void) { system("echo test"); return 0; }\n'
     settings = ProjectSettings(
-        suppressed_source_code_checks=frozenset(),
+        suppressed_source_code_checks=SourceCodeCheckSuppressions(),
         source_code_check_skips=frozenset({
             SourceCodeCheckSkip(
                 student_id=STUDENT_ID,
@@ -115,15 +116,15 @@ def test_approved_student_and_hash_bypass_check() -> None:
     compiler, _, result = _execute(source, settings)
     compiler.execute.assert_called_once()
     assert isinstance(result, CompileSuccessStudentStageResult)
-    assert result.security_check_policy == settings.suppressed_source_code_checks
-    assert result.security_check_skipped is True
+    assert result.suppressed_source_code_checks == settings.suppressed_source_code_checks
+    assert result.source_code_check_skipped is True
 
 
 def test_different_hash_is_not_approved() -> None:
     """ソースのバイト列が異なる場合は検査を行う。"""
     source = b'int main(void) { system("echo test"); return 0; }\n'
     settings = ProjectSettings(
-        suppressed_source_code_checks=frozenset(),
+        suppressed_source_code_checks=SourceCodeCheckSuppressions(),
         source_code_check_skips=frozenset({
             SourceCodeCheckSkip(student_id=STUDENT_ID, source_sha256="a" * 64),
         }),
@@ -137,7 +138,7 @@ def test_different_student_is_not_approved() -> None:
     """別学生が許可されたハッシュだけでは検査を省略できない。"""
     source = b'int main(void) { system("echo test"); return 0; }\n'
     settings = ProjectSettings(
-        suppressed_source_code_checks=frozenset(),
+        suppressed_source_code_checks=SourceCodeCheckSuppressions(),
         source_code_check_skips=frozenset({
             SourceCodeCheckSkip(
                 student_id=StudentID("00B0000000B"),
@@ -160,5 +161,8 @@ def test_safe_code_is_compiled() -> None:
     )
     storage_store.execute.assert_called_once()
     assert isinstance(result, CompileSuccessStudentStageResult)
-    assert result.security_check_policy == ProjectSettings.create_default().suppressed_source_code_checks
-    assert result.security_check_skipped is False
+    assert (
+        result.suppressed_source_code_checks
+        == ProjectSettings.create_default().suppressed_source_code_checks
+    )
+    assert result.source_code_check_skipped is False

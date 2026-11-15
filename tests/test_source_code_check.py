@@ -9,6 +9,7 @@ from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.project_settings import (
     ProjectSettings,
     SourceCodeCheckIdentifier,
+    SourceCodeCheckSuppressions,
 )
 from autoprogen.domain.model.source_code_check import (
     SourceCodeCheckCatalog,
@@ -351,7 +352,7 @@ def test_compile_checks_actual_source_before_running_compiler() -> None:
     source_code_check_catalog_factory = SourceCodeCheckCatalogFactory()
     project_settings_repository = Mock()
     project_settings = ProjectSettings(
-        suppressed_source_code_checks=frozenset({
+        suppressed_source_code_checks=SourceCodeCheckSuppressions({
             SourceCodeCheckIdentifier(group_id="process", check_id="system"),
         }),
         source_code_check_skips=frozenset(),

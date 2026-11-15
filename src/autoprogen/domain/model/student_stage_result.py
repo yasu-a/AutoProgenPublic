@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TypeVar
@@ -10,7 +9,7 @@ from autoprogen.domain.error.stage.build import BuildStageError
 from autoprogen.domain.error.stage.compile import CompileStageError
 from autoprogen.domain.error.stage.execute import ExecuteStageError
 from autoprogen.domain.error.stage.test import TestStageError
-from autoprogen.domain.model.project_settings import SourceCodeCheckIdentifier
+from autoprogen.domain.model.project_settings import SourceCodeCheckSuppressions
 from autoprogen.domain.model.output_file import OutputFileCollection
 from autoprogen.domain.model.stage import AbstractStage, BuildStage, CompileStage, ExecuteStage, TestStage
 from autoprogen.domain.model.test_result_output_file_entry import AbstractTestResultOutputFileEntry
@@ -162,83 +161,14 @@ BuildStageResultType = TypeVar(
 )
 
 
-class SourceCodeCheckPolicy:
-    """COMPILE時に抑制されていた安全性チェック規則を保持する値オブジェクト。"""
-
-    __slots__ = ("_identifiers",)
-
-    # 外部から変更できない、抑制対象の規則識別子集合。
-    _identifiers: frozenset[SourceCodeCheckIdentifier]
-
-    def __init__(
-            self,
-            identifiers: Iterable[SourceCodeCheckIdentifier] = (),
-    ) -> None:
-        """規則識別子を不変集合として取り込み、外部からの変更を遮断する。"""
-        values = frozenset(identifiers)
-        if any(not isinstance(value, SourceCodeCheckIdentifier) for value in values):
-            raise TypeError("identifiersの要素はSourceCodeCheckIdentifierである必要があります")
-        self._identifiers = values
-
-    def __contains__(self, value: object) -> bool:
-        """指定された規則識別子を保持しているか返す。"""
-        return value in self._identifiers
-
-    def __iter__(self) -> Iterator[SourceCodeCheckIdentifier]:
-        """保持している規則識別子を反復する。"""
-        return iter(self._identifiers)
-
-    def __len__(self) -> int:
-        """保持している規則識別子の数を返す。"""
-        return len(self._identifiers)
-
-    def __bool__(self) -> bool:
-        """一件以上の規則識別子を保持している場合にTrueを返す。"""
-        return bool(self._identifiers)
-
-    def __eq__(self, other: object) -> bool:
-        """保持している不変集合の内容で等価性を判定する。"""
-        if isinstance(other, SourceCodeCheckPolicy):
-            other = other._identifiers
-        return self._identifiers == other
-
-    def __hash__(self) -> int:
-        """保持している不変集合と同じハッシュ値を返す。"""
-        return hash(self._identifiers)
-
-    def __repr__(self) -> str:
-        """デバッグ時に保持内容を確認できる文字列表現を返す。"""
-        return f"{type(self).__name__}({self._identifiers!r})"
-
-    def to_json(self) -> list[dict[str, str]]:
-        """規則識別子を安定した順序のJSON互換リストへ変換する。"""
-        return [
-            identifier.to_json()
-            for identifier in sorted(
-                self._identifiers,
-                key=lambda item: (item.group_id, item.check_id),
-            )
-        ]
-
-    @classmethod
-    def from_json(cls, body: list[dict[str, str]]) -> "SourceCodeCheckPolicy":
-        """JSON互換リストから安全性チェック方針を復元する。"""
-        if type(body) is not list:
-            raise TypeError("security_check_policyはlistである必要があります")
-        return cls(
-            SourceCodeCheckIdentifier.from_json(item)
-            for item in body
-        )
-
-
 @dataclass(slots=True)
 class CompileSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生徒ごと
     # コンパイラが出力した標準出力・標準エラーの結合文字列。
     output: str
     # コンパイル時に抑制されていた安全性チェック規則。
-    security_check_policy: SourceCodeCheckPolicy
+    suppressed_source_code_checks: SourceCodeCheckSuppressions
     # 許可済みソースとして安全性チェックを省略したか。
-    security_check_skipped: bool
+    source_code_check_skipped: bool
 
     # noinspection DuplicatedCode
     def __post_init__(self):
@@ -249,21 +179,21 @@ class CompileSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # �
             (self.stage, type(self.stage))
         assert isinstance(self.output, str), \
             (self.output, type(self.output))
-        assert isinstance(self.security_check_policy, SourceCodeCheckPolicy), \
-            (self.security_check_policy, type(self.security_check_policy))
-        assert isinstance(self.security_check_skipped, bool), \
-            (self.security_check_skipped, type(self.security_check_skipped))
+        assert isinstance(self.suppressed_source_code_checks, SourceCodeCheckSuppressions), \
+            (self.suppressed_source_code_checks, type(self.suppressed_source_code_checks))
+        assert isinstance(self.source_code_check_skipped, bool), \
+            (self.source_code_check_skipped, type(self.source_code_check_skipped))
 
     def is_outdated(
             self,
             *,
-            current_security_check_policy: SourceCodeCheckPolicy,
-            current_security_check_skipped: bool,
+            current_suppressed_source_code_checks: SourceCodeCheckSuppressions,
+            current_source_code_check_skipped: bool,
     ) -> bool:
         """安全性チェック設定がCOMPILE実行時から変化したか判定する。"""
         return (
-            self.security_check_policy != current_security_check_policy
-            or self.security_check_skipped != current_security_check_skipped
+            self.suppressed_source_code_checks != current_suppressed_source_code_checks
+            or self.source_code_check_skipped != current_source_code_check_skipped
         )
 
     @classmethod
@@ -272,16 +202,16 @@ class CompileSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # �
             *,
             student_id: StudentID,
             output: str,
-            security_check_policy: SourceCodeCheckPolicy = SourceCodeCheckPolicy(),
-            security_check_skipped: bool = False,
+            suppressed_source_code_checks: SourceCodeCheckSuppressions = SourceCodeCheckSuppressions(),
+            source_code_check_skipped: bool = False,
     ):
         """出力と実行時の安全性チェック状態を持つ成功結果を作成する。"""
         return cls(
             student_id=student_id,
             stage=CompileStage(),
             output=output,
-            security_check_policy=security_check_policy,
-            security_check_skipped=security_check_skipped,
+            suppressed_source_code_checks=suppressed_source_code_checks,
+            source_code_check_skipped=source_code_check_skipped,
         )
 
     def to_json(self):
@@ -290,8 +220,8 @@ class CompileSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # �
             "student_id": self.student_id.to_json(),
             "stage": self.stage.to_json(),
             "output": self.output,
-            "security_check_policy": self.security_check_policy.to_json(),
-            "security_check_skipped": self.security_check_skipped,
+            "suppressed_source_code_checks": self.suppressed_source_code_checks.to_json(),
+            "source_code_check_skipped": self.source_code_check_skipped,
         }
 
     @classmethod
@@ -301,10 +231,10 @@ class CompileSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # �
             student_id=StudentID.from_json(body["student_id"]),
             stage=AbstractStage.from_json(body["stage"]),
             output=body["output"],
-            security_check_policy=SourceCodeCheckPolicy.from_json(
-                body["security_check_policy"],
+            suppressed_source_code_checks=SourceCodeCheckSuppressions.from_json(
+                body["suppressed_source_code_checks"],
             ),
-            security_check_skipped=body["security_check_skipped"],
+            source_code_check_skipped=body["source_code_check_skipped"],
         )
 
 

@@ -6,6 +6,7 @@ from autoprogen.domain.model.project_settings import (
     ProjectSettings,
     SourceCodeCheckIdentifier,
     SourceCodeCheckSkip,
+    SourceCodeCheckSuppressions,
 )
 from autoprogen.domain.model.value import StudentID
 from autoprogen.domain.service.source_code_check_factory import SourceCodeCheckCatalogFactory
@@ -31,7 +32,7 @@ def test_project_settings_view_round_trip_and_delete(qt_app) -> None:
 
     catalog = SourceCodeCheckCatalogFactory().create()
     existing = ProjectSettings(
-        suppressed_source_code_checks=frozenset({
+        suppressed_source_code_checks=SourceCodeCheckSuppressions({
             SourceCodeCheckIdentifier("process", "system"),
             SourceCodeCheckIdentifier("future_group", "future_rule"),
         }),
@@ -137,7 +138,7 @@ def test_default_suppressed_ids_are_in_catalog() -> None:
         for group in catalog.groups
         for entry in group.entries
     }
-    assert ProjectSettings.create_default().suppressed_source_code_checks <= known
+    assert set(ProjectSettings.create_default().suppressed_source_code_checks) <= known
 
 
 def test_project_settings_dialog_canceled_delete_is_not_saved(qt_app) -> None:

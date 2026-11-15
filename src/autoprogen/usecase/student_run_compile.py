@@ -8,7 +8,6 @@ from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.student_stage_result import (
     CompileFailureStudentStageResult,
     CompileSuccessStudentStageResult,
-    SourceCodeCheckPolicy,
 )
 from autoprogen.domain.model.value import StudentID
 from autoprogen.domain.service.source_code_check import SourceCodeCheckService
@@ -70,13 +69,13 @@ class StudentRunCompileStageUseCase:
             # 省略許可と規則抑制に共通して使用する設定を一度だけ取得する。
             project_settings = self._project_settings_repository.get()
             source_sha256 = source_code.calculate_sha256()
-            security_check_skipped = any(
+            source_code_check_skipped = any(
                 skip.student_id == student_id and skip.source_sha256 == source_sha256
                 for skip in project_settings.source_code_check_skips
             )
 
             # 許可されていないソースコードだけを、有効な規則で検査する。
-            if not security_check_skipped:
+            if not source_code_check_skipped:
                 catalog = self._source_code_check_catalog_factory.create().filter(
                     exclude=(
                         (identifier.group_id, identifier.check_id)
@@ -122,10 +121,10 @@ class StudentRunCompileStageUseCase:
                 result=CompileSuccessStudentStageResult.create_instance(
                     student_id=student_id,
                     output=compile_result.output,
-                    security_check_policy=SourceCodeCheckPolicy(
-                        project_settings.suppressed_source_code_checks,
+                    suppressed_source_code_checks=(
+                        project_settings.suppressed_source_code_checks
                     ),
-                    security_check_skipped=security_check_skipped,
+                    source_code_check_skipped=source_code_check_skipped,
                 ),
             )
         finally:
