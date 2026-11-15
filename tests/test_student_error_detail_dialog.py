@@ -16,6 +16,9 @@ from autoprogen.usecase.dto.student_table_cell_data import (
 from autoprogen.usecase.student_table_load import StudentTableRowSnapshot
 
 
+TestStage.__test__ = False
+
+
 @pytest.fixture
 def qt_app(monkeypatch: pytest.MonkeyPatch):
     """ディスプレイを使わずQtウィジェットを検証する。"""
