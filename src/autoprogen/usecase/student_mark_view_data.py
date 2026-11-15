@@ -1,13 +1,14 @@
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.stage import TestStage
 from autoprogen.domain.model.student_stage_path_result import StudentStagePathResult
-from autoprogen.domain.model.student_stage_result import TestSuccessStudentStageResult
+from autoprogen.domain.model.student_stage_result import TestStudentStageResult
 from autoprogen.domain.model.value import StudentID, TestCaseID
 from autoprogen.service.stage_path import StagePathListSubService, StagePathGetByTestCaseIDService
 from autoprogen.service.student import StudentGetService
 from autoprogen.service.student_mark import StudentMarkGetSubService
+from autoprogen.service.stage_error_text import StageErrorTextFormatter
 from autoprogen.service.student_stage_path_result import StudentStagePathResultGetService, \
-    StudentStagePathResultCheckRollbackService
+    StudentStagePathResultCheckOutdatedService
 from autoprogen.usecase.dto.student_mark_view_data import AbstractStudentTestCaseTestResultViewData, \
     StudentTestCaseTestResultAcceptedViewData, \
     StudentTestCaseTestResultWrongAnswerViewData, StudentTestCaseTestResultUntestableViewData, \
@@ -20,11 +21,15 @@ class StudentMarkViewDataGetTestResultUseCase:
             *,
             stage_path_get_by_testcase_id_service: StagePathGetByTestCaseIDService,
             student_stage_path_result_get_service: StudentStagePathResultGetService,
+            stage_error_text_formatter: StageErrorTextFormatter,
     ):
+        """ステージ結果の取得処理とエラー表示用フォーマッタを受け取る。"""
         self._stage_path_get_by_testcase_id_service \
             = stage_path_get_by_testcase_id_service
         self._student_stage_path_result_get_service \
             = student_stage_path_result_get_service
+        self._stage_error_text_formatter \
+            = stage_error_text_formatter
 
     def execute(
             self,
@@ -32,7 +37,9 @@ class StudentMarkViewDataGetTestResultUseCase:
             testcase_id: TestCaseID,
     ) -> AbstractStudentTestCaseTestResultViewData:
         # 対象のステージパスを見つける
-        stage_path = self._stage_path_get_by_testcase_id_service.execute(testcase_id)
+        stage_path = self._stage_path_get_by_testcase_id_service.execute(
+            testcase_id,
+        )
 
         # このステージパスの結果を取得
         stage_path_result: StudentStagePathResult \
@@ -40,24 +47,36 @@ class StudentMarkViewDataGetTestResultUseCase:
 
         if stage_path_result.are_all_finished:
             # すべてのステージが成功しているとき
-            test_stage_result = stage_path_result.get_result_by_stage_type(TestStage)
-            assert isinstance(test_stage_result, TestSuccessStudentStageResult), test_stage_result
+            test_stage_result = stage_path_result.get_result_by_stage_type(
+                TestStage,
+            )
+            assert isinstance(test_stage_result, TestStudentStageResult), \
+                test_stage_result
+            # 成功結果が照合結果を持つモデル契約に基づき、Optionalの型を絞り込む。
+            assert test_stage_result.test_result_output_file_collection is not None
+            test_result_output_file_collection = (
+                test_stage_result.test_result_output_file_collection
+            )
             if test_stage_result.is_accepted:
                 return StudentTestCaseTestResultAcceptedViewData(
                     student_id=student_id,
                     testcase_id=testcase_id,
-                    output_and_results=test_stage_result.test_result_output_file_collection,
+                    output_and_results=test_result_output_file_collection,
                 )
             else:
                 return StudentTestCaseTestResultWrongAnswerViewData(
                     student_id=student_id,
                     testcase_id=testcase_id,
-                    output_and_results=test_stage_result.test_result_output_file_collection,
+                    output_and_results=test_result_output_file_collection,
                 )
         else:
             # 失敗しているとき
-            reason = stage_path_result.last_stage_detailed_reason
-            if reason is None:
+            last_result = stage_path_result.last_stage_result
+            if last_result is not None and not last_result.is_success:
+                reason = self._stage_error_text_formatter.format_detail(
+                    last_result,
+                )
+            else:
                 reason = "処理が未完了です"
             return StudentTestCaseTestResultUntestableViewData(
                 student_id=student_id,
@@ -74,7 +93,7 @@ class StudentMarkViewDataGetMarkSummaryUseCase:
             student_mark_get_sub_service: StudentMarkGetSubService,
             stage_path_list_sub_service: StagePathListSubService,
             student_stage_path_result_get_service: StudentStagePathResultGetService,
-            student_stage_path_result_check_rollback_service: StudentStagePathResultCheckRollbackService,
+            student_stage_path_result_check_outdated_service: StudentStagePathResultCheckOutdatedService,
     ):
         self._student_get_service \
             = student_get_service
@@ -84,11 +103,12 @@ class StudentMarkViewDataGetMarkSummaryUseCase:
             = stage_path_list_sub_service
         self._student_stage_path_result_get_service \
             = student_stage_path_result_get_service
-        self._student_stage_path_result_check_rollback_service \
-            = student_stage_path_result_check_rollback_service
+        self._student_stage_path_result_check_outdated_service \
+            = student_stage_path_result_check_outdated_service
 
     def execute(self, student_id: StudentID) -> StudentMarkSummaryViewData:
-        stage_path_lst: list[StagePath] = self._stage_path_list_sub_service.execute()
+        stage_path_lst: list[StagePath] \
+            = self._stage_path_list_sub_service.execute()
 
         state: StudentMarkState = StudentMarkState.NO_TEST_FOUND
         detailed_text = None
@@ -102,12 +122,12 @@ class StudentMarkViewDataGetMarkSummaryUseCase:
             stage_path_result: StudentStagePathResult \
                 = self._student_stage_path_result_get_service.execute(student_id, stage_path)
 
-            # ロールバックの必要があるか確認
-            is_rollback_required = self._student_stage_path_result_check_rollback_service.execute(
+            # 保存済み結果が現在の実行条件に対して古いか確認する。
+            is_outdated = self._student_stage_path_result_check_outdated_service.execute(
                 student_id=student_id,
                 stage_path_result=stage_path_result,
             ) is not None
-            if is_rollback_required:
+            if is_outdated:
                 state = StudentMarkState.RERUN_REQUIRED
                 break
 

@@ -1,6 +1,3 @@
-import codecs
-import sys
-
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
@@ -112,29 +109,19 @@ class SourceCodeTextEdit(PlainTextEdit, HorizontalScrollWithShiftAndWheelMixin):
         self.setLineWrapMode(QPlainTextEdit.NoWrap)
         self._h = _CHighlighter(self.document())
 
-
-class _TestWidget(QWidget, QObject):
-    def __init__(self, parent: QObject = None):
-        super().__init__(parent)
-
-        self._init_ui()
-
-    def _init_ui(self):
-        layout = QVBoxLayout()
-        self.setLayout(layout)
-
-        te = SourceCodeTextEdit(self)
-        with codecs.open("../vctest/test.c", "r", "utf-8") as f:
-            te.setPlainText(f.read())
-        layout.addWidget(te)
-
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    # noinspection PyArgumentList
-    app.setFont(get_font())
-    w = _TestWidget()
-    # noinspection PyUnresolvedReferences
-    w.show()
-    app.exec()
+    def set_highlighted_lines(self, line_numbers: tuple[int, ...]) -> None:
+        """指定された1始まりの行全体を黄色で強調する。"""
+        selections: list[QTextEdit.ExtraSelection] = []
+        document = self.document()
+        for line_number in sorted(set(line_numbers)):
+            block = document.findBlockByNumber(line_number - 1)
+            if not block.isValid():
+                continue
+            selection = QTextEdit.ExtraSelection()
+            selection.cursor = QTextCursor(block)
+            selection.format.setBackground(QColor("#fff0a6"))
+            selection.format.setProperty(QTextFormat.FullWidthSelection, True)
+            selections.append(selection)
+        self.setExtraSelections(selections)
+        if selections:
+            self.setTextCursor(selections[0].cursor)

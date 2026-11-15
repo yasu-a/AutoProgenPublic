@@ -50,11 +50,6 @@ class AppPathLayout:
     def settings_json(self) -> Path:
         return self.config.app_base_dir / "settings.json"
 
-    @property
-    def compiler_test_source_file(self) -> Path:
-        return self.config.app_base_dir / "vctest" / "test.c"
-
-
 @dataclass(frozen=True)
 class ProjectPathLayout:
     """
@@ -71,6 +66,11 @@ class ProjectPathLayout:
     @property
     def config_json(self) -> Path:
         return self.root / "config.json"
+
+    @property
+    def settings_json(self) -> Path:
+        """プロジェクト固有の設定ファイルパスを返す。"""
+        return self.root / "settings.json"
 
     @property
     def database_path(self) -> Path:

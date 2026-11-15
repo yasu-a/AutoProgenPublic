@@ -6,6 +6,11 @@ from pathlib import Path
 import openpyxl
 import pytest
 
+from autoprogen.domain.error.stage.build import (
+    SubmissionNotFoundError,
+    SubmissionSourceNotFoundError,
+)
+from autoprogen.domain.error.stage.compile import CompilerDiagnosticError
 from autoprogen.domain.model.debug_settings import DebugSettings
 from autoprogen.domain.model.expected_output_file import ExpectedOutputFile
 from autoprogen.domain.model.input_file import InputFile
@@ -189,18 +194,18 @@ def _assert_stage_results(project_container) -> None:
                 "26HG200004D",
             ):
                 assert build is not None and not build.is_success
-                expected_reason = (
-                    "未提出"
+                expected_error_type = (
+                    SubmissionNotFoundError
                     if student_id_text.endswith("001A")
-                    else "見つかりません"
+                    else SubmissionSourceNotFoundError
                 )
-                assert expected_reason in build.reason
+                assert isinstance(build.error, expected_error_type)
                 assert compile_result is None
                 assert execute_result is None
                 assert test_result is None
                 _report(
                     f"student={student_id_text} case={case} "
-                    f"build=failed reason={expected_reason}"
+                    f"build=failed error={expected_error_type.__name__}"
                 )
                 continue
 
@@ -210,6 +215,7 @@ def _assert_stage_results(project_container) -> None:
             if student_id_text.endswith("005E"):
                 assert compile_result is not None
                 assert not compile_result.is_success
+                assert isinstance(compile_result.error, CompilerDiagnosticError)
                 assert execute_result is None
                 assert test_result is None
                 _report(

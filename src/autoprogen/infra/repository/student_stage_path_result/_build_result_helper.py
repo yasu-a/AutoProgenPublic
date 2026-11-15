@@ -1,6 +1,6 @@
 from autoprogen.domain.model.stage import AbstractStage, BuildStage
 from autoprogen.domain.model.student_stage_result import AbstractStudentStageResult, \
-    BuildSuccessStudentStageResult, BuildFailureStudentStageResult
+    BuildStudentStageResult
 from autoprogen.domain.model.value import StudentID
 from autoprogen.infra.repository.student_stage_path_result import _AbstractStageResultHelper
 
@@ -9,13 +9,29 @@ class _BuildResultHelper(_AbstractStageResultHelper):
     """Build結果処理ヘルパー"""
 
     def create_table_if_not_exists(self, cursor) -> None:
+        """BUILD結果テーブルが存在しない場合に作成する。
+
+        行が存在しない状態を未実行として扱う。正規な結果として扱う行は次の二種類とする。
+
+        | 結果 | submission_folder_checksum | error_group_id | error_type_id | error_params_json |
+        | --- | --- | --- | --- | --- |
+        | 成功 | NOT NULL | NULL | NULL | NULL |
+        | 失敗 | NOT NULL | NOT NULL | NOT NULL | NOT NULL |
+        """
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS student_build_result
             (
                 student_id                 TEXT PRIMARY KEY,
-                submission_folder_checksum UNSIGNED INTEGER,
-                reason                     TEXT,
+                submission_folder_checksum UNSIGNED INTEGER NOT NULL,
+                error_group_id             TEXT,
+                error_type_id              TEXT,
+                error_params_json          TEXT,
+                CHECK (
+                    (error_group_id IS NULL AND error_type_id IS NULL AND error_params_json IS NULL)
+                    OR
+                    (error_group_id IS NOT NULL AND error_type_id IS NOT NULL AND error_params_json IS NOT NULL)
+                ),
                 FOREIGN KEY (student_id) REFERENCES student (student_id)
             )
             """
@@ -23,6 +39,7 @@ class _BuildResultHelper(_AbstractStageResultHelper):
 
     def get_stage_result(self, cursor, student_id: StudentID,
                          stage: AbstractStage) -> AbstractStudentStageResult | None:
+        """BUILD結果を取得し、構造化エラーを含むモデルへ復元する。"""
         assert isinstance(stage, BuildStage), stage
         cursor.execute(
             "SELECT * FROM student_build_result WHERE student_id = ?",
@@ -33,31 +50,29 @@ class _BuildResultHelper(_AbstractStageResultHelper):
         if row is None:
             return None
 
-        if row["reason"] is None:
-            return BuildSuccessStudentStageResult.create_instance(
-                student_id=student_id,
-                submission_folder_checksum=row["submission_folder_checksum"],
-            )
-        else:
-            return BuildFailureStudentStageResult.create_instance(
-                student_id=student_id,
-                reason=row["reason"],
-            )
+        error = self._decode_error(row)
+        return BuildStudentStageResult.create_instance(
+            student_id=student_id,
+            submission_folder_checksum=row["submission_folder_checksum"],
+            error=error,
+        )
 
     def put_stage_result(self, cursor, result: AbstractStudentStageResult) -> None:
-        if isinstance(result, BuildSuccessStudentStageResult):
+        """BUILDの成功または失敗結果を保存する。"""
+        if isinstance(result, BuildStudentStageResult):
+            if result.error is None:
+                encoded_error = (None, None, None)
+            else:
+                encoded_error = self._encode_error(result.error)
             cursor.execute(
                 "INSERT OR REPLACE INTO student_build_result "
-                "(student_id, submission_folder_checksum, reason) "
-                "VALUES (?, ?, NULL)",
-                (str(result.student_id), result.submission_folder_checksum)
-            )
-        elif isinstance(result, BuildFailureStudentStageResult):
-            cursor.execute(
-                "INSERT OR REPLACE INTO student_build_result "
-                "(student_id, submission_folder_checksum, reason) "
-                "VALUES (?, NULL, ?)",
-                (str(result.student_id), result.reason)
+                "(student_id, submission_folder_checksum, error_group_id, error_type_id, error_params_json) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (
+                    str(result.student_id),
+                    result.submission_folder_checksum,
+                    *encoded_error,
+                )
             )
         else:
             raise ValueError(f"Unexpected result type: {type(result)}")

@@ -3,7 +3,7 @@ import json
 from autoprogen.domain.model.output_file import OutputFileCollection
 from autoprogen.domain.model.stage import AbstractStage, ExecuteStage
 from autoprogen.domain.model.student_stage_result import AbstractStudentStageResult, \
-    ExecuteSuccessStudentStageResult, ExecuteFailureStudentStageResult
+    ExecuteStudentStageResult
 from autoprogen.domain.model.value import StudentID
 from autoprogen.infra.repository.student_stage_path_result import _AbstractStageResultHelper
 
@@ -12,15 +12,41 @@ class _ExecuteResultHelper(_AbstractStageResultHelper):
     """Execute結果処理ヘルパー"""
 
     def create_table_if_not_exists(self, cursor) -> None:
+        """EXECUTE結果テーブルが存在しない場合に作成する。
+
+        行が存在しない状態を未実行として扱う。正規な結果として扱う行は次の二種類とする。
+
+        | 結果 | execute_config_mtime | output_file_collection_json | error_group_id | error_type_id | error_params_json |
+        | --- | --- | --- | --- | --- | --- |
+        | 成功 | NOT NULL | NOT NULL | NULL | NULL | NULL |
+        | 失敗 | NOT NULL | NULL | NOT NULL | NOT NULL | NOT NULL |
+        """
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS student_execute_result
             (
                 student_id                  TEXT,
                 testcase_id                 TEXT,
-                execute_config_mtime        DATETIME,
+                execute_config_mtime        DATETIME NOT NULL,
                 output_file_collection_json TEXT,
-                reason                      TEXT,
+                error_group_id              TEXT,
+                error_type_id               TEXT,
+                error_params_json           TEXT,
+                CHECK (
+                    (
+                        output_file_collection_json IS NOT NULL
+                        AND error_group_id IS NULL
+                        AND error_type_id IS NULL
+                        AND error_params_json IS NULL
+                    )
+                    OR
+                    (
+                        output_file_collection_json IS NULL
+                        AND error_group_id IS NOT NULL
+                        AND error_type_id IS NOT NULL
+                        AND error_params_json IS NOT NULL
+                    )
+                ),
                 PRIMARY KEY (student_id, testcase_id),
                 FOREIGN KEY (student_id) REFERENCES student (student_id)
             )
@@ -30,6 +56,7 @@ class _ExecuteResultHelper(_AbstractStageResultHelper):
 
     def get_stage_result(self, cursor, student_id: StudentID,
                          stage: AbstractStage) -> AbstractStudentStageResult | None:
+        """EXECUTE結果を取得し、構造化エラーを含むモデルへ復元する。"""
         assert isinstance(stage, ExecuteStage), stage
         cursor.execute(
             "SELECT * FROM student_execute_result WHERE student_id = ? AND testcase_id = ?",
@@ -40,38 +67,44 @@ class _ExecuteResultHelper(_AbstractStageResultHelper):
         if row is None:
             return None
 
-        if row["reason"] is None:
+        error = self._decode_error(row)
+        output_file_collection = None
+        if row["output_file_collection_json"] is not None:
             output_file_collection = OutputFileCollection.from_json(
-                json.loads(row["output_file_collection_json"]))
-            return ExecuteSuccessStudentStageResult.create_instance(
-                student_id=student_id,
-                testcase_id=stage.testcase_id,
-                execute_config_mtime=row["execute_config_mtime"],  # 既にdatetimeオブジェクト
-                output_file_collection=output_file_collection,
+                json.loads(row["output_file_collection_json"]),
             )
-        else:
-            return ExecuteFailureStudentStageResult.create_instance(
-                student_id=student_id,
-                testcase_id=stage.testcase_id,
-                reason=row["reason"],
-            )
+        return ExecuteStudentStageResult.create_instance(
+            student_id=student_id,
+            testcase_id=stage.testcase_id,
+            execute_config_mtime=row["execute_config_mtime"],  # 既にdatetimeオブジェクト
+            output_file_collection=output_file_collection,
+            error=error,
+        )
 
     def put_stage_result(self, cursor, result: AbstractStudentStageResult) -> None:
-        if isinstance(result, ExecuteSuccessStudentStageResult):
+        """EXECUTEの成功または失敗結果を保存する。"""
+        if isinstance(result, ExecuteStudentStageResult):
+            output_file_collection_json = None
+            if result.output_file_collection is not None:
+                output_file_collection_json = json.dumps(
+                    result.output_file_collection.to_json(),
+                )
+            if result.error is None:
+                encoded_error = (None, None, None)
+            else:
+                encoded_error = self._encode_error(result.error)
             cursor.execute(
                 "INSERT OR REPLACE INTO student_execute_result"
-                "(student_id, testcase_id, execute_config_mtime, output_file_collection_json, reason)"
-                "VALUES (?, ?, ?, ?, NULL)",
-                (str(result.student_id), str(result.testcase_id),
-                 result.execute_config_mtime.isoformat(),
-                 json.dumps(result.output_file_collection.to_json()))
-            )
-        elif isinstance(result, ExecuteFailureStudentStageResult):
-            cursor.execute(
-                "INSERT OR REPLACE INTO student_execute_result"
-                "(student_id, testcase_id, execute_config_mtime, output_file_collection_json, reason)"
-                "VALUES (?, ?, NULL, NULL, ?)",
-                (str(result.student_id), str(result.testcase_id), result.reason)
+                "(student_id, testcase_id, execute_config_mtime, output_file_collection_json, "
+                "error_group_id, error_type_id, error_params_json)"
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    str(result.student_id),
+                    str(result.testcase_id),
+                    result.execute_config_mtime.isoformat(),
+                    output_file_collection_json,
+                    *encoded_error,
+                ),
             )
         else:
             raise ValueError(f"Unexpected result type: {type(result)}")

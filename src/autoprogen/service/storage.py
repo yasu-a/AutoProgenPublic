@@ -4,11 +4,11 @@ from pathlib import Path
 from autoprogen.domain.model.file_item import ExecutableFileItem
 from autoprogen.domain.model.input_file import InputFileCollection
 from autoprogen.domain.model.output_file import OutputFileCollection, OutputFile
+from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.value import StorageID, StudentID, TestCaseID, FileID
 from autoprogen.infra.repository.storage import StorageRepository
-from autoprogen.infra.repository.student_dynamic import StudentSourceRepository, \
-    StudentExecutableRepository
-from autoprogen.infra.repository.test_source import TestSourceRepository
+from autoprogen.infra.repository.student_executable import StudentExecutableRepository
+from autoprogen.infra.repository.student_source_code import StudentSourceRepository
 from autoprogen.infra.repository.testcase_config import TestCaseConfigRepository
 from autoprogen.service.dto.storage_diff_snapshot import StorageDiff, StorageFileSnapshot, \
     StorageDiffSnapshotFileEntry
@@ -40,16 +40,28 @@ class StorageDeleteService:
         self._storage_repo.delete(storage_id)
 
 
+_COMPILER_TEST_SOURCE_CODE = SourceCode(
+    text=(
+        "#include <stdio.h>\n"
+        "\n"
+        "int main()\n"
+        "{\n"
+        '    printf("Hello, World!\\n");\n'
+        "    return 0;\n"
+        "}\n"
+    ),
+)
+
+
 class StorageLoadTestSourceService:
-    # ストレージ領域内にテスト用のソースコードを生成する
+    """固定のコンパイラ動作確認用ソースを一時ストレージへ配置する。"""
 
     def __init__(
             self,
             *,
-            test_source_repo: TestSourceRepository,
             storage_repo: StorageRepository,
-    ):
-        self._test_source_repo = test_source_repo
+    ) -> None:
+        """配置先となる一時ストレージのRepositoryを受け取る。"""
         self._storage_repo = storage_repo
 
     def execute(
@@ -58,12 +70,10 @@ class StorageLoadTestSourceService:
             storage_id: StorageID,
             file_relative_path: Path,
     ) -> None:
-        # テスト用のソースコードを読み込む
-        content_bytes = self._test_source_repo.get()
-
-        # ストレージ領域に配置する
+        """コンパイラ動作確認用ソースをUTF-8で配置する。"""
+        # 固定のテスト用ソースコードをストレージへ配置する。
         storage = self._storage_repo.get(storage_id)
-        storage.files[file_relative_path] = content_bytes
+        storage.files[file_relative_path] = _COMPILER_TEST_SOURCE_CODE.to_utf8_bytes()
         self._storage_repo.put(storage)
 
 
@@ -85,14 +95,17 @@ class StorageLoadStudentSourceService:
             student_id: StudentID,
             storage_id: StorageID,
             file_relative_path: Path,
-    ) -> None:
+    ) -> SourceCode:
+        """生徒のソースコードを配置し、元のドメインモデルを返す。"""
         # 生徒のソースコードを読み込む
-        content_bytes = self._student_source_repo.get(student_id).content_bytes
+        source_code = self._student_source_repo.get(student_id)
+        content_bytes = source_code.to_utf8_bytes()
 
         # ストレージ領域に配置する
         storage = self._storage_repo.get(storage_id)
         storage.files[file_relative_path] = content_bytes
         self._storage_repo.put(storage)
+        return source_code
 
 
 class StorageLoadStudentExecutableService:

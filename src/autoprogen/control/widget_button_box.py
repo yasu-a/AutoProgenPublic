@@ -1,5 +1,3 @@
-from typing import Iterable
-
 from PyQt5.QtCore import pyqtSignal, QObject, Qt, pyqtSlot
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QPushButton
@@ -45,17 +43,6 @@ class ButtonBox(QWidget):
         if not tab_focus:
             b.setFocusPolicy(Qt.ClickFocus)
         self._button_layout.addWidget(b)
-
-    def _iter_buttons(self) -> Iterable[QPushButton]:
-        yield from self.layout().findChildren(QPushButton)
-
-    def set_button_width(self, v):  # FIXME: not working
-        for b in self._iter_buttons():
-            b.setFixedWidth(v)
-
-    def set_button_height(self, v):  # FIXME: not working
-        for b in self._iter_buttons():
-            b.setFixedHeight(v)
 
     @pyqtSlot()
     def __on_b_clicked(self):

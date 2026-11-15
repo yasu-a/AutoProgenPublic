@@ -1,24 +1,9 @@
 from dataclasses import dataclass
-from functools import cached_property
-from typing import TypeVar
-
-
-@dataclass(frozen=True)
-class SourceFileItem:
-    content_bytes: bytes
-    encoding: str
-
-    @cached_property
-    def content_text(self) -> str:
-        return self.content_bytes.decode(self.encoding)
 
 
 @dataclass(frozen=True)
 class ExecutableFileItem:
+    """コンパイル済みの実行ファイルを表す。"""
+
+    # 実行ファイル本体のバイト列。
     content_bytes: bytes
-
-
-StudentDynamicFileItemType = TypeVar(
-    "StudentDynamicFileItemType",
-    bound=SourceFileItem | ExecutableFileItem,
-)

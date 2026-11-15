@@ -293,10 +293,13 @@ class ProjectCoreIO:
             project_id: ProjectID,
             folder_fullpath: Path,
     ) -> int:
-        self.__check_folder_location(
+        """フォルダ内容のチェックサムを返し、未作成なら空フォルダとして扱う。"""
+        self.__check_path_may_not_exist(
             project_id=project_id,
             path=folder_fullpath,
         )
+        if folder_fullpath.exists() and not folder_fullpath.is_dir():
+            raise CoreIOError(f"path must be a directory: {folder_fullpath}")
 
         self._logger.debug(f"calculate_folder_checksum({project_id=}, {folder_fullpath=})")
 

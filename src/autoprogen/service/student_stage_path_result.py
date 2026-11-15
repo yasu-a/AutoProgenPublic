@@ -2,13 +2,17 @@ from datetime import datetime
 
 from autoprogen.service.student_change_event_bus import StudentChangeEventBus
 from autoprogen.domain.model.stage_path import StagePath
-from autoprogen.domain.model.stage import AbstractStage, BuildStage, ExecuteStage, TestStage
+from autoprogen.domain.model.project_settings import SourceCodeCheckSkip
+from autoprogen.domain.model.stage import AbstractStage, BuildStage, CompileStage, ExecuteStage, TestStage
 from autoprogen.domain.model.student_stage_path_result import StudentStagePathResult
-from autoprogen.domain.model.student_stage_result import BuildSuccessStudentStageResult, \
-    ExecuteSuccessStudentStageResult, TestSuccessStudentStageResult, AbstractStudentStageResult
+from autoprogen.domain.model.student_stage_result import BuildStudentStageResult, \
+    CompileStudentStageResult, ExecuteStudentStageResult, \
+    TestStudentStageResult, AbstractStudentStageResult
 from autoprogen.domain.model.value import StudentID
+from autoprogen.infra.repository.project_settings import ProjectSettingsRepository
 from autoprogen.infra.repository.student_stage_path_result import StudentStagePathResultRepository
 from autoprogen.service.stage_path import StagePathListSubService
+from autoprogen.service.student_dynamic import StudentDynamicGetSourceCodeService
 from autoprogen.service.student_submission import StudentSubmissionGetChecksumService
 from autoprogen.service.testcase_config import TestCaseConfigGetExecuteConfigMtimeService, \
     TestCaseConfigGetTestConfigMtimeService
@@ -30,15 +34,23 @@ class StudentStagePathResultGetService:
         return self._student_stage_path_result_repo.get(student_id, stage_path)
 
 
-class StudentStagePathResultCheckRollbackService:
+class StudentStagePathResultCheckOutdatedService:
+    """保存済みステージ結果が現在の実行条件に対して古いか判定する。"""
+
     def __init__(
             self,
             student_submission_get_checksum_service: StudentSubmissionGetChecksumService,
+            project_settings_repository: ProjectSettingsRepository,
+            student_dynamic_get_source_code_service: StudentDynamicGetSourceCodeService,
             testcase_config_get_execute_config_mtime_service: TestCaseConfigGetExecuteConfigMtimeService,
             testcase_config_get_test_config_mtime_service: TestCaseConfigGetTestConfigMtimeService,
     ):
+        """現在の実行条件を取得する既存サービスとRepositoryを受け取る。"""
         self._student_submission_get_checksum_service \
             = student_submission_get_checksum_service
+        self._project_settings_repository = project_settings_repository
+        self._student_dynamic_get_source_code_service \
+            = student_dynamic_get_source_code_service
         self._testcase_config_get_execute_config_mtime_service \
             = testcase_config_get_execute_config_mtime_service
         self._testcase_config_get_test_config_mtime_service \
@@ -49,44 +61,76 @@ class StudentStagePathResultCheckRollbackService:
             *,
             stage_path_result: StudentStagePathResult,
             student_id: StudentID,
-    ) -> type[AbstractStage] | None:  # ロールバック先のステージを返し，ロールバックしない場合はNone
-        # * BUILDステージが成功しているとき
+    ) -> type[AbstractStage] | None:
+        """Outdatedを検出した最初のステージを返し、なければNoneを返す。"""
+        # BUILD結果が存在する場合は提出内容の変更を確認する。
         result = stage_path_result.get_result_by_stage_type(BuildStage)
-        if result is not None and result.is_success:
-            assert isinstance(result, BuildSuccessStudentStageResult)
-            # 現在のチェックサムがステージ実行時の生徒の提出フォルダのチェックサムと異なればロールバック
+        if result is not None:
+            assert isinstance(result, BuildStudentStageResult)
+            # 保存時と現在の提出フォルダのチェックサムを比較する。
             checksum = self._student_submission_get_checksum_service.execute(
                 student_id=student_id,
             )
-            if checksum != result.submission_folder_checksum:
+            if result.is_outdated(
+                current_submission_folder_checksum=checksum,
+            ):
                 return BuildStage
 
-        # * EXECUTEステージが成功しているとき
+        # COMPILE結果が存在する場合は安全性チェック設定の変更を確認する。
+        result = stage_path_result.get_result_by_stage_type(CompileStage)
+        if result is not None:
+            assert isinstance(result, CompileStudentStageResult)
+            # 現在のプロジェクト設定を一度だけ取得する。
+            project_settings = self._project_settings_repository.get()
+            # 同じ学生とソースコードに対する省略許可の有無を比較する。
+            try:
+                source_code = self._student_dynamic_get_source_code_service.execute(
+                    student_id,
+                )
+            except FileNotFoundError:
+                # BUILD成果物が欠損している場合はソースコードを再生成する。
+                return BuildStage
+            current_skip = SourceCodeCheckSkip(
+                student_id=student_id,
+                source_sha256=source_code.calculate_sha256(),
+            )
+            is_source_code_check_skipped = (
+                current_skip in project_settings.source_code_check_skips
+            )
+            if result.is_outdated(
+                current_suppressed_source_code_checks=(
+                    project_settings.suppressed_source_code_checks
+                ),
+                current_source_code_check_skipped=is_source_code_check_skipped,
+            ):
+                return CompileStage
+
+        # EXECUTE結果が存在する場合は実行設定の変更を確認する。
         # noinspection DuplicatedCode
         result = stage_path_result.get_result_by_stage_type(ExecuteStage)
-        if result is not None and result.is_success:
-            assert isinstance(result, ExecuteSuccessStudentStageResult)
-            # 現在の実行構成の更新時刻がステージ実行時の実行構成の更新時刻と異なればロールバック
+        if result is not None:
+            assert isinstance(result, ExecuteStudentStageResult)
+            # 保存時と現在の実行構成の更新時刻を比較する。
             stage = result.stage
             assert isinstance(stage, ExecuteStage)
             mtime = self._testcase_config_get_execute_config_mtime_service.execute(
                 testcase_id=stage.testcase_id,
             )
-            if mtime != result.execute_config_mtime:
+            if result.is_outdated(current_execute_config_mtime=mtime):
                 return ExecuteStage
 
-        # * TESTステージが成功しているとき
+        # TEST結果が存在する場合はテスト設定の変更を確認する。
         # noinspection DuplicatedCode
         result = stage_path_result.get_result_by_stage_type(TestStage)
-        if result is not None and result.is_success:
-            assert isinstance(result, TestSuccessStudentStageResult)
-            # 現在のテスト構成の更新時刻がステージ実行時のテスト構成の更新時刻と異なればロールバック
+        if result is not None:
+            assert isinstance(result, TestStudentStageResult)
+            # 保存時と現在のテスト構成の更新時刻を比較する。
             stage = result.stage
             assert isinstance(stage, TestStage)
             mtime = self._testcase_config_get_test_config_mtime_service.execute(
                 testcase_id=stage.testcase_id,
             )
-            if mtime != result.test_config_mtime:
+            if result.is_outdated(current_test_config_mtime=mtime):
                 return TestStage
 
         return None
@@ -148,9 +192,11 @@ class StudentStageResultClearService:
         """対象学生の各ステージ結果を削除して保存する。"""
         stage_paths = self._stage_path_list_sub_service.execute()
         for stage_path in stage_paths:
-            stage_path_result = self._student_stage_path_result_repo.get(student_id, stage_path)
+            stage_path_result = self._student_stage_path_result_repo.get(
+                student_id, stage_path)
             stage_path_result.delete_all_results()
-            self._student_stage_path_result_put_service.execute(stage_path_result)
+            self._student_stage_path_result_put_service.execute(
+                stage_path_result)
 
 
 class StudentPutStageResultService:

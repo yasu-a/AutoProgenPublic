@@ -1,17 +1,20 @@
 import subprocess
 from pathlib import Path
 
-from autoprogen.domain.error import CompileToolIOError
+from autoprogen.domain.error.stage.compile import (
+    CompilerDiagnosticError,
+    CompilerExecutionFailedError,
+    CompilerInputFileNotFoundError,
+    CompilerTimeoutError,
+    CompilerWorkingDirectoryNotFoundError,
+    VsDevToolNotFoundError,
+)
 from autoprogen.util.app_logging import create_logger
 
 
-class _VSDevToolError(RuntimeError):
-    def __init__(self, reason: str, output: str | None):
-        self.reason = reason
-        self.output = output
-
-
 class _VSDevTool:
+    """Visual Studio開発者コマンドを介してCソースをコンパイルする。"""
+
     _logger = create_logger()
 
     def __init__(
@@ -20,22 +23,16 @@ class _VSDevTool:
             vs_dev_cmd_bat_path: Path,
             timeout: float,
             cwd_fullpath: Path,
-            target_relative_path: Path,
-    ):
+        target_relative_path: Path,
+    ) -> None:
+        """コンパイラのパスと実行条件を検証して保持する。"""
         if not vs_dev_cmd_bat_path.exists():
-            raise _VSDevToolError(
-                reason=f"Visual Studio 開発者ツールが存在しません: {vs_dev_cmd_bat_path!s}",
-                output=None,
-            )
+            raise VsDevToolNotFoundError(path=vs_dev_cmd_bat_path)
         if not cwd_fullpath.exists():
-            raise _VSDevToolError(
-                reason=f"コンパイル先のディレクトリが存在しません: {cwd_fullpath!s}",
-                output=None,
-            )
+            raise CompilerWorkingDirectoryNotFoundError(path=cwd_fullpath)
         if not (cwd_fullpath / target_relative_path).exists():
-            raise _VSDevToolError(
-                reason=f"コンパイル対象のファイルが存在しません: {cwd_fullpath / target_relative_path!s}",
-                output=None,
+            raise CompilerInputFileNotFoundError(
+                path=cwd_fullpath / target_relative_path,
             )
 
         self._vs_dev_cmd_bat_path = vs_dev_cmd_bat_path
@@ -68,32 +65,30 @@ class _VSDevTool:
         return "Copyright (C) Microsoft Corporation" in output
 
     def run_and_get_output(self) -> str:
+        """コンパイラを実行し、失敗原因を構造化エラーとして通知する。"""
         try:
             output = self._run_and_get_output()
         except subprocess.CalledProcessError as e:
             output = e.stdout
             self._logger.info(f"Compiler exist with error\n{output}")
-            if self._is_output_from_compiler(output):
-                raise _VSDevToolError(
-                    reason="コンパイルエラーが発生しました",
-                    output=output,
-                )
+            if output is not None and self._is_output_from_compiler(output):
+                raise CompilerDiagnosticError(output=output)
             else:
-                raise CompileToolIOError(
-                    reason="コンパイラを実行できません",
-                    output=output,
-                )
+                raise CompilerExecutionFailedError(output=output)
         except subprocess.TimeoutExpired as e:
-            raise _VSDevToolError(
-                reason="コンパイラからの応答がタイムアウトしました",
-                output=e.stdout,
-            )
+            output = e.stdout
+            if isinstance(output, bytes):
+                output = output.decode("shift-jis", errors="replace")
+            raise CompilerTimeoutError(output=output)
         else:
             return output
 
 
 class CompileToolIO:
-    def __init__(self):
+    """コンパイラ実行をServiceから利用するためのIO境界を提供する。"""
+
+    def __init__(self) -> None:
+        """状態を持たないコンパイラIOを初期化する。"""
         pass
 
     @classmethod
@@ -104,16 +99,11 @@ class CompileToolIO:
             cwd_fullpath: Path,
             target_relative_path: Path,
     ) -> str:
-        try:
-            compiler_tool = _VSDevTool(
-                vs_dev_cmd_bat_path=compiler_tool_fullpath,
-                timeout=timeout,
-                cwd_fullpath=cwd_fullpath,
-                target_relative_path=target_relative_path,
-            )
-            return compiler_tool.run_and_get_output()
-        except _VSDevToolError as e:
-            raise CompileToolIOError(
-                reason=e.reason,
-                output=e.output,
-            )
+        """指定された開発者ツールで対象ソースをコンパイルする。"""
+        compiler_tool = _VSDevTool(
+            vs_dev_cmd_bat_path=compiler_tool_fullpath,
+            timeout=timeout,
+            cwd_fullpath=cwd_fullpath,
+            target_relative_path=target_relative_path,
+        )
+        return compiler_tool.run_and_get_output()

@@ -8,7 +8,7 @@ from autoprogen.domain.model.value import StudentID
 from autoprogen.infra.repository.student_stage_path_result import StudentStagePathResultRepository
 from autoprogen.service.stage_path import StagePathListSubService
 from autoprogen.service.student_stage_path_result import StudentStagePathResultGetService, \
-    StudentStagePathResultCheckRollbackService, StudentStagePathResultPutService
+    StudentStagePathResultCheckOutdatedService, StudentStagePathResultPutService
 from autoprogen.usecase.student_run_build import StudentRunBuildStageUseCase
 from autoprogen.usecase.student_run_compile import StudentRunCompileStageUseCase
 from autoprogen.usecase.student_run_execute import StudentRunExecuteStageUseCase
@@ -29,9 +29,9 @@ class StudentRunNextStageUseCase:
             student_run_compile_stage_usecase: StudentRunCompileStageUseCase,
             student_run_execute_stage_usecase: StudentRunExecuteStageUseCase,
             student_run_test_stage_usecase: StudentRunTestStageUseCase,
-            student_stage_path_result_check_rollback_service: StudentStagePathResultCheckRollbackService,
+            student_stage_path_result_check_outdated_service: StudentStagePathResultCheckOutdatedService,
     ):
-        """ステージ実行、ロールバック判定と保存に使う依存先を受け取る。"""
+        """ステージ実行、Outdated判定と保存に使う依存先を受け取る。"""
         self._stage_path_list_sub_service \
             = stage_path_list_sub_service
         self._student_stage_path_result_get_service \
@@ -48,8 +48,8 @@ class StudentRunNextStageUseCase:
             = student_run_execute_stage_usecase
         self._student_run_test_stage_usecase \
             = student_run_test_stage_usecase
-        self._student_stage_path_result_check_rollback_service \
-            = student_stage_path_result_check_rollback_service
+        self._student_stage_path_result_check_outdated_service \
+            = student_stage_path_result_check_outdated_service
 
     def __rollback(
             self,
@@ -58,8 +58,8 @@ class StudentRunNextStageUseCase:
             stage_path_result: StudentStagePathResult,
             stage_paths: list[StagePath],
     ) -> bool:
-        # ロールバックが必要かを判定する
-        rollback_stage_type = self._student_stage_path_result_check_rollback_service.execute(
+        # 現在の条件と異なる保存済み結果があるかを判定する。
+        rollback_stage_type = self._student_stage_path_result_check_outdated_service.execute(
             student_id=student_id,
             stage_path_result=stage_path_result,
         )
@@ -80,10 +80,7 @@ class StudentRunNextStageUseCase:
                 student_id,
                 target_stage_path,
             )
-            for stage in reversed(target_stage_path):
-                target_stage_path_result.delete_result(stage)
-                if isinstance(stage, rollback_stage_type):
-                    break
+            target_stage_path_result.rollback_from(rollback_stage_type)
             self._student_stage_path_result_put_service.execute(target_stage_path_result)
         # 適用内容をログに残す
         self._logger.info(f"{student_id} rollback {rollback_stage_type} on {len(targets)} path(s)")

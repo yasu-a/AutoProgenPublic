@@ -14,8 +14,7 @@ from autoprogen.infra.path_layout import AppPathConfig, AppPathLayout
 from autoprogen.infra.repository.app_version import AppVersionRepository
 from autoprogen.infra.repository.global_settings import GlobalSettingsRepository
 from autoprogen.infra.repository.project import ProjectRepository
-from autoprogen.infra.repository.test_source import TestSourceRepository
-from autoprogen.service.match import MatchGetBestService
+from autoprogen.domain.service.match import MatchGetBestService
 from autoprogen.service.project import ProjectListIDQueryService, ProjectGetConfigStateQueryService, ProjectUpdateTimestampService, \
     ProjectGetSizeQueryService
 from autoprogen.usecase.app_version import AppVersionGetTextUseCase, AppVersionCheckIsStableUseCase
@@ -47,7 +46,6 @@ class AppContainer:
             match_get_best_service=self.match_get_best_service,
             project_repository=self.project_repository,
             global_settings_repository=self.global_settings_repository,
-            test_source_repository=self.test_source_repository,
             project_path_layout=self.project_repository.create_project_path_layout(project_id),
             project_core_io=self.project_core_io,
             readonly_excel_worksheet_gateway=self.readonly_excel_worksheet_gateway,
@@ -89,13 +87,6 @@ class AppContainer:
         return ProjectRepository(
             project_store_dir=self.app_path_config.project_store_dir,
             project_core_io=self.project_core_io,
-        )
-
-    @cached_property
-    def test_source_repository(self):
-        return TestSourceRepository(
-            app_path_layout=self.app_path_layout,
-            global_core_io=self.global_core_io,
         )
 
     @cached_property

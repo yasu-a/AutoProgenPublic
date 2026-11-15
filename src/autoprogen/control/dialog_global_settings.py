@@ -1,11 +1,11 @@
 from pathlib import Path
 
 from PyQt5.QtCore import *
-from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import *
 
 from autoprogen.control.dialog_compiler_search import CompilerSearchDialog
 from autoprogen.control.dialog_progress import AbstractProgressDialog
+from autoprogen.control.dialog_settings_edit import AbstractSettingsEditDialog
 from autoprogen.domain.model.global_settings import GlobalSettings
 from autoprogen.infra.io.compiler_location import is_compiler_location
 from autoprogen.res.icon import get_icon
@@ -317,7 +317,8 @@ class GlobalSettingsEditWidget(QWidget):
                 f"{result.output}",
             )
 
-    def set_value(self, settings: GlobalSettings) -> None:
+    def set_data(self, settings: GlobalSettings) -> None:
+        """グローバル設定を各入力Widgetへ反映する。"""
         self._w_compiler_tool_path.set_value(
             settings.compiler_tool_fullpath,
         )
@@ -343,7 +344,8 @@ class GlobalSettingsEditWidget(QWidget):
             settings.enable_line_wrap_in_source_code,
         )
 
-    def get_value(self) -> GlobalSettings:
+    def get_data(self) -> GlobalSettings:
+        """各入力Widgetの値からグローバル設定を生成する。"""
         return GlobalSettings(
             compiler_tool_fullpath=(
                 self._w_compiler_tool_path.get_value()
@@ -385,7 +387,9 @@ class GlobalSettingsEditWidget(QWidget):
             return "\n".join(filter(None, validation_results))
 
 
-class GlobalSettingsEditDialog(QDialog):
+class GlobalSettingsEditDialog(AbstractSettingsEditDialog[GlobalSettings]):
+    """アプリケーション全体の設定を明示操作で保存する。"""
+
     def __init__(
             self,
             parent: QObject = None,
@@ -410,39 +414,29 @@ class GlobalSettingsEditDialog(QDialog):
         self.setModal(True)
         self.resize(700, 700)
 
-        layout = QVBoxLayout()
-        self.setLayout(layout)
-
         self._w_settings_edit = GlobalSettingsEditWidget(
             self,
             compiler_search_usecase=self._compiler_search_usecase,
             test_compile_stage_usecase=self._test_compile_stage_usecase,
         )  # type: ignore
-        self._w_settings_edit.set_value(
-            self._global_settings_get_usecase.execute()
-        )
-        layout.addWidget(self._w_settings_edit)
+        self.content_layout.addWidget(self._w_settings_edit)
+        self.add_standard_buttons()
+        self.set_data(self._global_settings_get_usecase.execute())
 
     def _init_signals(self):
-        pass
+        """基底ダイアログ以外の追加シグナルは接続しない。"""
 
-    # noinspection PyMethodOverriding
-    def closeEvent(self, evt: QCloseEvent):
+    def _set_data(self, data: GlobalSettings) -> None:
+        """グローバル設定を編集Widgetへ反映する。"""
+        self._w_settings_edit.set_data(data)
+
+    def get_data(self) -> GlobalSettings:
+        """グローバル設定を編集Widgetから取得する。"""
+        return self._w_settings_edit.get_data()
+
+    def save_data(self, data: GlobalSettings) -> None:
+        """グローバル設定をUseCase経由で保存する。"""
         reason = self._w_settings_edit.validate_and_get_reason()
-        if reason is None:
-            self._global_settings_put_usecase.execute(
-                self._w_settings_edit.get_value()
-            )
-        else:
-            # ユーザーにエラーを示して変更を破棄して閉じるか閉じずに編集するかを聞く
-            res = QMessageBox.warning(
-                self,  # type: ignore
-                "設定",
-                f"設定内容にエラーがあります。\n\n{reason}\n\n設定内容を破棄して終了しますか？",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No,
-            )
-            if res == QMessageBox.No:
-                evt.ignore()
-            else:
-                evt.accept()
+        if reason is not None:
+            raise ValueError(reason)
+        self._global_settings_put_usecase.execute(data)

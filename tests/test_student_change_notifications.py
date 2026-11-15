@@ -103,7 +103,7 @@ def test_rollback_uses_common_save_service(student_id: StudentID) -> None:
         student_run_compile_stage_usecase=Mock(),
         student_run_execute_stage_usecase=Mock(),
         student_run_test_stage_usecase=Mock(),
-        student_stage_path_result_check_rollback_service=rollback_check,
+        student_stage_path_result_check_outdated_service=rollback_check,
     )
 
     assert usecase._StudentRunNextStageUseCase__rollback(
@@ -151,7 +151,6 @@ def test_project_containers_have_independent_event_buses(student_id: StudentID) 
             match_get_best_service=Mock(),
             project_repository=Mock(),
             global_settings_repository=Mock(),
-            test_source_repository=Mock(),
             project_path_layout=Mock(),
             project_core_io=Mock(),
             readonly_excel_worksheet_gateway=Mock(),

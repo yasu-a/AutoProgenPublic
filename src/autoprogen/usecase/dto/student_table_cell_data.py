@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 
+from autoprogen.domain.error.stage.base import StageError
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.stage import AbstractStage
 from autoprogen.domain.model.value import StudentID
@@ -35,8 +36,12 @@ class StudentStageStateCellData:
 
 @dataclass(frozen=True)
 class StudentErrorCellDataTextEntry:
+    # 一覧と詳細画面へ表示する短い説明。
     summary_text: str
+    # エラー固有情報を含む詳細な説明。
     detailed_text: str
+    # 表示内容の生成元となった構造化ステージエラー。表示専用データではNoneを許容する。
+    error: StageError | None = None
 
 
 @dataclass
@@ -52,3 +57,15 @@ class StudentErrorCellData:
                 aggregated_text_entries.append(text_entry)
                 seen.add(text_entry.summary_text)
         return aggregated_text_entries
+
+    def distinct_text_entries(self) -> list[StudentErrorCellDataTextEntry]:
+        """概要と詳細が同一の重複エントリを、最初の一件だけ残して返す。"""
+        seen: set[tuple[str, str]] = set()
+        distinct_entries: list[StudentErrorCellDataTextEntry] = []
+        for entry in self.text_entries:
+            display_text = (entry.summary_text, entry.detailed_text)
+            if display_text in seen:
+                continue
+            seen.add(display_text)
+            distinct_entries.append(entry)
+        return distinct_entries

@@ -91,6 +91,14 @@ class MainWindow(QMainWindow):
         # noinspection PyUnresolvedReferences
         self.setCentralWidget(self._w_student_table)
 
+        # エラー詳細は表を操作したまま確認できる下部ドックとして配置する。
+        self._student_error_dock = QDockWidget("エラーの詳細", self)
+        self._student_error_dock.setObjectName("studentErrorDetailDock")
+        self._student_error_dock.setAllowedAreas(Qt.BottomDockWidgetArea)
+        self._student_error_dock.setFeatures(QDockWidget.DockWidgetClosable)
+        self.addDockWidget(Qt.BottomDockWidgetArea, self._student_error_dock)
+        self._student_error_dock.hide()
+
         # ステータスバー
         #  - タスクモニタ
         # noinspection PyTypeChecker
@@ -127,6 +135,9 @@ class MainWindow(QMainWindow):
         self._w_student_table.mark_result_cell_triggered.connect(
             self.__w_student_table_mark_result_cell_triggered
         )
+        self._w_student_table.error_cell_triggered.connect(
+            self.__w_student_table_error_cell_triggered
+        )
 
     @pyqtSlot(StudentID)
     def __w_student_table_student_id_cell_triggered(self, student_id: StudentID):
@@ -150,6 +161,25 @@ class MainWindow(QMainWindow):
             return
 
         self._navigator.open_scoring_dialog_for_student(self, student_id)
+
+    @pyqtSlot(StudentID)
+    def __w_student_table_error_cell_triggered(self, student_id: StudentID) -> None:
+        """エラー欄が押された学生の詳細メッセージを表示する。"""
+        detail_widget = self._navigator.create_student_error_detail_widget(
+            self._student_error_dock,
+            student_id,
+        )
+        if detail_widget is None:
+            self._student_error_dock.hide()
+            return
+
+        previous_widget = self._student_error_dock.widget()
+        self._student_error_dock.setWidget(detail_widget)
+        if previous_widget is not None:
+            previous_widget.deleteLater()
+        self._student_error_dock.setWindowTitle(f"エラーの詳細 - {student_id}")
+        self._student_error_dock.show()
+        self._student_error_dock.raise_()
 
     def __perform_stop_tasks(self):
         if not self._task_manager.is_empty():
@@ -189,6 +219,9 @@ class MainWindow(QMainWindow):
         elif name == "edit-settings":
             # noinspection PyTypeChecker
             self._navigator.open_setting_dialog(self)
+        elif name == "edit-project-settings":
+            # noinspection PyTypeChecker
+            self._navigator.open_project_settings_dialog(self)
         elif name == "edit-testcases":
             # noinspection PyTypeChecker
             if self._navigator.open_testcase_list_edit_dialog(self):
