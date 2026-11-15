@@ -71,7 +71,7 @@ class _VSDevTool:
         except subprocess.CalledProcessError as e:
             output = e.stdout
             self._logger.info(f"Compiler exist with error\n{output}")
-            if self._is_output_from_compiler(output):
+            if output is not None and self._is_output_from_compiler(output):
                 raise CompilerDiagnosticError(output=output)
             else:
                 raise CompilerExecutionFailedError(output=output)
