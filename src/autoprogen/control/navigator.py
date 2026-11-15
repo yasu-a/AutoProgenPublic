@@ -86,15 +86,17 @@ class Navigator(INavigator):
         row = container.student_table_load_usecase.execute_row(student_id)
         if not row.error_cell.text_entries:
             return
+        # 共有ステージの同一エラーが複数パスに保存されていても一度だけ表示する。
+        error_entries = row.error_cell.distinct_text_entries()
         dialog = StudentErrorDetailDialog(
             parent,
             student_id=student_id,
-            error_entries=row.error_cell.text_entries,
+            error_entries=error_entries,
         )
         # 構造化エラーから安全性チェック停止だけを専用表示の対象にする。
         safety_errors = tuple(
             entry.error
-            for entry in row.error_cell.text_entries
+            for entry in error_entries
             if isinstance(entry.error, SourceSafetyViolationError)
         )
         if safety_errors:

@@ -132,6 +132,18 @@ def test_duplicate_summaries_keep_first_detail_and_original_order() -> None:
     assert cell.text_entries == entries
 
 
+def test_exact_duplicate_details_are_removed_for_detail_dialog() -> None:
+    """詳細画面では完全一致だけを除き、同じ概要を持つ異なる詳細は残す。"""
+    entries = [
+        _entry("安全性チェック", "1行目: system"),
+        _entry("安全性チェック", "1行目: system"),
+        _entry("安全性チェック", "2行目: fopen"),
+    ]
+    cell = StudentErrorCellData(STUDENT, entries)
+
+    assert cell.distinct_text_entries() == [entries[0], entries[2]]
+
+
 @pytest.mark.parametrize(
     ("entries", "display", "tooltip"),
     [

@@ -57,3 +57,15 @@ class StudentErrorCellData:
                 aggregated_text_entries.append(text_entry)
                 seen.add(text_entry.summary_text)
         return aggregated_text_entries
+
+    def distinct_text_entries(self) -> list[StudentErrorCellDataTextEntry]:
+        """概要と詳細が同一の重複エントリを、最初の一件だけ残して返す。"""
+        seen: set[tuple[str, str]] = set()
+        distinct_entries: list[StudentErrorCellDataTextEntry] = []
+        for entry in self.text_entries:
+            display_text = (entry.summary_text, entry.detailed_text)
+            if display_text in seen:
+                continue
+            seen.add(display_text)
+            distinct_entries.append(entry)
+        return distinct_entries
