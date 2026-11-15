@@ -90,6 +90,18 @@ class StudentStagePathResult:
         for stage in reversed(self.stage_path):
             self.delete_result(stage)
 
+    def rollback_from(self, stage_type: type[AbstractStage]) -> None:
+        """指定された種類のステージ以降に保存された結果を削除する。"""
+        target_stage = self.stage_path.get_stage_by_stage_type(stage_type)
+        if target_stage is None:
+            raise ValueError(f"stage type is not included in this path: {stage_type}")
+
+        # 後続結果から逆順に削除し、既存の削除順序制約を維持する。
+        for stage in reversed(self.stage_path):
+            self.delete_result(stage)
+            if stage == target_stage:
+                break
+
     class StageStatus(Enum):
         UNFINISHED = "unfinished"
         SUCCESS = "success"

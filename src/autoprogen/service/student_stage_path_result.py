@@ -2,13 +2,17 @@ from datetime import datetime
 
 from autoprogen.service.student_change_event_bus import StudentChangeEventBus
 from autoprogen.domain.model.stage_path import StagePath
-from autoprogen.domain.model.stage import AbstractStage, BuildStage, ExecuteStage, TestStage
+from autoprogen.domain.model.project_settings import SourceCodeCheckSkip
+from autoprogen.domain.model.stage import AbstractStage, BuildStage, CompileStage, ExecuteStage, TestStage
 from autoprogen.domain.model.student_stage_path_result import StudentStagePathResult
 from autoprogen.domain.model.student_stage_result import BuildSuccessStudentStageResult, \
-    ExecuteSuccessStudentStageResult, TestSuccessStudentStageResult, AbstractStudentStageResult
+    CompileSuccessStudentStageResult, ExecuteSuccessStudentStageResult, \
+    TestSuccessStudentStageResult, AbstractStudentStageResult, SourceCodeCheckPolicy
 from autoprogen.domain.model.value import StudentID
+from autoprogen.infra.repository.project_settings import ProjectSettingsRepository
 from autoprogen.infra.repository.student_stage_path_result import StudentStagePathResultRepository
 from autoprogen.service.stage_path import StagePathListSubService
+from autoprogen.service.student_dynamic import StudentDynamicGetSourceCodeService
 from autoprogen.service.student_submission import StudentSubmissionGetChecksumService
 from autoprogen.service.testcase_config import TestCaseConfigGetExecuteConfigMtimeService, \
     TestCaseConfigGetTestConfigMtimeService
@@ -34,11 +38,16 @@ class StudentStagePathResultCheckRollbackService:
     def __init__(
             self,
             student_submission_get_checksum_service: StudentSubmissionGetChecksumService,
+            project_settings_repository: ProjectSettingsRepository,
+            student_dynamic_get_source_code_service: StudentDynamicGetSourceCodeService,
             testcase_config_get_execute_config_mtime_service: TestCaseConfigGetExecuteConfigMtimeService,
             testcase_config_get_test_config_mtime_service: TestCaseConfigGetTestConfigMtimeService,
     ):
         self._student_submission_get_checksum_service \
             = student_submission_get_checksum_service
+        self._project_settings_repository = project_settings_repository
+        self._student_dynamic_get_source_code_service \
+            = student_dynamic_get_source_code_service
         self._testcase_config_get_execute_config_mtime_service \
             = testcase_config_get_execute_config_mtime_service
         self._testcase_config_get_test_config_mtime_service \
@@ -58,8 +67,41 @@ class StudentStagePathResultCheckRollbackService:
             checksum = self._student_submission_get_checksum_service.execute(
                 student_id=student_id,
             )
-            if checksum != result.submission_folder_checksum:
+            if result.is_outdated(
+                current_submission_folder_checksum=checksum,
+            ):
                 return BuildStage
+
+        # * COMPILEステージが成功しているとき
+        result = stage_path_result.get_result_by_stage_type(CompileStage)
+        if result is not None and result.is_success:
+            assert isinstance(result, CompileSuccessStudentStageResult)
+            # 実行時と現在の安全性チェック抑制規則が異なればロールバックする。
+            project_settings = self._project_settings_repository.get()
+            current_policy = SourceCodeCheckPolicy(
+                project_settings.suppressed_source_code_checks,
+            )
+
+            # 同じ学生とソースコードに対する省略許可の有無を比較する。
+            try:
+                source_code = self._student_dynamic_get_source_code_service.execute(
+                    student_id,
+                )
+            except FileNotFoundError:
+                # BUILD成果物が欠損している場合はソースコードを再生成する。
+                return BuildStage
+            current_skip = SourceCodeCheckSkip(
+                student_id=student_id,
+                source_sha256=source_code.calculate_sha256(),
+            )
+            is_security_check_skipped = (
+                current_skip in project_settings.source_code_check_skips
+            )
+            if result.is_outdated(
+                current_security_check_policy=current_policy,
+                current_security_check_skipped=is_security_check_skipped,
+            ):
+                return CompileStage
 
         # * EXECUTEステージが成功しているとき
         # noinspection DuplicatedCode
@@ -72,7 +114,7 @@ class StudentStagePathResultCheckRollbackService:
             mtime = self._testcase_config_get_execute_config_mtime_service.execute(
                 testcase_id=stage.testcase_id,
             )
-            if mtime != result.execute_config_mtime:
+            if result.is_outdated(current_execute_config_mtime=mtime):
                 return ExecuteStage
 
         # * TESTステージが成功しているとき
@@ -86,7 +128,7 @@ class StudentStagePathResultCheckRollbackService:
             mtime = self._testcase_config_get_test_config_mtime_service.execute(
                 testcase_id=stage.testcase_id,
             )
-            if mtime != result.test_config_mtime:
+            if result.is_outdated(current_test_config_mtime=mtime):
                 return TestStage
 
         return None
@@ -148,9 +190,11 @@ class StudentStageResultClearService:
         """対象学生の各ステージ結果を削除して保存する。"""
         stage_paths = self._stage_path_list_sub_service.execute()
         for stage_path in stage_paths:
-            stage_path_result = self._student_stage_path_result_repo.get(student_id, stage_path)
+            stage_path_result = self._student_stage_path_result_repo.get(
+                student_id, stage_path)
             stage_path_result.delete_all_results()
-            self._student_stage_path_result_put_service.execute(stage_path_result)
+            self._student_stage_path_result_put_service.execute(
+                stage_path_result)
 
 
 class StudentPutStageResultService:

@@ -325,6 +325,8 @@ class ProjectContainer:
     def student_stage_path_result_check_rollback_service(self):
         return StudentStagePathResultCheckRollbackService(
             student_submission_get_checksum_service=self.student_submission_get_checksum_service,
+            project_settings_repository=self.project_settings_repository,
+            student_dynamic_get_source_code_service=self.student_dynamic_get_source_code_service,
             testcase_config_get_execute_config_mtime_service=self.testcase_config_get_execute_config_mtime_service,
             testcase_config_get_test_config_mtime_service=self.testcase_config_get_test_config_mtime_service,
         )

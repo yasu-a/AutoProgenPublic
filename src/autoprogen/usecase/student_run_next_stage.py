@@ -80,10 +80,7 @@ class StudentRunNextStageUseCase:
                 student_id,
                 target_stage_path,
             )
-            for stage in reversed(target_stage_path):
-                target_stage_path_result.delete_result(stage)
-                if isinstance(stage, rollback_stage_type):
-                    break
+            target_stage_path_result.rollback_from(rollback_stage_type)
             self._student_stage_path_result_put_service.execute(target_stage_path_result)
         # 適用内容をログに残す
         self._logger.info(f"{student_id} rollback {rollback_stage_type} on {len(targets)} path(s)")

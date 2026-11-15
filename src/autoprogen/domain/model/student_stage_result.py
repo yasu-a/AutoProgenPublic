@@ -87,6 +87,10 @@ class BuildSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生�
         assert isinstance(self.submission_folder_checksum, int), \
             (self.submission_folder_checksum, type(self.submission_folder_checksum))
 
+    def is_outdated(self, *, current_submission_folder_checksum: int) -> bool:
+        """提出フォルダの内容がBUILD実行時から変化したか判定する。"""
+        return self.submission_folder_checksum != current_submission_folder_checksum
+
     @classmethod
     def create_instance(cls, *, student_id: StudentID, submission_folder_checksum: int):
         return cls(
@@ -250,6 +254,18 @@ class CompileSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # �
         assert isinstance(self.security_check_skipped, bool), \
             (self.security_check_skipped, type(self.security_check_skipped))
 
+    def is_outdated(
+            self,
+            *,
+            current_security_check_policy: SourceCodeCheckPolicy,
+            current_security_check_skipped: bool,
+    ) -> bool:
+        """安全性チェック設定がCOMPILE実行時から変化したか判定する。"""
+        return (
+            self.security_check_policy != current_security_check_policy
+            or self.security_check_skipped != current_security_check_skipped
+        )
+
     @classmethod
     def create_instance(
             cls,
@@ -365,6 +381,10 @@ class ExecuteSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # �
             (self.execute_config_mtime, type(self.execute_config_mtime))
         assert isinstance(self.output_file_collection, OutputFileCollection), \
             (self.output_file_collection, type(self.output_file_collection))
+
+    def is_outdated(self, *, current_execute_config_mtime: datetime) -> bool:
+        """実行設定がEXECUTE実行時から変化したか判定する。"""
+        return self.execute_config_mtime != current_execute_config_mtime
 
     @classmethod
     def create_instance(
@@ -524,6 +544,10 @@ class TestSuccessStudentStageResult(AbstractSuccessStudentStageResult):  # 生�
             (self.test_config_mtime, type(self.test_config_mtime))
         assert isinstance(self.test_result_output_file_collection, TestResultOutputFileCollection), \
             (self.test_result_output_file_collection, type(self.test_result_output_file_collection))
+
+    def is_outdated(self, *, current_test_config_mtime: datetime) -> bool:
+        """テスト設定がTEST実行時から変化したか判定する。"""
+        return self.test_config_mtime != current_test_config_mtime
 
     @classmethod
     def create_instance(
