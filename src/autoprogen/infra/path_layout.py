@@ -50,11 +50,6 @@ class AppPathLayout:
     def settings_json(self) -> Path:
         return self.config.app_base_dir / "settings.json"
 
-    @property
-    def compiler_test_source_file(self) -> Path:
-        return self.config.app_base_dir / "vctest" / "test.c"
-
-
 @dataclass(frozen=True)
 class ProjectPathLayout:
     """

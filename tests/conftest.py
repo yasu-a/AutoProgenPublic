@@ -1,4 +1,3 @@
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -53,31 +52,11 @@ def development_compiler_tool_fullpath() -> Path:
     return resolved_fullpath
 
 
-def _copy_required_app_resources(
-        *,
-        repo_root: Path,
-        app_path_config: AppPathConfig,
-) -> None:
-    app_path_config.app_base_dir.mkdir(parents=True, exist_ok=True)
-    app_path_config.project_store_dir.mkdir(parents=True, exist_ok=True)
-
-    vctest_src = repo_root / "vctest"
-    if vctest_src.exists():
-        shutil.copytree(
-            vctest_src,
-            app_path_config.app_base_dir / "vctest",
-            dirs_exist_ok=True,
-        )
-
-
 @pytest.fixture
 def prepared_app_path_config(app_path_config: AppPathConfig) -> AppPathConfig:
-    repo_root = Path(__file__).parents[1]
-
-    _copy_required_app_resources(
-        repo_root=repo_root,
-        app_path_config=app_path_config,
-    )
+    """アプリケーション用の一時ディレクトリを作成して返す。"""
+    app_path_config.app_base_dir.mkdir(parents=True, exist_ok=True)
+    app_path_config.project_store_dir.mkdir(parents=True, exist_ok=True)
 
     return app_path_config
 

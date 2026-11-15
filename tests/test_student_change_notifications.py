@@ -151,7 +151,6 @@ def test_project_containers_have_independent_event_buses(student_id: StudentID) 
             match_get_best_service=Mock(),
             project_repository=Mock(),
             global_settings_repository=Mock(),
-            test_source_repository=Mock(),
             project_path_layout=Mock(),
             project_core_io=Mock(),
             readonly_excel_worksheet_gateway=Mock(),

@@ -21,7 +21,6 @@ from autoprogen.infra.repository.student_executable import StudentExecutableRepo
 from autoprogen.infra.repository.student_source_code import StudentSourceRepository
 from autoprogen.infra.repository.student_mark import StudentMarkRepository
 from autoprogen.infra.repository.student_stage_path_result import StudentStagePathResultRepository
-from autoprogen.infra.repository.test_source import TestSourceRepository
 from autoprogen.infra.repository.testcase_config import TestCaseConfigRepository
 from autoprogen.infra.task.manager import TaskManager
 from autoprogen.service.current_project import CurrentProjectGetService, CurrentProjectSetInitializedService
@@ -83,7 +82,6 @@ class ProjectContainer:
             match_get_best_service: MatchGetBestService,
             project_repository: ProjectRepository,
             global_settings_repository: GlobalSettingsRepository,
-            test_source_repository: TestSourceRepository,
             project_path_layout: ProjectPathLayout,
             project_core_io: ProjectCoreIO,
             readonly_excel_worksheet_gateway: ReadonlyExcelWorksheetGateway,
@@ -92,7 +90,6 @@ class ProjectContainer:
         self._match_get_best_service = match_get_best_service
         self._project_repository = project_repository
         self._global_settings_repository = global_settings_repository
-        self._test_source_repository = test_source_repository
         self._project_path_layout = project_path_layout
         self._project_core_io = project_core_io
         self._readonly_excel_worksheet_gateway = readonly_excel_worksheet_gateway
@@ -411,7 +408,6 @@ class ProjectContainer:
     @cached_property
     def storage_load_test_source_service(self):
         return StorageLoadTestSourceService(
-            test_source_repo=self._test_source_repository,
             storage_repo=self.storage_repository,
         )
 
