@@ -13,7 +13,10 @@ from autoprogen.domain.model.project_settings import ProjectSettings, SourceCode
 from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.source_code_check import SourceCodeCheckFinding
 from autoprogen.domain.model.value import StudentID
-from autoprogen.usecase.dto.student_table_cell_data import StudentErrorCellDataTextEntry
+from autoprogen.usecase.dto.student_table_cell_data import (
+    StudentErrorCellData,
+    StudentErrorCellDataTextEntry,
+)
 
 
 STUDENT = StudentID("21D5109047B")
@@ -106,7 +109,10 @@ def _make_navigator_for_detail(error):
         error=error,
     )
     row = Mock()
-    row.error_cell.text_entries = [entry]
+    row.error_cell = StudentErrorCellData(
+        student_id=STUDENT,
+        text_entries=[entry],
+    )
 
     app_container = Mock()
     global_settings = Mock()

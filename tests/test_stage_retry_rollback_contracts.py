@@ -37,7 +37,7 @@ from autoprogen.infra.io.project_database import ProjectDatabaseIO
 from autoprogen.infra.repository.student_stage_path_result import StudentStagePathResultRepository
 from autoprogen.service.student_stage_path_result import (
     StudentPutStageResultService,
-    StudentStagePathResultCheckRollbackService,
+    StudentStagePathResultCheckOutdatedService,
     StudentStagePathResultGetService,
     StudentStagePathResultPutService,
 )
@@ -167,7 +167,7 @@ def _seed(
     repository.put(aggregate)
 
 
-def _rollback_checker(
+def _outdated_checker(
         *,
         checksum=CHECKSUM,
         project_settings: ProjectSettings = PROJECT_SETTINGS,
@@ -186,7 +186,7 @@ def _rollback_checker(
     execute_config.execute.return_value = execute_mtime
     test_config = Mock()
     test_config.execute.return_value = test_mtime
-    checker = StudentStagePathResultCheckRollbackService(
+    checker = StudentStagePathResultCheckOutdatedService(
         student_submission_get_checksum_service=source,
         project_settings_repository=settings,
         student_dynamic_get_source_code_service=dynamic_source,
@@ -196,7 +196,7 @@ def _rollback_checker(
     return checker, source, settings, dynamic_source, execute_config, test_config
 
 
-def _make_runner(repository, paths, rollback_checker):
+def _make_runner(repository, paths, outdated_checker):
     """ステージ実行だけをMock化し、実Repositoryを使うUseCaseを作る。"""
     get_service = StudentStagePathResultGetService(
         student_stage_path_result_repo=repository,
@@ -221,7 +221,7 @@ def _make_runner(repository, paths, rollback_checker):
         student_run_compile_stage_usecase=runners[1],
         student_run_execute_stage_usecase=runners[2],
         student_run_test_stage_usecase=runners[3],
-        student_stage_path_result_check_rollback_service=rollback_checker,
+        student_stage_path_result_check_outdated_service=outdated_checker,
     )
     return usecase, writer, runners
 
@@ -254,7 +254,7 @@ def test_rollback_detector_returns_first_changed_stage(
 ) -> None:
     """提出物・実行設定・テスト設定の変更を前段優先で判定する。"""
     _seed(repository, CASE_A)
-    checker, _, _, _, _, _ = _rollback_checker(
+    checker, _, _, _, _, _ = _outdated_checker(
         checksum=checksum, execute_mtime=execute_mtime, test_mtime=test_mtime,
     )
     assert checker.execute(
@@ -270,7 +270,7 @@ def test_compile_policy_change_rolls_back(repository) -> None:
         suppressed_source_code_checks=SourceCodeCheckSuppressions(),
         source_code_check_skips=frozenset(),
     )
-    checker, _, settings, dynamic_source, _, _ = _rollback_checker(
+    checker, _, settings, dynamic_source, _, _ = _outdated_checker(
         project_settings=changed_settings,
     )
 
@@ -287,7 +287,7 @@ def test_compile_policy_change_rolls_back(repository) -> None:
 def test_missing_dynamic_source_rolls_back_to_build(repository) -> None:
     """COMPILE成功後にソースが欠損していた場合はBUILDへ戻す。"""
     _seed(repository, CASE_A)
-    checker, _, _, dynamic_source, _, _ = _rollback_checker()
+    checker, _, _, dynamic_source, _, _ = _outdated_checker()
     dynamic_source.execute.side_effect = FileNotFoundError()
 
     assert checker.execute(
@@ -297,17 +297,36 @@ def test_missing_dynamic_source_rolls_back_to_build(repository) -> None:
 
 
 @pytest.mark.parametrize(
-    ("stored_skip", "current_skip"),
-    [(False, True), (True, False)],
-    ids=["approval-added", "approval-removed"],
+    ("stored_skip", "current_skip", "compile_failed"),
+    [
+        (False, True, False),
+        (True, False, False),
+        (False, True, True),
+        (True, False, True),
+    ],
+    ids=[
+        "success-approval-added",
+        "success-approval-removed",
+        "failure-approval-added",
+        "failure-approval-removed",
+    ],
 )
 def test_compile_skip_change_rolls_back(
         repository,
         stored_skip: bool,
         current_skip: bool,
+        compile_failed: bool,
 ) -> None:
     """対象学生・対象ソースへの省略許可変更ではCOMPILEへ戻す。"""
-    _seed(repository, CASE_A, source_code_check_skipped=stored_skip)
+    if compile_failed:
+        aggregate = repository.get(STUDENT, _path())
+        aggregate.put_result(_success_results()[0])
+        failure = _failure_result(1)
+        failure.source_code_check_skipped = stored_skip
+        aggregate.put_result(failure)
+        repository.put(aggregate)
+    else:
+        _seed(repository, CASE_A, source_code_check_skipped=stored_skip)
     skip = SourceCodeCheckSkip(
         student_id=STUDENT,
         source_sha256=SOURCE_CODE.calculate_sha256(),
@@ -316,7 +335,7 @@ def test_compile_skip_change_rolls_back(
         suppressed_source_code_checks=PROJECT_SETTINGS.suppressed_source_code_checks,
         source_code_check_skips=frozenset({skip}) if current_skip else frozenset(),
     )
-    checker, _, _, _, _, _ = _rollback_checker(project_settings=settings)
+    checker, _, _, _, _, _ = _outdated_checker(project_settings=settings)
 
     assert checker.execute(
         stage_path_result=repository.get(STUDENT, _path()),
@@ -325,27 +344,60 @@ def test_compile_skip_change_rolls_back(
 
 
 @pytest.mark.parametrize(
-    "unrelated_skip",
+    ("unrelated_skip", "compile_failed"),
     [
-        SourceCodeCheckSkip(
-            student_id=StudentID("20A7654321B"),
-            source_sha256=SOURCE_CODE.calculate_sha256(),
+        (
+            SourceCodeCheckSkip(
+                student_id=StudentID("20A7654321B"),
+                source_sha256=SOURCE_CODE.calculate_sha256(),
+            ),
+            False,
         ),
-        SourceCodeCheckSkip(
-            student_id=STUDENT,
-            source_sha256=SourceCode(text="different source\n").calculate_sha256(),
+        (
+            SourceCodeCheckSkip(
+                student_id=STUDENT,
+                source_sha256=SourceCode(text="different source\n").calculate_sha256(),
+            ),
+            False,
+        ),
+        (
+            SourceCodeCheckSkip(
+                student_id=StudentID("20A7654321B"),
+                source_sha256=SOURCE_CODE.calculate_sha256(),
+            ),
+            True,
+        ),
+        (
+            SourceCodeCheckSkip(
+                student_id=STUDENT,
+                source_sha256=SourceCode(text="different source\n").calculate_sha256(),
+            ),
+            True,
         ),
     ],
-    ids=["other-student", "other-source"],
+    ids=[
+        "success-other-student",
+        "success-other-source",
+        "failure-other-student",
+        "failure-other-source",
+    ],
 )
-def test_unrelated_skip_does_not_roll_back(repository, unrelated_skip) -> None:
+def test_unrelated_skip_does_not_roll_back(
+        repository,
+        unrelated_skip,
+        compile_failed: bool,
+) -> None:
     """他学生または別ソースへの省略許可は現在のCOMPILE結果に影響しない。"""
-    _seed(repository, CASE_A)
+    _seed(
+        repository,
+        CASE_A,
+        failure_stage_index=1 if compile_failed else None,
+    )
     settings = ProjectSettings(
         suppressed_source_code_checks=PROJECT_SETTINGS.suppressed_source_code_checks,
         source_code_check_skips=frozenset({unrelated_skip}),
     )
-    checker, _, _, _, _, _ = _rollback_checker(project_settings=settings)
+    checker, _, _, _, _, _ = _outdated_checker(project_settings=settings)
 
     assert checker.execute(
         stage_path_result=repository.get(STUDENT, _path()),
@@ -360,7 +412,7 @@ def test_build_change_takes_priority_over_compile_change(repository) -> None:
         suppressed_source_code_checks=SourceCodeCheckSuppressions(),
         source_code_check_skips=frozenset(),
     )
-    checker, _, settings, dynamic_source, _, _ = _rollback_checker(
+    checker, _, settings, dynamic_source, _, _ = _outdated_checker(
         checksum=CHECKSUM + 1,
         project_settings=changed_settings,
     )
@@ -373,19 +425,12 @@ def test_build_change_takes_priority_over_compile_change(repository) -> None:
     dynamic_source.execute.assert_not_called()
 
 
-@pytest.mark.parametrize("compile_state", ["unfinished", "failed"])
-def test_compile_settings_are_not_compared_without_compile_success(
-        repository,
-        compile_state: str,
-) -> None:
-    """COMPILEが未実行または失敗なら安全性設定を比較しない。"""
-    if compile_state == "failed":
-        _seed(repository, CASE_A, failure_stage_index=1)
-    else:
-        aggregate = repository.get(STUDENT, _path())
-        aggregate.put_result(_success_results()[0])
-        repository.put(aggregate)
-    checker, _, settings, dynamic_source, _, _ = _rollback_checker()
+def test_compile_settings_are_not_compared_when_compile_is_unfinished(repository) -> None:
+    """COMPILEが未実行なら安全性設定を比較しない。"""
+    aggregate = repository.get(STUDENT, _path())
+    aggregate.put_result(_success_results()[0])
+    repository.put(aggregate)
+    checker, _, settings, dynamic_source, _, _ = _outdated_checker()
 
     assert checker.execute(
         stage_path_result=repository.get(STUDENT, _path()),
@@ -395,20 +440,54 @@ def test_compile_settings_are_not_compared_without_compile_success(
     dynamic_source.execute.assert_not_called()
 
 
-def test_failed_stage_is_not_treated_as_success_for_rollback(repository) -> None:
-    """失敗結果の設定時刻などは比較せず、ロールバック対象にしない。"""
-    _seed(repository, CASE_A, failure_stage_index=2)
-    checker, source, settings, dynamic_source, execute_config, test_config \
-        = _rollback_checker()
+@pytest.mark.parametrize(
+    ("failed_index", "checker_kwargs", "expected_stage"),
+    [
+        (0, {"checksum": CHECKSUM + 1}, BuildStage),
+        (
+            1,
+            {
+                "project_settings": ProjectSettings(
+                    suppressed_source_code_checks=SourceCodeCheckSuppressions(),
+                    source_code_check_skips=frozenset(),
+                ),
+            },
+            CompileStage,
+        ),
+        (2, {"execute_mtime": datetime(2026, 12, 1)}, ExecuteStage),
+        (3, {"test_mtime": datetime(2026, 12, 2)}, StageTest),
+    ],
+    ids=["build", "compile", "execute", "test"],
+)
+def test_failed_stage_is_outdated_when_execution_condition_changes(
+        repository,
+        failed_index: int,
+        checker_kwargs: dict[str, object],
+        expected_stage,
+) -> None:
+    """失敗結果でも保存時から実行条件が変わればOutdatedと判定する。"""
+    _seed(repository, CASE_A, failure_stage_index=failed_index)
+    checker, _, _, _, _, _ = _outdated_checker(**checker_kwargs)
+
+    assert checker.execute(
+        stage_path_result=repository.get(STUDENT, _path()),
+        student_id=STUDENT,
+    ) is expected_stage
+
+
+@pytest.mark.parametrize("failed_index", range(4), ids=["build", "compile", "execute", "test"])
+def test_failed_stage_is_not_outdated_when_execution_condition_is_unchanged(
+        repository,
+        failed_index: int,
+) -> None:
+    """失敗結果でも実行条件が変わっていなければOutdatedと判定しない。"""
+    _seed(repository, CASE_A, failure_stage_index=failed_index)
+    checker, _, _, _, _, _ = _outdated_checker()
+
     assert checker.execute(
         stage_path_result=repository.get(STUDENT, _path()),
         student_id=STUDENT,
     ) is None
-    source.execute.assert_called_once_with(student_id=STUDENT)
-    settings.get.assert_called_once_with()
-    dynamic_source.execute.assert_called_once_with(STUDENT)
-    execute_config.execute.assert_not_called()
-    test_config.execute.assert_not_called()
 
 
 @pytest.mark.parametrize("failed_index", range(4), ids=["build", "compile", "execute", "test"])
@@ -521,7 +600,7 @@ def test_rollback_clears_only_required_scope(
 def test_unchanged_completed_path_requires_no_retry_or_rollback(repository) -> None:
     """全ステージ成功かつ設定に変更がなければ何もしない。"""
     _seed(repository, CASE_A)
-    checker, _, _, _, _, _ = _rollback_checker()
+    checker, _, _, _, _, _ = _outdated_checker()
     usecase, _, runners = _make_runner(repository, [_path()], checker)
     usecase.execute(student_id=STUDENT, stop_producer=lambda: False)
     assert repository.get(STUDENT, _path()).are_all_finished is True

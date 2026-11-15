@@ -8,7 +8,7 @@ from autoprogen.service.student import StudentGetService
 from autoprogen.service.student_mark import StudentMarkGetSubService
 from autoprogen.service.stage_error_text import StageErrorTextFormatter
 from autoprogen.service.student_stage_path_result import StudentStagePathResultGetService, \
-    StudentStagePathResultCheckRollbackService
+    StudentStagePathResultCheckOutdatedService
 from autoprogen.usecase.dto.student_mark_view_data import AbstractStudentTestCaseTestResultViewData, \
     StudentTestCaseTestResultAcceptedViewData, \
     StudentTestCaseTestResultWrongAnswerViewData, StudentTestCaseTestResultUntestableViewData, \
@@ -93,7 +93,7 @@ class StudentMarkViewDataGetMarkSummaryUseCase:
             student_mark_get_sub_service: StudentMarkGetSubService,
             stage_path_list_sub_service: StagePathListSubService,
             student_stage_path_result_get_service: StudentStagePathResultGetService,
-            student_stage_path_result_check_rollback_service: StudentStagePathResultCheckRollbackService,
+            student_stage_path_result_check_outdated_service: StudentStagePathResultCheckOutdatedService,
     ):
         self._student_get_service \
             = student_get_service
@@ -103,8 +103,8 @@ class StudentMarkViewDataGetMarkSummaryUseCase:
             = stage_path_list_sub_service
         self._student_stage_path_result_get_service \
             = student_stage_path_result_get_service
-        self._student_stage_path_result_check_rollback_service \
-            = student_stage_path_result_check_rollback_service
+        self._student_stage_path_result_check_outdated_service \
+            = student_stage_path_result_check_outdated_service
 
     def execute(self, student_id: StudentID) -> StudentMarkSummaryViewData:
         stage_path_lst: list[StagePath] \
@@ -122,12 +122,12 @@ class StudentMarkViewDataGetMarkSummaryUseCase:
             stage_path_result: StudentStagePathResult \
                 = self._student_stage_path_result_get_service.execute(student_id, stage_path)
 
-            # ロールバックの必要があるか確認
-            is_rollback_required = self._student_stage_path_result_check_rollback_service.execute(
+            # 保存済み結果が現在の実行条件に対して古いか確認する。
+            is_outdated = self._student_stage_path_result_check_outdated_service.execute(
                 student_id=student_id,
                 stage_path_result=stage_path_result,
             ) is not None
-            if is_rollback_required:
+            if is_outdated:
                 state = StudentMarkState.RERUN_REQUIRED
                 break
 

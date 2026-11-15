@@ -103,7 +103,7 @@ def test_rollback_uses_common_save_service(student_id: StudentID) -> None:
         student_run_compile_stage_usecase=Mock(),
         student_run_execute_stage_usecase=Mock(),
         student_run_test_stage_usecase=Mock(),
-        student_stage_path_result_check_rollback_service=rollback_check,
+        student_stage_path_result_check_outdated_service=rollback_check,
     )
 
     assert usecase._StudentRunNextStageUseCase__rollback(

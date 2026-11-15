@@ -285,7 +285,7 @@ def test_marking_untestable_indicator_exact_label(qt_app) -> None:
 
 
 @pytest.mark.parametrize(
-    ("has_testcase", "rollback_needed", "expected_state", "expected_reason"),
+    ("has_testcase", "outdated_detected", "expected_state", "expected_reason"),
     [
         (False, False, StudentMarkState.NO_TEST_FOUND, "テストケースがありません"),
         (True, False, StudentMarkState.READY, None),
@@ -294,7 +294,7 @@ def test_marking_untestable_indicator_exact_label(qt_app) -> None:
 )
 def test_marking_summary_status_is_not_a_stage_error(
         has_testcase: bool,
-        rollback_needed: bool,
+        outdated_detected: bool,
         expected_state: StudentMarkState,
         expected_reason: str | None,
 ) -> None:
@@ -304,8 +304,8 @@ def test_marking_summary_status_is_not_a_stage_error(
     paths.execute.return_value = stage_paths
     getter = Mock()
     getter.execute.return_value = _stage_result()
-    rollback = Mock()
-    rollback.execute.return_value = StageTest if rollback_needed else None
+    outdated = Mock()
+    outdated.execute.return_value = StageTest if outdated_detected else None
     student_service = Mock()
     student_service.execute.return_value = _student()
     mark_service = Mock()
@@ -315,7 +315,7 @@ def test_marking_summary_status_is_not_a_stage_error(
         student_mark_get_sub_service=mark_service,
         stage_path_list_sub_service=paths,
         student_stage_path_result_get_service=getter,
-        student_stage_path_result_check_rollback_service=rollback,
+        student_stage_path_result_check_outdated_service=outdated,
     )
 
     summary = usecase.execute(STUDENT)

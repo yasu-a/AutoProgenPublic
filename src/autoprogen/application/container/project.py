@@ -44,7 +44,7 @@ from autoprogen.service.student_dynamic import StudentDynamicGetSourceCodeServic
 from autoprogen.service.student_mark import StudentMarkGetSubService, StudentMarkPutService, StudentMarkListService, \
     StudentMarkCheckTimestampQueryService
 from autoprogen.service.student_stage_path_result import StudentStageResultCheckTimestampQueryService, \
-    StudentStagePathResultGetService, StudentStagePathResultCheckRollbackService, StudentStageResultClearService, \
+    StudentStagePathResultGetService, StudentStagePathResultCheckOutdatedService, StudentStageResultClearService, \
     StudentPutStageResultService, StudentGetStageResultService, StudentStagePathResultPutService
 from autoprogen.service.student_submission import StudentSubmissionExistService, StudentSubmissionGetSourceCodeService, \
     StudentSubmissionListSourceRelativePathQueryService, StudentSubmissionGetChecksumService, \
@@ -322,8 +322,9 @@ class ProjectContainer:
         )
 
     @cached_property
-    def student_stage_path_result_check_rollback_service(self):
-        return StudentStagePathResultCheckRollbackService(
+    def student_stage_path_result_check_outdated_service(self):
+        """保存済みステージ結果のOutdated判定サービスを返す。"""
+        return StudentStagePathResultCheckOutdatedService(
             student_submission_get_checksum_service=self.student_submission_get_checksum_service,
             project_settings_repository=self.project_settings_repository,
             student_dynamic_get_source_code_service=self.student_dynamic_get_source_code_service,
@@ -587,7 +588,7 @@ class ProjectContainer:
             student_mark_get_sub_service=self.student_mark_get_sub_service,
             stage_path_list_sub_service=self.stage_path_list_sub_service,
             student_stage_path_result_get_service=self.student_stage_path_result_get_service,
-            student_stage_path_result_check_rollback_service=self.student_stage_path_result_check_rollback_service,
+            student_stage_path_result_check_outdated_service=self.student_stage_path_result_check_outdated_service,
         )
 
     @cached_property
@@ -679,7 +680,7 @@ class ProjectContainer:
             student_run_compile_stage_usecase=self.student_run_compile_stage_usecase,
             student_run_execute_stage_usecase=self.student_run_execute_stage_usecase,
             student_run_test_stage_usecase=self.student_run_test_stage_usecase,
-            student_stage_path_result_check_rollback_service=self.student_stage_path_result_check_rollback_service,
+            student_stage_path_result_check_outdated_service=self.student_stage_path_result_check_outdated_service,
         )
 
     @cached_property

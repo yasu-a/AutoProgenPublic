@@ -322,7 +322,7 @@ def test_stop_task_propagates_without_writing_student_failure() -> None:
         student_run_compile_stage_usecase=compile_stage,
         student_run_execute_stage_usecase=execute_stage,
         student_run_test_stage_usecase=test_stage,
-        student_stage_path_result_check_rollback_service=Mock(),
+        student_stage_path_result_check_outdated_service=Mock(),
     )
     with pytest.raises(StopTask):
         usecase.execute(student_id=STUDENT, stop_producer=lambda: True)

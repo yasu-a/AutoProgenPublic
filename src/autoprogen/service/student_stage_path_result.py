@@ -34,7 +34,9 @@ class StudentStagePathResultGetService:
         return self._student_stage_path_result_repo.get(student_id, stage_path)
 
 
-class StudentStagePathResultCheckRollbackService:
+class StudentStagePathResultCheckOutdatedService:
+    """保存済みステージ結果が現在の実行条件に対して古いか判定する。"""
+
     def __init__(
             self,
             student_submission_get_checksum_service: StudentSubmissionGetChecksumService,
@@ -43,6 +45,7 @@ class StudentStagePathResultCheckRollbackService:
             testcase_config_get_execute_config_mtime_service: TestCaseConfigGetExecuteConfigMtimeService,
             testcase_config_get_test_config_mtime_service: TestCaseConfigGetTestConfigMtimeService,
     ):
+        """現在の実行条件を取得する既存サービスとRepositoryを受け取る。"""
         self._student_submission_get_checksum_service \
             = student_submission_get_checksum_service
         self._project_settings_repository = project_settings_repository
@@ -58,12 +61,13 @@ class StudentStagePathResultCheckRollbackService:
             *,
             stage_path_result: StudentStagePathResult,
             student_id: StudentID,
-    ) -> type[AbstractStage] | None:  # ロールバック先のステージを返し，ロールバックしない場合はNone
-        # * BUILDステージが成功しているとき
+    ) -> type[AbstractStage] | None:
+        """Outdatedを検出した最初のステージを返し、なければNoneを返す。"""
+        # BUILD結果が存在する場合は提出内容の変更を確認する。
         result = stage_path_result.get_result_by_stage_type(BuildStage)
-        if result is not None and result.is_success:
+        if result is not None:
             assert isinstance(result, BuildStudentStageResult)
-            # 現在のチェックサムがステージ実行時の生徒の提出フォルダのチェックサムと異なればロールバック
+            # 保存時と現在の提出フォルダのチェックサムを比較する。
             checksum = self._student_submission_get_checksum_service.execute(
                 student_id=student_id,
             )
@@ -72,11 +76,11 @@ class StudentStagePathResultCheckRollbackService:
             ):
                 return BuildStage
 
-        # * COMPILEステージが成功しているとき
+        # COMPILE結果が存在する場合は安全性チェック設定の変更を確認する。
         result = stage_path_result.get_result_by_stage_type(CompileStage)
-        if result is not None and result.is_success:
+        if result is not None:
             assert isinstance(result, CompileStudentStageResult)
-            # 実行時と現在の安全性チェック抑制規則が異なればロールバックする。
+            # 現在のプロジェクト設定を一度だけ取得する。
             project_settings = self._project_settings_repository.get()
             # 同じ学生とソースコードに対する省略許可の有無を比較する。
             try:
@@ -101,12 +105,12 @@ class StudentStagePathResultCheckRollbackService:
             ):
                 return CompileStage
 
-        # * EXECUTEステージが成功しているとき
+        # EXECUTE結果が存在する場合は実行設定の変更を確認する。
         # noinspection DuplicatedCode
         result = stage_path_result.get_result_by_stage_type(ExecuteStage)
-        if result is not None and result.is_success:
+        if result is not None:
             assert isinstance(result, ExecuteStudentStageResult)
-            # 現在の実行構成の更新時刻がステージ実行時の実行構成の更新時刻と異なればロールバック
+            # 保存時と現在の実行構成の更新時刻を比較する。
             stage = result.stage
             assert isinstance(stage, ExecuteStage)
             mtime = self._testcase_config_get_execute_config_mtime_service.execute(
@@ -115,12 +119,12 @@ class StudentStagePathResultCheckRollbackService:
             if result.is_outdated(current_execute_config_mtime=mtime):
                 return ExecuteStage
 
-        # * TESTステージが成功しているとき
+        # TEST結果が存在する場合はテスト設定の変更を確認する。
         # noinspection DuplicatedCode
         result = stage_path_result.get_result_by_stage_type(TestStage)
-        if result is not None and result.is_success:
+        if result is not None:
             assert isinstance(result, TestStudentStageResult)
-            # 現在のテスト構成の更新時刻がステージ実行時のテスト構成の更新時刻と異なればロールバック
+            # 保存時と現在のテスト構成の更新時刻を比較する。
             stage = result.stage
             assert isinstance(stage, TestStage)
             mtime = self._testcase_config_get_test_config_mtime_service.execute(
