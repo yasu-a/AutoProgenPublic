@@ -205,7 +205,7 @@ class Navigator(INavigator):
 
         # 保存完了を表示し、同じ許可操作を繰り返せないようにする。
         widget.set_approval_state(
-            "許可を保存しました。次に「実行」を押すとCOMPILEを再試行します。",
+            "許可を保存しました。次に「実行」を押すとコンパイルを再試行します。",
             enabled=False,
         )
 

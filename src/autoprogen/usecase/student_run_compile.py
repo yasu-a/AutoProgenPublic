@@ -79,7 +79,7 @@ class StudentRunCompileStageUseCase:
 
             # 許可されていないソースコードだけを、有効な規則で検査する。
             if not source_code_check_skipped:
-                catalog = self._source_code_check_catalog_factory.create().filter(
+                catalog = self._source_code_check_catalog_factory.create().excluding(
                     exclude=(
                         (identifier.group_id, identifier.check_id)
                         for identifier in project_settings.suppressed_source_code_checks

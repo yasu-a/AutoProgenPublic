@@ -3,12 +3,10 @@
 from collections.abc import Sequence
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QTextCursor, QTextFormat
 from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -57,14 +55,17 @@ class SourceSafetyErrorWidget(QWidget):
         self._source_view.setPlainText(source_code.text if source_code is not None else "")
         self._source_view.setEnabled(source_code is not None)
         layout.addWidget(self._source_view, 1)
-        self._highlight_lines(tuple(
+        highlighted_lines = tuple(
             sorted({
                 finding.line_number
                 for error in errors
                 for finding in error.findings
                 if finding.line_number > 0
             })
-        ))
+        )
+        self._source_view.set_highlighted_lines(highlighted_lines)
+        if highlighted_lines:
+            self._source_view.centerCursor()
 
         bottom = QHBoxLayout()
         layout.addLayout(bottom)
@@ -78,24 +79,6 @@ class SourceSafetyErrorWidget(QWidget):
         bottom.addWidget(self._status_label)
         bottom.addStretch(1)
         self._update_approval_state()
-
-    def _highlight_lines(self, line_numbers: tuple[int, ...]) -> None:
-        """検出行全体の背景を黄色にし、最初の検出行を中央へ表示する。"""
-        selections: list[QTextEdit.ExtraSelection] = []
-        document = self._source_view.document()
-        for line_number in sorted(set(line_numbers)):
-            block = document.findBlockByNumber(line_number - 1)
-            if not block.isValid():
-                continue
-            selection = QTextEdit.ExtraSelection()
-            selection.cursor = QTextCursor(block)
-            selection.format.setBackground(QColor("#fff0a6"))
-            selection.format.setProperty(QTextFormat.FullWidthSelection, True)
-            selections.append(selection)
-        self._source_view.setExtraSelections(selections)
-        if selections:
-            self._source_view.setTextCursor(selections[0].cursor)
-            self._source_view.centerCursor()
 
     def _update_approval_state(self) -> None:
         """検査対象の一致と既存の許可情報に基づきボタンを切り替える。"""

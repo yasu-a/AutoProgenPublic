@@ -34,7 +34,7 @@ def _create_source_code_check_catalog(
         exclude: frozenset[SourceCodeCheckIdentifier] = frozenset(),
 ) -> SourceCodeCheckCatalog:
     """指定した規則を除外したテスト用チェックカタログを生成する。"""
-    return SourceCodeCheckCatalogFactory().create().filter(
+    return SourceCodeCheckCatalogFactory().create().excluding(
         exclude=(
             (identifier.group_id, identifier.check_id)
             for identifier in exclude
@@ -61,11 +61,11 @@ def test_source_code_check_catalog_has_unique_ids() -> None:
     assert catalog.entry_count == sum(len(group.entries) for group in catalog.groups)
 
 
-def test_source_code_check_catalog_filter_returns_new_catalog() -> None:
+def test_source_code_check_catalog_excluding_returns_new_catalog() -> None:
     """指定した規則だけを除いた新しいカタログを生成する。"""
     catalog = SourceCodeCheckCatalogFactory().create()
 
-    filtered = catalog.filter(exclude=(
+    filtered = catalog.excluding(exclude=(
         ("process", "system"),
         ("file", "write"),
     ))
@@ -87,7 +87,7 @@ def test_source_code_check_catalog_filter_returns_new_catalog() -> None:
     assert filtered.entry_count == catalog.entry_count - 2
 
 
-def test_source_code_check_catalog_filter_can_exclude_every_rule() -> None:
+def test_source_code_check_catalog_excluding_can_exclude_every_rule() -> None:
     """すべての規則を除外した場合は空のカタログを返す。"""
     catalog = SourceCodeCheckCatalogFactory().create()
     all_ids = (
@@ -96,7 +96,7 @@ def test_source_code_check_catalog_filter_can_exclude_every_rule() -> None:
         for entry in group.entries
     )
 
-    filtered = catalog.filter(exclude=all_ids)
+    filtered = catalog.excluding(exclude=all_ids)
     result = SourceCodeCheckService().execute(
         source_code=_source_code(b"system(\"echo test\");"),
         catalog=filtered,
@@ -106,8 +106,34 @@ def test_source_code_check_catalog_filter_can_exclude_every_rule() -> None:
     assert result.is_safe
 
 
-def test_file_checks_include_standard_stream_io() -> None:
-    """ファイル操作に基本的な標準ストリームI/Oが含まれることを確認する。"""
+@pytest.mark.parametrize("query", [
+    "process.system",
+    "外部コマンド・プロセス生成",
+    "外部コマンドの実行",
+    "_WSYSTEM",
+    "コマンドインタプリタ",
+])
+def test_source_code_check_catalog_searches_rule_information(query: str) -> None:
+    """識別子・名称・対象文字列・説明の部分一致で規則を検索する。"""
+    result = SourceCodeCheckCatalogFactory().create().search(query)
+    result_ids = {
+        (group.group_id, entry.check_id)
+        for group in result.groups
+        for entry in group.entries
+    }
+
+    assert ("process", "system") in result_ids
+
+
+def test_source_code_check_catalog_search_returns_empty_catalog_when_not_found() -> None:
+    """どの検索対象にも一致しない場合は空のカタログを返す。"""
+    result = SourceCodeCheckCatalogFactory().create().search("一致しない検索語")
+
+    assert result.groups == ()
+
+
+def test_file_checks_include_low_level_io() -> None:
+    """ファイル操作に低レベルI/Oが含まれることを確認する。"""
     catalog = SourceCodeCheckCatalogFactory().create()
     file_group = next(group for group in catalog.groups if group.group_id == "file")
     entries = {
@@ -115,24 +141,12 @@ def test_file_checks_include_standard_stream_io() -> None:
         for entry in file_group.entries
     }
 
-    assert {"fscanf", "fgetc", "fgets"} <= set(
+    assert {"_read", "ReadFile"} <= set(
         entries["read"].target_strings,
     )
-    assert {"fprintf", "fputc", "fputs"} <= set(
+    assert {"_write", "WriteFile", "WriteFileEx"} <= set(
         entries["write"].target_strings,
     )
-    assert {"fseek", "ftell", "rewind"} <= set(
-        entries["position"].target_strings,
-    )
-    assert {"fflush", "setvbuf", "fclose", "tmpfile"} <= {
-        target
-        for check_id in (
-            "stream_control",
-            "close",
-            "temporary",
-        )
-        for target in entries[check_id].target_strings
-    }
 
 
 def test_source_code_check_service_logs_start(
@@ -244,12 +258,12 @@ def test_source_code_check_detects_preprocessor_rules() -> None:
     assert ("preprocessor", "pragma_comment") in finding_ids
 
 
-def test_source_code_check_detects_formatted_file_io() -> None:
-    """追加した標準ライブラリのファイル入出力呼び出しを検出する。"""
+def test_source_code_check_detects_low_level_file_io() -> None:
+    """低レベルのファイル入出力呼び出しを検出する。"""
     source_code_bytes = (
-        b"void use_file(FILE *file) {\n"
-        b"    fprintf(file, \"value=%d\", 1);\n"
-        b"    fscanf(file, \"%d\", &value);\n"
+        b"void use_file(int file_descriptor) {\n"
+        b"    _write(file_descriptor, \"1\", 1);\n"
+        b"    _read(file_descriptor, buffer, sizeof(buffer));\n"
         b"}\n"
     )
     service = _create_source_code_check_service()
@@ -274,9 +288,9 @@ def test_source_code_check_ignores_suppressed_rule() -> None:
     }))
     service = _create_source_code_check_service()
     source_code_bytes = (
-        b"void probe(FILE *file) {\n"
+        b"void probe(int file_descriptor) {\n"
         b"    system(\"echo test\");\n"
-        b"    fprintf(file, \"test\");\n"
+        b"    _write(file_descriptor, \"test\", 4);\n"
         b"}\n"
     )
 
@@ -398,7 +412,7 @@ def test_compile_checks_actual_source_before_running_compiler() -> None:
     )
 
     assert call_order == ["check", "compile"]
-    expected_catalog = source_code_check_catalog_factory.create().filter(
+    expected_catalog = source_code_check_catalog_factory.create().excluding(
         exclude=(("process", "system"),),
     )
     source_code_check_service.execute.assert_called_once_with(

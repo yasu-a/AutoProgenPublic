@@ -26,6 +26,10 @@ class SourceCodeCheckEntry:
     target_strings: tuple[str, ...]
     # 規則が検出する危険性や用途を説明する文章。
     description: str
+    # 設定画面で規則の対象を例示するソースコード。未整備の場合は空文字列。
+    example_source_code: str = ""
+    # コード例で検出箇所として強調する1始まりの行番号。
+    example_highlighted_line_numbers: tuple[int, ...] = ()
     # コメントなどを区別して対象文字列を探すための検出方式。
     match_type: SourceCodeCheckMatchType = SourceCodeCheckMatchType.FUNCTION_CALL
 
@@ -39,6 +43,19 @@ class SourceCodeCheckEntry:
             raise ValueError("target_strings must contain non-empty strings")
         if not self.description:
             raise ValueError("description must not be empty")
+        if not isinstance(self.example_source_code, str):
+            raise TypeError("example_source_code must be a string")
+        if not isinstance(self.example_highlighted_line_numbers, tuple):
+            raise TypeError("example_highlighted_line_numbers must be a tuple")
+        if any(
+            not isinstance(line_number, int)
+            for line_number in self.example_highlighted_line_numbers
+        ):
+            raise TypeError("example_highlighted_line_numbers must contain integers")
+        if any(line_number < 1 for line_number in self.example_highlighted_line_numbers):
+            raise ValueError("example_highlighted_line_numbers must be positive")
+        if not self.example_source_code and self.example_highlighted_line_numbers:
+            raise ValueError("empty example_source_code cannot have highlighted lines")
 
 
 @dataclass(frozen=True)
@@ -78,7 +95,7 @@ class SourceCodeCheckCatalog:
         if len(group_ids) != len(set(group_ids)):
             raise ValueError("group_id must be unique")
 
-    def filter(
+    def excluding(
             self,
             *,
             exclude: Iterable[tuple[str, str]],
@@ -91,6 +108,38 @@ class SourceCodeCheckCatalog:
                 entry
                 for entry in group.entries
                 if (group.group_id, entry.check_id) not in excluded_ids
+            )
+            if entries:
+                groups.append(SourceCodeCheckGroup(
+                    group_id=group.group_id,
+                    name=group.name,
+                    entries=entries,
+                ))
+        return SourceCodeCheckCatalog(groups=tuple(groups))
+
+    def search(self, query: str) -> "SourceCodeCheckCatalog":
+        """識別子や表示情報に検索語を含む規則だけのカタログを返す。"""
+        if not isinstance(query, str):
+            raise TypeError("query must be a string")
+        normalized_query = query.strip().casefold()
+        if not normalized_query:
+            return self
+
+        groups: list[SourceCodeCheckGroup] = []
+        for group in self.groups:
+            entries = tuple(
+                entry
+                for entry in group.entries
+                if any(
+                    normalized_query in candidate.casefold()
+                    for candidate in (
+                        f"{group.group_id}.{entry.check_id}",
+                        group.name,
+                        entry.name,
+                        *entry.target_strings,
+                        entry.description,
+                    )
+                )
             )
             if entries:
                 groups.append(SourceCodeCheckGroup(

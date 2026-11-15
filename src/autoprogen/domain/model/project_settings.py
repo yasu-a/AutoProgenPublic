@@ -178,7 +178,7 @@ class ProjectSettings:
         # 保存されたプロジェクト設定には影響しない。新規・設定ファイルなしの場合のみ使用する。
         suppressed_by_default = {
             "file": (
-                "open", "read", "write", "close",
+                "open", "read", "write",
             ),
             "common_c": (
                 "malloc", "calloc", "realloc", "free", "terminate",
