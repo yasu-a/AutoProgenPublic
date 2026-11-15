@@ -8,6 +8,7 @@ from unittest.mock import Mock
 import pytest
 
 from autoprogen.domain.error.stage.compile import CompilerNotConfiguredError
+from autoprogen.domain.error.stage.build import SubmissionNotFoundError
 from autoprogen.domain.error import (
     ManabaReportArchiveError,
     ManabaReportListArchiveValidateServiceError,
@@ -18,18 +19,18 @@ from autoprogen.domain.error import (
 )
 from autoprogen.domain.model.expected_output_file import ExpectedOutputFile
 from autoprogen.domain.model.output_file import OutputFileCollection
+from autoprogen.domain.model.project_settings import SourceCodeCheckSuppressions
 from autoprogen.domain.model.stage import TestStage as StageTest
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.student import Student
 from autoprogen.domain.model.student_mark import StudentMark
 from autoprogen.domain.model.student_stage_path_result import StudentStagePathResult
 from autoprogen.domain.model.student_stage_result import (
-    BuildSuccessStudentStageResult,
-    CompileFailureStudentStageResult,
-    CompileSuccessStudentStageResult,
-    ExecuteSuccessStudentStageResult,
+    BuildStudentStageResult,
+    CompileStudentStageResult,
+    ExecuteStudentStageResult,
     TestResultOutputFileCollection as StageTestResultCollection,
-    TestSuccessStudentStageResult as StageTestSuccess,
+    TestStudentStageResult as StageTestResult,
 )
 from autoprogen.domain.model.test_result_output_file_entry import (
     TestResultAbsentOutputFileEntry as AbsentOutputEntry,
@@ -108,27 +109,32 @@ def _stage_result(*results) -> StudentStagePathResult:
     )
 
 
-def _build_success() -> BuildSuccessStudentStageResult:
+def _build_success() -> BuildStudentStageResult:
     """共有BUILDが正常終了した結果を作る。"""
-    return BuildSuccessStudentStageResult.create_instance(
-        student_id=STUDENT, submission_folder_checksum=7,
+    return BuildStudentStageResult.create_instance(
+        student_id=STUDENT, submission_folder_checksum=7, error=None,
     )
 
 
-def _compile_success() -> CompileSuccessStudentStageResult:
+def _compile_success() -> CompileStudentStageResult:
     """共有COMPILEが正常終了した結果を作る。"""
-    return CompileSuccessStudentStageResult.create_instance(
-        student_id=STUDENT, output="compiler output",
+    return CompileStudentStageResult.create_instance(
+        student_id=STUDENT,
+        output="compiler output",
+        suppressed_source_code_checks=SourceCodeCheckSuppressions(),
+        source_code_check_skipped=False,
+        error=None,
     )
 
 
-def _execute_success() -> ExecuteSuccessStudentStageResult:
+def _execute_success() -> ExecuteStudentStageResult:
     """EXECUTEが正常終了した結果を作る。"""
-    return ExecuteSuccessStudentStageResult.create_instance(
+    return ExecuteStudentStageResult.create_instance(
         student_id=STUDENT,
         testcase_id=CASE,
         execute_config_mtime=MTIME,
         output_file_collection=OutputFileCollection(),
+        error=None,
     )
 
 
@@ -151,10 +157,12 @@ def test_marking_screen_uses_compiler_output_as_untestable_reason() -> None:
     """採点画面にはCOMPILE失敗理由とコンパイラ出力を改行込みで表示する。"""
     result = _stage_result(
         _build_success(),
-        CompileFailureStudentStageResult.create_instance(
+        CompileStudentStageResult.create_instance(
             student_id=STUDENT,
             error=CompilerNotConfiguredError(),
             output="main.c(5): error C2143\n",
+            suppressed_source_code_checks=SourceCodeCheckSuppressions(),
+            source_code_check_skipped=False,
         ),
     )
     view = _mark_testcase_usecase(result).execute(STUDENT, CASE)
@@ -168,6 +176,20 @@ def test_marking_screen_uses_compiler_output_as_untestable_reason() -> None:
     )
     with pytest.raises(ValueError, match="output and results not provided"):
         _ = view.output_and_results
+
+
+def test_marking_screen_preserves_build_failure_reason() -> None:
+    """統合後のBUILD失敗も採点画面へ従来の理由を表示する。"""
+    result = _stage_result(BuildStudentStageResult.create_instance(
+        student_id=STUDENT,
+        submission_folder_checksum=7,
+        error=SubmissionNotFoundError(),
+    ))
+
+    view = _mark_testcase_usecase(result).execute(STUDENT, CASE)
+
+    assert view.state is StudentTestCaseSummaryState.UNTESTABLE
+    assert view.detailed_reason == "未提出の学生です。"
 
 
 def test_marking_screen_uses_unfinished_fallback() -> None:
@@ -186,11 +208,12 @@ def test_marking_screen_distinguishes_accepted_and_wrong_answer(accepted: bool) 
         _build_success(),
         _compile_success(),
         _execute_success(),
-        StageTestSuccess.create_instance(
+        StageTestResult.create_instance(
             student_id=STUDENT,
             testcase_id=CASE,
             test_config_mtime=MTIME,
             test_result_output_file_collection=collection,
+            error=None,
         ),
     )
     view = _mark_testcase_usecase(result).execute(STUDENT, CASE)
@@ -224,11 +247,12 @@ def test_marking_testcase_indicator_exact_labels(
     collection = _result_collection(accepted=accepted)
     result = _stage_result(
         _build_success(), _compile_success(), _execute_success(),
-        StageTestSuccess.create_instance(
+        StageTestResult.create_instance(
             student_id=STUDENT,
             testcase_id=CASE,
             test_config_mtime=MTIME,
             test_result_output_file_collection=collection,
+            error=None,
         ),
     )
     view = _mark_testcase_usecase(result).execute(STUDENT, CASE)

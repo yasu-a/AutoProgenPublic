@@ -6,7 +6,6 @@ from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.student import Student
 from autoprogen.domain.model.student_mark import StudentMark
 from autoprogen.domain.model.student_stage_path_result import StudentStagePathResult
-from autoprogen.domain.model.student_stage_result import AbstractFailureStudentStageResult
 from autoprogen.domain.model.value import StudentID
 from autoprogen.infra.repository.student import StudentRepository
 from autoprogen.infra.repository.student_stage_path_result import StudentStagePathResultRepository
@@ -82,7 +81,9 @@ class StudentTableLoadUseCase:
                 states_by_type[stage_type][stage_path] = state
 
             last_result = stage_result.last_stage_result
-            if isinstance(last_result, AbstractFailureStudentStageResult):
+            if last_result is not None and not last_result.is_success:
+                # 失敗結果がエラーを持つモデル契約としてOptionalの型を絞り込む。
+                assert last_result.error is not None
                 summary = self._stage_error_text_formatter.format_summary(last_result.error)
                 detail = self._stage_error_text_formatter.format_detail(last_result)
                 error_entries.append(StudentErrorCellDataTextEntry(

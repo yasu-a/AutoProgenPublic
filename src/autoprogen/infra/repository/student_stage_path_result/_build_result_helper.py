@@ -1,6 +1,6 @@
 from autoprogen.domain.model.stage import AbstractStage, BuildStage
 from autoprogen.domain.model.student_stage_result import AbstractStudentStageResult, \
-    BuildSuccessStudentStageResult, BuildFailureStudentStageResult
+    BuildStudentStageResult
 from autoprogen.domain.model.value import StudentID
 from autoprogen.infra.repository.student_stage_path_result import _AbstractStageResultHelper
 
@@ -16,14 +16,14 @@ class _BuildResultHelper(_AbstractStageResultHelper):
         | 結果 | submission_folder_checksum | error_group_id | error_type_id | error_params_json |
         | --- | --- | --- | --- | --- |
         | 成功 | NOT NULL | NULL | NULL | NULL |
-        | 失敗 | NULL | NOT NULL | NOT NULL | NOT NULL |
+        | 失敗 | NOT NULL | NOT NULL | NOT NULL | NOT NULL |
         """
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS student_build_result
             (
                 student_id                 TEXT PRIMARY KEY,
-                submission_folder_checksum UNSIGNED INTEGER,
+                submission_folder_checksum UNSIGNED INTEGER NOT NULL,
                 error_group_id             TEXT,
                 error_type_id              TEXT,
                 error_params_json          TEXT,
@@ -51,33 +51,28 @@ class _BuildResultHelper(_AbstractStageResultHelper):
             return None
 
         error = self._decode_error(row)
-        if error is None:
-            return BuildSuccessStudentStageResult.create_instance(
-                student_id=student_id,
-                submission_folder_checksum=row["submission_folder_checksum"],
-            )
-        else:
-            return BuildFailureStudentStageResult.create_instance(
-                student_id=student_id,
-                error=error,
-            )
+        return BuildStudentStageResult.create_instance(
+            student_id=student_id,
+            submission_folder_checksum=row["submission_folder_checksum"],
+            error=error,
+        )
 
     def put_stage_result(self, cursor, result: AbstractStudentStageResult) -> None:
         """BUILDの成功または失敗結果を保存する。"""
-        if isinstance(result, BuildSuccessStudentStageResult):
+        if isinstance(result, BuildStudentStageResult):
+            if result.error is None:
+                encoded_error = (None, None, None)
+            else:
+                encoded_error = self._encode_error(result.error)
             cursor.execute(
                 "INSERT OR REPLACE INTO student_build_result "
                 "(student_id, submission_folder_checksum, error_group_id, error_type_id, error_params_json) "
-                "VALUES (?, ?, NULL, NULL, NULL)",
-                (str(result.student_id), result.submission_folder_checksum)
-            )
-        elif isinstance(result, BuildFailureStudentStageResult):
-            encoded_error = self._encode_error(result.error)
-            cursor.execute(
-                "INSERT OR REPLACE INTO student_build_result "
-                "(student_id, submission_folder_checksum, error_group_id, error_type_id, error_params_json) "
-                "VALUES (?, NULL, ?, ?, ?)",
-                (str(result.student_id), *encoded_error)
+                "VALUES (?, ?, ?, ?, ?)",
+                (
+                    str(result.student_id),
+                    result.submission_folder_checksum,
+                    *encoded_error,
+                )
             )
         else:
             raise ValueError(f"Unexpected result type: {type(result)}")

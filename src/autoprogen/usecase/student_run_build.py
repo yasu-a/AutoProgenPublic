@@ -1,7 +1,6 @@
 from autoprogen.domain.error.stage.build import BuildStageError
 from autoprogen.domain.model.stage_path import StagePath
-from autoprogen.domain.model.student_stage_result import BuildSuccessStudentStageResult, \
-    BuildFailureStudentStageResult
+from autoprogen.domain.model.student_stage_result import BuildStudentStageResult
 from autoprogen.domain.model.value import StudentID
 from autoprogen.service.student_dynamic import StudentDynamicSetSourceCodeService, \
     StudentDynamicClearService
@@ -36,6 +35,11 @@ class StudentRunBuildStageUseCase:
             student_id=student_id,
         )
 
+        # 成功・失敗の両方へ記録する実行時の提出状態を先に取得する。
+        submission_folder_checksum = self._student_submission_get_checksum_service.execute(
+            student_id=student_id,
+        )
+
         # ソースコードを探してくる
         try:
             source_code = self._student_submission_get_source_code_service.execute(
@@ -45,8 +49,9 @@ class StudentRunBuildStageUseCase:
             # 失敗したら異常終了の結果を書きこむ
             self._student_put_stage_result_service.execute(
                 stage_path=stage_path,
-                result=BuildFailureStudentStageResult.create_instance(
+                result=BuildStudentStageResult.create_instance(
                     student_id=student_id,
+                    submission_folder_checksum=submission_folder_checksum,
                     error=e,
                 )
             )
@@ -58,13 +63,11 @@ class StudentRunBuildStageUseCase:
             )
 
             # 正常終了の結果を書きこんで終了
-            submission_folder_checksum = self._student_submission_get_checksum_service.execute(
-                student_id=student_id,
-            )
             self._student_put_stage_result_service.execute(
                 stage_path=stage_path,
-                result=BuildSuccessStudentStageResult.create_instance(
+                result=BuildStudentStageResult.create_instance(
                     student_id=student_id,
                     submission_folder_checksum=submission_folder_checksum,
+                    error=None,
                 )
             )

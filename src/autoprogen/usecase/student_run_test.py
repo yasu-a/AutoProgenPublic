@@ -4,8 +4,11 @@ from autoprogen.domain.error.stage.test import ExecuteResultFailedError, Execute
 from autoprogen.domain.model.output_file import OutputFile
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.stage import ExecuteStage
-from autoprogen.domain.model.student_stage_result import TestFailureStudentStageResult, \
-    TestSuccessStudentStageResult, TestResultOutputFileCollection, ExecuteSuccessStudentStageResult
+from autoprogen.domain.model.student_stage_result import (
+    ExecuteStudentStageResult,
+    TestResultOutputFileCollection,
+    TestStudentStageResult,
+)
 from autoprogen.domain.model.test_result_output_file_entry import TestResultTestedOutputFileEntry, \
     TestResultAbsentOutputFileEntry, TestResultUnexpectedOutputFileEntry
 from autoprogen.domain.model.value import FileID
@@ -38,6 +41,10 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
 
     def execute(self, student_id: StudentID, stage_path: StagePath) -> None:
         """学生一人分のTESTステージを実行して結果を保存する。"""
+        # 成否にかかわらず、今回の実行条件として同じ設定更新日時を保存する。
+        test_config_mtime = self._testcase_config_get_test_config_mtime_service.execute(
+            testcase_id=stage_path.testcase_id,
+        )
         try:
             # 実行結果を取得する
             execute_result = self._student_get_stage_result_service.execute(
@@ -49,7 +56,10 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
                 raise ExecuteResultNotFoundError()
             if not execute_result.is_success:
                 raise ExecuteResultFailedError()
-            assert isinstance(execute_result, ExecuteSuccessStudentStageResult)
+            assert isinstance(execute_result, ExecuteStudentStageResult)
+            # 成功結果が出力を持つモデル契約に基づき、Optionalの型を絞り込む。
+            assert execute_result.output_file_collection is not None
+            output_file_collection = execute_result.output_file_collection
 
             # テストケースのテスト構成を読み込む
             test_config = self._testcase_config_repo.get(
@@ -63,7 +73,7 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
                 = set(test_config.expected_output_file_collection.file_ids)
             # v 実行結果
             actual_output_file_ids: set[FileID] \
-                = set(execute_result.output_file_collection.file_ids)
+                = set(output_file_collection.file_ids)
 
             for file_id in expected_output_file_ids | actual_output_file_ids:
                 if test_config.expected_output_file_collection.has(file_id):
@@ -73,8 +83,8 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
                 # ^ None if not found
 
                 actual_output_file: OutputFile | None
-                if execute_result.output_file_collection.has(file_id):
-                    actual_output_file = execute_result.output_file_collection.find(file_id)
+                if output_file_collection.has(file_id):
+                    actual_output_file = output_file_collection.find(file_id)
                 else:
                     actual_output_file = None
                 # ^ None if not found
@@ -114,22 +124,22 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
         except TestStageError as e:
             self._student_put_stage_result_service.execute(
                 stage_path=stage_path,
-                result=TestFailureStudentStageResult.create_instance(
+                result=TestStudentStageResult.create_instance(
                     student_id=student_id,
                     testcase_id=stage_path.testcase_id,
+                    test_config_mtime=test_config_mtime,
+                    test_result_output_file_collection=None,
                     error=e,
                 )
             )
         else:
-            test_config_mtime = self._testcase_config_get_test_config_mtime_service.execute(
-                testcase_id=stage_path.testcase_id,
-            )  # TODO: UoWの導入
             self._student_put_stage_result_service.execute(
                 stage_path=stage_path,
-                result=TestSuccessStudentStageResult.create_instance(
+                result=TestStudentStageResult.create_instance(
                     student_id=student_id,
                     testcase_id=stage_path.testcase_id,
                     test_config_mtime=test_config_mtime,
                     test_result_output_file_collection=test_result_output_file_collection,
+                    error=None,
                 )
             )

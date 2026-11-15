@@ -5,9 +5,9 @@ from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.project_settings import SourceCodeCheckSkip
 from autoprogen.domain.model.stage import AbstractStage, BuildStage, CompileStage, ExecuteStage, TestStage
 from autoprogen.domain.model.student_stage_path_result import StudentStagePathResult
-from autoprogen.domain.model.student_stage_result import BuildSuccessStudentStageResult, \
-    CompileSuccessStudentStageResult, ExecuteSuccessStudentStageResult, \
-    TestSuccessStudentStageResult, AbstractStudentStageResult
+from autoprogen.domain.model.student_stage_result import BuildStudentStageResult, \
+    CompileStudentStageResult, ExecuteStudentStageResult, \
+    TestStudentStageResult, AbstractStudentStageResult
 from autoprogen.domain.model.value import StudentID
 from autoprogen.infra.repository.project_settings import ProjectSettingsRepository
 from autoprogen.infra.repository.student_stage_path_result import StudentStagePathResultRepository
@@ -62,7 +62,7 @@ class StudentStagePathResultCheckRollbackService:
         # * BUILDステージが成功しているとき
         result = stage_path_result.get_result_by_stage_type(BuildStage)
         if result is not None and result.is_success:
-            assert isinstance(result, BuildSuccessStudentStageResult)
+            assert isinstance(result, BuildStudentStageResult)
             # 現在のチェックサムがステージ実行時の生徒の提出フォルダのチェックサムと異なればロールバック
             checksum = self._student_submission_get_checksum_service.execute(
                 student_id=student_id,
@@ -75,7 +75,7 @@ class StudentStagePathResultCheckRollbackService:
         # * COMPILEステージが成功しているとき
         result = stage_path_result.get_result_by_stage_type(CompileStage)
         if result is not None and result.is_success:
-            assert isinstance(result, CompileSuccessStudentStageResult)
+            assert isinstance(result, CompileStudentStageResult)
             # 実行時と現在の安全性チェック抑制規則が異なればロールバックする。
             project_settings = self._project_settings_repository.get()
             # 同じ学生とソースコードに対する省略許可の有無を比較する。
@@ -105,7 +105,7 @@ class StudentStagePathResultCheckRollbackService:
         # noinspection DuplicatedCode
         result = stage_path_result.get_result_by_stage_type(ExecuteStage)
         if result is not None and result.is_success:
-            assert isinstance(result, ExecuteSuccessStudentStageResult)
+            assert isinstance(result, ExecuteStudentStageResult)
             # 現在の実行構成の更新時刻がステージ実行時の実行構成の更新時刻と異なればロールバック
             stage = result.stage
             assert isinstance(stage, ExecuteStage)
@@ -119,7 +119,7 @@ class StudentStagePathResultCheckRollbackService:
         # noinspection DuplicatedCode
         result = stage_path_result.get_result_by_stage_type(TestStage)
         if result is not None and result.is_success:
-            assert isinstance(result, TestSuccessStudentStageResult)
+            assert isinstance(result, TestStudentStageResult)
             # 現在のテスト構成の更新時刻がステージ実行時のテスト構成の更新時刻と異なればロールバック
             stage = result.stage
             assert isinstance(stage, TestStage)

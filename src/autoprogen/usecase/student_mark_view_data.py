@@ -1,8 +1,7 @@
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.stage import TestStage
 from autoprogen.domain.model.student_stage_path_result import StudentStagePathResult
-from autoprogen.domain.model.student_stage_result import TestSuccessStudentStageResult
-from autoprogen.domain.model.student_stage_result import AbstractFailureStudentStageResult
+from autoprogen.domain.model.student_stage_result import TestStudentStageResult
 from autoprogen.domain.model.value import StudentID, TestCaseID
 from autoprogen.service.stage_path import StagePathListSubService, StagePathGetByTestCaseIDService
 from autoprogen.service.student import StudentGetService
@@ -51,24 +50,29 @@ class StudentMarkViewDataGetTestResultUseCase:
             test_stage_result = stage_path_result.get_result_by_stage_type(
                 TestStage,
             )
-            assert isinstance(test_stage_result, TestSuccessStudentStageResult), \
+            assert isinstance(test_stage_result, TestStudentStageResult), \
                 test_stage_result
+            # 成功結果が照合結果を持つモデル契約に基づき、Optionalの型を絞り込む。
+            assert test_stage_result.test_result_output_file_collection is not None
+            test_result_output_file_collection = (
+                test_stage_result.test_result_output_file_collection
+            )
             if test_stage_result.is_accepted:
                 return StudentTestCaseTestResultAcceptedViewData(
                     student_id=student_id,
                     testcase_id=testcase_id,
-                    output_and_results=test_stage_result.test_result_output_file_collection,
+                    output_and_results=test_result_output_file_collection,
                 )
             else:
                 return StudentTestCaseTestResultWrongAnswerViewData(
                     student_id=student_id,
                     testcase_id=testcase_id,
-                    output_and_results=test_stage_result.test_result_output_file_collection,
+                    output_and_results=test_result_output_file_collection,
                 )
         else:
             # 失敗しているとき
             last_result = stage_path_result.last_stage_result
-            if isinstance(last_result, AbstractFailureStudentStageResult):
+            if last_result is not None and not last_result.is_success:
                 reason = self._stage_error_text_formatter.format_detail(
                     last_result,
                 )

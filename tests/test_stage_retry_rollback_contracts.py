@@ -26,15 +26,11 @@ from autoprogen.domain.model.stage import (
 )
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.student_stage_result import (
-    BuildFailureStudentStageResult,
-    BuildSuccessStudentStageResult,
-    CompileFailureStudentStageResult,
-    CompileSuccessStudentStageResult,
-    ExecuteFailureStudentStageResult,
-    ExecuteSuccessStudentStageResult,
-    TestFailureStudentStageResult as StageTestFailureResult,
+    BuildStudentStageResult,
+    CompileStudentStageResult,
+    ExecuteStudentStageResult,
+    TestStudentStageResult as StageTestResult,
     TestResultOutputFileCollection as StageTestOutputCollection,
-    TestSuccessStudentStageResult as StageTestSuccessResult,
 )
 from autoprogen.domain.model.value import StudentID, TestCaseID as CaseID
 from autoprogen.infra.io.project_database import ProjectDatabaseIO
@@ -91,23 +87,28 @@ def _success_results(
 ):
     """成功した4ステージの結果を順番に生成する。"""
     return (
-        BuildSuccessStudentStageResult.create_instance(
-            student_id=STUDENT, submission_folder_checksum=CHECKSUM,
+        BuildStudentStageResult.create_instance(
+            student_id=STUDENT,
+            submission_folder_checksum=CHECKSUM,
+            error=None,
         ),
-        CompileSuccessStudentStageResult.create_instance(
+        CompileStudentStageResult.create_instance(
             student_id=STUDENT, output="compile output\n",
             suppressed_source_code_checks=suppressed_source_code_checks,
             source_code_check_skipped=source_code_check_skipped,
+            error=None,
         ),
-        ExecuteSuccessStudentStageResult.create_instance(
+        ExecuteStudentStageResult.create_instance(
             student_id=STUDENT, testcase_id=case_id,
             execute_config_mtime=EXECUTE_MTIME,
             output_file_collection=OutputFileCollection(),
+            error=None,
         ),
-        StageTestSuccessResult.create_instance(
+        StageTestResult.create_instance(
             student_id=STUDENT, testcase_id=case_id,
             test_config_mtime=TEST_MTIME,
             test_result_output_file_collection=StageTestOutputCollection(),
+            error=None,
         ),
     )
 
@@ -115,23 +116,30 @@ def _success_results(
 def _failure_result(stage_index: int, case_id: CaseID = CASE_A):
     """各ステージに対応する失敗結果を作る。"""
     return (
-        BuildFailureStudentStageResult.create_instance(
+        BuildStudentStageResult.create_instance(
             student_id=STUDENT,
+            submission_folder_checksum=CHECKSUM,
             error=SubmissionNotFoundError(),
         ),
-        CompileFailureStudentStageResult.create_instance(
+        CompileStudentStageResult.create_instance(
             student_id=STUDENT,
             error=CompilerDiagnosticError(),
             output="compiler stderr\n",
+            suppressed_source_code_checks=PROJECT_SETTINGS.suppressed_source_code_checks,
+            source_code_check_skipped=False,
         ),
-        ExecuteFailureStudentStageResult.create_instance(
+        ExecuteStudentStageResult.create_instance(
             student_id=STUDENT,
             testcase_id=case_id,
+            execute_config_mtime=EXECUTE_MTIME,
+            output_file_collection=None,
             error=ExecutionTimeoutError(),
         ),
-        StageTestFailureResult.create_instance(
+        StageTestResult.create_instance(
             student_id=STUDENT,
             testcase_id=case_id,
+            test_config_mtime=TEST_MTIME,
+            test_result_output_file_collection=None,
             error=OutputMatchingError(detail="TEST失敗"),
         ),
     )[stage_index]

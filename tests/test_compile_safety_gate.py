@@ -10,10 +10,7 @@ from autoprogen.domain.model.project_settings import (
     SourceCodeCheckSuppressions,
 )
 from autoprogen.domain.model.source_code import SourceCode
-from autoprogen.domain.model.student_stage_result import (
-    CompileFailureStudentStageResult,
-    CompileSuccessStudentStageResult,
-)
+from autoprogen.domain.model.student_stage_result import CompileStudentStageResult
 from autoprogen.domain.model.value import StudentID
 from autoprogen.service.dto.storage_run_compiler import StorageCompileServiceResult
 from autoprogen.domain.service.source_code_check import SourceCodeCheckService
@@ -72,7 +69,7 @@ def test_detected_rule_stops_before_compiler() -> None:
     )
     compiler.execute.assert_not_called()
     storage_store.execute.assert_not_called()
-    assert isinstance(result, CompileFailureStudentStageResult)
+    assert isinstance(result, CompileStudentStageResult)
     assert isinstance(result.error, SourceSafetyViolationError)
     assert hashlib.sha256(
         b'int main(void) { system("echo test"); return 0; }\n'
@@ -80,6 +77,11 @@ def test_detected_rule_stops_before_compiler() -> None:
     assert result.error.findings[0].group_id == "process"
     assert result.error.findings[0].check_id == "system"
     assert result.error.findings[0].line_number == 1
+    assert (
+        result.suppressed_source_code_checks
+        == ProjectSettings.create_default().suppressed_source_code_checks
+    )
+    assert result.source_code_check_skipped is False
 
 
 def test_suppressed_rule_does_not_stop_compile() -> None:
@@ -96,7 +98,7 @@ def test_suppressed_rule_does_not_stop_compile() -> None:
     )
     compiler.execute.assert_called_once()
     storage_store.execute.assert_called_once()
-    assert isinstance(result, CompileSuccessStudentStageResult)
+    assert isinstance(result, CompileStudentStageResult)
     assert result.suppressed_source_code_checks == settings.suppressed_source_code_checks
     assert result.source_code_check_skipped is False
 
@@ -115,7 +117,7 @@ def test_approved_student_and_hash_bypass_check() -> None:
     )
     compiler, _, result = _execute(source, settings)
     compiler.execute.assert_called_once()
-    assert isinstance(result, CompileSuccessStudentStageResult)
+    assert isinstance(result, CompileStudentStageResult)
     assert result.suppressed_source_code_checks == settings.suppressed_source_code_checks
     assert result.source_code_check_skipped is True
 
@@ -131,7 +133,7 @@ def test_different_hash_is_not_approved() -> None:
     )
     compiler, _, result = _execute(source, settings)
     compiler.execute.assert_not_called()
-    assert isinstance(result, CompileFailureStudentStageResult)
+    assert isinstance(result, CompileStudentStageResult)
 
 
 def test_different_student_is_not_approved() -> None:
@@ -148,7 +150,7 @@ def test_different_student_is_not_approved() -> None:
     )
     compiler, _, result = _execute(source, settings)
     compiler.execute.assert_not_called()
-    assert isinstance(result, CompileFailureStudentStageResult)
+    assert isinstance(result, CompileStudentStageResult)
 
 
 def test_safe_code_is_compiled() -> None:
@@ -160,7 +162,7 @@ def test_safe_code_is_compiled() -> None:
         storage_id="storage-test", source_file_relative_path=Path("main.c"),
     )
     storage_store.execute.assert_called_once()
-    assert isinstance(result, CompileSuccessStudentStageResult)
+    assert isinstance(result, CompileStudentStageResult)
     assert (
         result.suppressed_source_code_checks
         == ProjectSettings.create_default().suppressed_source_code_checks

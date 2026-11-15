@@ -23,13 +23,10 @@ from autoprogen.domain.model.project_settings import ProjectSettings
 from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.student_stage_result import (
-    BuildFailureStudentStageResult,
-    BuildSuccessStudentStageResult,
-    CompileFailureStudentStageResult,
-    ExecuteFailureStudentStageResult,
-    ExecuteSuccessStudentStageResult,
-    TestFailureStudentStageResult as StudentTestFailureStageResult,
-    TestSuccessStudentStageResult as StudentTestSuccessStageResult,
+    BuildStudentStageResult,
+    CompileStudentStageResult,
+    ExecuteStudentStageResult,
+    TestStudentStageResult as StageTestResult,
 )
 from autoprogen.domain.model.value import FileID, StudentID, TestCaseID as CaseID
 from autoprogen.domain.service.source_code_check import SourceCodeCheckService
@@ -136,14 +133,15 @@ def test_build_failure_contract(case: str, expected: str) -> None:
     usecase, _, clear, set_source, checksum, put = _build_case(case)
     usecase.execute(STUDENT, STAGE_PATH)
     result = _saved_result(put)
-    assert type(result) is BuildFailureStudentStageResult
+    assert type(result) is BuildStudentStageResult
     assert not result.is_success
     assert result.student_id == STUDENT
+    assert result.submission_folder_checksum == 103
     assert _formatter().format_summary(result.error) == expected
     assert _formatter().format_detail(result) == expected
     clear.execute.assert_called_once_with(student_id=STUDENT)
     set_source.execute.assert_not_called()
-    checksum.execute.assert_not_called()
+    checksum.execute.assert_called_once_with(student_id=STUDENT)
 
 
 def test_build_success_contrast() -> None:
@@ -151,7 +149,7 @@ def test_build_success_contrast() -> None:
     usecase, _, clear, set_source, checksum, put = _build_case("success")
     usecase.execute(STUDENT, STAGE_PATH)
     result = _saved_result(put)
-    assert type(result) is BuildSuccessStudentStageResult
+    assert type(result) is BuildStudentStageResult
     assert result.is_success
     assert result.submission_folder_checksum == 103
     clear.execute.assert_called_once()
@@ -203,7 +201,7 @@ def test_compile_safety_check_failure_message_and_short_circuit() -> None:
     usecase, compiler, store, delete, put = _compile_case(BLOCKED_SOURCE)
     usecase.execute(STUDENT, STAGE_PATH)
     result = _saved_result(put)
-    assert type(result) is CompileFailureStudentStageResult
+    assert type(result) is CompileStudentStageResult
     assert not result.is_success
     assert result.output == ""
     expected = (
@@ -225,7 +223,7 @@ def test_compile_service_exception_becomes_failure(compiler_output: str | None) 
     compiler.execute.side_effect = CompilerTimeoutError(output=compiler_output)
     usecase.execute(STUDENT, STAGE_PATH)
     result = _saved_result(put)
-    assert type(result) is CompileFailureStudentStageResult
+    assert type(result) is CompileStudentStageResult
     expected = (
         "コンパイルに失敗しました。\n"
         "コンパイルに失敗しました。ソースコードを直接Visual Studioで開いて"
@@ -265,6 +263,8 @@ def _execute_case(error: Exception):
     runner = Mock()
     runner.execute.side_effect = error
     write_stdout = Mock()
+    execute_config_mtime = Mock()
+    execute_config_mtime.execute.return_value = datetime(2026, 1, 1)
     usecase = StudentRunExecuteStageUseCase(
         storage_create_service=storage_create,
         storage_load_student_executable_service=storage_load,
@@ -272,7 +272,7 @@ def _execute_case(error: Exception):
         storage_take_snapshot_service=snapshot,
         storage_delete_service=delete,
         student_put_stage_result_service=put,
-        testcase_config_get_execute_config_mtime_service=Mock(),
+        testcase_config_get_execute_config_mtime_service=execute_config_mtime,
         storage_run_executable_service=runner,
         testcase_config_repo=settings,
         storage_create_output_file_mapping_from_diff_service=Mock(),
@@ -286,7 +286,7 @@ def test_execute_expected_exception_becomes_failure() -> None:
     usecase, runner, stdout, delete, put = _execute_case(ExecutionTimeoutError())
     usecase.execute(STUDENT, STAGE_PATH)
     result = _saved_result(put)
-    assert type(result) is ExecuteFailureStudentStageResult
+    assert type(result) is ExecuteStudentStageResult
     assert not result.is_success
     assert result.testcase_id == TESTCASE
     expected = (
@@ -339,13 +339,17 @@ def _test_case(execute_result):
 ])
 def test_test_stage_cannot_test_unavailable_execution(found: bool, expected: str) -> None:
     """EXECUTE結果なし・失敗の両方がTEST失敗に変換される。"""
-    prior = None if not found else ExecuteFailureStudentStageResult.create_instance(
-        student_id=STUDENT, testcase_id=TESTCASE, error=ExecutionTimeoutError()
+    prior = None if not found else ExecuteStudentStageResult.create_instance(
+        student_id=STUDENT,
+        testcase_id=TESTCASE,
+        execute_config_mtime=datetime(2026, 1, 1),
+        output_file_collection=None,
+        error=ExecutionTimeoutError(),
     )
     usecase, _, put = _test_case(prior)
     usecase.execute(STUDENT, STAGE_PATH)
     result = _saved_result(put)
-    assert type(result) is StudentTestFailureStageResult
+    assert type(result) is StageTestResult
     assert not result.is_success
     assert _formatter().format_summary(result.error) == expected
     assert result.testcase_id == TESTCASE
@@ -354,13 +358,14 @@ def test_test_stage_cannot_test_unavailable_execution(found: bool, expected: str
 def test_test_stage_match_error_is_converted_to_failure() -> None:
     """マッチングServiceの例外はTEST失敗に変換し、理由を引き継ぐ。"""
     file_id = FileID(Path("out.txt"))
-    executed = ExecuteSuccessStudentStageResult.create_instance(
+    executed = ExecuteStudentStageResult.create_instance(
         student_id=STUDENT,
         testcase_id=TESTCASE,
         execute_config_mtime=datetime(2026, 1, 1),
         output_file_collection=OutputFileCollection([
             OutputFile(file_id=file_id, content="actual"),
         ]),
+        error=None,
     )
     usecase, settings, put = _test_case(executed)
     expected_files = settings.get.return_value.test_config.expected_output_file_collection
@@ -371,18 +376,19 @@ def test_test_stage_match_error_is_converted_to_failure() -> None:
     matcher.execute.side_effect = MatchServiceError("マッチング失敗の理由")
     usecase.execute(STUDENT, STAGE_PATH)
     result = _saved_result(put)
-    assert type(result) is StudentTestFailureStageResult
+    assert type(result) is StageTestResult
     assert _formatter().format_summary(result.error) == "マッチング失敗の理由"
     matcher.execute.assert_called_once()
 
 
 def test_test_stage_wrong_answer_remains_success() -> None:
     """出力不足による不正解は例外でもTESTステージ失敗でもない。"""
-    executed = ExecuteSuccessStudentStageResult.create_instance(
+    executed = ExecuteStudentStageResult.create_instance(
         student_id=STUDENT,
         testcase_id=TESTCASE,
         execute_config_mtime=datetime(2026, 1, 1),
         output_file_collection=OutputFileCollection(),
+        error=None,
     )
     usecase, settings, put = _test_case(executed)
     file_id = FileID(Path("expected.txt"))
@@ -392,7 +398,7 @@ def test_test_stage_wrong_answer_remains_success() -> None:
     expected_files.find.return_value.file_id = file_id
     usecase.execute(STUDENT, STAGE_PATH)
     result = _saved_result(put)
-    assert type(result) is StudentTestSuccessStageResult
+    assert type(result) is StageTestResult
     assert result.is_success
     assert not result.is_accepted
     assert result.testcase_id == TESTCASE

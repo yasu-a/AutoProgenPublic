@@ -2,8 +2,7 @@ from pathlib import Path
 
 from autoprogen.domain.error.stage.execute import ExecuteStageError
 from autoprogen.domain.model.stage_path import StagePath
-from autoprogen.domain.model.student_stage_result import ExecuteFailureStudentStageResult, \
-    ExecuteSuccessStudentStageResult
+from autoprogen.domain.model.student_stage_result import ExecuteStudentStageResult
 from autoprogen.domain.model.value import StudentID
 from autoprogen.infra.repository.testcase_config import TestCaseConfigRepository
 from autoprogen.service.dto.storage_diff_snapshot import StorageDiff
@@ -87,6 +86,11 @@ class StudentRunExecuteStageUseCase:
             testcase_id=stage_path.testcase_id,
         ).execute_config.options
 
+        # 成否にかかわらず、今回の実行条件として同じ設定更新日時を保存する。
+        execute_config_mtime = self._testcase_config_get_execute_config_mtime_service.execute(
+            testcase_id=stage_path.testcase_id,
+        )
+
         # 実行
         try:
             service_result = self._storage_run_executable_service.execute(
@@ -98,9 +102,11 @@ class StudentRunExecuteStageUseCase:
             # 失敗したら異常終了の結果を書きこむ
             self._student_put_stage_result_service.execute(
                 stage_path=stage_path,
-                result=ExecuteFailureStudentStageResult.create_instance(
+                result=ExecuteStudentStageResult.create_instance(
                     student_id=student_id,
                     testcase_id=stage_path.testcase_id,
+                    execute_config_mtime=execute_config_mtime,
+                    output_file_collection=None,
                     error=e,
                 )
             )
@@ -128,16 +134,14 @@ class StudentRunExecuteStageUseCase:
             )
 
             # 正常終了の結果を書きこむ
-            execute_config_mtime = self._testcase_config_get_execute_config_mtime_service.execute(
-                testcase_id=stage_path.testcase_id,
-            )
             self._student_put_stage_result_service.execute(
                 stage_path=stage_path,
-                result=ExecuteSuccessStudentStageResult.create_instance(
+                result=ExecuteStudentStageResult.create_instance(
                     student_id=student_id,
                     testcase_id=stage_path.testcase_id,
                     execute_config_mtime=execute_config_mtime,
                     output_file_collection=output_file_collection,
+                    error=None,
                 )
             )
         finally:

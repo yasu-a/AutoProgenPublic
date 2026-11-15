@@ -18,15 +18,11 @@ from autoprogen.domain.model.project_settings import (
 from autoprogen.domain.model.stage import BuildStage, CompileStage, ExecuteStage, TestStage as StageTest
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.student_stage_result import (
-    BuildFailureStudentStageResult,
-    BuildSuccessStudentStageResult,
-    CompileFailureStudentStageResult,
-    CompileSuccessStudentStageResult,
-    ExecuteFailureStudentStageResult,
-    ExecuteSuccessStudentStageResult,
-    TestFailureStudentStageResult as StageTestFailureResult,
+    BuildStudentStageResult,
+    CompileStudentStageResult,
+    ExecuteStudentStageResult,
+    TestStudentStageResult as StageTestResult,
     TestResultOutputFileCollection as StageTestOutputCollection,
-    TestSuccessStudentStageResult as StageTestSuccessResult,
 )
 from autoprogen.domain.model.test_result_output_file_entry import (
     TestResultAbsentOutputFileEntry as AbsentOutputEntry,
@@ -89,21 +85,65 @@ def _path(case_id: CaseID = CASE_A) -> StagePath:
 
 def _build_ok(student_id: StudentID = STUDENT_A, checksum: int = 123):
     """BUILD成功結果を作る。"""
-    return BuildSuccessStudentStageResult.create_instance(
-        student_id=student_id, submission_folder_checksum=checksum,
+    return BuildStudentStageResult.create_instance(
+        student_id=student_id,
+        submission_folder_checksum=checksum,
+        error=None,
     )
+
+
+def test_build_result_unifies_success_failure_and_outdated_state() -> None:
+    """BUILD結果がエラー有無と記録済みチェックサムから状態を判定する。"""
+    success = _build_ok(checksum=123)
+    failure = BuildStudentStageResult.create_instance(
+        student_id=STUDENT_A,
+        submission_folder_checksum=123,
+        error=SubmissionNotFoundError(),
+    )
+    assert success.is_success is True
+    assert failure.is_success is False
+    assert success.is_outdated(current_submission_folder_checksum=123) is False
+    assert success.is_outdated(current_submission_folder_checksum=456) is True
 
 
 def _compile_ok(student_id: StudentID = STUDENT_A, output: str = "MSVC: ok\n"):
     """COMPILE成功結果を作る。"""
-    return CompileSuccessStudentStageResult.create_instance(
+    return CompileStudentStageResult.create_instance(
         student_id=student_id,
         output=output,
         suppressed_source_code_checks=SourceCodeCheckSuppressions({
             SourceCodeCheckIdentifier(group_id="process", check_id="system"),
         }),
         source_code_check_skipped=True,
+        error=None,
     )
+
+
+def test_compile_result_unifies_success_failure_and_outdated_state() -> None:
+    """COMPILE結果がエラー有無と実行時の安全性設定から状態を判定する。"""
+    success = _compile_ok()
+    failure = CompileStudentStageResult.create_instance(
+        student_id=STUDENT_A,
+        output="compiler error\n",
+        suppressed_source_code_checks=success.suppressed_source_code_checks,
+        source_code_check_skipped=success.source_code_check_skipped,
+        error=CompilerDiagnosticError(),
+    )
+
+    assert success.is_success is True
+    assert failure.is_success is False
+    assert success.is_outdated(
+        current_suppressed_source_code_checks=success.suppressed_source_code_checks,
+        current_source_code_check_skipped=True,
+    ) is False
+    assert success.is_outdated(
+        current_suppressed_source_code_checks=SourceCodeCheckSuppressions(),
+        current_source_code_check_skipped=True,
+    ) is True
+    assert failure.is_outdated(
+        current_suppressed_source_code_checks=failure.suppressed_source_code_checks,
+        current_source_code_check_skipped=False,
+    ) is True
 
 
 def _execute_ok(student_id: StudentID = STUDENT_A, case_id: CaseID = CASE_A):
@@ -112,12 +152,35 @@ def _execute_ok(student_id: StudentID = STUDENT_A, case_id: CaseID = CASE_A):
         OutputFile(file_id=FileID.STDOUT, content="結果: 42\n"),
         OutputFile(file_id=FileID(Path("answer.txt")), content=b"line1\nline2\n"),
     ])
-    return ExecuteSuccessStudentStageResult.create_instance(
+    return ExecuteStudentStageResult.create_instance(
         student_id=student_id,
         testcase_id=case_id,
         execute_config_mtime=EXECUTE_MTIME,
         output_file_collection=outputs,
+        error=None,
     )
+
+
+@pytest.mark.parametrize(
+    ("output_file_collection", "error"),
+    [
+        (None, None),
+        (OutputFileCollection(), ExecutionTimeoutError()),
+    ],
+)
+def test_execute_result_rejects_inconsistent_success_state(
+        output_file_collection: OutputFileCollection | None,
+        error: ExecutionTimeoutError | None,
+) -> None:
+    """EXECUTE結果が成功用データと失敗用データの欠落・混在を拒否する。"""
+    with pytest.raises(ValueError):
+        ExecuteStudentStageResult.create_instance(
+            student_id=STUDENT_A,
+            testcase_id=CASE_A,
+            execute_config_mtime=EXECUTE_MTIME,
+            output_file_collection=output_file_collection,
+            error=error,
+        )
 
 
 def _test_ok(student_id: StudentID = STUDENT_A, case_id: CaseID = CASE_A):
@@ -126,12 +189,35 @@ def _test_ok(student_id: StudentID = STUDENT_A, case_id: CaseID = CASE_A):
         file_id=FileID.STDOUT,
         expected=ExpectedOutputFile.create_default(FileID.STDOUT),
     )
-    return StageTestSuccessResult.create_instance(
+    return StageTestResult.create_instance(
         student_id=student_id,
         testcase_id=case_id,
         test_config_mtime=TEST_MTIME,
         test_result_output_file_collection=StageTestOutputCollection([missing]),
+        error=None,
     )
+
+
+@pytest.mark.parametrize(
+    ("test_result_output_file_collection", "error"),
+    [
+        (None, None),
+        (StageTestOutputCollection(), OutputMatchingError(detail="失敗")),
+    ],
+)
+def test_test_result_rejects_inconsistent_success_state(
+        test_result_output_file_collection: StageTestOutputCollection | None,
+        error: OutputMatchingError | None,
+) -> None:
+    """TEST結果が成功用データと失敗用データの欠落・混在を拒否する。"""
+    with pytest.raises(ValueError):
+        StageTestResult.create_instance(
+            student_id=STUDENT_A,
+            testcase_id=CASE_A,
+            test_config_mtime=TEST_MTIME,
+            test_result_output_file_collection=test_result_output_file_collection,
+            error=error,
+        )
 
 
 def _successes(case_id: CaseID = CASE_A):
@@ -159,7 +245,45 @@ def test_success_roundtrip_for_each_stage(repository, stage_index: int) -> None:
     restored = loaded.get_result(stage)
     assert type(restored) is type(original)
     assert restored.is_success is True
-    assert restored.to_json() == original.to_json()
+    if isinstance(restored, BuildStudentStageResult):
+        assert restored.student_id == original.student_id
+        assert restored.stage == original.stage
+        assert restored.submission_folder_checksum == original.submission_folder_checksum
+        assert restored.error is None
+    elif isinstance(restored, CompileStudentStageResult):
+        assert restored.student_id == original.student_id
+        assert restored.stage == original.stage
+        assert restored.output == original.output
+        assert (
+            restored.suppressed_source_code_checks
+            == original.suppressed_source_code_checks
+        )
+        assert restored.source_code_check_skipped == original.source_code_check_skipped
+        assert restored.error is None
+    elif isinstance(restored, ExecuteStudentStageResult):
+        assert restored.student_id == original.student_id
+        assert restored.stage == original.stage
+        assert restored.execute_config_mtime == original.execute_config_mtime
+        assert restored.output_file_collection is not None
+        assert original.output_file_collection is not None
+        assert (
+            restored.output_file_collection.to_json()
+            == original.output_file_collection.to_json()
+        )
+        assert restored.error is None
+    elif isinstance(restored, StageTestResult):
+        assert restored.student_id == original.student_id
+        assert restored.stage == original.stage
+        assert restored.test_config_mtime == original.test_config_mtime
+        assert restored.test_result_output_file_collection is not None
+        assert original.test_result_output_file_collection is not None
+        assert (
+            restored.test_result_output_file_collection.to_json()
+            == original.test_result_output_file_collection.to_json()
+        )
+        assert restored.error is None
+    else:
+        raise AssertionError(type(restored))
 
 
 @pytest.mark.parametrize("stage_index", range(4), ids=["build", "compile", "execute", "test"])
@@ -168,20 +292,32 @@ def test_failure_roundtrip_for_each_stage(repository, stage_index: int) -> None:
     repo, _ = repository
     reason = "一行目の理由。\n二行目：詳細\n"
     failures = (
-        BuildFailureStudentStageResult.create_instance(
-            student_id=STUDENT_A, error=SubmissionNotFoundError(),
+        BuildStudentStageResult.create_instance(
+            student_id=STUDENT_A,
+            submission_folder_checksum=123,
+            error=SubmissionNotFoundError(),
         ),
-        CompileFailureStudentStageResult.create_instance(
+        CompileStudentStageResult.create_instance(
             student_id=STUDENT_A,
             error=CompilerDiagnosticError(),
             output="compiler stdout\nwarning C1234\n",
+            suppressed_source_code_checks=SourceCodeCheckSuppressions({
+                SourceCodeCheckIdentifier(group_id="process", check_id="system"),
+            }),
+            source_code_check_skipped=True,
         ),
-        ExecuteFailureStudentStageResult.create_instance(
-            student_id=STUDENT_A, testcase_id=CASE_A, error=ExecutionTimeoutError(),
-        ),
-        StageTestFailureResult.create_instance(
+        ExecuteStudentStageResult.create_instance(
             student_id=STUDENT_A,
             testcase_id=CASE_A,
+            execute_config_mtime=EXECUTE_MTIME,
+            output_file_collection=None,
+            error=ExecutionTimeoutError(),
+        ),
+        StageTestResult.create_instance(
+            student_id=STUDENT_A,
+            testcase_id=CASE_A,
+            test_config_mtime=TEST_MTIME,
+            test_result_output_file_collection=None,
             error=OutputMatchingError(detail=reason),
         ),
     )
@@ -195,7 +331,43 @@ def test_failure_roundtrip_for_each_stage(repository, stage_index: int) -> None:
     restored = loaded.get_result(_path()[stage_index])
     assert type(restored) is type(failures[stage_index])
     assert restored.is_success is False
-    assert restored.to_json() == failures[stage_index].to_json()
+    if isinstance(restored, BuildStudentStageResult):
+        original = failures[stage_index]
+        assert restored.student_id == original.student_id
+        assert restored.stage == original.stage
+        assert restored.submission_folder_checksum == original.submission_folder_checksum
+        assert type(restored.error) is type(original.error)
+        assert restored.error.to_params_dict() == original.error.to_params_dict()
+    elif isinstance(restored, CompileStudentStageResult):
+        original = failures[stage_index]
+        assert restored.student_id == original.student_id
+        assert restored.stage == original.stage
+        assert restored.output == original.output
+        assert (
+            restored.suppressed_source_code_checks
+            == original.suppressed_source_code_checks
+        )
+        assert restored.source_code_check_skipped == original.source_code_check_skipped
+        assert type(restored.error) is type(original.error)
+        assert restored.error.to_params_dict() == original.error.to_params_dict()
+    elif isinstance(restored, ExecuteStudentStageResult):
+        original = failures[stage_index]
+        assert restored.student_id == original.student_id
+        assert restored.stage == original.stage
+        assert restored.execute_config_mtime == original.execute_config_mtime
+        assert restored.output_file_collection is None
+        assert type(restored.error) is type(original.error)
+        assert restored.error.to_params_dict() == original.error.to_params_dict()
+    elif isinstance(restored, StageTestResult):
+        original = failures[stage_index]
+        assert restored.student_id == original.student_id
+        assert restored.stage == original.stage
+        assert restored.test_config_mtime == original.test_config_mtime
+        assert restored.test_result_output_file_collection is None
+        assert type(restored.error) is type(original.error)
+        assert restored.error.to_params_dict() == original.error.to_params_dict()
+    else:
+        raise AssertionError(type(restored))
     assert loaded.get_next_stage() == _path()[stage_index]
 
 
@@ -204,7 +376,7 @@ def test_execute_output_collection_and_timestamp_roundtrip(repository) -> None:
     repo, _ = repository
     _save_through(repo, 2)
     restored = repo.get(STUDENT_A, _path()).get_result(ExecuteStage(CASE_A))
-    assert type(restored) is ExecuteSuccessStudentStageResult
+    assert type(restored) is ExecuteStudentStageResult
     assert restored.execute_config_mtime == EXECUTE_MTIME
     assert restored.output_file_collection.to_json() == _execute_ok().output_file_collection.to_json()
     assert restored.output_file_collection.find(FileID.STDOUT).content_string == "結果: 42\n"
@@ -215,7 +387,7 @@ def test_compile_security_state_roundtrip(repository) -> None:
     repo, _ = repository
     _save_through(repo, 1)
     restored = repo.get(STUDENT_A, _path()).get_result(CompileStage())
-    assert type(restored) is CompileSuccessStudentStageResult
+    assert type(restored) is CompileStudentStageResult
     assert (
         restored.suppressed_source_code_checks
         == _compile_ok().suppressed_source_code_checks
@@ -244,7 +416,7 @@ def test_test_result_success_and_wrong_answer_are_distinct(repository) -> None:
     repo, _ = repository
     _save_through(repo, 3)
     restored = repo.get(STUDENT_A, _path()).get_result(StageTest(CASE_A))
-    assert type(restored) is StageTestSuccessResult
+    assert type(restored) is StageTestResult
     assert restored.test_config_mtime == TEST_MTIME
     assert restored.is_success is True
     assert restored.is_accepted is False
@@ -255,8 +427,10 @@ def test_results_can_be_overwritten_without_leaving_old_error(repository) -> Non
     """失敗から成功へ上書きすると、古い構造化エラーは残らない。"""
     repo, _ = repository
     aggregate = repo.get(STUDENT_A, _path())
-    aggregate.put_result(BuildFailureStudentStageResult.create_instance(
-        student_id=STUDENT_A, error=SubmissionNotFoundError(),
+    aggregate.put_result(BuildStudentStageResult.create_instance(
+        student_id=STUDENT_A,
+        submission_folder_checksum=123,
+        error=SubmissionNotFoundError(),
     ))
     repo.put(aggregate)
     assert isinstance(
@@ -268,9 +442,24 @@ def test_results_can_be_overwritten_without_leaving_old_error(repository) -> Non
     aggregate.put_result(_build_ok(checksum=999))
     repo.put(aggregate)
     restored = repo.get(STUDENT_A, _path())
-    assert type(restored.get_result(BuildStage())) is BuildSuccessStudentStageResult
+    assert type(restored.get_result(BuildStage())) is BuildStudentStageResult
     assert restored.get_result(BuildStage()).submission_folder_checksum == 999
     assert restored.last_stage_result.is_success is True
+
+
+def test_build_failure_checksum_roundtrip(repository) -> None:
+    """BUILD失敗時のチェックサムを保存して復元する。"""
+    repo, _ = repository
+    aggregate = repo.get(STUDENT_A, _path())
+    aggregate.put_result(BuildStudentStageResult.create_instance(
+        student_id=STUDENT_A,
+        submission_folder_checksum=456,
+        error=SubmissionNotFoundError(),
+    ))
+    repo.put(aggregate)
+
+    restored = repo.get(STUDENT_A, _path()).get_result(BuildStage())
+    assert restored.submission_folder_checksum == 456
 
 
 def test_result_deletion_in_reverse_order_clears_database(repository) -> None:
@@ -372,8 +561,8 @@ def test_invalid_saved_stage_error_is_rejected(
         connection.execute(
             "INSERT INTO student_build_result "
             "(student_id, submission_folder_checksum, error_group_id, error_type_id, error_params_json) "
-            "VALUES (?, NULL, ?, ?, ?)",
-            (str(STUDENT_A), error_group_id, error_type_id, error_params_json),
+            "VALUES (?, ?, ?, ?, ?)",
+            (str(STUDENT_A), 123, error_group_id, error_type_id, error_params_json),
         )
         connection.commit()
     with pytest.raises(ValueError, match=message):

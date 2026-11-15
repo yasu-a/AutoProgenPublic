@@ -27,8 +27,10 @@ from autoprogen.domain.error.stage.test import (
     OutputMatchingError,
 )
 from autoprogen.domain.model.student_stage_result import (
-    AbstractFailureStudentStageResult,
-    CompileFailureStudentStageResult,
+    BuildStudentStageResult,
+    CompileStudentStageResult,
+    ExecuteStudentStageResult,
+    TestStudentStageResult,
 )
 from autoprogen.domain.service.source_code_check_factory import SourceCodeCheckCatalogFactory
 
@@ -107,10 +109,20 @@ class StageErrorTextFormatter:
             return error.detail
         raise TypeError(f"未対応のステージエラーです: {type(error).__name__}")
 
-    def format_detail(self, result: AbstractFailureStudentStageResult) -> str:
+    def format_detail(
+            self,
+            result: (
+                BuildStudentStageResult
+                | CompileStudentStageResult
+                | ExecuteStudentStageResult
+                | TestStudentStageResult
+            ),
+    ) -> str:
         """失敗結果をエラー詳細画面用の文字列へ変換する。"""
+        # 呼び出し元が失敗結果だけを渡す契約としてOptionalの型を絞り込む。
+        assert result.error is not None
         summary = self.format_summary(result.error)
-        if isinstance(result, CompileFailureStudentStageResult):
+        if isinstance(result, CompileStudentStageResult):
             return summary + "\n" + result.output
         return summary
 

@@ -4,11 +4,9 @@ from autoprogen.domain.error.stage.compile import (
     CompileStageError,
     SourceSafetyViolationError,
 )
+from autoprogen.domain.model.project_settings import SourceCodeCheckSkip
 from autoprogen.domain.model.stage_path import StagePath
-from autoprogen.domain.model.student_stage_result import (
-    CompileFailureStudentStageResult,
-    CompileSuccessStudentStageResult,
-)
+from autoprogen.domain.model.student_stage_result import CompileStudentStageResult
 from autoprogen.domain.model.value import StudentID
 from autoprogen.domain.service.source_code_check import SourceCodeCheckService
 from autoprogen.domain.service.source_code_check_factory import SourceCodeCheckCatalogFactory
@@ -55,8 +53,12 @@ class StudentRunCompileStageUseCase:
 
     def execute(self, student_id: StudentID, stage_path: StagePath) -> None:
         """学生一人分のCOMPILEステージを実行して結果を保存する。"""
+        # 成功・失敗の両方へ記録する安全性設定を一度だけ取得する。
+        project_settings = self._project_settings_repository.get()
+
         # コンパイル処理に使用する一時ストレージを作成する。
         storage_id = self._storage_create_service.execute()
+        source_code_check_skipped = False
 
         try:
             # 実際にコンパイルするソースコードを一時ストレージへ読み込む。
@@ -66,12 +68,13 @@ class StudentRunCompileStageUseCase:
                 file_relative_path=self.__SOURCE_FILE_RELATIVE_PATH,
             )
 
-            # 省略許可と規則抑制に共通して使用する設定を一度だけ取得する。
-            project_settings = self._project_settings_repository.get()
             source_sha256 = source_code.calculate_sha256()
-            source_code_check_skipped = any(
-                skip.student_id == student_id and skip.source_sha256 == source_sha256
-                for skip in project_settings.source_code_check_skips
+            source_code_check_skip = SourceCodeCheckSkip(
+                student_id=student_id,
+                source_sha256=source_sha256,
+            )
+            source_code_check_skipped = (
+                source_code_check_skip in project_settings.source_code_check_skips
             )
 
             # 許可されていないソースコードだけを、有効な規則で検査する。
@@ -101,10 +104,14 @@ class StudentRunCompileStageUseCase:
             # 想定されたCOMPILEエラーだけを失敗結果として保存する。
             self._student_put_stage_result_service.execute(
                 stage_path=stage_path,
-                result=CompileFailureStudentStageResult.create_instance(
+                result=CompileStudentStageResult.create_instance(
                     student_id=student_id,
                     error=error,
                     output=error.output or "",
+                    suppressed_source_code_checks=(
+                        project_settings.suppressed_source_code_checks
+                    ),
+                    source_code_check_skipped=source_code_check_skipped,
                 ),
             )
         else:
@@ -118,13 +125,14 @@ class StudentRunCompileStageUseCase:
             # コンパイラ出力と実行時の安全性設定を成功結果へ保存する。
             self._student_put_stage_result_service.execute(
                 stage_path=stage_path,
-                result=CompileSuccessStudentStageResult.create_instance(
+                result=CompileStudentStageResult.create_instance(
                     student_id=student_id,
                     output=compile_result.output,
                     suppressed_source_code_checks=(
                         project_settings.suppressed_source_code_checks
                     ),
                     source_code_check_skipped=source_code_check_skipped,
+                    error=None,
                 ),
             )
         finally:

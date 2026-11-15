@@ -2,6 +2,7 @@
 
 import hashlib
 from collections import OrderedDict
+from datetime import datetime
 from unittest.mock import Mock
 
 import pytest
@@ -20,12 +21,12 @@ from autoprogen.domain.model.student import Student
 from autoprogen.domain.model.student_mark import StudentMark
 from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.source_code_check import SourceCodeCheckFinding
+from autoprogen.domain.model.project_settings import SourceCodeCheckSuppressions
 from autoprogen.domain.model.student_stage_path_result import StudentStagePathResult
 from autoprogen.domain.model.student_stage_result import (
-    BuildSuccessStudentStageResult,
-    CompileFailureStudentStageResult,
-    CompileSuccessStudentStageResult,
-    ExecuteFailureStudentStageResult,
+    BuildStudentStageResult,
+    CompileStudentStageResult,
+    ExecuteStudentStageResult,
 )
 from autoprogen.domain.model.value import StudentID, TestCaseID as CaseID
 from autoprogen.domain.service.source_code_check_factory import SourceCodeCheckCatalogFactory
@@ -244,21 +245,29 @@ def test_dialog_close_button_rejects_dialog(qt_app) -> None:
 def test_table_load_preserves_error_order_and_stage_states() -> None:
     """実際のステージ結果からテストケース順のエラーと状態を構築する。"""
     paths = StagePath.list_paths([CaseID("case_a"), CaseID("case_b")])
-    build = BuildSuccessStudentStageResult.create_instance(
-        student_id=STUDENT, submission_folder_checksum=123,
+    build = BuildStudentStageResult.create_instance(
+        student_id=STUDENT, submission_folder_checksum=123, error=None,
     )
-    compile_result = CompileSuccessStudentStageResult.create_instance(
-        student_id=STUDENT, output="compile output",
+    compile_result = CompileStudentStageResult.create_instance(
+        student_id=STUDENT,
+        output="compile output",
+        suppressed_source_code_checks=SourceCodeCheckSuppressions(),
+        source_code_check_skipped=False,
+        error=None,
     )
     failures = [
-        ExecuteFailureStudentStageResult.create_instance(
+        ExecuteStudentStageResult.create_instance(
             student_id=STUDENT,
             testcase_id=CaseID("case_a"),
+            execute_config_mtime=datetime(2026, 1, 1),
+            output_file_collection=None,
             error=ExecutableNotFoundError(),
         ),
-        ExecuteFailureStudentStageResult.create_instance(
+        ExecuteStudentStageResult.create_instance(
             student_id=STUDENT,
             testcase_id=CaseID("case_b"),
+            execute_config_mtime=datetime(2026, 1, 1),
+            output_file_collection=None,
             error=ExecutionTimeoutError(),
         ),
     ]
@@ -317,11 +326,15 @@ def test_table_load_preserves_error_order_and_stage_states() -> None:
 def test_table_load_preserves_compile_output_in_detail(output: str) -> None:
     """COMPILE失敗の外部出力と末尾改行を詳細文から落とさない。"""
     path = StagePath.list_paths([CaseID("case_a")])[0]
-    build = BuildSuccessStudentStageResult.create_instance(
-        student_id=STUDENT, submission_folder_checksum=123,
+    build = BuildStudentStageResult.create_instance(
+        student_id=STUDENT, submission_folder_checksum=123, error=None,
     )
-    failure = CompileFailureStudentStageResult.create_instance(
-        student_id=STUDENT, error=CompilerNotConfiguredError(), output=output,
+    failure = CompileStudentStageResult.create_instance(
+        student_id=STUDENT,
+        error=CompilerNotConfiguredError(),
+        output=output,
+        suppressed_source_code_checks=SourceCodeCheckSuppressions(),
+        source_code_check_skipped=False,
     )
     students = Mock()
     students.get.return_value = _student()
