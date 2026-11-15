@@ -431,12 +431,12 @@ class GlobalSettingsEditDialog(AbstractSettingsEditDialog[GlobalSettings]):
         self._w_settings_edit.set_data(data)
 
     def get_data(self) -> GlobalSettings:
-        """検証済みのグローバル設定を編集Widgetから取得する。"""
-        reason = self._w_settings_edit.validate_and_get_reason()
-        if reason is not None:
-            raise ValueError(reason)
+        """グローバル設定を編集Widgetから取得する。"""
         return self._w_settings_edit.get_data()
 
     def save_data(self, data: GlobalSettings) -> None:
         """グローバル設定をUseCase経由で保存する。"""
+        reason = self._w_settings_edit.validate_and_get_reason()
+        if reason is not None:
+            raise ValueError(reason)
         self._global_settings_put_usecase.execute(data)
