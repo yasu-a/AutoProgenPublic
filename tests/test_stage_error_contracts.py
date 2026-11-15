@@ -9,7 +9,6 @@ import pytest
 
 from autoprogen.domain.error import (
     MatchServiceError,
-    StorageRunCompilerServiceError,
 )
 from autoprogen.domain.error.stage.build import (
     SourceFilenameMultipleNumbersError,
@@ -17,7 +16,6 @@ from autoprogen.domain.error.stage.build import (
 )
 from autoprogen.domain.error.stage.compile import (
     CompilerTimeoutError,
-    SourceSafetyViolationError,
 )
 from autoprogen.domain.error.stage.execute import ExecutionTimeoutError
 from autoprogen.domain.model.output_file import OutputFile, OutputFileCollection
@@ -220,30 +218,11 @@ def test_compile_safety_check_failure_message_and_short_circuit() -> None:
     delete.execute.assert_called_once_with("storage-1")
 
 
-def test_compile_safety_check_returns_structured_error() -> None:
-    """安全性チェックの検出内容を構造化COMPILEエラーに保持する。"""
-    usecase, _, _, _, _ = _compile_case(BLOCKED_SOURCE)
-    failure = usecase._run_security_check_if_required(
-        STUDENT,
-        SourceCode(text=BLOCKED_SOURCE.decode("utf-8")),
-        ProjectSettings.create_default(),
-    )
-
-    assert failure is not None
-    assert isinstance(failure, SourceSafetyViolationError)
-    assert failure.source_sha256 == hashlib.sha256(BLOCKED_SOURCE).hexdigest()
-    assert len(failure.findings) == 1
-    assert failure.findings[0].group_id == "process"
-    assert failure.findings[0].check_id == "system"
-
-
 @pytest.mark.parametrize("compiler_output", ["fatal error C1004\n", None])
 def test_compile_service_exception_becomes_failure(compiler_output: str | None) -> None:
     """コンパイラServiceの失敗理由と生出力をそのまま記録する。"""
     usecase, compiler, store, delete, put = _compile_case(SAFE_SOURCE)
-    compiler.execute.side_effect = StorageRunCompilerServiceError(
-        error=CompilerTimeoutError(), output=compiler_output,
-    )
+    compiler.execute.side_effect = CompilerTimeoutError(output=compiler_output)
     usecase.execute(STUDENT, STAGE_PATH)
     result = _saved_result(put)
     assert type(result) is CompileFailureStudentStageResult

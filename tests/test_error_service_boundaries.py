@@ -6,11 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from autoprogen.domain.error import (
-    CompileToolIOError,
-    StopTask,
-    StorageRunCompilerServiceError,
-)
+from autoprogen.domain.error import StopTask
 from autoprogen.domain.error.stage.build import (
     SourceFilenameMultipleNumbersError,
     SourceFilenameNoNumberError,
@@ -39,6 +35,9 @@ from autoprogen.service.student_submission import (
     StudentSubmissionListSourceRelativePathQueryService,
 )
 from autoprogen.usecase.student_run_next_stage import StudentRunNextStageUseCase
+from autoprogen.usecase.test_compile_stage import (
+    TestCompileStageUseCase as CompileStageCheckUseCase,
+)
 
 
 STUDENT = StudentID("00A0000000A")
@@ -75,23 +74,19 @@ def test_compiler_preconditions_raise_specific_errors(
 ) -> None:
     """コンパイラ未設定・対象不在を具体的なCOMPILEエラーで区別する。"""
     service, tool, _ = _compiler_service(configured=configured, source_exists=source_exists)
-    with pytest.raises(StorageRunCompilerServiceError) as raised:
+    with pytest.raises(error_type) as raised:
         service.execute(storage_id="storage-id", source_file_relative_path=SOURCE_PATH)
-    assert isinstance(raised.value.error, error_type)
     assert raised.value.output is None
     tool.run_and_get_output.assert_not_called()
 
 
 @pytest.mark.parametrize("output", ["main.c(1): error C2143\n", None])
 def test_compiler_io_failure_preserves_reason_and_raw_output(output: str | None) -> None:
-    """IOの失敗をService例外へ変換しても、コンパイラ生出力を失わない。"""
+    """IOの具象COMPILEエラーと生出力をServiceがそのまま伝える。"""
     service, tool, _ = _compiler_service()
-    tool.run_and_get_output.side_effect = CompileToolIOError(
-        error=CompilerDiagnosticError(), output=output,
-    )
-    with pytest.raises(StorageRunCompilerServiceError) as raised:
+    tool.run_and_get_output.side_effect = CompilerDiagnosticError(output=output)
+    with pytest.raises(CompilerDiagnosticError) as raised:
         service.execute(storage_id="storage-id", source_file_relative_path=SOURCE_PATH)
-    assert isinstance(raised.value.error, CompilerDiagnosticError)
     assert raised.value.output == output
 
 
@@ -104,7 +99,7 @@ def test_unexpected_compiler_io_error_propagates() -> None:
 
 
 def test_compile_tool_io_timeout_conversion(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """コンパイラIOはタイムアウトをCompileToolIOErrorへ変換する。"""
+    """コンパイラIOはタイムアウトを具象COMPILEエラーへ変換する。"""
     devcmd = tmp_path / "VsDevCmd.bat"
     devcmd.write_text("@echo off\n", encoding="utf-8")
     source = tmp_path / "main.c"
@@ -112,18 +107,21 @@ def test_compile_tool_io_timeout_conversion(tmp_path: Path, monkeypatch: pytest.
 
     def _timeout(self):
         """実際のコマンドは起動せずタイムアウトだけを再現する。"""
-        raise subprocess.TimeoutExpired(cmd="cl", timeout=3)
+        raise subprocess.TimeoutExpired(
+            cmd="cl",
+            timeout=3,
+            output="タイムアウト直前の出力".encode("shift-jis"),
+        )
 
     monkeypatch.setattr(_VSDevTool, "_run_and_get_output", _timeout)
-    with pytest.raises(CompileToolIOError) as raised:
+    with pytest.raises(CompilerTimeoutError) as raised:
         CompileToolIO.run_and_get_output(
             compiler_tool_fullpath=devcmd,
             timeout=3,
             cwd_fullpath=tmp_path,
             target_relative_path=Path("main.c"),
         )
-    assert isinstance(raised.value.error, CompilerTimeoutError)
-    assert raised.value.output is None
+    assert raised.value.output == "タイムアウト直前の出力"
 
 
 @pytest.mark.parametrize("case,error_type", [
@@ -151,7 +149,7 @@ def test_compile_tool_paths_raise_specific_errors(
     elif case == "input_file":
         target = Path("missing.c")
 
-    with pytest.raises(CompileToolIOError) as raised:
+    with pytest.raises(error_type) as raised:
         CompileToolIO.run_and_get_output(
             compiler_tool_fullpath=devcmd,
             timeout=3,
@@ -159,8 +157,7 @@ def test_compile_tool_paths_raise_specific_errors(
             target_relative_path=target,
         )
 
-    assert isinstance(raised.value.error, error_type)
-    assert raised.value.error.path == (
+    assert raised.value.path == (
         devcmd if case == "devtool" else cwd if case == "working_directory" else cwd / target
     )
     assert raised.value.output is None
@@ -188,7 +185,7 @@ def test_compile_tool_process_failure_raises_specific_error(
         raise subprocess.CalledProcessError(1, "cl", output=output)
 
     monkeypatch.setattr(_VSDevTool, "_run_and_get_output", _fail)
-    with pytest.raises(CompileToolIOError) as raised:
+    with pytest.raises(error_type) as raised:
         CompileToolIO.run_and_get_output(
             compiler_tool_fullpath=devcmd,
             timeout=3,
@@ -196,8 +193,45 @@ def test_compile_tool_process_failure_raises_specific_error(
             target_relative_path=Path("main.c"),
         )
 
-    assert isinstance(raised.value.error, error_type)
     assert raised.value.output == output
+
+
+@pytest.mark.parametrize("is_success", [True, False], ids=["success", "failure"])
+def test_compile_stage_check_preserves_output_and_cleans_storage(
+        is_success: bool,
+) -> None:
+    """コンパイラ動作確認は生出力を表示し、成否によらず一時領域を削除する。"""
+    storage_create = Mock()
+    storage_create.execute.return_value = "storage-id"
+    storage_load = Mock()
+    compiler = Mock()
+    storage_delete = Mock()
+    formatter = Mock()
+    formatter.format_summary.return_value = "コンパイラからの応答がタイムアウトしました"
+    if is_success:
+        compiler.execute.return_value.output = "compiler success output"
+    else:
+        compiler.execute.side_effect = CompilerTimeoutError(
+            output="compiler timeout output",
+        )
+    usecase = CompileStageCheckUseCase(
+        storage_create_service=storage_create,
+        storage_load_test_source_service=storage_load,
+        storage_run_compiler_service=compiler,
+        storage_delete_service=storage_delete,
+        stage_error_text_formatter=formatter,
+    )
+
+    result = usecase.execute()
+
+    assert result.is_success is is_success
+    expected_output = "compiler success output" if is_success else "compiler timeout output"
+    assert expected_output in result.output
+    storage_delete.execute.assert_called_once_with("storage-id")
+    if is_success:
+        formatter.format_summary.assert_not_called()
+    else:
+        formatter.format_summary.assert_called_once()
 
 
 def _executable_service(*, exists: bool):

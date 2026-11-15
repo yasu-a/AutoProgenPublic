@@ -1,7 +1,6 @@
 import subprocess
 from pathlib import Path
 
-from autoprogen.domain.error import CompileToolIOError
 from autoprogen.domain.error.stage.compile import (
     CompilerDiagnosticError,
     CompilerExecutionFailedError,
@@ -28,21 +27,12 @@ class _VSDevTool:
     ) -> None:
         """コンパイラのパスと実行条件を検証して保持する。"""
         if not vs_dev_cmd_bat_path.exists():
-            raise CompileToolIOError(
-                error=VsDevToolNotFoundError(path=vs_dev_cmd_bat_path),
-                output=None,
-            )
+            raise VsDevToolNotFoundError(path=vs_dev_cmd_bat_path)
         if not cwd_fullpath.exists():
-            raise CompileToolIOError(
-                error=CompilerWorkingDirectoryNotFoundError(path=cwd_fullpath),
-                output=None,
-            )
+            raise CompilerWorkingDirectoryNotFoundError(path=cwd_fullpath)
         if not (cwd_fullpath / target_relative_path).exists():
-            raise CompileToolIOError(
-                error=CompilerInputFileNotFoundError(
-                    path=cwd_fullpath / target_relative_path,
-                ),
-                output=None,
+            raise CompilerInputFileNotFoundError(
+                path=cwd_fullpath / target_relative_path,
             )
 
         self._vs_dev_cmd_bat_path = vs_dev_cmd_bat_path
@@ -82,20 +72,14 @@ class _VSDevTool:
             output = e.stdout
             self._logger.info(f"Compiler exist with error\n{output}")
             if self._is_output_from_compiler(output):
-                raise CompileToolIOError(
-                    error=CompilerDiagnosticError(),
-                    output=output,
-                )
+                raise CompilerDiagnosticError(output=output)
             else:
-                raise CompileToolIOError(
-                    error=CompilerExecutionFailedError(),
-                    output=output,
-                )
+                raise CompilerExecutionFailedError(output=output)
         except subprocess.TimeoutExpired as e:
-            raise CompileToolIOError(
-                error=CompilerTimeoutError(),
-                output=e.stdout,
-            )
+            output = e.stdout
+            if isinstance(output, bytes):
+                output = output.decode("shift-jis", errors="replace")
+            raise CompilerTimeoutError(output=output)
         else:
             return output
 

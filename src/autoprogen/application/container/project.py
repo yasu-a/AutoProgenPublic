@@ -641,6 +641,7 @@ class ProjectContainer:
             storage_load_test_source_service=self.storage_load_test_source_service,
             storage_run_compiler_service=self.storage_run_compiler_service,
             storage_delete_service=self.storage_delete_service,
+            stage_error_text_formatter=self.stage_error_text_formatter,
         )
 
     @cached_property

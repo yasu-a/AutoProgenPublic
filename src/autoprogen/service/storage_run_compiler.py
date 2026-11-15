@@ -1,6 +1,5 @@
 from pathlib import Path
 
-from autoprogen.domain.error import StorageRunCompilerServiceError, CompileToolIOError
 from autoprogen.domain.error.stage.compile import (
     CompilerNotConfiguredError,
     CompileSourceNotFoundError,
@@ -39,18 +38,12 @@ class StorageRunCompilerService:
         if compiler_tool_fullpath is None:
             compiler_tool_fullpath = self._global_settings_repo.get().compiler_tool_fullpath
         if compiler_tool_fullpath is None:
-            raise StorageRunCompilerServiceError(
-                error=CompilerNotConfiguredError(),
-                output=None,
-            )
+            raise CompilerNotConfiguredError()
 
         # コンパイル対象の検証
         storage = self._storage_repo.get(storage_id)
         if source_file_relative_path not in storage.files:
-            raise StorageRunCompilerServiceError(
-                error=CompileSourceNotFoundError(),
-                output=None,
-            )
+            raise CompileSourceNotFoundError()
 
         # コンパイルのための引数の生成
         source_file_fullpath = storage.base_folder_fullpath / source_file_relative_path
@@ -66,14 +59,8 @@ class StorageRunCompilerService:
                 source_file_fullpath.parent),
         )
 
-        # コンパイルの実行
-        try:
-            output = self._compile_tool_io.run_and_get_output(**kwargs)
-        except CompileToolIOError as e:
-            raise StorageRunCompilerServiceError(
-                error=e.error,
-                output=e.output,
-            )
+        # 具象COMPILEエラーは包まず、呼び出し元へ直接伝える。
+        output = self._compile_tool_io.run_and_get_output(**kwargs)
 
         return StorageCompileServiceResult(
             output=output

@@ -1,3 +1,4 @@
+from autoprogen.domain.error.stage.compile import CompilerDiagnosticError
 from autoprogen.domain.error.stage.test import OutputMatchingError
 from autoprogen.domain.service.stage_error_codec import StageErrorCodec, StageErrorRecord
 
@@ -19,3 +20,15 @@ def test_stage_error_codec_roundtrip() -> None:
 
     assert isinstance(restored, OutputMatchingError)
     assert restored.detail == error.detail
+
+
+def test_compile_error_output_is_not_persisted_by_codec() -> None:
+    """コンパイラ生出力をエラーの保存パラメータへ含めないことを確認する。"""
+    codec = StageErrorCodec()
+
+    record = codec.encode(CompilerDiagnosticError(output="raw compiler output"))
+    restored = codec.decode(record)
+
+    assert record.params == {}
+    assert isinstance(restored, CompilerDiagnosticError)
+    assert restored.output is None

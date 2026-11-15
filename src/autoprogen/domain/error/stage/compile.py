@@ -11,6 +11,14 @@ class CompileStageError(StageError):
 
     error_group_id: ClassVar[str] = "compile"
 
+    # コンパイラから取得できた実行時の生出力。永続化対象には含めない。
+    output: str | None
+
+    def __init__(self, *, output: str | None = None) -> None:
+        """永続化しないコンパイラ生出力を保持する。"""
+        super().__init__()
+        self.output = output
+
 
 class SourceSafetyViolationError(CompileStageError):
     """ソースコードの安全性チェックで問題が検出された。"""
