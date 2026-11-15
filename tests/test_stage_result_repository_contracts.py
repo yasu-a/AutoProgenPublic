@@ -320,6 +320,18 @@ def test_timestamp_is_stored_and_visible_to_another_repository(repository) -> No
     assert reopened.get_timestamp(STUDENT_A) == first_timestamp
 
 
+def test_get_does_not_update_timestamp(repository) -> None:
+    """結果の読み込みだけでは学生の更新時刻を変更しない。"""
+    repo, _ = repository
+    _save_through(repo, 0)
+    timestamp_before_get = repo.get_timestamp(STUDENT_A)
+    assert isinstance(timestamp_before_get, datetime)
+
+    repo.get(STUDENT_A, _path())
+
+    assert repo.get_timestamp(STUDENT_A) == timestamp_before_get
+
+
 @pytest.mark.parametrize(
     ("error_group_id", "error_type_id", "error_params_json", "message"),
     [
