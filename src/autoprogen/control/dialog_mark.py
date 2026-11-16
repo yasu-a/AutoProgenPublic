@@ -4,7 +4,15 @@ from dataclasses import dataclass
 
 from PyQt5.QtCore import QObject, pyqtSlot, Qt, pyqtSignal, QEvent
 from PyQt5.QtGui import QKeyEvent, QCloseEvent
-from PyQt5.QtWidgets import QDialog, QWidget, QHBoxLayout, QLabel, QVBoxLayout, QPushButton
+from PyQt5.QtWidgets import (
+    QDialog,
+    QWidget,
+    QHBoxLayout,
+    QLabel,
+    QVBoxLayout,
+    QPushButton,
+    QStyle,
+)
 
 from autoprogen.control.dialog_mark_help import MarkHelpDialog
 from autoprogen.control.widget_mark_score_edit import MarkScoreEditWidget
@@ -51,7 +59,10 @@ class MarkStudentControlWidget(QWidget):
         layout = QHBoxLayout()
         self.setLayout(layout)
 
-        self._b_prev = PageButton(self, text="< (A)")
+        self._b_prev = PageButton(self, text="")
+        self._b_prev.setIcon(self.style().standardIcon(QStyle.SP_ArrowLeft))
+        self._b_prev.setFixedSize(60, 30)
+        self._b_prev.setToolTip("前の学生へ移動 (A / 左矢印)")
         layout.addWidget(self._b_prev)
         layout.addStretch(1)
 
@@ -63,13 +74,17 @@ class MarkStudentControlWidget(QWidget):
         layout.addWidget(self._l_student_id)
 
         self._l_student_name = QLabel(self)
-        self._l_student_name.setFixedWidth(200)
+        self._l_student_name.setMinimumWidth(200)
         self._l_student_name.setFont(get_font(large=True, bold=True))
         self._l_student_name.setAlignment(Qt.AlignCenter)
         layout.addWidget(self._l_student_name)
         layout.addStretch(1)
 
-        self._b_next = PageButton(self, text="(D) >")
+        self._b_next = PageButton(self, text="")
+        self._b_next.setIcon(self.style().standardIcon(QStyle.SP_ArrowRight))
+        self._b_next.setLayoutDirection(Qt.RightToLeft)
+        self._b_next.setFixedSize(60, 30)
+        self._b_next.setToolTip("次の学生へ移動 (D / 右矢印)")
         layout.addWidget(self._b_next)
 
     def _init_signals(self):
@@ -90,53 +105,6 @@ class MarkStudentControlWidget(QWidget):
         """学生間を移動できる場合だけ前後移動ボタンを表示する。"""
         self._b_prev.setVisible(visible)
         self._b_next.setVisible(visible)
-
-
-class MarkTestCaseControlWidget(QWidget):
-    """現在のテストケースを表示し、前後移動の操作を通知する。"""
-
-    next_testcase_triggered = pyqtSignal(name="next_testcase_triggered")
-    prev_testcase_triggered = pyqtSignal(name="prev_testcase_triggered")
-
-    def __init__(self, parent: QObject = None):
-        """テストケースの表示欄と移動ボタンを構築する。"""
-        super().__init__(parent)
-        self._testcase_id: TestCaseID | None = None
-        self._init_ui()
-        self._init_signals()
-
-    def _init_ui(self):
-        """既存のテストケースヘッダーを配置する。"""
-        self.setFixedHeight(50)
-        layout = QHBoxLayout()
-        self.setLayout(layout)
-
-        self._b_prev = PageButton(self, text="< (Q)")
-        layout.addWidget(self._b_prev)
-        layout.addStretch(1)
-
-        self._l_testcase_id = QLabel(self)
-        self._l_testcase_id.setFixedWidth(150)
-        self._l_testcase_id.setFont(get_font(large=True, bold=True))
-        self._l_testcase_id.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self._l_testcase_id)
-        layout.addStretch(1)
-
-        self._b_next = PageButton(self, text="(E) >")
-        layout.addWidget(self._b_next)
-
-    def _init_signals(self):
-        """テストケース移動ボタンのシグナルを転送する。"""
-        self._b_prev.clicked.connect(self.prev_testcase_triggered)
-        self._b_next.clicked.connect(self.next_testcase_triggered)
-
-    def set_data(self, testcase_id: TestCaseID | None):
-        """選択したテストケースを表示する。"""
-        self._testcase_id = testcase_id
-        if self._testcase_id is None:
-            self._l_testcase_id.setText("")
-        else:
-            self._l_testcase_id.setText(str(testcase_id))
 
 
 @dataclass
@@ -410,45 +378,31 @@ class MarkDialog(QDialog):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        layout_middle = QHBoxLayout()
-        layout.addLayout(layout_middle)
-
-        layout_middle_left = QVBoxLayout()
-        layout_middle.addLayout(layout_middle_left)
-
         self._w_student_control = MarkStudentControlWidget(self)
         self._w_student_control.set_navigation_visible(
             self.states.can_move_between_students()
         )
-        layout_middle_left.addWidget(self._w_student_control)
+        layout.addWidget(self._w_student_control)
 
-        layout_middle_left_inner = QHBoxLayout()
-        layout_middle_left_inner.setContentsMargins(0, 0, 0, 0)
-        layout_middle_left.addLayout(layout_middle_left_inner)
+        layout_middle = QHBoxLayout()
+        layout.addLayout(layout_middle)
 
         self._w_source_code_view = StudentSourceCodeView(
             self,
             global_settings_get_usecase=self._global_settings_get_usecase,
         )
-        layout_middle_left_inner.addWidget(self._w_source_code_view)
+        layout_middle.addWidget(self._w_source_code_view)
 
         self._w_testcase_test_result_view = TestCaseTestResultViewWidget(
             self,
             global_settings_get_usecase=self._global_settings_get_usecase,
         )
-        layout_middle_left_inner.addWidget(self._w_testcase_test_result_view)
-
-        layout_middle_right = QVBoxLayout()
-        layout_middle.addLayout(layout_middle_right)
-
-        self._w_testcase_control = MarkTestCaseControlWidget(self)
-        self._w_testcase_control.setFixedWidth(300)
-        layout_middle_right.addWidget(self._w_testcase_control)
+        layout_middle.addWidget(self._w_testcase_test_result_view)
 
         self._w_test_result_list = TestCaseTestResultListWidget(self)
-        self._w_test_result_list.setFixedWidth(300)
+        self._w_test_result_list.setFixedWidth(250)
         self._w_test_result_list.setFocusPolicy(Qt.NoFocus)
-        layout_middle_right.addWidget(self._w_test_result_list)
+        layout_middle.addWidget(self._w_test_result_list)
 
         layout_bottom = QHBoxLayout()
         layout.addLayout(layout_bottom)
@@ -467,12 +421,6 @@ class MarkDialog(QDialog):
         """各Widgetの操作を既存のハンドラに接続する。"""
         self._w_test_result_list.testcase_clicked.connect(
             self.__w_test_result_list_testcase_clicked
-        )
-        self._w_testcase_control.next_testcase_triggered.connect(
-            self.__w_testcase_control_next_testcase_triggered
-        )
-        self._w_testcase_control.prev_testcase_triggered.connect(
-            self.__w_testcase_control_prev_testcase_triggered
         )
         self._w_student_control.next_student_triggered.connect(
             self.__w_student_control_next_student_triggered
@@ -527,7 +475,6 @@ class MarkDialog(QDialog):
     def __reflect_state(self):
         """従来と同じ順序で各領域の表示内容を更新する。"""
         self._update_student_header()
-        self._update_testcase_header()
         self._update_source_and_test_result()
         self._update_testcase_list()
         self._update_score_editor()
@@ -542,14 +489,6 @@ class MarkDialog(QDialog):
                     self._state.student_id
                 ).student,
             )
-
-    def _update_testcase_header(self) -> None:
-        """テストケースヘッダーを更新する。"""
-        if self._state.student_id is None:
-            self._w_testcase_control.set_data(testcase_id=None)
-        else:
-            self._w_testcase_control.set_data(
-                testcase_id=self._state.testcase_id)
 
     def _update_source_and_test_result(self) -> None:
         """ソースコードと現在のテスト結果を表示する。"""
@@ -641,18 +580,6 @@ class MarkDialog(QDialog):
         self.set_state(new_state)
 
     @pyqtSlot()
-    def __w_testcase_control_next_testcase_triggered(self):
-        """次のテストケースへ移動する。"""
-        new_state = self.states.create_state_of_next_testcase()
-        self.set_state(new_state)
-
-    @pyqtSlot()
-    def __w_testcase_control_prev_testcase_triggered(self):
-        """前のテストケースへ移動する。"""
-        new_state = self.states.create_state_of_prev_testcase()
-        self.set_state(new_state)
-
-    @pyqtSlot()
     def __w_student_control_next_student_triggered(self):
         """次の学生へ移動する。"""
         if not self.states.can_move_to_next_student():
@@ -690,9 +617,9 @@ class MarkDialog(QDialog):
         """既存のショートカットと遷移先を維持してキーを処理する。"""
         key = evt.key()
         new_state = None
-        if key == Qt.Key_Q:
+        if key == Qt.Key_W or key == Qt.Key_Up:
             new_state = self.states.create_state_of_prev_testcase()
-        elif key == Qt.Key_E:
+        elif key == Qt.Key_S or key == Qt.Key_Down:
             new_state = self.states.create_state_of_next_testcase()
         elif (
             self.states.can_move_to_prev_student()

@@ -10,7 +10,9 @@ from PyQt5.QtWidgets import QApplication, QWidget
 from autoprogen.control.dialog_mark import MarkDialog, MarkDialogState
 from autoprogen.control.navigator import Navigator
 from autoprogen.domain.model.student_mark import StudentMark
-from autoprogen.domain.model.value import StudentID
+from autoprogen.domain.model.value import StudentID, TestCaseID
+
+TestCaseID.__test__ = False
 
 
 @pytest.fixture
@@ -23,10 +25,14 @@ def qt_app(monkeypatch: pytest.MonkeyPatch) -> QApplication:
     return app
 
 
-def _create_mark_dialog(student_ids: list[StudentID]) -> MarkDialog:
+def _create_mark_dialog(
+        student_ids: list[StudentID],
+        *,
+        testcase_ids: list[TestCaseID] | None = None,
+) -> MarkDialog:
     """学生移動の検証に必要な最小限の依存関係でダイアログを作る。"""
     testcase_list_usecase = Mock()
-    testcase_list_usecase.execute.return_value = []
+    testcase_list_usecase.execute.return_value = testcase_ids or []
     return MarkDialog(
         student_ids=student_ids,
         global_settings_get_usecase=Mock(),
@@ -163,3 +169,50 @@ def test_navigator_uses_common_launch_path_and_skips_empty_list(
     project_container.student_list_id_usecase.execute.return_value = []
     navigator.open_scoring_dialog(parent)
     dialog_type.assert_not_called()
+
+
+def test_testcase_navigation_uses_ws_and_vertical_arrow_keys(
+        qt_app: QApplication,
+) -> None:
+    """テストケースをW・Sと上下キーで移動し、Q・Eでは移動しない。"""
+    student_id = StudentID("21D5109047B")
+    first = TestCaseID("テストケース01")
+    second = TestCaseID("テストケース02")
+    dialog = _create_mark_dialog(
+        [student_id],
+        testcase_ids=[first, second],
+    )
+    dialog._state = MarkDialogState(
+        student_id=student_id,
+        testcase_id=first,
+    )
+    dialog._student_mark_view_data_get_test_result_usecase.execute.return_value.is_success = False
+    dialog.set_state = Mock()
+
+    for key in (Qt.Key_S, Qt.Key_Down):
+        dialog.eventFilter(
+            dialog,
+            QKeyEvent(QEvent.KeyPress, key, Qt.NoModifier),
+        )
+        state = dialog.set_state.call_args.args[0]
+        assert state.testcase_id == second
+
+    dialog._state = MarkDialogState(
+        student_id=student_id,
+        testcase_id=second,
+    )
+    for key in (Qt.Key_W, Qt.Key_Up):
+        dialog.eventFilter(
+            dialog,
+            QKeyEvent(QEvent.KeyPress, key, Qt.NoModifier),
+        )
+        state = dialog.set_state.call_args.args[0]
+        assert state.testcase_id == first
+
+    dialog.set_state.reset_mock()
+    for key in (Qt.Key_Q, Qt.Key_E):
+        dialog.eventFilter(
+            dialog,
+            QKeyEvent(QEvent.KeyPress, key, Qt.NoModifier),
+        )
+    dialog.set_state.assert_not_called()

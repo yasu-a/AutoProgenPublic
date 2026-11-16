@@ -51,24 +51,35 @@ class TestCaseResultOutputFileViewWidget(QWidget):
 
         # エラーを分析
         errors: list[tuple[str, str | None]] = []  # message, detailed_message
-        content_replacement = None
         actual_content = ""
+        visual_studio_guidance = (
+            "生徒が提出したソースコードを直接Visual Studioで実行してください。"
+        )
         if of.has_actual:
             actual_content = of.actual.content_string
             if actual_content is None:
                 errors.append(
                     (
                         "このストリームの文字コードが不明です",
-                        None,
+                        visual_studio_guidance,
                     )
                 )
                 actual_content = ""
-                content_replacement = "（不明な文字コード）"
             elif actual_content == "":
                 if of.file_id == FileID.STDIN:
-                    content_replacement = "（標準入力は空です）"
+                    errors.append(
+                        (
+                            "標準入力は空です",
+                        )
+                    )
                 else:
-                    content_replacement = "（出力がありません。実行時エラーが発生した可能性があります。生徒が提出したソースコードを直接Visual Studioで実行してください。）"
+                    errors.append(
+                        (
+                            "このストリームへの出力がありません",
+                            "実行時エラーが発生した可能性があります。"
+                            + visual_studio_guidance,
+                        )
+                    )
             else:
                 pass  # 正常な出力
             if of.has_expected:
@@ -84,8 +95,10 @@ class TestCaseResultOutputFileViewWidget(QWidget):
             if of.has_expected:
                 errors.append(
                     (
-                        "プログラムからこのストリームへの出力がありませんでした。生徒がプログラム内で誤ったファイル名を指定したか、実行時エラーが発生した可能性があります。生徒が提出したソースコードを直接Visual Studioで実行してください。",
-                        None,
+                        "プログラムからこのストリームへの出力がありませんでした",
+                        "生徒がプログラム内で誤ったファイル名を指定したか、"
+                        "実行時エラーが発生した可能性があります。"
+                        + visual_studio_guidance,
                     ),
                 )
             else:
@@ -103,23 +116,15 @@ class TestCaseResultOutputFileViewWidget(QWidget):
         else:
             self._l_messages.hide()
 
-        # プレイスホルダーを表示するか実際の内容を表示するか
-        if content_replacement is None:
-            content_text = actual_content
-            pure_text_shown = True
-        else:
-            content_text = content_replacement
-            pure_text_shown = False
-
-        # テキストをセット
-        if of.has_actual and of.has_expected and pure_text_shown:
+        # 本文には説明文を混ぜず、取得できた実際の内容だけを表示する。
+        if of.has_actual and of.has_expected and not errors:
             self._te.set_data(
-                source_code_text=content_text,
+                source_code_text=actual_content,
                 matched_tokens=of.test_result.matched_tokens,
             )
         else:
             self._te.set_data(
-                source_code_text=content_text,
+                source_code_text=actual_content,
                 matched_tokens=None,  # ハイライトしない
             )
 
