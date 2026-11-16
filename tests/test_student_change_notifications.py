@@ -128,7 +128,7 @@ def test_mark_save_notifies_but_lazy_creation_does_not(student_id: StudentID) ->
         student_mark_repo=repository,
         student_change_event_bus=bus,
     )
-    mark = StudentMark(student_id=student_id, score=50)
+    mark = StudentMark(student_id=student_id, score=50, confirmed=True)
 
     get_service.execute(student_id)
     assert events == []
@@ -154,6 +154,8 @@ def test_project_containers_have_independent_event_buses(student_id: StudentID) 
             project_path_layout=Mock(),
             project_core_io=Mock(),
             readonly_excel_worksheet_gateway=Mock(),
+            app_version_repository=Mock(),
+            resource_usage_io=Mock(),
         )
 
     first = create_container("first")

@@ -9,9 +9,11 @@ from autoprogen.infra.io.executable import ExecutableIO
 from autoprogen.infra.io.files.current_project import CurrentProjectCoreIO
 from autoprogen.infra.io.files.project import ProjectCoreIO
 from autoprogen.infra.io.project_database import ProjectDatabaseIO
+from autoprogen.infra.io.resource_usage import ResourceUsageIO
 from autoprogen.infra.io.student_folder_show_in_explorer import StudentFolderShowInExplorerIO
 from autoprogen.infra.path_layout import ProjectPathLayout
 from autoprogen.infra.repository.current_project import CurrentProjectRepository
+from autoprogen.infra.repository.app_version import AppVersionRepository
 from autoprogen.infra.repository.global_settings import GlobalSettingsRepository
 from autoprogen.infra.repository.project import ProjectRepository
 from autoprogen.infra.repository.project_settings import ProjectSettingsRepository
@@ -23,7 +25,7 @@ from autoprogen.infra.repository.student_mark import StudentMarkRepository
 from autoprogen.infra.repository.student_stage_path_result import StudentStagePathResultRepository
 from autoprogen.infra.repository.testcase_config import TestCaseConfigRepository
 from autoprogen.infra.task.manager import TaskManager
-from autoprogen.service.current_project import CurrentProjectGetService, CurrentProjectSetInitializedService
+from autoprogen.service.current_project import CurrentProjectSetInitializedService
 from autoprogen.domain.service.manaba_report_list_archive_validate import ManabaReportListArchiveValidateService
 from autoprogen.domain.service.manaba_report_list_parser import ManabaReportListParser
 from autoprogen.domain.service.match import MatchGetBestService
@@ -51,7 +53,8 @@ from autoprogen.service.student_submission import StudentSubmissionExistService,
     StudentSubmissionExtractService
 from autoprogen.service.testcase_config import TestCaseConfigCopyService, TestCaseConfigGetExecuteConfigMtimeService, \
     TestCaseConfigGetTestConfigMtimeService
-from autoprogen.usecase.current_project import CurrentProjectSummaryGetUseCase, CurrentProjectInitializeStaticUseCase
+from autoprogen.usecase.current_project import CurrentProjectInitializeStaticUseCase
+from autoprogen.usecase.main_window import MainWindowFacade
 from autoprogen.usecase.project_settings import ProjectSettingsGetUseCase, ProjectSettingsPutUseCase
 from autoprogen.usecase.student import StudentListIDUseCase
 from autoprogen.usecase.student_dynamic import StudentDynamicTakeDiffSnapshotUseCase
@@ -64,9 +67,6 @@ from autoprogen.usecase.student_run_execute import StudentRunExecuteStageUseCase
 from autoprogen.usecase.student_run_next_stage import StudentRunNextStageUseCase
 from autoprogen.usecase.student_run_test import StudentRunTestStageUseCase
 from autoprogen.usecase.student_source_code import StudentSourceCodeGetUseCase
-from autoprogen.usecase.student_stage_result import StudentStageResultClearUseCase
-from autoprogen.usecase.student_submission_folder_show import StudentSubmissionFolderShowUseCase
-from autoprogen.usecase.student_table_load import StudentTableLoadUseCase
 from autoprogen.usecase.test_compile_stage import TestCompileStageUseCase
 from autoprogen.usecase.testcase_config import TestCaseDeleteUseCase, TestCaseGetUseCase, TestCaseListIDUseCase, \
     TestCasePutUseCase
@@ -85,6 +85,8 @@ class ProjectContainer:
             project_path_layout: ProjectPathLayout,
             project_core_io: ProjectCoreIO,
             readonly_excel_worksheet_gateway: ReadonlyExcelWorksheetGateway,
+            app_version_repository: AppVersionRepository,
+            resource_usage_io: ResourceUsageIO,
     ) -> None:
         self._project_id = project_id
         self._match_get_best_service = match_get_best_service
@@ -93,6 +95,8 @@ class ProjectContainer:
         self._project_path_layout = project_path_layout
         self._project_core_io = project_core_io
         self._readonly_excel_worksheet_gateway = readonly_excel_worksheet_gateway
+        self._app_version_repository = app_version_repository
+        self._resource_usage_io = resource_usage_io
 
     @property
     def project_id(self) -> ProjectID:
@@ -183,12 +187,6 @@ class ProjectContainer:
     def task_manager(self):
         return TaskManager(
             global_settings_repo=self._global_settings_repository,
-        )
-
-    @cached_property
-    def current_project_get_service(self):
-        return CurrentProjectGetService(
-            current_project_repo=self.current_project_repository,
         )
 
     @cached_property
@@ -485,12 +483,6 @@ class ProjectContainer:
         )
 
     @cached_property
-    def current_project_summary_get_usecase(self):
-        return CurrentProjectSummaryGetUseCase(
-            current_project_get_service=self.current_project_get_service,
-        )
-
-    @cached_property
     def current_project_initialize_static_usecase(self):
         return CurrentProjectInitializeStaticUseCase(
             manaba_report_archive_gateway=self.manaba_report_archive_gateway,
@@ -531,14 +523,27 @@ class ProjectContainer:
         )
 
     @cached_property
-    def student_table_load_usecase(self) -> StudentTableLoadUseCase:
-        """学生テーブルの全件ロード処理を返す。"""
-        return StudentTableLoadUseCase(
-            student_repo=self.student_repository,
+    def main_window_facade(self) -> MainWindowFacade:
+        """現在のプロジェクトに紐づくメイン画面Facadeを返す。"""
+        return MainWindowFacade(
+            current_project_repository=self.current_project_repository,
+            student_folder_show_in_explorer_io=self.student_folder_show_in_explorer_io,
+            student_repository=self.student_repository,
             stage_path_list_sub_service=self.stage_path_list_sub_service,
-            student_stage_path_result_repo=self.student_stage_path_result_repository,
+            student_stage_path_result_repository=(
+                self.student_stage_path_result_repository
+            ),
             student_mark_get_sub_service=self.student_mark_get_sub_service,
             stage_error_text_formatter=self.stage_error_text_formatter,
+            student_mark_get_usecase=self.student_mark_get_usecase,
+            student_mark_put_usecase=self.student_mark_put_usecase,
+            student_list_id_usecase=self.student_list_id_usecase,
+            student_run_next_stage_usecase=self.student_run_next_stage_usecase,
+            student_stage_result_clear_service=self.student_stage_result_clear_service,
+            app_version_repository=self._app_version_repository,
+            resource_usage_io=self._resource_usage_io,
+            student_change_event_bus=self.student_change_event_bus,
+            task_manager=self.task_manager,
         )
 
     @cached_property
@@ -601,12 +606,6 @@ class ProjectContainer:
     def student_mark_put_usecase(self):
         return StudentMarkPutUseCase(
             student_mark_put_service=self.student_mark_put_service,
-        )
-
-    @cached_property
-    def student_submission_folder_show_usecase(self):
-        return StudentSubmissionFolderShowUseCase(
-            student_folder_show_in_explorer_io=self.student_folder_show_in_explorer_io,
         )
 
     @cached_property
@@ -681,12 +680,6 @@ class ProjectContainer:
             student_run_execute_stage_usecase=self.student_run_execute_stage_usecase,
             student_run_test_stage_usecase=self.student_run_test_stage_usecase,
             student_stage_path_result_check_outdated_service=self.student_stage_path_result_check_outdated_service,
-        )
-
-    @cached_property
-    def student_stage_result_clear_usecase(self):
-        return StudentStageResultClearUseCase(
-            student_stage_result_clear_service=self.student_stage_result_clear_service,
         )
 
     @cached_property

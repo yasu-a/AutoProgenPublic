@@ -39,16 +39,28 @@ def test_initialized_table_stays_idle_and_reflects_mark_change(
         return original_create_connection()
 
     monkeypatch.setattr(database_io, "_create_connection", count_database_connection)
-    table = StudentTableWidget(
-        student_change_event_bus=project_container.student_change_event_bus,
-        student_table_load_usecase=project_container.student_table_load_usecase,
-    )
+    from autoprogen.control.qt_student_change_bridge import QtStudentChangeBridge
+
+    table = StudentTableWidget()
+    bridge = None
 
     try:
-        rows = project_container.student_table_load_usecase.execute(
+        rows = project_container.main_window_facade.load_student_table(
             progress_callback=lambda _: None,
         )
         table.apply_loaded_rows(rows)
+        bridge = QtStudentChangeBridge(
+            table,
+            student_ids=[row.student_id for row in rows],
+            student_change_event_bus=project_container.student_change_event_bus,
+        )
+        bridge.student_changed.connect(
+            lambda changed_student_id: table.replace_loaded_row(
+                project_container.main_window_facade.load_student_table_row(
+                    changed_student_id,
+                ),
+            ),
+        )
         assert rows
 
         # 初回ロード後に放置しても、旧20msポーリングのようなDB接続を発生させない。
@@ -66,7 +78,11 @@ def test_initialized_table_stays_idle_and_reflects_mark_change(
         # 変更通知から対象行の表示反映までを、利用者が待たされない時間内で確認する。
         started_at = perf_counter()
         project_container.student_mark_put_usecase.execute(
-            StudentMark(student_id=student_id, score=new_score),
+            StudentMark(
+                student_id=student_id,
+                score=new_score,
+                confirmed=True,
+            ),
         )
         while not changed_rows and perf_counter() - started_at < 0.5:
             QTest.qWait(10)
@@ -78,5 +94,5 @@ def test_initialized_table_stays_idle_and_reflects_mark_change(
         assert table.model().data(score_index, Qt.DisplayRole) == str(new_score)
         assert elapsed < 0.5
     finally:
-        table.shutdown()
-
+        if bridge is not None:
+            bridge.stop()

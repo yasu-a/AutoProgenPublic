@@ -91,7 +91,7 @@ def test_overwrite_preserves_explicit_unconfirmed(
 ) -> None:
     """確定済みの点数を未確定で上書きしても勝手に確定しない。"""
     student_id = student_ids[0]
-    repo.put(StudentMark(student_id, 80))
+    repo.put(StudentMark(student_id, 80, confirmed=True))
     repo.put(StudentMark(student_id, 80, confirmed=False))
     assert repo.get(student_id).score == 80
     assert not repo.get(student_id).confirmed
@@ -104,7 +104,7 @@ def test_list_multiple_students(
     """複数学生の点数と確定状態を独立して保持する。"""
     first, second = student_ids
     repo.put(StudentMark(first, 50, confirmed=False))
-    repo.put(StudentMark(second, 0))
+    repo.put(StudentMark(second, 0, confirmed=True))
     marks = {mark.student_id: mark for mark in repo.list()}
     assert set(marks) == set(student_ids)
     assert marks[first].score == 50
@@ -158,7 +158,7 @@ def test_foreign_key_is_enforced(
 ) -> None:
     """登録のない学生に採点結果を保存すると外部キー違反になる。"""
     with pytest.raises(sqlite3.IntegrityError):
-        repo.put(StudentMark(StudentID("25D5203184K"), 80))
+        repo.put(StudentMark(StudentID("25D5203184K"), 80, confirmed=True))
 
 
 def test_reopen_preserves_unconfirmed(

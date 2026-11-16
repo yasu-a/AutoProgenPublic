@@ -5,7 +5,6 @@ import pytest
 from autoprogen.domain.model.stage import BuildStage, CompileStage, ExecuteStage, TestStage
 from autoprogen.domain.model.student_mark import StudentMark
 from autoprogen.domain.model.value import StudentID
-from autoprogen.service.student_change_event_bus import StudentChangeEventBus
 from autoprogen.usecase.dto.student_table_cell_data import (
     StudentErrorCellData,
     StudentErrorCellDataTextEntry,
@@ -13,7 +12,7 @@ from autoprogen.usecase.dto.student_table_cell_data import (
     StudentNameCellData,
     StudentStageStateCellData,
 )
-from autoprogen.usecase.student_table_load import StudentTableRowSnapshot
+from autoprogen.usecase.main_window import StudentTableRowSnapshot
 
 
 TestStage.__test__ = False
@@ -47,16 +46,13 @@ def _create_table(entries: list[StudentErrorCellDataTextEntry]):
         error_cell=StudentErrorCellData(student_id, entries),
         mark=StudentMark(student_id=student_id, score=None),
     )
-    table = StudentTableWidget(
-        student_change_event_bus=StudentChangeEventBus(),
-        student_table_load_usecase=Mock(),
-    )
+    table = StudentTableWidget()
     table.apply_loaded_rows([row])
     return table, student_id
 
 
-def test_error_column_click_emits_student_id(qt_app) -> None:
-    """エラーがあるセルを押すと対応学生の通知を送る。"""
+def test_row_selection_emits_selected_student(qt_app) -> None:
+    """セルの種類にかかわらず行選択として対応学生を通知する。"""
     from PyQt5.QtCore import QItemSelectionModel
     from autoprogen.control.widget_student_table import StudentTableColumns
 
@@ -64,30 +60,25 @@ def test_error_column_click_emits_student_id(qt_app) -> None:
         StudentErrorCellDataTextEntry("検出しました", "詳細文"),
     ])
     emitted = []
-    table.error_cell_triggered.connect(emitted.append)
+    table.student_selection_changed.connect(
+        lambda: emitted.append(table.selected_student_id())
+    )
     index = table.model().index(0, StudentTableColumns.COL_ERROR)
-    table.setCurrentIndex(index)
-    table.selectionModel().select(index, QItemSelectionModel.ClearAndSelect)
-    table._on_cell_triggered()
+    table.selectionModel().setCurrentIndex(
+        index,
+        QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows,
+    )
     assert emitted == [student_id]
-    table.shutdown()
     table.close()
 
 
-def test_empty_error_column_does_not_open_dialog(qt_app) -> None:
-    """エラーのないセルを押しても通知しない。"""
-    from PyQt5.QtCore import QItemSelectionModel
-    from autoprogen.control.widget_student_table import StudentTableColumns
+def test_table_uses_single_row_selection(qt_app) -> None:
+    """学生テーブルが列単位や複数行ではなく単一行を選択する。"""
+    from PyQt5.QtWidgets import QAbstractItemView
 
     table, _ = _create_table([])
-    emitted = []
-    table.error_cell_triggered.connect(emitted.append)
-    index = table.model().index(0, StudentTableColumns.COL_ERROR)
-    table.setCurrentIndex(index)
-    table.selectionModel().select(index, QItemSelectionModel.ClearAndSelect)
-    table._on_cell_triggered()
-    assert emitted == []
-    table.shutdown()
+    assert table.selectionBehavior() == QAbstractItemView.SelectRows
+    assert table.selectionMode() == QAbstractItemView.SingleSelection
     table.close()
 
 

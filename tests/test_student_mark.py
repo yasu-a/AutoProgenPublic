@@ -22,9 +22,15 @@ def test_unmarked_is_unconfirmed(student_id: StudentID) -> None:
 
 
 @pytest.mark.parametrize("score", [0, 50, 99])
-def test_marked_defaults_to_confirmed(student_id: StudentID, score: int) -> None:
-    """0点を含む採点済みの点数は、既定で確定になる。"""
-    mark = StudentMark(student_id=student_id, score=score)
+def test_marked_requires_explicit_confirmation(
+        student_id: StudentID,
+        score: int,
+) -> None:
+    """点数がある場合は確定状態の明示を必須とする。"""
+    with pytest.raises(ValueError, match="confirmed is required"):
+        StudentMark(student_id=student_id, score=score)
+
+    mark = StudentMark(student_id=student_id, score=score, confirmed=True)
     assert mark.score == score
     assert mark.marked
     assert mark.confirmed
@@ -55,7 +61,7 @@ def test_cannot_confirm_unmarked(student_id: StudentID) -> None:
 
 def test_confirmation_can_be_toggled(student_id: StudentID) -> None:
     """採点済みなら点数を保持したまま確定を解除・設定できる。"""
-    mark = StudentMark(student_id=student_id, score=50)
+    mark = StudentMark(student_id=student_id, score=50, confirmed=True)
     mark.confirmed = False
     assert mark.score == 50
     assert mark.marked
@@ -64,12 +70,17 @@ def test_confirmation_can_be_toggled(student_id: StudentID) -> None:
     assert mark.confirmed
 
 
-def test_score_update_confirms_and_clearing_unmarks(student_id: StudentID) -> None:
-    """点数の再入力では確定し、Noneへの変更で未採点に戻る。"""
+def test_score_update_preserves_confirmation_and_clearing_unmarks(
+        student_id: StudentID,
+) -> None:
+    """点数変更では確定状態を維持し、Noneへの変更で確定を解除する。"""
     mark = StudentMark(student_id=student_id, score=20, confirmed=False)
     mark.score = 0
     assert mark.score == 0
     assert mark.marked
+    assert not mark.confirmed
+    mark.confirmed = True
+    mark.score = 75
     assert mark.confirmed
     mark.score = None
     assert mark.score is None
@@ -77,7 +88,7 @@ def test_score_update_confirms_and_clearing_unmarks(student_id: StudentID) -> No
     assert not mark.confirmed
     mark.score = 75
     assert mark.score == 75
-    assert mark.confirmed
+    assert not mark.confirmed
 
 
 def test_repr_includes_confirmation(student_id: StudentID) -> None:

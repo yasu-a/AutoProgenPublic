@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+
 from autoprogen.domain.model.student_mark import StudentMark
 from autoprogen.domain.model.value import StudentID
 from autoprogen.service.student_mark import StudentMarkGetSubService, StudentMarkPutService, \
@@ -36,5 +38,28 @@ class StudentMarkListUseCase:
     ):
         self._student_mark_list_service = student_mark_list_service
 
-    def execute(self) -> list[StudentMark]:
-        return self._student_mark_list_service.execute()
+    def execute(
+            self,
+            *,
+            student_ids: Iterable[StudentID] | None = None,
+            confirmed: bool | None = None,
+    ) -> list[StudentMark]:
+        """指定された学生IDと確定状態に一致する採点結果を一覧順で返す。"""
+        student_marks = self._student_mark_list_service.execute()
+
+        if student_ids is not None:
+            target_student_ids = frozenset(student_ids)
+            student_marks = [
+                student_mark
+                for student_mark in student_marks
+                if student_mark.student_id in target_student_ids
+            ]
+
+        if confirmed is not None:
+            student_marks = [
+                student_mark
+                for student_mark in student_marks
+                if student_mark.confirmed is confirmed
+            ]
+
+        return student_marks

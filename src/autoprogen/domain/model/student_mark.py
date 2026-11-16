@@ -10,13 +10,17 @@ class StudentMark:
         score: int | None,
         confirmed: bool | None = None,
     ) -> None:
-        """確定状態を省略した場合は、採点済みを確定として扱う。"""
+        """点数と、採点済みの場合は明示された確定状態を保持する。"""
+        if score is None:
+            if confirmed:
+                raise ValueError("Cannot confirm an unmarked student")
+            confirmed = False
+        elif confirmed is None:
+            raise ValueError("confirmed is required when score is set")
+
         self._student_id = student_id
         self._score = score
-        self._confirmed = score is not None if confirmed is None else confirmed
-
-        if self._confirmed and self._score is None:
-            raise ValueError("Cannot confirm an unmarked student")
+        self._confirmed = confirmed
 
     @property
     def student_id(self) -> StudentID:
@@ -47,9 +51,10 @@ class StudentMark:
 
     @score.setter
     def score(self, score: int | None) -> None:
-        """点数の変更と同時に確定状態を更新する。"""
+        """点数を更新し、未採点になった場合だけ確定を解除する。"""
         self._score = score
-        self._confirmed = score is not None
+        if score is None:
+            self._confirmed = False
 
     def __repr__(self) -> str:
         """デバッグ用の文字列表現を返す。"""

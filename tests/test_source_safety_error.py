@@ -119,7 +119,7 @@ def _make_navigator_for_detail(error):
     app_container.global_settings_get_usecase.execute.return_value = global_settings
 
     project_container = Mock()
-    project_container.student_table_load_usecase.execute_row.return_value = row
+    project_container.main_window_facade.load_student_table_row.return_value = row
     project_container.student_source_code_get_usecase.execute.return_value = _source_code()
     project_container.project_settings_get_usecase.execute.return_value = (
         ProjectSettings.create_default()

@@ -2,40 +2,39 @@ from PyQt5.QtCore import QObject
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel
 
 from autoprogen.res.font import get_font
-from autoprogen.usecase.app_version import AppVersionCheckIsStableUseCase
 
 
 class UnstableVersionNotificationStatusBarWidget(QWidget):
-    def __init__(self, parent: QObject = None, *, app_version_check_is_stable_usecase: AppVersionCheckIsStableUseCase):
+    """テスト版であることをメイン画面のステータスバーへ表示する。"""
+
+    def __init__(
+            self,
+            parent: QObject = None,
+    ) -> None:
+        """テスト版を通知するラベルを構築する。"""
         super().__init__(parent)
-        self._app_version_check_is_stable_usecase = app_version_check_is_stable_usecase
-
         self._init_ui()
-        self._init_signals()
 
-    def _init_ui(self):
-        is_stable = self._app_version_check_is_stable_usecase.execute()
-
-        # noinspection PyUnresolvedReferences
-        if not is_stable:
-            self.setStyleSheet(
-                "QLabel {"
-                "   color: #ffffff;"
-                "   background-color: #cc0000;"
-                "   border-radius: 4px;"
-                "   padding: 2px;"
-                "}"
-            )
+    def _init_ui(self) -> None:
+        """テスト版の警告ラベルを配置する。"""
+        self.setStyleSheet(
+            "QLabel {"
+            "   color: #ffffff;"
+            "   background-color: #cc0000;"
+            "   border-radius: 4px;"
+            "   padding: 2px;"
+            "}"
+        )
 
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
-        if not is_stable:
-            self._l_notif = QLabel(self)
-            self._l_notif.setText("このバージョンはテスト版です")
-            self._l_notif.setFont(get_font(small=True))
-            layout.addWidget(self._l_notif)
+        self._l_notif = QLabel(self)
+        self._l_notif.setText("このバージョンはテスト版です")
+        self._l_notif.setFont(get_font(small=True))
+        layout.addWidget(self._l_notif)
 
-    def _init_signals(self):
-        pass
+    def set_data(self, is_stable: bool) -> None:
+        """安定版では通知を隠し、テスト版では表示する。"""
+        self.setVisible(not is_stable)

@@ -430,9 +430,8 @@ def test_grading_workflow_msvc(
 
     # 4. クリア。
     for student_id_text in STUDENT_INFO:
-        project_container.student_stage_result_clear_usecase.execute(
+        project_container.student_stage_result_clear_service.execute(
             student_id=StudentID(student_id_text),
-            stop_producer=lambda: False,
         )
     _assert_cleared(project_container)
     _report("stage results cleared and verified")
@@ -453,6 +452,7 @@ def test_grading_workflow_msvc(
             StudentMark(
                 student_id=StudentID(student_id_text),
                 score=score,
+                confirmed=True,
             )
         )
     _assert_marks(project_container)

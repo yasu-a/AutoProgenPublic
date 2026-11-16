@@ -87,7 +87,7 @@ class Navigator(INavigator):
         from autoprogen.control.widget_student_error_detail import StudentErrorDetailWidget
         assert self._current_project_container is not None
         container = self._current_project_container
-        row = container.student_table_load_usecase.execute_row(student_id)
+        row = container.main_window_facade.load_student_table_row(student_id)
         if not row.error_cell.text_entries:
             return None
         # 共有ステージの同一エラーが複数パスに保存されていても一度だけ表示する。
@@ -238,16 +238,30 @@ class Navigator(INavigator):
         dialog.exec_()
 
     def open_scoring_dialog(self, parent: QWidget) -> None:
-        """全学生を対象として採点画面を開く。"""
+        """未確定の学生を一覧順に対象として採点画面を開く。"""
         assert self._current_project_container is not None
+        student_marks = (
+            self._current_project_container.student_mark_list_usecase.execute(
+                confirmed=False,
+            )
+        )
         self._open_scoring_dialog(
             parent,
-            self._current_project_container.student_list_id_usecase.execute(),
+            [student_mark.student_id for student_mark in student_marks],
         )
 
     def open_scoring_dialog_for_student(self, parent: QWidget, student_id: StudentID) -> None:
         """指定された学生だけを対象として採点画面を開く。"""
-        self._open_scoring_dialog(parent, [student_id])
+        assert self._current_project_container is not None
+        student_marks = (
+            self._current_project_container.student_mark_list_usecase.execute(
+                student_ids=(student_id,),
+            )
+        )
+        self._open_scoring_dialog(
+            parent,
+            [student_mark.student_id for student_mark in student_marks],
+        )
 
     def _open_scoring_dialog(
             self,
@@ -332,8 +346,7 @@ class Navigator(INavigator):
         return self._replace_main_window(
             lambda: MainWindow(
                 navigator=self,
-                app_container=self._app_container,
-                project_container=self._current_project_container,
+                main_window_facade=self._current_project_container.main_window_facade,
             )
         )
 

@@ -62,7 +62,7 @@ class ToolBar(QToolBar):
 
         self.addSeparator()
 
-        self._a_mark = QAction(get_icon("marker"), "採点", self)
+        self._a_mark = QAction(get_icon("marker"), "未確定を採点", self)
         self._a_mark.setObjectName("mark")
         self._a_mark.setEnabled(False)
         self.addAction(self._a_mark)

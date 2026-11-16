@@ -30,11 +30,10 @@ def test_main_window_loads_table_with_progress_dialog(
 
     monkeypatch.setattr(MainWindow, "_init_ui", init_ui)
     monkeypatch.setattr(MainWindow, "_init_signals", init_signals)
-    project_container = Mock()
+    facade = Mock()
     window = MainWindow(
         navigator=Mock(),
-        app_container=Mock(),
-        project_container=project_container,
+        main_window_facade=facade,
     )
     window.show()
     QTest.qWait(30)
@@ -43,7 +42,7 @@ def test_main_window_loads_table_with_progress_dialog(
         parent=window,
         title="学生テーブルの読み込み",
         initial_message="学生の表示データを読み込み中...",
-        task_func=project_container.student_table_load_usecase.execute,
+        task_func=facade.load_student_table,
     )
     window._w_student_table.apply_loaded_rows.assert_called_once_with(rows)
     window.hide()

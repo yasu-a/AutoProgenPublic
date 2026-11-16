@@ -5,6 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from autoprogen.control.qt_student_change_bridge import QtStudentChangeBridge
 from autoprogen.domain.model.value import StudentID
 from autoprogen.service.student_change_event_bus import StudentChangeEventBus
 
@@ -88,17 +89,22 @@ def test_student_table_replaces_only_the_notified_row(qt_app) -> None:
     second_id = StudentID("26HG209871C")
     bus = StudentChangeEventBus()
     row_loader = Mock()
-    table = StudentTableWidget(
-        student_change_event_bus=bus,
-        student_table_load_usecase=row_loader,
-    )
-    from autoprogen.usecase.student_table_load import StudentTableRowSnapshot
+    table = StudentTableWidget()
+    from autoprogen.usecase.main_window import StudentTableRowSnapshot
 
     first_row = Mock(spec=StudentTableRowSnapshot, student_id=first_id)
     second_row = Mock(spec=StudentTableRowSnapshot, student_id=second_id)
     updated_second_row = Mock(spec=StudentTableRowSnapshot, student_id=second_id)
     row_loader.execute_row.return_value = updated_second_row
     table.apply_loaded_rows([first_row, second_row])
+    bridge = QtStudentChangeBridge(
+        table,
+        student_ids=[first_id, second_id],
+        student_change_event_bus=bus,
+    )
+    bridge.student_changed.connect(
+        lambda student_id: table.replace_loaded_row(row_loader.execute_row(student_id)),
+    )
     changed_rows: list[int] = []
     table.model().dataChanged.connect(lambda start, _: changed_rows.append(start.row()))
 
@@ -113,7 +119,7 @@ def test_student_table_replaces_only_the_notified_row(qt_app) -> None:
     assert table.model()._student_ids == [first_id, second_id]
     assert table._model_data_provider._provider._row_snapshots[first_id] is first_row
     assert table._model_data_provider._provider._row_snapshots[second_id] is updated_second_row
-    table.shutdown()
+    bridge.stop()
     bus.notify(first_id)
     qt_app.processEvents()
     assert changed_rows == [1]
@@ -133,7 +139,7 @@ def test_loaded_table_uses_snapshot_until_student_changes(qt_app) -> None:
         StudentNameCellData,
         StudentStageStateCellData,
     )
-    from autoprogen.usecase.student_table_load import StudentTableRowSnapshot
+    from autoprogen.usecase.main_window import StudentTableRowSnapshot
 
     student_id = StudentID("21D5109047B")
     stage_cells = {
@@ -146,15 +152,22 @@ def test_loaded_table_uses_snapshot_until_student_changes(qt_app) -> None:
         name_cell=StudentNameCellData(student_id, "ロード済みの名前"),
         stage_cells=stage_cells,
         error_cell=StudentErrorCellData(student_id, []),
-        mark=StudentMark(student_id=student_id, score=50),
+        mark=StudentMark(student_id=student_id, score=50, confirmed=True),
     )
     row_loader = Mock()
     bus = StudentChangeEventBus()
-    table = StudentTableWidget(
-        student_change_event_bus=bus,
-        student_table_load_usecase=row_loader,
-    )
+    table = StudentTableWidget()
     table.apply_loaded_rows([row])
+    bridge = QtStudentChangeBridge(
+        table,
+        student_ids=[student_id],
+        student_change_event_bus=bus,
+    )
+    bridge.student_changed.connect(
+        lambda changed_student_id: table.replace_loaded_row(
+            row_loader.execute_row(changed_student_id),
+        ),
+    )
 
     for column in range(table.model().columnCount()):
         table.model().data(table.model().index(0, column), Qt.DisplayRole)
@@ -178,4 +191,4 @@ def test_loaded_table_uses_snapshot_until_student_changes(qt_app) -> None:
     assert changed_rows == [0]
     assert table.model().data(table.model().index(0, 1), Qt.DisplayRole) == "更新後の名前"
     row_loader.execute_row.assert_called_once_with(student_id)
-    table.shutdown()
+    bridge.stop()

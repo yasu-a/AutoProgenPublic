@@ -75,6 +75,17 @@ def test_single_student_hides_navigation_and_ignores_student_keys(
     dialog.set_state.assert_not_called()
 
 
+def test_dialog_confirmation_changes_border(qt_app: QApplication) -> None:
+    """確定済みの場合だけ採点ダイアログ全体を緑枠で表示する。"""
+    dialog = _create_mark_dialog([StudentID("21D5109047B")])
+
+    dialog._w_mark_score.confirmation_changed.emit(True)
+    assert "#75a300" in dialog.styleSheet()
+
+    dialog._w_mark_score.confirmation_changed.emit(False)
+    assert dialog.styleSheet() == ""
+
+
 def test_multiple_students_preserve_order_and_allow_navigation(
         qt_app: QApplication,
 ) -> None:
@@ -117,7 +128,9 @@ def test_student_switch_and_close_keep_saving_modified_score(
     dialog._MarkDialog__reflect_state = Mock()
     dialog._w_mark_score = Mock()
     dialog._w_mark_score.is_modified.return_value = True
-    dialog._w_mark_score.get_data.return_value = StudentMark(first, 50)
+    dialog._w_mark_score.get_data.return_value = StudentMark(
+        first, 50, confirmed=True,
+    )
 
     dialog.set_state(MarkDialogState(student_id=second))
     saved = dialog._student_mark_put_usecase.execute.call_args.args[0]
@@ -125,7 +138,9 @@ def test_student_switch_and_close_keep_saving_modified_score(
     assert saved.score == 50
 
     dialog._student_mark_put_usecase.execute.reset_mock()
-    dialog._w_mark_score.get_data.return_value = StudentMark(second, 60)
+    dialog._w_mark_score.get_data.return_value = StudentMark(
+        second, 60, confirmed=True,
+    )
     dialog.closeEvent(QCloseEvent())
     saved = dialog._student_mark_put_usecase.execute.call_args.args[0]
     assert saved.student_id == second
@@ -136,13 +151,17 @@ def test_navigator_uses_common_launch_path_and_skips_empty_list(
         qt_app: QApplication,
         monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Navigatorが全学生・個別採点を同じ生成処理へ渡し、空一覧を開かない。"""
+    """Navigatorが未確定・個別採点を同じ生成処理へ渡し、空一覧を開かない。"""
     from autoprogen.control import dialog_mark
 
     first = StudentID("21D5109047B")
     second = StudentID("24A0007521M")
+    third = StudentID("25B0000001C")
     project_container = Mock()
-    project_container.student_list_id_usecase.execute.return_value = [second, first]
+    project_container.student_mark_list_usecase.execute.return_value = [
+        StudentMark(second, 80, confirmed=False),
+        StudentMark(third, None),
+    ]
     app_container = Mock()
     navigator = Navigator(app_container=app_container)
     navigator._current_project_container = project_container
@@ -156,17 +175,27 @@ def test_navigator_uses_common_launch_path_and_skips_empty_list(
     monkeypatch.setattr(dialog_mark, "MarkDialog", dialog_type)
 
     navigator.open_scoring_dialog(parent)
-    assert dialog_type.call_args.kwargs["student_ids"] == [second, first]
+    assert dialog_type.call_args.kwargs["student_ids"] == [second, third]
+    project_container.student_mark_list_usecase.execute.assert_called_once_with(
+        confirmed=False,
+    )
     dialog.states.create_state_of_first_student.assert_called_once_with()
     dialog.exec_.assert_called_once_with()
 
     dialog_type.reset_mock()
     dialog.reset_mock()
+    project_container.student_mark_list_usecase.execute.reset_mock()
+    project_container.student_mark_list_usecase.execute.return_value = [
+        StudentMark(first, 90, confirmed=True),
+    ]
     navigator.open_scoring_dialog_for_student(parent, first)
     assert dialog_type.call_args.kwargs["student_ids"] == [first]
+    project_container.student_mark_list_usecase.execute.assert_called_once_with(
+        student_ids=(first,),
+    )
 
     dialog_type.reset_mock()
-    project_container.student_list_id_usecase.execute.return_value = []
+    project_container.student_mark_list_usecase.execute.return_value = []
     navigator.open_scoring_dialog(parent)
     dialog_type.assert_not_called()
 
