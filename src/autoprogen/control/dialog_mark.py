@@ -23,7 +23,6 @@ from autoprogen.usecase.dto.student_mark_view_data import (
     StudentMarkSummaryViewData,
 )
 from autoprogen.usecase.global_settings import GlobalSettingsGetUseCase
-from autoprogen.usecase.student import StudentListIDUseCase
 from autoprogen.usecase.student_mark import StudentMarkGetUseCase, StudentMarkPutUseCase
 from autoprogen.usecase.student_mark_view_data import (
     StudentMarkViewDataGetTestResultUseCase,
@@ -86,6 +85,11 @@ class MarkStudentControlWidget(QWidget):
         else:
             self._l_student_id.setText(str(student.student_id))
             self._l_student_name.setText(student.name)
+
+    def set_navigation_visible(self, visible: bool) -> None:
+        """学生間を移動できる場合だけ前後移動ボタンを表示する。"""
+        self._b_prev.setVisible(visible)
+        self._b_next.setVisible(visible)
 
 
 class MarkTestCaseControlWidget(QWidget):
@@ -162,6 +166,25 @@ class MarkDialogStateCreator:
         self._testcase_ids = testcase_ids
         self._student_mark_view_data_get_test_result_usecase = (
             student_mark_view_data_get_test_result_usecase
+        )
+
+    def can_move_between_students(self) -> bool:
+        """採点対象に複数の学生が含まれるかを返す。"""
+        return len(self._student_ids) > 1
+
+    def can_move_to_prev_student(self) -> bool:
+        """現在の学生より前に採点対象の学生がいるかを返す。"""
+        if self._state.student_id not in self._student_ids:
+            return False
+        return self._student_ids.index(self._state.student_id) > 0
+
+    def can_move_to_next_student(self) -> bool:
+        """現在の学生より後に採点対象の学生がいるかを返す。"""
+        if self._state.student_id not in self._student_ids:
+            return bool(self._student_ids)
+        return (
+            self._student_ids.index(self._state.student_id)
+            < len(self._student_ids) - 1
         )
 
     @property
@@ -342,8 +365,8 @@ class MarkDialog(QDialog):
         self,
         parent: QObject = None,
         *,
+        student_ids: list[StudentID],
         global_settings_get_usecase: GlobalSettingsGetUseCase,
-        student_list_id_usecase: StudentListIDUseCase,
         testcase_config_list_id_usecase: TestCaseListIDUseCase,
         student_mark_view_data_get_mark_summary_usecase: StudentMarkViewDataGetMarkSummaryUseCase,
         student_mark_view_data_get_test_result_usecase: StudentMarkViewDataGetTestResultUseCase,
@@ -351,10 +374,14 @@ class MarkDialog(QDialog):
         student_mark_get_usecase: StudentMarkGetUseCase,
         student_mark_put_usecase: StudentMarkPutUseCase,
     ):
-        """依存関係を受け取り、画面部品と初期状態を構築する。"""
+        """採点対象の学生一覧と依存関係から画面を構築する。"""
         super().__init__(parent)
+        if not student_ids:
+            raise ValueError("MarkDialog requires at least one student")
+
+        # 呼び出し後の一覧変更が採点対象へ影響しないよう、受け取った順序のまま複製する。
+        self._student_ids = list(student_ids)
         self._global_settings_get_usecase = global_settings_get_usecase
-        self._student_list_id_usecase = student_list_id_usecase
         self._testcase_config_list_id_usecase = testcase_config_list_id_usecase
         self._student_mark_view_data_get_mark_summary_usecase = (
             student_mark_view_data_get_mark_summary_usecase
@@ -366,8 +393,6 @@ class MarkDialog(QDialog):
         self._student_mark_get_usecase = student_mark_get_usecase
         self._student_mark_put_usecase = student_mark_put_usecase
 
-        self._student_ids: list[StudentID] = self._student_list_id_usecase.execute(
-        )
         self._testcase_ids: list[TestCaseID] = self._testcase_config_list_id_usecase.execute(
         )
         self._state = MarkDialogState()
@@ -392,6 +417,9 @@ class MarkDialog(QDialog):
         layout_middle.addLayout(layout_middle_left)
 
         self._w_student_control = MarkStudentControlWidget(self)
+        self._w_student_control.set_navigation_visible(
+            self.states.can_move_between_students()
+        )
         layout_middle_left.addWidget(self._w_student_control)
 
         layout_middle_left_inner = QHBoxLayout()
@@ -627,12 +655,16 @@ class MarkDialog(QDialog):
     @pyqtSlot()
     def __w_student_control_next_student_triggered(self):
         """次の学生へ移動する。"""
+        if not self.states.can_move_to_next_student():
+            return
         new_state = self.states.create_state_of_next_student()
         self.set_state(new_state)
 
     @pyqtSlot()
     def __w_student_control_prev_student_triggered(self):
         """前の学生へ移動する。"""
+        if not self.states.can_move_to_prev_student():
+            return
         new_state = self.states.create_state_of_prev_student()
         self.set_state(new_state)
 
@@ -662,9 +694,15 @@ class MarkDialog(QDialog):
             new_state = self.states.create_state_of_prev_testcase()
         elif key == Qt.Key_E:
             new_state = self.states.create_state_of_next_testcase()
-        elif key == Qt.Key_A or key == Qt.Key_Left:
+        elif (
+            self.states.can_move_to_prev_student()
+            and (key == Qt.Key_A or key == Qt.Key_Left)
+        ):
             new_state = self.states.create_state_of_prev_student()
-        elif key == Qt.Key_D or key == Qt.Key_Right:
+        elif (
+            self.states.can_move_to_next_student()
+            and (key == Qt.Key_D or key == Qt.Key_Right)
+        ):
             new_state = self.states.create_state_of_next_student()
         elif key == Qt.Key_Z:
             new_state = self.states.create_state_of_prev_file()

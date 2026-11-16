@@ -105,7 +105,8 @@ class Navigator(INavigator):
         if safety_errors:
             from autoprogen.control.widget_source_safety_error import SourceSafetyErrorWidget
             try:
-                source_code = container.student_source_code_get_usecase.execute(student_id)
+                source_code = container.student_source_code_get_usecase.execute(
+                    student_id)
             except UnicodeError:
                 source_code = None
             global_settings = self._app_container.global_settings_get_usecase.execute()
@@ -156,7 +157,8 @@ class Navigator(INavigator):
         container = self._current_project_container
         try:
             # 確認前に保存済みソースが表示内容と一致しているか検証する。
-            current_source_code = container.student_source_code_get_usecase.execute(student_id)
+            current_source_code = container.student_source_code_get_usecase.execute(
+                student_id)
             if (
                     current_source_code != displayed_source_code
                     or current_source_code.calculate_sha256() != expected_sha256
@@ -180,7 +182,8 @@ class Navigator(INavigator):
                 return
 
             # 確認中にソースが変更されていないか保存直前に再検証する。
-            current_source_code = container.student_source_code_get_usecase.execute(student_id)
+            current_source_code = container.student_source_code_get_usecase.execute(
+                student_id)
             if (
                     current_source_code != displayed_source_code
                     or current_source_code.calculate_sha256() != expected_sha256
@@ -235,12 +238,32 @@ class Navigator(INavigator):
         dialog.exec_()
 
     def open_scoring_dialog(self, parent: QWidget) -> None:
+        """全学生を対象として採点画面を開く。"""
+        assert self._current_project_container is not None
+        self._open_scoring_dialog(
+            parent,
+            self._current_project_container.student_list_id_usecase.execute(),
+        )
+
+    def open_scoring_dialog_for_student(self, parent: QWidget, student_id: StudentID) -> None:
+        """指定された学生だけを対象として採点画面を開く。"""
+        self._open_scoring_dialog(parent, [student_id])
+
+    def _open_scoring_dialog(
+            self,
+            parent: QWidget,
+            student_ids: list[StudentID],
+    ) -> None:
+        """指定順の学生を対象として共通の採点画面を開く。"""
         from autoprogen.control.dialog_mark import MarkDialog
         assert self._current_project_container is not None
+        if not student_ids:
+            return
+
         dialog = MarkDialog(
             parent,
+            student_ids=student_ids,
             global_settings_get_usecase=self._app_container.global_settings_get_usecase,
-            student_list_id_usecase=self._current_project_container.student_list_id_usecase,
             testcase_config_list_id_usecase=self._current_project_container.testcase_config_list_id_usecase,
             student_mark_view_data_get_mark_summary_usecase=self._current_project_container.student_mark_view_data_get_mark_summary_usecase,
             student_mark_view_data_get_test_result_usecase=self._current_project_container.student_mark_view_data_get_test_result_usecase,
@@ -249,23 +272,6 @@ class Navigator(INavigator):
             student_mark_put_usecase=self._current_project_container.student_mark_put_usecase,
         )
         dialog.set_state(dialog.states.create_state_of_first_student())
-        dialog.exec_()
-
-    def open_scoring_dialog_for_student(self, parent: QWidget, student_id: StudentID) -> None:
-        from autoprogen.control.dialog_mark import MarkDialog
-        assert self._current_project_container is not None
-        dialog = MarkDialog(
-            parent,
-            global_settings_get_usecase=self._app_container.global_settings_get_usecase,
-            student_list_id_usecase=self._current_project_container.student_list_id_usecase,
-            testcase_config_list_id_usecase=self._current_project_container.testcase_config_list_id_usecase,
-            student_mark_view_data_get_mark_summary_usecase=self._current_project_container.student_mark_view_data_get_mark_summary_usecase,
-            student_mark_view_data_get_test_result_usecase=self._current_project_container.student_mark_view_data_get_test_result_usecase,
-            student_source_code_get_usecase=self._current_project_container.student_source_code_get_usecase,
-            student_mark_get_usecase=self._current_project_container.student_mark_get_usecase,
-            student_mark_put_usecase=self._current_project_container.student_mark_put_usecase,
-        )
-        dialog.set_state(dialog.states.create_state_by_student_id(student_id))
         dialog.exec_()
 
     def open_testcase_list_edit_dialog(self, parent: QWidget) -> bool:
@@ -316,7 +322,8 @@ class Navigator(INavigator):
 
     def _open_project_and_prepare_container(self, project_id: ProjectID) -> None:
         self._open_project(project_id, self._app_container)
-        self._current_project_container = self._app_container.create_project_container(project_id)
+        self._current_project_container = self._app_container.create_project_container(
+            project_id)
 
     def _show_main_window(self) -> QMainWindow:
         from autoprogen.control.window_main import MainWindow
