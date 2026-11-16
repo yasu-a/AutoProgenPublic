@@ -299,7 +299,7 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
     def get_data_of_mark_result_cell(self, student_id: StudentID, role: QtRoleType):
         if role == Qt.DisplayRole:
             student_mark = self._mark(student_id)
-            if student_mark.is_marked:
+            if student_mark.marked:
                 return str(student_mark.score)
             else:
                 return "未採点"

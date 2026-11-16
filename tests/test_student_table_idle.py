@@ -57,7 +57,7 @@ def test_initialized_table_stays_idle_and_reflects_mark_change(
         assert connection_count == 0
 
         student_id = rows[0].student_id
-        new_score = 98 if rows[0].mark.is_marked and rows[0].mark.score == 99 else 99
+        new_score = 98 if rows[0].mark.marked and rows[0].mark.score == 99 else 99
         changed_rows: list[int] = []
         table.model().dataChanged.connect(
             lambda start, _: changed_rows.append(start.row()),

@@ -1,309 +1,174 @@
-# import pytest
-# 
-# from application.dependency.repository import create_student_mark_repository
-# from domain.error import RepositoryItemNotFoundError
-# from domain.model.student_mark import StudentMark
-# 
-# 
-# @pytest.fixture
-# def repo(project_id):
-#     return create_student_mark_repository(project_id)
-# 
-# 
-# @pytest.fixture
-# def student_id_1(sample_student_ids):
-#     return sample_student_ids[0]
-# 
-# 
-# @pytest.fixture
-# def student_id_2(sample_student_ids):
-#     return sample_student_ids[1]
-# 
-# 
-# def test_create_and_get(repo, student_id_1):
-#     """createとgetの基本テスト"""
-#     # 存在しない場合は作成
-#     mark = repo.create(student_id_1)
-#     assert mark.student_id == student_id_1
-#     assert not mark.is_marked
-#     # 未採点状態でscoreにアクセスするとValueError
-#     with pytest.raises(ValueError, match="This student has not been marked yet"):
-#         _ = mark.score
-# 
-#     # 取得して確認
-#     retrieved = repo.get(student_id_1)
-#     assert retrieved.student_id == student_id_1
-#     assert not retrieved.is_marked
-#     # 未採点状態でscoreにアクセスするとValueError
-#     with pytest.raises(ValueError, match="This student has not been marked yet"):
-#         _ = retrieved.score
-# 
-# 
-# def test_put_and_get(repo, student_id_1):
-#     """putとgetの基本テスト"""
-#     # 採点データを作成
-#     mark = StudentMark(student_id=student_id_1, score=85)
-#     repo.put(mark)
-# 
-#     # 取得して確認
-#     retrieved = repo.get(student_id_1)
-#     assert retrieved.student_id == student_id_1
-#     assert retrieved.score == 85
-#     assert retrieved.is_marked
-# 
-# 
-# def test_exists(repo, student_id_1, student_id_2):
-#     """existsのテスト"""
-#     # 存在しない場合
-#     assert not repo.exists(student_id_1)
-#     assert not repo.exists(student_id_2)
-# 
-#     # 作成後は存在する
-#     repo.create(student_id_1)
-#     assert repo.exists(student_id_1)
-#     assert not repo.exists(student_id_2)
-# 
-# 
-# def test_get_not_found(repo, student_id_1):
-#     """存在しないデータを取得しようとした場合のテスト"""
-#     with pytest.raises(RepositoryItemNotFoundError):
-#         repo.get(student_id_1)
-# 
-# 
-# def test_put_overwrite(repo, student_id_1):
-#     """putで上書きするテスト"""
-#     # 最初のデータ
-#     mark1 = StudentMark(student_id=student_id_1, score=85)
-#     repo.put(mark1)
-# 
-#     # 上書き
-#     mark2 = StudentMark(student_id=student_id_1, score=92)
-#     repo.put(mark2)
-# 
-#     # 上書きされたことを確認
-#     retrieved = repo.get(student_id_1)
-#     assert retrieved.score == 92
-# 
-# 
-# def test_timestamp_on_put(repo, student_id_1):
-#     """put時のタイムスタンプ更新テスト"""
-#     # 初期状態ではタイムスタンプが存在しない
-#     assert repo.get_timestamp(student_id_1) is None
-# 
-#     # データをputするとタイムスタンプが設定される
-#     mark = StudentMark(student_id=student_id_1, score=85)
-#     repo.put(mark)
-# 
-#     timestamp = repo.get_timestamp(student_id_1)
-#     assert timestamp is not None
-#     # タイムスタンプが現在時刻に近いことを確認（1分以内）
-#     from datetime import datetime
-#     now = datetime.now()
-#     assert abs((timestamp - now).total_seconds()) < 60
-# 
-# 
-# def test_timestamp_on_overwrite(repo, student_id_1):
-#     """上書き時のタイムスタンプ更新テスト"""
-#     # 最初のデータをput
-#     mark1 = StudentMark(student_id=student_id_1, score=85)
-#     repo.put(mark1)
-#     timestamp1 = repo.get_timestamp(student_id_1)
-# 
-#     # 少し待ってから上書き
-#     import time
-#     time.sleep(0.1)  # 100ms待機
-# 
-#     # 上書き
-#     mark2 = StudentMark(student_id=student_id_1, score=92)
-#     repo.put(mark2)
-#     timestamp2 = repo.get_timestamp(student_id_1)
-# 
-#     # タイムスタンプが更新されていることを確認
-#     assert timestamp2 > timestamp1
-# 
-# 
-# def test_timestamp_not_update_on_get(repo, student_id_1):
-#     """get時のタイムスタンプ変化なしテスト"""
-#     # データを作成
-#     mark = StudentMark(student_id=student_id_1, score=85)
-#     repo.put(mark)
-#     original_timestamp = repo.get_timestamp(student_id_1)
-# 
-#     # 少し待ってからget
-#     import time
-#     time.sleep(0.1)  # 100ms待機
-# 
-#     # getを実行
-#     retrieved = repo.get(student_id_1)
-#     assert retrieved.score == 85
-# 
-#     # タイムスタンプが変化していないことを確認
-#     current_timestamp = repo.get_timestamp(student_id_1)
-#     assert current_timestamp == original_timestamp
-# 
-# 
-# def test_timestamp_on_create(repo, student_id_1):
-#     """create時のタイムスタンプ設定テスト"""
-#     # createを実行
-#     _ = repo.create(student_id_1)
-# 
-#     # タイムスタンプが設定されていることを確認
-#     timestamp = repo.get_timestamp(student_id_1)
-#     assert timestamp is not None
-# 
-#     # タイムスタンプが現在時刻に近いことを確認（1分以内）
-#     from datetime import datetime
-#     now = datetime.now()
-#     assert abs((timestamp - now).total_seconds()) < 60
-# 
-# 
-# def test_timestamp_for_nonexistent_student(repo, student_id_1):
-#     """存在しない学生のタイムスタンプ取得テスト"""
-#     # 存在しない学生のタイムスタンプを取得
-#     timestamp = repo.get_timestamp(student_id_1)
-#     assert timestamp is None
-# 
-# 
-# def test_timestamp_consistency_with_data(repo, student_id_1, student_id_2):
-#     """タイムスタンプとデータの一貫性テスト"""
-#     # 学生1のデータを作成
-#     mark1 = StudentMark(student_id=student_id_1, score=85)
-#     repo.put(mark1)
-#     timestamp1 = repo.get_timestamp(student_id_1)
-# 
-#     # 学生2のデータを作成
-#     mark2 = StudentMark(student_id=student_id_2, score=92)
-#     repo.put(mark2)
-#     timestamp2 = repo.get_timestamp(student_id_2)
-# 
-#     # それぞれ独立したタイムスタンプを持っていることを確認
-#     assert timestamp1 < timestamp2
-# 
-#     # データを取得して一貫性を確認
-#     retrieved1 = repo.get(student_id_1)
-#     retrieved2 = repo.get(student_id_2)
-# 
-#     assert retrieved1.score == 85
-#     assert retrieved2.score == 92
-# 
-# 
-# def test_multiple_students_independence(repo, student_id_1, student_id_2):
-#     """複数生徒の独立性テスト"""
-#     # 生徒1のデータ
-#     mark1 = StudentMark(student_id=student_id_1, score=85)
-#     repo.put(mark1)
-# 
-#     # 生徒2のデータ
-#     mark2 = StudentMark(student_id=student_id_2, score=92)
-#     repo.put(mark2)
-# 
-#     # それぞれ独立していることを確認
-#     retrieved1 = repo.get(student_id_1)
-#     retrieved2 = repo.get(student_id_2)
-# 
-#     assert retrieved1.student_id == student_id_1
-#     assert retrieved1.score == 85
-#     assert retrieved2.student_id == student_id_2
-#     assert retrieved2.score == 92
-# 
-# 
-# def test_score_none_and_setter(repo, student_id_1):
-#     """scoreがNoneの場合とsetterのテスト"""
-#     # 初期状態
-#     mark = repo.create(student_id_1)
-#     assert not mark.is_marked
-#     # 未採点状態でscoreにアクセスするとValueError
-#     with pytest.raises(ValueError, match="This student has not been marked yet"):
-#         _ = mark.score
-# 
-#     # scoreを設定
-#     mark.score = 85
-#     repo.put(mark)
-# 
-#     # 取得して確認
-#     retrieved = repo.get(student_id_1)
-#     assert retrieved.score == 85
-#     assert retrieved.is_marked
-# 
-#     # scoreをNoneに戻す
-#     mark.set_unmarked()
-#     repo.put(mark)
-# 
-#     # 取得して確認
-#     retrieved = repo.get(student_id_1)
-#     assert not retrieved.is_marked
-#     # 未採点状態でscoreにアクセスするとValueError
-#     with pytest.raises(ValueError, match="This student has not been marked yet"):
-#         _ = retrieved.score
-# 
-# 
-# def test_score_property_validation(repo, student_id_1):
-#     """scoreプロパティのバリデーションテスト"""
-#     # 未採点の状態でscoreにアクセス
-#     mark = repo.create(student_id_1)
-#     with pytest.raises(ValueError, match="This student has not been marked yet"):
-#         _ = mark.score
-# 
-#     # scoreを設定後はアクセス可能
-#     mark.score = 85
-#     assert mark.score == 85
-# 
-# 
-# def test_value_error_on_unmarked_score_access(repo, student_id_1):
-#     """未採点状態でのscoreアクセス時のValueErrorテスト"""
-#     # 未採点のStudentMarkを作成
-#     mark = StudentMark(student_id=student_id_1, score=None)
-# 
-#     # scoreプロパティにアクセスするとValueErrorが発生
-#     with pytest.raises(ValueError, match="This student has not been marked yet"):
-#         _ = mark.score
-# 
-#     # is_markedはFalse
-#     assert not mark.is_marked
-# 
-#     # 採点後はアクセス可能
-#     mark.score = 85
-#     assert mark.score == 85
-#     assert mark.is_marked
-# 
-# 
-# def test_score_setter_validation(repo, student_id_1):
-#     """score setterのバリデーションテスト"""
-#     mark = StudentMark(student_id=student_id_1, score=None)
-# 
-#     # 有効な値を設定
-#     mark.score = 85
-#     assert mark.score == 85
-#     assert mark.is_marked
-# 
-#     # set_unmarkedでNoneに戻す
-#     mark.set_unmarked()
-#     assert not mark.is_marked
-#     # 未採点状態でscoreにアクセスするとValueError
-#     with pytest.raises(ValueError, match="This student has not been marked yet"):
-#         _ = mark.score
-# 
-#     # 再度有効な値を設定
-#     mark.score = 92
-#     assert mark.score == 92
-#     assert mark.is_marked
-# 
-# 
-# def test_student_mark_methods(repo, student_id_1):
-#     """StudentMarkのメソッドテスト"""
-#     # 未採点状態
-#     mark = repo.create(student_id_1)
-#     assert not mark.is_marked
-#     with pytest.raises(ValueError):
-#         _ = mark.score
-# 
-#     # 採点後
-#     mark.score = 85
-#     assert mark.is_marked
-#     assert mark.score == 85
-# 
-#     # 未採点に戻す
-#     mark.set_unmarked()
-#     assert not mark.is_marked
-#     with pytest.raises(ValueError):
-#         _ = mark.score
+"""採点結果のSQLite保存・復元を検証する。"""
+
+import sqlite3
+from datetime import datetime
+from pathlib import Path
+
+import pytest
+
+from autoprogen.domain.error import RepositoryItemNotFoundError
+from autoprogen.domain.model.student_mark import StudentMark
+from autoprogen.domain.model.value import StudentID
+from autoprogen.infra.io.project_database import ProjectDatabaseIO
+from autoprogen.infra.repository.student_mark import StudentMarkRepository
+
+
+@pytest.fixture
+def student_ids() -> tuple[StudentID, StudentID]:
+    """外部キー検査用に登録する2名の学生IDを返す。"""
+    return StudentID("21D5109047B"), StudentID("24A0007521M")
+
+
+@pytest.fixture
+def database_io(tmp_path: Path, student_ids: tuple[StudentID, StudentID]) -> ProjectDatabaseIO:
+    """学生を登録した新規SQLiteデータベースを作成する。"""
+    database_io = ProjectDatabaseIO(database_path=tmp_path / "project.db")
+    with database_io.connect() as con:
+        con.execute("CREATE TABLE student (student_id TEXT NOT NULL PRIMARY KEY)")
+        con.executemany(
+            "INSERT INTO student (student_id) VALUES (?)",
+            [(str(student_id),) for student_id in student_ids],
+        )
+        con.commit()
+    return database_io
+
+
+@pytest.fixture
+def repo(database_io: ProjectDatabaseIO) -> StudentMarkRepository:
+    """テスト用データベースに接続する採点結果Repositoryを返す。"""
+    return StudentMarkRepository(project_database_io=database_io)
+
+
+def test_create_get_and_exists(
+    repo: StudentMarkRepository, student_ids: tuple[StudentID, StudentID]
+) -> None:
+    """新規作成では点数がなく、存在確認と取得ができる。"""
+    first, second = student_ids
+    assert not repo.exists(first)
+    assert not repo.exists(second)
+    mark = repo.create(first)
+    assert mark.score is None
+    assert not mark.marked
+    assert not mark.confirmed
+    assert repo.exists(first)
+    assert not repo.exists(second)
+    saved = repo.get(first)
+    assert saved.student_id == first
+    assert saved.score is None
+    assert not saved.confirmed
+
+
+def test_missing_student_mark_raises(
+    repo: StudentMarkRepository, student_ids: tuple[StudentID, StudentID]
+) -> None:
+    """存在しない採点結果の取得では既存例外を送出する。"""
+    with pytest.raises(RepositoryItemNotFoundError):
+        repo.get(student_ids[0])
+    assert repo.get_timestamp(student_ids[0]) is None
+    assert repo.list() == []
+
+
+@pytest.mark.parametrize("score, confirmed", [(None, False), (0, True), (50, False), (99, True)])
+def test_put_get_round_trip(
+    repo: StudentMarkRepository,
+    student_ids: tuple[StudentID, StudentID],
+    score: int | None,
+    confirmed: bool,
+) -> None:
+    """未採点・0点・未確定・確定の各状態を保存して復元する。"""
+    student_id = student_ids[0]
+    repo.put(StudentMark(student_id=student_id, score=score, confirmed=confirmed))
+    saved = repo.get(student_id)
+    assert saved.student_id == student_id
+    assert saved.score == score
+    assert saved.marked is (score is not None)
+    assert saved.confirmed is confirmed
+    assert repo.list()[0].confirmed is confirmed
+
+
+def test_overwrite_preserves_explicit_unconfirmed(
+    repo: StudentMarkRepository, student_ids: tuple[StudentID, StudentID]
+) -> None:
+    """確定済みの点数を未確定で上書きしても勝手に確定しない。"""
+    student_id = student_ids[0]
+    repo.put(StudentMark(student_id, 80))
+    repo.put(StudentMark(student_id, 80, confirmed=False))
+    assert repo.get(student_id).score == 80
+    assert not repo.get(student_id).confirmed
+    assert not repo.list()[0].confirmed
+
+
+def test_list_multiple_students(
+    repo: StudentMarkRepository, student_ids: tuple[StudentID, StudentID]
+) -> None:
+    """複数学生の点数と確定状態を独立して保持する。"""
+    first, second = student_ids
+    repo.put(StudentMark(first, 50, confirmed=False))
+    repo.put(StudentMark(second, 0))
+    marks = {mark.student_id: mark for mark in repo.list()}
+    assert set(marks) == set(student_ids)
+    assert marks[first].score == 50
+    assert not marks[first].confirmed
+    assert marks[second].score == 0
+    assert marks[second].confirmed
+
+
+def test_timestamps_update_only_on_write(
+    repo: StudentMarkRepository, student_ids: tuple[StudentID, StudentID]
+) -> None:
+    """採点結果の作成・更新で記録時刻を持ち、取得時は変更しない。"""
+    student_id = student_ids[0]
+    assert repo.get_timestamp(student_id) is None
+    repo.create(student_id)
+    created = repo.get_timestamp(student_id)
+    assert isinstance(created, datetime)
+    assert abs((datetime.now() - created).total_seconds()) < 60
+    repo.get(student_id)
+    repo.list()
+    assert repo.get_timestamp(student_id) == created
+    repo.put(StudentMark(student_id, 60, confirmed=False))
+    updated = repo.get_timestamp(student_id)
+    assert isinstance(updated, datetime)
+    assert updated >= created
+
+
+def test_new_schema_has_confirmation_column(
+    repo: StudentMarkRepository,
+    database_io: ProjectDatabaseIO,
+    student_ids: tuple[StudentID, StudentID],
+) -> None:
+    """新規テーブルが確定状態をNULL不可の整数列として保存する。"""
+    repo.create(student_ids[0])
+    with database_io.connect() as con:
+        columns = {
+            row["name"]: row for row in con.execute("PRAGMA table_info(student_mark)")
+        }
+        row = con.execute(
+            "SELECT score, confirmed FROM student_mark WHERE student_id = ?",
+            (str(student_ids[0]),),
+        ).fetchone()
+    assert columns["confirmed"]["type"] == "INTEGER"
+    assert columns["confirmed"]["notnull"] == 1
+    assert row["score"] is None
+    assert row["confirmed"] == 0
+
+
+def test_foreign_key_is_enforced(
+    repo: StudentMarkRepository,
+) -> None:
+    """登録のない学生に採点結果を保存すると外部キー違反になる。"""
+    with pytest.raises(sqlite3.IntegrityError):
+        repo.put(StudentMark(StudentID("25D5203184K"), 80))
+
+
+def test_reopen_preserves_unconfirmed(
+    database_io: ProjectDatabaseIO,
+    repo: StudentMarkRepository,
+    student_ids: tuple[StudentID, StudentID],
+) -> None:
+    """新規DBを再度開いたときも未確定状態を保持する。"""
+    student_id = student_ids[0]
+    repo.put(StudentMark(student_id, 50, confirmed=False))
+    reopened = StudentMarkRepository(project_database_io=database_io)
+    assert reopened.get(student_id).score == 50
+    assert not reopened.get(student_id).confirmed

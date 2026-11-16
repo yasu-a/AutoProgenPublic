@@ -299,7 +299,7 @@ def _assert_marks(project_container) -> None:
         mark = project_container.student_mark_get_usecase.execute(
             StudentID(student_id_text)
         )
-        assert mark.is_marked is (score is not None)
+        assert mark.marked is (score is not None)
         if score is not None:
             assert mark.score == score
 

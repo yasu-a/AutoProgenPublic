@@ -35,6 +35,7 @@ class StudentMarkRepository:
                 (
                     student_id TEXT NOT NULL PRIMARY KEY,
                     score      INTEGER,
+                    confirmed  INTEGER NOT NULL,
                     updated_at DATETIME,
                     FOREIGN KEY (student_id) REFERENCES student (student_id)
                 )
@@ -61,11 +62,17 @@ class StudentMarkRepository:
                     (
                         student_id,
                         score,
+                        confirmed,
                         updated_at
                     )
-                    VALUES (?, ?, ?)
+                    VALUES (?, ?, ?, ?)
                     """,
-                    (str(mark.student_id), mark.score if mark.is_marked else None, datetime.now()),
+                    (
+                        str(mark.student_id),
+                        mark.score,
+                        int(mark.confirmed),
+                        datetime.now(),
+                    ),
                 )
                 con.commit()
         return mark
@@ -104,6 +111,7 @@ class StudentMarkRepository:
             return StudentMark(
                 student_id=StudentID(row["student_id"]),
                 score=row["score"],
+                confirmed=bool(row["confirmed"]),
             )
 
     def get_timestamp(self, student_id: StudentID) -> datetime | None:
@@ -142,6 +150,7 @@ class StudentMarkRepository:
                         StudentMark(
                             student_id=StudentID(row["student_id"]),
                             score=row["score"],
+                            confirmed=bool(row["confirmed"]),
                         )
                     )
                 return marks

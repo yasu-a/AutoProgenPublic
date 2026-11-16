@@ -68,7 +68,7 @@ class MarkScoreEditWidget(QWidget):
             self._b_unmark.setEnabled(False)
             self._student_id = None
         else:
-            if student_mark.is_marked:
+            if student_mark.marked:
                 self._le_score.setText(str(student_mark.score))
             else:
                 self._le_score.setText("")
