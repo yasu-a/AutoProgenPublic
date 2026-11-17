@@ -39,8 +39,6 @@ def _create_facade(
         student_stage_path_result_repository=student_stage_path_result_repository,
         student_mark_get_sub_service=student_mark_get_sub_service,
         stage_error_text_formatter=stage_error_text_formatter,
-        student_mark_get_usecase=Mock(),
-        student_mark_put_usecase=Mock(),
         student_list_id_usecase=Mock(),
         student_run_next_stage_usecase=Mock(),
         student_stage_result_clear_service=Mock(),

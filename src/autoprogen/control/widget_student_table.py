@@ -1,15 +1,17 @@
 from collections import defaultdict
 from contextlib import contextmanager
+from functools import cache
 from typing import Any, Callable
 
 from PyQt5.QtCore import *
-from PyQt5.QtGui import QColor, QMouseEvent
+from PyQt5.QtGui import QColor, QFont, QMouseEvent
 from PyQt5.QtWidgets import *
 
 from autoprogen.control.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
 from autoprogen.domain.model.stage import AbstractStage, BuildStage, CompileStage, ExecuteStage, TestStage
 from autoprogen.domain.model.student_mark import StudentMark
 from autoprogen.domain.model.value import StudentID
+from autoprogen.res.font import get_font
 from autoprogen.usecase.dto.student_table_cell_data import (
     StudentErrorCellData,
     StudentIDCellData,
@@ -78,10 +80,6 @@ class AbstractStudentTableModelDataProvider:
         else:
             return None
 
-    def is_marked(self, row: int) -> bool:
-        """指定行の学生に点数が入力されているかを返す。"""
-        raise NotImplementedError()
-
     def has_submission(self, row: int) -> bool:
         """指定行の学生に展開済みの提出物があるかを返す。"""
         raise NotImplementedError()
@@ -138,14 +136,36 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
             return QColor("#dffe8b")
         return super().get_data(row, column, role)
 
-    def is_marked(self, row: int) -> bool:
-        """指定行のロード済み採点データに点数があるかを返す。"""
-        return self._mark(self._student_ids[row]).marked
-
     def has_submission(self, row: int) -> bool:
-        """旧リンク判定と同じロード済み提出状態を返す。"""
+        """指定行のロード済み提出状態を返す。"""
         student_id = self._student_ids[row]
         return self._id_cell(student_id).is_submission_folder_link_alive
+
+    @classmethod
+    @cache
+    def _font_link_text(cls, *, monospace: bool) -> QFont:
+        """リンクとして表示する下線付きフォントを返す。"""
+        font = get_font(monospace=monospace)
+        font.setUnderline(True)
+        return font
+
+    @classmethod
+    @cache
+    def _font_dead_link_text(cls, *, monospace: bool) -> QFont:
+        """操作できない文字列へ使用する通常フォントを返す。"""
+        return get_font(monospace=monospace)
+
+    @classmethod
+    @cache
+    def _foreground_link_text(cls) -> QColor:
+        """リンクとして表示する文字色を返す。"""
+        return QColor("blue")
+
+    @classmethod
+    @cache
+    def _foreground_dead_link_text(cls) -> QColor:
+        """提出物がない学生を示す文字色を返す。"""
+        return QColor("red").darker()
 
     @data_provider(
         column=StudentTableColumns.COL_STUDENT_ID,
@@ -154,11 +174,16 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
         if role == Qt.DisplayRole:
             cell_data = self._id_cell(student_id)
             return cell_data.student_number
+        elif role == Qt.FontRole:
+            cell_data = self._id_cell(student_id)
+            if cell_data.is_submission_folder_link_alive:
+                return self._font_link_text(monospace=True)
+            return self._font_dead_link_text(monospace=True)
         elif role == Qt.ForegroundRole:
             cell_data = self._id_cell(student_id)
-            if not cell_data.is_submission_folder_link_alive:
-                return QColor("red")
-            return None
+            if cell_data.is_submission_folder_link_alive:
+                return self._foreground_link_text()
+            return self._foreground_dead_link_text()
         else:
             return None
 
@@ -280,6 +305,14 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
                     f"◆ {entry.detailed_text}"
                     for entry in aggregated_text_entries
                 )
+        elif role == Qt.FontRole:
+            if self._error_cell(student_id).aggregate_text_entries():
+                return self._font_link_text(monospace=False)
+            return None
+        elif role == Qt.ForegroundRole:
+            if self._error_cell(student_id).aggregate_text_entries():
+                return self._foreground_link_text()
+            return None
         else:
             return None
 
@@ -293,9 +326,10 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
                 return str(student_mark.score)
             else:
                 return "未採点"
-        elif role == Qt.CheckStateRole:
-            student_mark = self._mark(student_id)
-            return Qt.Checked if student_mark.confirmed else Qt.Unchecked
+        elif role == Qt.FontRole:
+            return self._font_link_text(monospace=False)
+        elif role == Qt.ForegroundRole:
+            return self._foreground_link_text()
         else:
             return None
 
@@ -353,11 +387,6 @@ class CachedStudentTableModelDataProvider(AbstractStudentTableModelDataProvider)
                 self._cache[row][(column, role)] = self._provider.get_data(row, column, role)
             return self._cache[row][(column, role)]
 
-    def is_marked(self, row: int) -> bool:
-        """指定行の採点状態を元のProviderから返す。"""
-        with self.__lock():
-            return self._provider.is_marked(row)
-
     def has_submission(self, row: int) -> bool:
         """指定行の提出状態を元のProviderから返す。"""
         with self.__lock():
@@ -365,12 +394,6 @@ class CachedStudentTableModelDataProvider(AbstractStudentTableModelDataProvider)
 
 
 class StudentTableModel(QAbstractTableModel):
-    mark_confirmation_change_requested = pyqtSignal(
-        StudentID,
-        bool,
-        name="mark_confirmation_change_requested",
-    )
-
     def __init__(
             self,
             parent: QObject = None,
@@ -416,41 +439,6 @@ class StudentTableModel(QAbstractTableModel):
         )
 
     # noinspection PyMethodOverriding
-    def flags(self, index: QModelIndex) -> Qt.ItemFlags:
-        """点数がある採点セルだけをチェック操作可能にする。"""
-        flags = super().flags(index)
-        if (
-            index.isValid()
-            and index.column() == StudentTableColumns.COL_SCORE
-            and self._data_provider.is_marked(index.row())
-        ):
-            flags |= Qt.ItemIsUserCheckable
-        return flags
-
-    # noinspection PyMethodOverriding
-    def setData(self, index: QModelIndex, value: Any, role: int = Qt.EditRole) -> bool:
-        """チェック操作を学生の確定状態変更要求として通知する。"""
-        if (
-            not index.isValid()
-            or index.column() != StudentTableColumns.COL_SCORE
-            or role != Qt.CheckStateRole
-            or not self._data_provider.is_marked(index.row())
-            or value not in (Qt.Checked, Qt.Unchecked)
-        ):
-            return False
-
-        confirmed = value == Qt.Checked
-        current = self.data(index, Qt.CheckStateRole) == Qt.Checked
-        if confirmed == current:
-            return False
-
-        self.mark_confirmation_change_requested.emit(
-            self.get_student_id_of_row(index.row()),
-            confirmed,
-        )
-        return True
-
-    # noinspection PyMethodOverriding
     def rowCount(self, parent=QModelIndex()) -> int:
         # with state.data(readonly=True) as data:
         #     return len(data.students)
@@ -480,18 +468,24 @@ class StudentTableModel(QAbstractTableModel):
 class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
     _logger = create_logger()
 
-    student_selection_changed = pyqtSignal(name="student_selection_changed")
-    mark_confirmation_change_requested = pyqtSignal(
+    student_id_cell_triggered = pyqtSignal(
         StudentID,
-        bool,
-        name="mark_confirmation_change_requested",
+        name="student_id_cell_triggered",
+    )
+    mark_result_cell_triggered = pyqtSignal(
+        StudentID,
+        name="mark_result_cell_triggered",
+    )
+    error_cell_triggered = pyqtSignal(
+        StudentID,
+        name="error_cell_triggered",
     )
 
     def __init__(
             self,
             parent: QObject = None,
         ):
-        """学生の表示と選択処理を担うテーブルを構築する。"""
+        """学生の表示とセルからの直接操作を担うテーブルを構築する。"""
         super().__init__(parent)
         student_ids: list[StudentID] = []
 
@@ -507,9 +501,6 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
             provider=self._model_data_provider,
         )  # type: ignore
         self.setModel(self._model)
-        self._model.mark_confirmation_change_requested.connect(
-            self.mark_confirmation_change_requested.emit,
-        )
 
         self._init_ui()
         self._init_signals()
@@ -521,17 +512,15 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
     def replace_loaded_row(self, row: StudentTableRowSnapshot) -> None:
         """変更された学生一人の表示データを元の行位置へ反映する。"""
         self._model.replace_row(row)
-        if self.selected_student_id() == row.student_id:
-            self.student_selection_changed.emit()
 
     def _init_ui(self) -> None:
-        """学生テーブルを単一行選択の表示へ設定する。"""
+        """学生テーブルの表示とセル操作に必要な状態を設定する。"""
         # self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setDefaultSectionSize(100)
         self.verticalHeader().hide()
-        self.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.setMouseTracking(True)
+        self.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.setContextMenuPolicy(Qt.CustomContextMenu)
 
         vh = self.verticalHeader()
         vh.setSectionResizeMode(QHeaderView.Fixed)
@@ -542,56 +531,45 @@ class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
         self.setColumnWidth(StudentTableColumns.COL_ERROR, 400)
 
     def _init_signals(self) -> None:
-        """行選択の変更を外部へ通知する。"""
-        self.selectionModel().selectionChanged.connect(
-            self._on_selection_changed
-        )
+        """クリックされたセルを直接操作へ接続する。"""
+        self.clicked.connect(self._on_cell_triggered)
 
-    @pyqtSlot(QItemSelection, QItemSelection)
-    def _on_selection_changed(
-            self,
-            _: QItemSelection,
-            __: QItemSelection,
-    ) -> None:
-        """選択行が変化したことを通知する。"""
-        self.student_selection_changed.emit()
-
-    def selected_student_id(self) -> StudentID | None:
-        """現在選択している行の学生IDを返す。"""
-        indexes = self.selectionModel().selectedRows()
-        if not indexes:
-            return None
-        return self._model.get_student_id_of_row(indexes[0].row())
-
-    def selected_student_has_submission(self) -> bool:
-        """選択学生に展開済みの提出物があるかを返す。"""
-        indexes = self.selectionModel().selectedRows()
-        if not indexes:
-            return False
-        return self._model.has_submission(indexes[0].row())
-
-    def select_row_at(self, position: QPoint) -> bool:
-        """指定位置の行を単一選択し、行が存在したかを返す。"""
-        index = self.indexAt(position)
+    def _is_actionable_index(self, index: QModelIndex) -> bool:
+        """指定セルが直接操作を提供する場合にTrueを返す。"""
         if not index.isValid():
             return False
-        self.selectionModel().setCurrentIndex(
-            index,
-            QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows,
-        )
-        return True
+        if index.column() == StudentTableColumns.COL_STUDENT_ID:
+            return self._model.has_submission(index.row())
+        if index.column() == StudentTableColumns.COL_SCORE:
+            return True
+        if index.column() == StudentTableColumns.COL_ERROR:
+            return bool(self._model.data(index, Qt.DisplayRole))
+        return False
 
-    def mousePressEvent(self, event: QMouseEvent) -> None:
-        """Qtのクリック処理後、必要な場合だけ押下時の行を選択する。"""
-        pressed_index = self.indexAt(event.pos())
-        super().mousePressEvent(event)
+    @pyqtSlot(QModelIndex)
+    def _on_cell_triggered(self, index: QModelIndex) -> None:
+        """クリックされたセルに対応する学生操作を通知する。"""
+        if not self._is_actionable_index(index):
+            return
 
-        # チェックボックスは行を選択しないため、押下前に特定した行を補完する。
-        if pressed_index.isValid() and not self.selectionModel().isRowSelected(
-            pressed_index.row(),
-            QModelIndex(),
-        ):
-            self.selectionModel().setCurrentIndex(
-                pressed_index,
-                QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows,
-            )
+        student_id = self._model.get_student_id_of_row(index.row())
+        if index.column() == StudentTableColumns.COL_STUDENT_ID:
+            self.student_id_cell_triggered.emit(student_id)
+        elif index.column() == StudentTableColumns.COL_SCORE:
+            self.mark_result_cell_triggered.emit(student_id)
+        elif index.column() == StudentTableColumns.COL_ERROR:
+            self.error_cell_triggered.emit(student_id)
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        """操作可能なセル上だけポインタカーソルを表示する。"""
+        index = self.indexAt(event.pos())
+        if self._is_actionable_index(index):
+            self.viewport().setCursor(Qt.PointingHandCursor)
+        else:
+            self.viewport().unsetCursor()
+        super().mouseMoveEvent(event)
+
+    def leaveEvent(self, event) -> None:
+        """テーブルを離れたときに通常のカーソルへ戻す。"""
+        self.viewport().unsetCursor()
+        super().leaveEvent(event)

@@ -535,8 +535,6 @@ class ProjectContainer:
             ),
             student_mark_get_sub_service=self.student_mark_get_sub_service,
             stage_error_text_formatter=self.stage_error_text_formatter,
-            student_mark_get_usecase=self.student_mark_get_usecase,
-            student_mark_put_usecase=self.student_mark_put_usecase,
             student_list_id_usecase=self.student_list_id_usecase,
             student_run_next_stage_usecase=self.student_run_next_stage_usecase,
             student_stage_result_clear_service=self.student_stage_result_clear_service,

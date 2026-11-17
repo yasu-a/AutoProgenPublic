@@ -11,7 +11,6 @@ from autoprogen.control.widget_status_process_resource_usage import ProcessResou
 from autoprogen.control.widget_status_task_state import TaskStateStatusBarWidget
 from autoprogen.control.widget_status_unstable_version_notif import UnstableVersionNotificationStatusBarWidget
 from autoprogen.control.widget_student_table import StudentTableWidget
-from autoprogen.control.widget_student_table_control import StudentTableControlWidget
 from autoprogen.control.widget_toolbar import ToolBar
 from autoprogen.domain.model.value import StudentID
 from autoprogen.infra.task.task import AbstractStudentTask
@@ -71,7 +70,7 @@ class MainWindow(QMainWindow):
             self._table_loading = False
 
     def _init_ui(self) -> None:
-        """学生テーブルと操作欄を含むメイン画面を構築する。"""
+        """学生テーブルとエラー詳細Dockを含むメイン画面を構築する。"""
         project_summary = self._facade.get_project_summary()
 
         # noinspection PyUnresolvedReferences
@@ -93,16 +92,8 @@ class MainWindow(QMainWindow):
         self._w_student_table = StudentTableWidget(
             self,
         )
-        self._w_student_table_control = StudentTableControlWidget(self)
-
-        # 表と選択学生向けの操作を横並びにする。
-        central_widget = QWidget(self)
-        central_layout = QHBoxLayout(central_widget)
-        central_layout.setContentsMargins(0, 0, 0, 0)
-        central_layout.addWidget(self._w_student_table_control)
-        central_layout.addWidget(self._w_student_table, 1)
         # noinspection PyUnresolvedReferences
-        self.setCentralWidget(central_widget)
+        self.setCentralWidget(self._w_student_table)
 
         # エラー詳細は表を操作したまま確認できる下部ドックとして配置する。
         self._student_error_dock = QDockWidget("エラーの詳細", self)
@@ -146,23 +137,14 @@ class MainWindow(QMainWindow):
     def _init_signals(self) -> None:
         """メイン画面の操作要求を各処理へ接続する。"""
         self._tool_bar.triggered.connect(self.__tool_bar_triggered)
-        self._w_student_table.student_selection_changed.connect(
-            self.__w_student_table_selection_changed
+        self._w_student_table.student_id_cell_triggered.connect(
+            self.__w_student_table_student_id_cell_triggered
         )
-        self._w_student_table.customContextMenuRequested.connect(
-            self.__w_student_table_context_menu_requested
+        self._w_student_table.mark_result_cell_triggered.connect(
+            self.__w_student_table_mark_result_cell_triggered
         )
-        self._w_student_table.mark_confirmation_change_requested.connect(
-            self.__w_student_table_mark_confirmation_change_requested
-        )
-        self._w_student_table_control.open_folder_requested.connect(
-            self.__selected_student_folder_open_requested
-        )
-        self._w_student_table_control.open_scoring_requested.connect(
-            self.__selected_student_scoring_open_requested
-        )
-        self._w_student_table_control.clear_mark_requested.connect(
-            self.__selected_student_mark_clear_requested
+        self._w_student_table.error_cell_triggered.connect(
+            self.__w_student_table_error_cell_triggered
         )
         self._resource_usage_timer.timeout.connect(
             self.__update_resource_usage
@@ -191,24 +173,20 @@ class MainWindow(QMainWindow):
             self._facade.get_resource_usage(),
         )
 
-    def __selected_student_id(self) -> StudentID | None:
-        """学生テーブルで現在選択している学生IDを返す。"""
-        return self._w_student_table.selected_student_id()
-
-    @pyqtSlot()
-    def __selected_student_folder_open_requested(self) -> None:
-        """選択中の学生の展開済み提出ファイルを編集用に開く。"""
-        student_id = self.__selected_student_id()
-        if student_id is None:
-            return
+    @pyqtSlot(StudentID)
+    def __w_student_table_student_id_cell_triggered(
+            self,
+            student_id: StudentID,
+    ) -> None:
+        """学籍番号セルの学生の展開済み提出フォルダを開く。"""
         self._facade.open_student_submission_folder(student_id)
 
-    @pyqtSlot()
-    def __selected_student_scoring_open_requested(self) -> None:
-        """選択中の学生だけを対象とした採点画面を開く。"""
-        student_id = self.__selected_student_id()
-        if student_id is None:
-            return
+    @pyqtSlot(StudentID)
+    def __w_student_table_mark_result_cell_triggered(
+            self,
+            student_id: StudentID,
+    ) -> None:
+        """点数セルの学生だけを対象とした採点画面を開く。"""
         if not self._task_manager.is_empty():
             # noinspection PyTypeChecker
             QMessageBox.warning(
@@ -220,86 +198,19 @@ class MainWindow(QMainWindow):
 
         self._navigator.open_scoring_dialog_for_student(self, student_id)
 
-    @pyqtSlot()
-    def __selected_student_mark_clear_requested(self) -> None:
-        """確認後に選択中の学生の点数をクリアして未確定にする。"""
-        student_id = self.__selected_student_id()
-        if student_id is None:
-            return
-
-        result = QMessageBox.question(
-            self,
-            "点数をクリア",
-            f"{student_id} の点数をクリアして未確定にしますか？",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
-        )
-        if result != QMessageBox.Yes:
-            return
-
-        try:
-            self._facade.clear_student_mark(student_id)
-        except Exception as error:
-            self._logger.exception("Failed to clear student mark")
-            QMessageBox.critical(self, "点数をクリア", str(error))
-
-    @pyqtSlot(QPoint)
-    def __w_student_table_context_menu_requested(self, position: QPoint) -> None:
-        """右クリックした行を選択し、共通Actionのメニューを表示する。"""
-        if not self._w_student_table.select_row_at(position):
-            return
-
-        menu = QMenu(self._w_student_table)
-        menu.addActions(self._w_student_table_control.context_actions())
-        menu.exec_(self._w_student_table.viewport().mapToGlobal(position))
-
-    @pyqtSlot()
-    def __w_student_table_selection_changed(self) -> None:
-        """選択学生に合わせて操作可否とエラー詳細を更新する。"""
-        student_id = self.__selected_student_id()
-        if student_id is None:
-            self._w_student_table_control.set_selection_state(
-                selected=False,
-                marked=False,
-                has_submission=False,
-            )
-            self.__show_student_error_detail(None)
-            return
-
-        student_mark = self._facade.get_student_mark(student_id)
-        self._w_student_table_control.set_selection_state(
-            selected=True,
-            marked=student_mark.marked,
-            has_submission=self._w_student_table.selected_student_has_submission(),
-        )
-        self.__show_student_error_detail(student_id)
-
-    @pyqtSlot(StudentID, bool)
-    def __w_student_table_mark_confirmation_change_requested(
+    @pyqtSlot(StudentID)
+    def __w_student_table_error_cell_triggered(
             self,
             student_id: StudentID,
-            confirmed: bool,
     ) -> None:
-        """点数を維持したまま学生の採点確定状態を保存する。"""
-        try:
-            self._facade.set_student_mark_confirmation(student_id, confirmed)
-        except Exception as error:
-            self._logger.exception("Failed to update mark confirmation")
-            QMessageBox.critical(
-                self,
-                "採点確定状態の保存",
-                str(error),
-            )
+        """エラーセルの学生の詳細を下部Dockへ表示する。"""
+        self.__show_student_error_detail(student_id)
 
     def __show_student_error_detail(
             self,
-            student_id: StudentID | None,
+            student_id: StudentID,
     ) -> None:
-        """選択学生のエラー詳細を表示し、対象がなければDockを閉じる。"""
-        if student_id is None:
-            self._student_error_dock.hide()
-            return
-
+        """指定学生のエラー詳細を表示し、対象がなければDockを閉じる。"""
         detail_widget = self._navigator.create_student_error_detail_widget(
             self._student_error_dock,
             student_id,

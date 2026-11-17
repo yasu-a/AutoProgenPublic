@@ -41,7 +41,6 @@ from autoprogen.usecase.dto.student_table_cell_data import (
     StudentStageStateCellDataStageState,
 )
 from autoprogen.usecase.student import StudentListIDUseCase
-from autoprogen.usecase.student_mark import StudentMarkGetUseCase, StudentMarkPutUseCase
 from autoprogen.usecase.student_run_next_stage import StudentRunNextStageUseCase
 
 
@@ -72,8 +71,6 @@ class MainWindowFacade:
             student_stage_path_result_repository: StudentStagePathResultRepository,
             student_mark_get_sub_service: StudentMarkGetSubService,
             stage_error_text_formatter: StageErrorTextFormatter,
-            student_mark_get_usecase: StudentMarkGetUseCase,
-            student_mark_put_usecase: StudentMarkPutUseCase,
             student_list_id_usecase: StudentListIDUseCase,
             student_run_next_stage_usecase: StudentRunNextStageUseCase,
             student_stage_result_clear_service: StudentStageResultClearService,
@@ -92,8 +89,6 @@ class MainWindowFacade:
         )
         self._student_mark_get_sub_service = student_mark_get_sub_service
         self._stage_error_text_formatter = stage_error_text_formatter
-        self._student_mark_get_usecase = student_mark_get_usecase
-        self._student_mark_put_usecase = student_mark_put_usecase
         self._student_list_id_usecase = student_list_id_usecase
         self._student_run_next_stage_usecase = student_run_next_stage_usecase
         self._student_stage_result_clear_service = student_stage_result_clear_service
@@ -222,26 +217,6 @@ class MainWindowFacade:
     def open_student_submission_folder(self, student_id: StudentID) -> None:
         """選択学生の提出フォルダをエクスプローラーで開く。"""
         self._student_folder_show_in_explorer_io.show_submission_folder(student_id)
-
-    def get_student_mark(self, student_id: StudentID) -> StudentMark:
-        """共有UseCaseを利用して学生の採点結果を返す。"""
-        return self._student_mark_get_usecase.execute(student_id)
-
-    def set_student_mark_confirmation(
-            self,
-            student_id: StudentID,
-            confirmed: bool,
-    ) -> None:
-        """点数を維持したまま学生の確定状態を保存する。"""
-        student_mark = self._student_mark_get_usecase.execute(student_id)
-        student_mark.confirmed = confirmed
-        self._student_mark_put_usecase.execute(student_mark)
-
-    def clear_student_mark(self, student_id: StudentID) -> None:
-        """学生の点数をクリアし、未確定の状態として保存する。"""
-        student_mark = self._student_mark_get_usecase.execute(student_id)
-        student_mark.score = None
-        self._student_mark_put_usecase.execute(student_mark)
 
     def list_student_ids(self) -> list[StudentID]:
         """共有UseCaseを利用して表示順の学生IDを返す。"""

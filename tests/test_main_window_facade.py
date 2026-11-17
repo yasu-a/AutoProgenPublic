@@ -1,7 +1,6 @@
 from types import SimpleNamespace
-from unittest.mock import Mock, call
+from unittest.mock import Mock
 
-from autoprogen.domain.model.student_mark import StudentMark
 from autoprogen.domain.model.value import ProjectID, StudentID
 from autoprogen.usecase.main_window import MainWindowFacade
 
@@ -16,8 +15,6 @@ def _create_facade() -> tuple[MainWindowFacade, dict[str, Mock]]:
         "student_stage_path_result_repository": Mock(),
         "student_mark_get_sub_service": Mock(),
         "stage_error_text_formatter": Mock(),
-        "student_mark_get_usecase": Mock(),
-        "student_mark_put_usecase": Mock(),
         "student_list_id_usecase": Mock(),
         "student_run_next_stage_usecase": Mock(),
         "student_stage_result_clear_service": Mock(),
@@ -49,29 +46,6 @@ def test_main_window_only_operations_are_owned_by_facade() -> None:
     dependencies[
         "student_folder_show_in_explorer_io"
     ].show_submission_folder.assert_called_once_with(student_id)
-
-
-def test_facade_delegates_shared_mark_operations() -> None:
-    """共有UseCaseを利用して確定変更と点数クリアを保存する。"""
-    facade, dependencies = _create_facade()
-    student_id = StudentID("21D5109047B")
-    confirmed_mark = StudentMark(student_id, 80, confirmed=False)
-    cleared_mark = StudentMark(student_id, 90, confirmed=True)
-    dependencies["student_mark_get_usecase"].execute.side_effect = (
-        confirmed_mark,
-        cleared_mark,
-    )
-
-    facade.set_student_mark_confirmation(student_id, True)
-    facade.clear_student_mark(student_id)
-
-    assert confirmed_mark.confirmed
-    assert cleared_mark.score is None
-    assert not cleared_mark.confirmed
-    assert dependencies["student_mark_put_usecase"].execute.call_args_list == [
-        call(confirmed_mark),
-        call(cleared_mark),
-    ]
 
 
 def test_facade_owns_main_window_operations_and_delegates_shared_usecase() -> None:
