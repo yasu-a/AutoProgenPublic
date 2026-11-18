@@ -107,6 +107,16 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
             raise KeyError(row.student_id)
         self._row_snapshots[row.student_id] = row
 
+    def get_data(self, row: int, column: int, role: QtRoleType):
+        """除外中の学生には全列共通の背景色を適用する。"""
+        student_id = self._student_ids[row]
+        if (
+                role == Qt.BackgroundRole
+                and self._row_snapshots[student_id].bulk_grading_skipped
+        ):
+            return QColor("#e6e6e6")
+        return super().get_data(row, column, role)
+
     def _id_cell(self, student_id: StudentID) -> StudentIDCellData:
         """ロード済みの学籍番号データを返す。"""
         return self._row_snapshots[student_id].id_cell

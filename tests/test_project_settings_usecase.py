@@ -7,9 +7,12 @@ import pytest
 from autoprogen.domain.model.project_settings import ProjectSettings
 from autoprogen.domain.model.student_mark import StudentMark
 from autoprogen.domain.model.value import StudentID
+from autoprogen.domain.error.stage.build import SubmissionNotFoundError
 from autoprogen.usecase.project_settings import (
     BulkGradingSkipAddUseCase,
     BulkGradingSkipAddUseCaseError,
+    NotSubmittedStudentExcludeUseCase,
+    NotSubmittedStudentExcludeUseCaseError,
     ProjectSettingsPutUseCase,
 )
 
@@ -113,3 +116,92 @@ def test_bulk_grading_skip_add_rejects_unmarked_student() -> None:
 
     settings_get.execute.assert_not_called()
     settings_put.execute.assert_not_called()
+
+
+def _not_submitted_exclude_usecase(
+        *,
+        error: object = SubmissionNotFoundError(),
+        task_empty: bool = True,
+) -> tuple[NotSubmittedStudentExcludeUseCase, dict[str, Mock]]:
+    """未提出学生への処置に必要な依存をMock化して返す。"""
+    dependencies = {
+        "stage_paths": Mock(),
+        "results": Mock(),
+        "mark_put": Mock(),
+        "skip_add": Mock(),
+        "settings_get": Mock(),
+        "task_manager": Mock(),
+    }
+    dependencies["stage_paths"].execute.return_value = [Mock()]
+    stage_path_result = Mock()
+    stage_path_result.last_stage_result.error = error
+    dependencies["results"].get.return_value = stage_path_result
+    dependencies["settings_get"].execute.return_value = ProjectSettings.create_default()
+    dependencies["task_manager"].is_empty.return_value = task_empty
+    usecase = NotSubmittedStudentExcludeUseCase(
+        stage_path_list_sub_service=dependencies["stage_paths"],
+        student_stage_path_result_repository=dependencies["results"],
+        student_mark_put_usecase=dependencies["mark_put"],
+        bulk_grading_skip_add_usecase=dependencies["skip_add"],
+        project_settings_get_usecase=dependencies["settings_get"],
+        task_manager=dependencies["task_manager"],
+    )
+    return usecase, dependencies
+
+
+def test_not_submitted_exclude_saves_zero_before_adding_skip() -> None:
+    """未提出学生は0点を保存してから一括採点除外へ追加する。"""
+    student_id = StudentID("00A0000000A")
+    usecase, dependencies = _not_submitted_exclude_usecase()
+
+    usecase.execute(student_id)
+
+    saved_mark = dependencies["mark_put"].execute.call_args.args[0]
+    assert saved_mark.student_id == student_id
+    assert saved_mark.score == 0
+    dependencies["skip_add"].execute.assert_called_once_with(student_id)
+
+
+@pytest.mark.parametrize("task_empty,error", [
+    (False, SubmissionNotFoundError()),
+    (True, ValueError("別のエラー")),
+])
+def test_not_submitted_exclude_rejects_invalid_latest_state(
+        task_empty: bool,
+        error: object,
+) -> None:
+    """実行中または未提出でない学生の点数と設定を変更しない。"""
+    usecase, dependencies = _not_submitted_exclude_usecase(
+        error=error,
+        task_empty=task_empty,
+    )
+
+    with pytest.raises(NotSubmittedStudentExcludeUseCaseError):
+        usecase.execute(StudentID("00A0000000A"))
+
+    dependencies["mark_put"].execute.assert_not_called()
+    dependencies["skip_add"].execute.assert_not_called()
+
+
+def test_not_submitted_exclude_reports_partial_save_when_setting_fails() -> None:
+    """除外設定だけ失敗した場合は0点が保存済みであることを報告する。"""
+    usecase, dependencies = _not_submitted_exclude_usecase()
+    dependencies["skip_add"].execute.side_effect = OSError("settings write failed")
+
+    with pytest.raises(NotSubmittedStudentExcludeUseCaseError) as captured:
+        usecase.execute(StudentID("00A0000000A"))
+
+    assert captured.value.score_saved
+    assert "0点は保存されました" in str(captured.value)
+
+
+def test_not_submitted_exclude_does_not_add_skip_when_score_save_fails() -> None:
+    """点数保存に失敗した場合は除外設定へ進まない。"""
+    usecase, dependencies = _not_submitted_exclude_usecase()
+    dependencies["mark_put"].execute.side_effect = OSError("database write failed")
+
+    with pytest.raises(NotSubmittedStudentExcludeUseCaseError) as captured:
+        usecase.execute(StudentID("00A0000000A"))
+
+    assert not captured.value.score_saved
+    dependencies["skip_add"].execute.assert_not_called()

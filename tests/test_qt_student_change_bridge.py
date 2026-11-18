@@ -193,6 +193,13 @@ def test_loaded_table_uses_snapshot_until_student_changes(qt_app) -> None:
     assert changed_rows == [0]
     assert table.model().data(table.model().index(0, 1), Qt.DisplayRole) == "更新後の名前"
     assert (
+        table.model().data(
+            table.model().index(0, 0),
+            Qt.BackgroundRole,
+        ).name()
+        == "#e6e6e6"
+    )
+    assert (
         table._model_data_provider._provider._row_snapshots[
             student_id
         ].bulk_grading_skipped

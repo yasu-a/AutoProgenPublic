@@ -57,6 +57,7 @@ from autoprogen.usecase.current_project import CurrentProjectInitializeStaticUse
 from autoprogen.usecase.main_window import MainWindowFacade
 from autoprogen.usecase.project_settings import (
     BulkGradingSkipAddUseCase,
+    NotSubmittedStudentExcludeUseCase,
     ProjectSettingsGetUseCase,
     ProjectSettingsPutUseCase,
 )
@@ -403,6 +404,22 @@ class ProjectContainer:
             student_mark_get_usecase=self.student_mark_get_usecase,
             project_settings_get_usecase=self.project_settings_get_usecase,
             project_settings_put_usecase=self.project_settings_put_usecase,
+        )
+
+    @cached_property
+    def not_submitted_student_exclude_usecase(
+            self,
+    ) -> NotSubmittedStudentExcludeUseCase:
+        """未提出学生を0点にして一括採点除外へ追加するUseCaseを返す。"""
+        return NotSubmittedStudentExcludeUseCase(
+            stage_path_list_sub_service=self.stage_path_list_sub_service,
+            student_stage_path_result_repository=(
+                self.student_stage_path_result_repository
+            ),
+            student_mark_put_usecase=self.student_mark_put_usecase,
+            bulk_grading_skip_add_usecase=self.bulk_grading_skip_add_usecase,
+            project_settings_get_usecase=self.project_settings_get_usecase,
+            task_manager=self.task_manager,
         )
 
     @cached_property

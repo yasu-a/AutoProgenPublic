@@ -1,8 +1,15 @@
+from autoprogen.domain.error.stage.build import SubmissionNotFoundError
 from autoprogen.domain.model.project_settings import ProjectSettings
+from autoprogen.domain.model.student_mark import StudentMark
 from autoprogen.domain.model.value import StudentID
 from autoprogen.infra.repository.project_settings import ProjectSettingsRepository
+from autoprogen.infra.repository.student_stage_path_result import (
+    StudentStagePathResultRepository,
+)
+from autoprogen.infra.task.manager import TaskManager
+from autoprogen.service.stage_path import StagePathListSubService
 from autoprogen.service.student_change_event_bus import StudentChangeEventBus
-from autoprogen.usecase.student_mark import StudentMarkGetUseCase
+from autoprogen.usecase.student_mark import StudentMarkGetUseCase, StudentMarkPutUseCase
 
 
 class ProjectSettingsGetUseCase:
@@ -71,3 +78,93 @@ class BulkGradingSkipAddUseCase:
         self._project_settings_put_usecase.execute(
             settings.with_bulk_grading_skip(student_id)
         )
+
+
+class NotSubmittedStudentExcludeUseCaseError(RuntimeError):
+    """未提出学生の0点保存または除外登録を完了できなかった場合のエラー。"""
+
+    def __init__(self, message: str, *, score_saved: bool = False) -> None:
+        """利用者へ部分保存の有無を伝えられるよう状態を保持する。"""
+        super().__init__(message)
+        self.score_saved = score_saved
+
+
+class NotSubmittedStudentExcludeUseCase:
+    """構造化された未提出エラーを再確認し、0点保存後に採点除外へ追加する。"""
+
+    def __init__(
+            self,
+            *,
+            stage_path_list_sub_service: StagePathListSubService,
+            student_stage_path_result_repository: StudentStagePathResultRepository,
+            student_mark_put_usecase: StudentMarkPutUseCase,
+            bulk_grading_skip_add_usecase: BulkGradingSkipAddUseCase,
+            project_settings_get_usecase: ProjectSettingsGetUseCase,
+            task_manager: TaskManager,
+    ) -> None:
+        """最新結果、点数、設定、実行状態を扱う既存経路を受け取る。"""
+        self._stage_path_list_sub_service = stage_path_list_sub_service
+        self._student_stage_path_result_repository = (
+            student_stage_path_result_repository
+        )
+        self._student_mark_put_usecase = student_mark_put_usecase
+        self._bulk_grading_skip_add_usecase = bulk_grading_skip_add_usecase
+        self._project_settings_get_usecase = project_settings_get_usecase
+        self._task_manager = task_manager
+
+    def _has_not_submitted_error(self, student_id: StudentID) -> bool:
+        """最新のステージ結果に構造化された未提出エラーがあるか返す。"""
+        for stage_path in self._stage_path_list_sub_service.execute():
+            result = self._student_stage_path_result_repository.get(
+                student_id,
+                stage_path,
+            )
+            last_result = result.last_stage_result
+            if (
+                    last_result is not None
+                    and isinstance(last_result.error, SubmissionNotFoundError)
+            ):
+                return True
+        return False
+
+    def execute(self, student_id: StudentID) -> None:
+        """未提出状態を検査し、0点保存後に一括採点除外へ追加する。"""
+        if not self._task_manager.is_empty():
+            raise NotSubmittedStudentExcludeUseCaseError(
+                "実行中は未提出学生への処置を行えません"
+            )
+        if not self._has_not_submitted_error(student_id):
+            raise NotSubmittedStudentExcludeUseCaseError(
+                "未提出エラーが解消されています。表示を更新してください"
+            )
+        settings = self._project_settings_get_usecase.execute()
+        if student_id in settings.bulk_grading_skips:
+            raise NotSubmittedStudentExcludeUseCaseError(
+                "この学生はすでに一括採点から除外されています"
+            )
+        if not self._task_manager.is_empty():
+            raise NotSubmittedStudentExcludeUseCaseError(
+                "実行が開始されたため未提出学生への処置を中止しました"
+            )
+
+        # 最新状態を確認した直後に、既存の点数保存経路で0点を確定する。
+        try:
+            self._student_mark_put_usecase.execute(StudentMark(student_id, 0))
+        except Exception as error:
+            raise NotSubmittedStudentExcludeUseCaseError(
+                f"0点を保存できませんでした。\n{error}"
+            ) from error
+
+        # 点数保存後に処理が始まった場合は、設定を変更せず部分保存を明示する。
+        if not self._task_manager.is_empty():
+            raise NotSubmittedStudentExcludeUseCaseError(
+                "0点は保存されましたが、実行が開始されたため除外設定は保存していません",
+                score_saved=True,
+            )
+        try:
+            self._bulk_grading_skip_add_usecase.execute(student_id)
+        except Exception as error:
+            raise NotSubmittedStudentExcludeUseCaseError(
+                f"0点は保存されましたが、除外設定を保存できませんでした。\n{error}",
+                score_saved=True,
+            ) from error

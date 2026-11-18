@@ -75,6 +75,7 @@ def _row(
         entries: list[StudentErrorCellDataTextEntry],
         *,
         mark: StudentMark | None = None,
+        bulk_grading_skipped: bool = False,
 ) -> StudentTableRowSnapshot:
     """エラー表示以外の欄を固定した学生テーブルの一行を構築する。"""
     return StudentTableRowSnapshot(
@@ -87,6 +88,7 @@ def _row(
         },
         error_cell=StudentErrorCellData(STUDENT, entries),
         mark=mark or StudentMark(student_id=STUDENT, score=None),
+        bulk_grading_skipped=bulk_grading_skipped,
     )
 
 
@@ -249,6 +251,29 @@ def test_table_marked_row_has_no_state_background(qt_app) -> None:
 
     provider.replace_row(
         0,
+        _row([], mark=StudentMark(STUDENT, None)),
+    )
+
+    for column in range(len(StudentTableColumns.HEADER)):
+        assert provider.get_data(0, column, Qt.BackgroundRole) is None
+
+
+def test_bulk_grading_skipped_row_has_gray_background(qt_app) -> None:
+    """一括採点から除外した学生は行全体を薄い灰色で表示する。"""
+    from PyQt5.QtCore import Qt
+    from autoprogen.control.widget_student_table import (
+        StudentTableColumns,
+        StudentTableModelDataProvider,
+    )
+
+    provider = StudentTableModelDataProvider(student_ids=[STUDENT])
+    provider.set_rows([_row([], bulk_grading_skipped=True)])
+
+    for column in range(len(StudentTableColumns.HEADER)):
+        background = provider.get_data(0, column, Qt.BackgroundRole)
+        assert background.name() == "#e6e6e6"
+
+    provider.replace_row(
         _row([], mark=StudentMark(STUDENT, None)),
     )
 
