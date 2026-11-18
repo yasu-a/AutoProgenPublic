@@ -65,7 +65,11 @@ class StudentMarkRepository:
                     )
                     VALUES (?, ?, ?)
                     """,
-                    (str(mark.student_id), mark.score if mark.is_marked else None, datetime.now()),
+                    (
+                        str(mark.student_id),
+                        mark.score,
+                        datetime.now(),
+                    ),
                 )
                 con.commit()
         return mark

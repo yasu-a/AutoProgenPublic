@@ -1,17 +1,4 @@
-from autoprogen.domain.model.project import Project
 from autoprogen.infra.repository.current_project import CurrentProjectRepository
-
-
-class CurrentProjectGetService:
-    def __init__(
-            self,
-            *,
-            current_project_repo: CurrentProjectRepository,
-    ):
-        self._current_project_repo = current_project_repo
-
-    def execute(self) -> Project:
-        return self._current_project_repo.get()
 
 
 class CurrentProjectSetInitializedService:

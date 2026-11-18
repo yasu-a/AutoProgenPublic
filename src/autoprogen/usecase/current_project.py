@@ -4,31 +4,13 @@ from autoprogen.domain.error import StudentMasterServiceError, StudentSubmission
     ReadonlyExcelWorksheetGatewayError, ManabaReportListParserError, ManabaReportListArchiveValidateServiceError
 from autoprogen.infra.gateway.manaba_report_archive import ManabaReportArchiveGateway
 from autoprogen.infra.gateway.readonly_excel_worksheet import ReadonlyExcelWorksheetGateway
-from autoprogen.service.current_project import CurrentProjectGetService, CurrentProjectSetInitializedService
+from autoprogen.service.current_project import CurrentProjectSetInitializedService
 from autoprogen.domain.service.manaba_report_list_archive_validate import ManabaReportListArchiveValidateService
 from autoprogen.domain.service.manaba_report_list_parser import ManabaReportListParser
 from autoprogen.service.student_master_create import StudentMasterCreateService
 from autoprogen.service.student_submission import StudentSubmissionExtractService
-from autoprogen.usecase.dto.project import NormalProjectSummary, ProjectInitializeResult
+from autoprogen.usecase.dto.project import ProjectInitializeResult
 from autoprogen.usecase.progress import ProgressCallback
-
-
-class CurrentProjectSummaryGetUseCase:
-    def __init__(
-            self,
-            *,
-            current_project_get_service: CurrentProjectGetService,
-    ):
-        self._current_project_get_service = current_project_get_service
-
-    def execute(self) -> NormalProjectSummary:
-        project = self._current_project_get_service.execute()
-        return NormalProjectSummary(
-            project_id=project.project_id,
-            target_number=int(project.target_id),
-            zip_name=project.zip_name,
-            open_at=project.open_at,
-        )
 
 
 class CurrentProjectInitializeStaticUseCase:

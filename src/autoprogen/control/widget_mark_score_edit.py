@@ -62,23 +62,39 @@ class MarkScoreEditWidget(QWidget):
             return False
         return False
 
-    def set_data(self, student_mark: StudentMark | None) -> None:
-        if student_mark is None:
-            self._le_score.setEnabled(False)
-            self._b_unmark.setEnabled(False)
-            self._student_id = None
-        else:
-            if student_mark.is_marked:
-                self._le_score.setText(str(student_mark.score))
-            else:
+    def set_data(
+            self,
+            student_mark: StudentMark | None,
+            *,
+            editable: bool = True,
+    ) -> None:
+        """採点結果と編集可否を点数入力欄へ反映する。"""
+        previous_blocked = self._le_score.blockSignals(True)
+        try:
+            if student_mark is None:
                 self._le_score.setText("")
-            self._le_score.setEnabled(True)
-            self._b_unmark.setEnabled(True)
-            self._student_id = student_mark.student_id
+                self._le_score.setEnabled(False)
+                self._b_unmark.setEnabled(False)
+                self._student_id = None
+            else:
+                if student_mark.marked:
+                    self._le_score.setText(str(student_mark.score))
+                else:
+                    self._le_score.setText("")
+                self._le_score.setEnabled(editable)
+                self._b_unmark.setEnabled(editable)
+                self._student_id = student_mark.student_id
+        finally:
+            self._le_score.blockSignals(previous_blocked)
+
+        self._le_score.setStyleSheet(
+            "background-color: #e6e6e6;"
+            if student_mark is not None and not editable else ""
+        )
         self._is_modified = False
 
     def set_unmarked(self) -> None:
-        if self._student_id is None:
+        if self._student_id is None or not self._le_score.isEnabled():
             return
         self._le_score.setText("")
 
@@ -103,7 +119,7 @@ class MarkScoreEditWidget(QWidget):
 
     @pyqtSlot()
     def __b_unmark_clicked(self):
-        self._le_score.setText("")
+        self.set_unmarked()
 
     @pyqtSlot()
     def __le_score_text_changed(self):

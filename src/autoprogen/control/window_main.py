@@ -1,9 +1,13 @@
-from typing import TYPE_CHECKING, Callable
+from typing import Callable
 
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 from autoprogen.control.dialog_progress import AbstractProgressDialog
+from autoprogen.control.coordinator_student_error_detail import (
+    StudentErrorDetailCoordinator,
+)
+from autoprogen.control.qt_student_change_bridge import QtStudentChangeBridge
 from autoprogen.control.task.clean_all_stage import CleanAllStagesStudentTask
 from autoprogen.control.task.run_stage import RunStagesStudentTask
 from autoprogen.control.widget_status_process_resource_usage import ProcessResourceUsageStatusBarWidget
@@ -13,12 +17,10 @@ from autoprogen.control.widget_student_table import StudentTableWidget
 from autoprogen.control.widget_toolbar import ToolBar
 from autoprogen.domain.model.value import StudentID
 from autoprogen.infra.task.task import AbstractStudentTask
+from autoprogen.usecase.main_window import MainWindowFacade
 from autoprogen.util.app_logging import create_logger
 
 from autoprogen.control.interface_navigator import INavigator
-
-if TYPE_CHECKING:
-    from autoprogen.application.container import ProjectContainer, AppContainer
 
 
 class MainWindow(QMainWindow):
@@ -29,15 +31,21 @@ class MainWindow(QMainWindow):
             parent: QObject = None,
             *,
             navigator: INavigator,
-            app_container: "AppContainer",
-            project_container: "ProjectContainer",
-    ):
+            main_window_facade: MainWindowFacade,
+            student_error_detail_coordinator: StudentErrorDetailCoordinator,
+    ) -> None:
+        """画面遷移、メイン画面操作、エラー詳細の調整役を受け取る。"""
         super().__init__(parent)
         self._navigator = navigator
-        self._app_container = app_container
-        self._project_container = project_container
-        self._task_manager = project_container.task_manager
+        self._facade = main_window_facade
+        self._student_error_detail_coordinator = student_error_detail_coordinator
+        self._task_manager = main_window_facade.task_manager
         self._table_loading = False
+        self._student_change_bridge = QtStudentChangeBridge(
+            self,
+            student_ids=[],
+            student_change_event_bus=self._facade.student_change_event_bus,
+        )
 
         self._init_ui()
         self._init_signals()
@@ -53,19 +61,23 @@ class MainWindow(QMainWindow):
                 parent=self,
                 title="学生テーブルの読み込み",
                 initial_message="学生の表示データを読み込み中...",
-                task_func=self._project_container.student_table_load_usecase.execute,
+                task_func=self._facade.load_student_table,
             )
             if rows is None:
                 raise RuntimeError("学生テーブルの読み込み結果がありません")
             self._w_student_table.apply_loaded_rows(rows)
+            self._student_change_bridge.set_student_ids(
+                [row.student_id for row in rows],
+            )
         except Exception as error:
             self._logger.exception("Student table loading failed")
             QMessageBox.critical(self, "学生テーブルの読み込み", str(error))
         finally:
             self._table_loading = False
 
-    def _init_ui(self):
-        project_summary = self._project_container.current_project_summary_get_usecase.execute()
+    def _init_ui(self) -> None:
+        """学生テーブルとエラー詳細Dockを含むメイン画面を構築する。"""
+        project_summary = self._facade.get_project_summary()
 
         # noinspection PyUnresolvedReferences
         self.setWindowTitle(
@@ -74,10 +86,7 @@ class MainWindow(QMainWindow):
         self.resize(1500, 800)
 
         # ツールバー
-        self._tool_bar = ToolBar(
-            self,
-            task_manager=self._task_manager,
-        )
+        self._tool_bar = ToolBar(self)
         # noinspection PyUnresolvedReferences
         self.addToolBar(self._tool_bar)
 
@@ -85,8 +94,6 @@ class MainWindow(QMainWindow):
         # noinspection PyTypeChecker
         self._w_student_table = StudentTableWidget(
             self,
-            student_change_event_bus=self._project_container.student_change_event_bus,
-            student_table_load_usecase=self._project_container.student_table_load_usecase,
         )
         # noinspection PyUnresolvedReferences
         self.setCentralWidget(self._w_student_table)
@@ -114,7 +121,9 @@ class MainWindow(QMainWindow):
         # noinspection PyTypeChecker
         self._sb_unstable_version_notif = UnstableVersionNotificationStatusBarWidget(
             self,
-            app_version_check_is_stable_usecase=self._app_container.app_version_check_is_stable_usecase,
+        )
+        self._sb_unstable_version_notif.set_data(
+            self._facade.is_app_version_stable(),
         )
         # noinspection PyUnresolvedReferences
         self.statusBar().addPermanentWidget(self._sb_unstable_version_notif)
@@ -122,12 +131,14 @@ class MainWindow(QMainWindow):
         # noinspection PyTypeChecker
         self._sb_process_resource_usage = ProcessResourceUsageStatusBarWidget(
             self,
-            resource_usage_get_usecase=self._app_container.resource_usage_get_usecase,
         )
         # noinspection PyUnresolvedReferences
         self.statusBar().addPermanentWidget(self._sb_process_resource_usage)
+        self._resource_usage_timer = QTimer(self)
+        self._resource_usage_timer.setInterval(1000)
 
-    def _init_signals(self):
+    def _init_signals(self) -> None:
+        """メイン画面の操作要求を各処理へ接続する。"""
         self._tool_bar.triggered.connect(self.__tool_bar_triggered)
         self._w_student_table.student_id_cell_triggered.connect(
             self.__w_student_table_student_id_cell_triggered
@@ -138,19 +149,66 @@ class MainWindow(QMainWindow):
         self._w_student_table.error_cell_triggered.connect(
             self.__w_student_table_error_cell_triggered
         )
+        self._resource_usage_timer.timeout.connect(
+            self.__update_resource_usage
+        )
+        self._student_change_bridge.student_changed.connect(
+            self.__student_modification_observed,
+        )
+        self._task_manager.busy_changed.connect(self._on_task_busy_changed)
+        # 画面を開く前にタスクが登録されていても実際の状態に揃える。
+        self._on_task_busy_changed(not self._task_manager.is_empty())
+        self._resource_usage_timer.start()
+
+    @pyqtSlot(bool)
+    def _on_task_busy_changed(self, _is_busy: bool) -> None:
+        """タスクの実行状態に応じてUIを更新する。"""
+        # 受信した時点の最新状態を使いたいから受け取った状態は使用しない
+        del _is_busy
+        is_busy = not self._task_manager.is_empty()
+
+        self._tool_bar.update_button_state(is_task_alive=is_busy)
+        self._w_student_table.setEnabled(not is_busy)
+        self._student_error_dock.setEnabled(not is_busy)
+
+        if is_busy:
+            self._student_error_dock.hide()
 
     @pyqtSlot(StudentID)
-    def __w_student_table_student_id_cell_triggered(self, student_id: StudentID):
-        # テーブルの生徒の学籍番号がクリックされたとき
-        # 学生の提出データがあるフォルダを開く
-        self._project_container.student_submission_folder_show_usecase.execute(
-            student_id=student_id,
+    def __student_modification_observed(self, student_id: StudentID) -> None:
+        """変更通知を受けた学生一人を再取得し、テーブル表示へ反映する。"""
+        try:
+            row = self._facade.load_student_table_row(student_id)
+            self._w_student_table.replace_loaded_row(row)
+        except Exception:
+            self._logger.exception(
+                "学生行の再読み込みに失敗しました: %s",
+                student_id,
+            )
+
+    @pyqtSlot()
+    def __update_resource_usage(self) -> None:
+        """最新のリソース使用量を取得してステータス表示へ反映する。"""
+        self._sb_process_resource_usage.set_data(
+            self._facade.get_resource_usage(),
         )
 
     @pyqtSlot(StudentID)
-    def __w_student_table_mark_result_cell_triggered(self, student_id: StudentID):
-        # テーブルの生徒の点数がクリックされたとき
-        # 生徒ごとの採点画面を開く
+    def __w_student_table_student_id_cell_triggered(
+            self,
+            student_id: StudentID,
+    ) -> None:
+        """学籍番号セルの学生の展開済み提出フォルダを開く。"""
+        if not self._task_manager.is_empty():
+            return
+        self._facade.open_student_submission_folder(student_id)
+
+    @pyqtSlot(StudentID)
+    def __w_student_table_mark_result_cell_triggered(
+            self,
+            student_id: StudentID,
+    ) -> None:
+        """点数セルの学生だけを対象とした採点画面を開く。"""
         if not self._task_manager.is_empty():
             # noinspection PyTypeChecker
             QMessageBox.warning(
@@ -163,9 +221,23 @@ class MainWindow(QMainWindow):
         self._navigator.open_scoring_dialog_for_student(self, student_id)
 
     @pyqtSlot(StudentID)
-    def __w_student_table_error_cell_triggered(self, student_id: StudentID) -> None:
-        """エラー欄が押された学生の詳細メッセージを表示する。"""
-        detail_widget = self._navigator.create_student_error_detail_widget(
+    def __w_student_table_error_cell_triggered(
+            self,
+            student_id: StudentID,
+    ) -> None:
+        """エラーセルの学生の詳細を下部Dockへ表示する。"""
+        if not self._task_manager.is_empty():
+            return
+        self.__show_student_error_detail(student_id)
+
+    def __show_student_error_detail(
+            self,
+            student_id: StudentID,
+    ) -> None:
+        """指定学生のエラー詳細を表示し、対象がなければDockを閉じる。"""
+        if not self._task_manager.is_empty():
+            return
+        detail_widget = self._student_error_detail_coordinator.create_widget(
             self._student_error_dock,
             student_id,
         )
@@ -177,11 +249,15 @@ class MainWindow(QMainWindow):
         self._student_error_dock.setWidget(detail_widget)
         if previous_widget is not None:
             previous_widget.deleteLater()
-        self._student_error_dock.setWindowTitle(f"エラーの詳細 - {student_id}")
+        student_name = self._facade.get_student_name(student_id)
+        self._student_error_dock.setWindowTitle(
+            f"エラーの詳細 - {student_id} {student_name}"
+        )
         self._student_error_dock.show()
         self._student_error_dock.raise_()
 
-    def __perform_stop_tasks(self):
+    def __perform_stop_tasks(self) -> None:
+        """実行中の学生タスクがあれば停止処理を行う。"""
         if not self._task_manager.is_empty():
             AbstractProgressDialog.run_blocking_task(
                 parent=self,
@@ -190,20 +266,24 @@ class MainWindow(QMainWindow):
                 task_func=self._task_manager.terminate,
             )
 
-    def __enqueue_student_tasks_if_not_run(self, task_factory: Callable[[StudentID], AbstractStudentTask]):
+    def __enqueue_student_tasks_if_not_run(
+            self,
+            task_factory: Callable[[StudentID], AbstractStudentTask],
+    ) -> None:
+        """タスク停止中の場合だけ全学生分のタスクを登録する。"""
         if not self._task_manager.is_empty():
             return
-        for student_id in self._project_container.student_list_id_usecase.execute():
+        for student_id in self._facade.list_student_ids():
             self._task_manager.enqueue(task_factory(student_id))
 
-    def __tool_bar_triggered(self, name):
-        self._tool_bar.update_button_state(is_task_alive=True)
+    def __tool_bar_triggered(self, name: str) -> None:
+        """ツールバーから要求されたメイン画面操作を実行する。"""
         if name == "run":
             self.__enqueue_student_tasks_if_not_run(
                 lambda student_id: RunStagesStudentTask(
                     parent=self,
                     student_id=student_id,
-                    student_run_next_stage_usecase=self._project_container.student_run_next_stage_usecase,
+                    main_window_facade=self._facade,
                 ),
             )
         elif name == "stop":
@@ -213,7 +293,7 @@ class MainWindow(QMainWindow):
                 lambda student_id: CleanAllStagesStudentTask(
                     parent=self,
                     student_id=student_id,
-                    student_stage_result_clear_usecase=self._project_container.student_stage_result_clear_usecase,
+                    main_window_facade=self._facade,
                 ),
             )
         elif name == "edit-settings":
@@ -238,11 +318,13 @@ class MainWindow(QMainWindow):
         else:
             assert False, name
 
-    def closeEvent(self, evt, **kwargs):
-        self._w_student_table.shutdown()
+    def closeEvent(self, evt, **kwargs) -> None:
+        """購読を解除してランチャー画面への遷移を予約する。"""
+        self._student_change_bridge.stop()
         evt.accept()
         # noinspection PyTypeChecker
         QTimer.singleShot(
             0,
-            lambda: self._navigator.transition_from_workspace_to_launcher(self),
+            lambda: self._navigator.transition_from_workspace_to_launcher(
+                self),
         )

@@ -43,7 +43,6 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
         self._target_id: TargetID = target_id
 
         self._student_ids: list[StudentID] = self._student_list_id_usecase.execute()
-        self._student_marks: list[StudentMark] = self._student_mark_list_usecase.execute()
 
         self._init_ui()
         self._init_signals()
@@ -203,6 +202,25 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
         if excel_fullpath is None:
             return
 
+        # 出力直前に全学生の採点結果を読み直す。除外設定は出力条件に使わない。
+        student_marks = self._student_mark_list_usecase.execute()
+        marks_by_id = {mark.student_id: mark for mark in student_marks}
+        unmarked_ids = [
+            student_id for student_id in self._student_ids
+            if student_id not in marks_by_id or not marks_by_id[student_id].marked
+        ]
+        if unmarked_ids:
+            preview = "\n".join(str(student_id) for student_id in unmarked_ids[:10])
+            if len(unmarked_ids) > 10:
+                preview += f"\nほか{len(unmarked_ids) - 10}人"
+            QMessageBox.warning(
+                self,
+                "点数のエクスポート",
+                f"未採点の学生が{len(unmarked_ids)}人いるため、エクスポートできません。\n"
+                f"全員の点数を入力してください。\n\n{preview}",
+            )
+            return
+
         worksheet_name = self._dl_sheet_names.currentText()
 
         if self._score_excel_has_data_usecase.execute(
@@ -224,7 +242,7 @@ class ScoreExportDialog(QDialog):  # FIXME: usecase化
                 excel_fullpath=excel_fullpath,
                 worksheet_name=worksheet_name,
                 target_id=self._target_id,
-                student_marks=self._student_marks,
+                student_marks=[marks_by_id[student_id] for student_id in self._student_ids],
                 do_backup=self._global_settings_get_usecase.execute().backup_before_export,
             )
         except Exception as e:

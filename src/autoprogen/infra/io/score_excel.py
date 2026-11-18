@@ -261,7 +261,7 @@ class ScoreExcelIO:
             writing_positions = reader.get_writing_positions(student_ids, target_id)
             for student_mark in student_marks:
                 pos = writing_positions[student_mark.student_id]
-                if student_mark.is_marked:
+                if student_mark.marked:
                     ws.cell(
                         row=pos.row_index + 1,
                         column=pos.column_index + 1,

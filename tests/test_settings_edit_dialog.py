@@ -167,12 +167,14 @@ def test_project_settings_dialog_confirms_unsaved_changes(
     get_usecase.execute.return_value = ProjectSettings.create_default()
     dialog = ProjectSettingsEditDialog(
         catalog=SourceCodeCheckCatalogFactory().create(),
+        student_names={},
         project_settings_get_usecase=get_usecase,
         project_settings_put_usecase=Mock(),
     )
     identifier = SourceCodeCheckIdentifier("process", "system")
-    row = dialog._settings_view._rule_ids.index(identifier)
-    checkbox = dialog._settings_view._rules_table.item(row, 0)
+    rules = dialog._settings_view._rules_widget
+    row = rules._rule_ids.index(identifier)
+    checkbox = rules._rules_table.item(row, 0)
     checkbox.setCheckState(
         Qt.Unchecked if checkbox.checkState() == Qt.Checked else Qt.Checked
     )
@@ -191,6 +193,7 @@ def test_project_settings_dialog_unchanged_close_and_save(
     get_usecase.execute.return_value = ProjectSettings.create_default()
     unchanged = ProjectSettingsEditDialog(
         catalog=SourceCodeCheckCatalogFactory().create(),
+        student_names={},
         project_settings_get_usecase=get_usecase,
         project_settings_put_usecase=Mock(),
     )
@@ -199,12 +202,14 @@ def test_project_settings_dialog_unchanged_close_and_save(
     put_usecase = Mock()
     changed = ProjectSettingsEditDialog(
         catalog=SourceCodeCheckCatalogFactory().create(),
+        student_names={},
         project_settings_get_usecase=get_usecase,
         project_settings_put_usecase=put_usecase,
     )
     identifier = SourceCodeCheckIdentifier("process", "system")
-    row = changed._settings_view._rule_ids.index(identifier)
-    checkbox = changed._settings_view._rules_table.item(row, 0)
+    rules = changed._settings_view._rules_widget
+    row = rules._rule_ids.index(identifier)
+    checkbox = rules._rules_table.item(row, 0)
     checkbox.setCheckState(
         Qt.Unchecked if checkbox.checkState() == Qt.Checked else Qt.Checked
     )

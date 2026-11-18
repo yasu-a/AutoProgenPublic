@@ -22,6 +22,7 @@ from autoprogen.domain.model.student_mark import StudentMark
 from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.source_code_check import SourceCodeCheckFinding
 from autoprogen.domain.model.project_settings import SourceCodeCheckSuppressions
+from autoprogen.domain.model.project_settings import ProjectSettings
 from autoprogen.domain.model.student_stage_path_result import StudentStagePathResult
 from autoprogen.domain.model.student_stage_result import (
     BuildStudentStageResult,
@@ -39,10 +40,7 @@ from autoprogen.usecase.dto.student_table_cell_data import (
     StudentStageStateCellData,
     StudentStageStateCellDataStageState,
 )
-from autoprogen.usecase.student_table_load import (
-    StudentTableLoadUseCase,
-    StudentTableRowSnapshot,
-)
+from autoprogen.usecase.main_window import MainWindowFacade, StudentTableRowSnapshot
 
 
 STUDENT = StudentID("21D5109047B")
@@ -73,7 +71,12 @@ def _entry(
     )
 
 
-def _row(entries: list[StudentErrorCellDataTextEntry]) -> StudentTableRowSnapshot:
+def _row(
+        entries: list[StudentErrorCellDataTextEntry],
+        *,
+        mark: StudentMark | None = None,
+        bulk_grading_skipped: bool = False,
+) -> StudentTableRowSnapshot:
     """エラー表示以外の欄を固定した学生テーブルの一行を構築する。"""
     return StudentTableRowSnapshot(
         student_id=STUDENT,
@@ -84,7 +87,8 @@ def _row(entries: list[StudentErrorCellDataTextEntry]) -> StudentTableRowSnapsho
             for stage_type in (BuildStage, CompileStage, ExecuteStage, StageTest)
         },
         error_cell=StudentErrorCellData(STUDENT, entries),
-        mark=StudentMark(student_id=STUDENT, score=None),
+        mark=mark or StudentMark(student_id=STUDENT, score=None),
+        bulk_grading_skipped=bulk_grading_skipped,
     )
 
 
@@ -98,6 +102,35 @@ def _student() -> Student:
         submitted_at=None,
         num_submissions=1,
         submission_folder_name="submitted",
+    )
+
+
+def _table_facade(
+        *,
+        student_repository: Mock,
+        stage_path_list_sub_service: Mock,
+        student_stage_path_result_repository: Mock,
+        student_mark_get_sub_service: Mock,
+) -> MainWindowFacade:
+    """エラー表示用の学生行を構築するFacadeを返す。"""
+    project_settings_get_usecase = Mock()
+    project_settings_get_usecase.execute.return_value = ProjectSettings.create_default()
+    return MainWindowFacade(
+        current_project_repository=Mock(),
+        student_folder_show_in_explorer_io=Mock(),
+        student_repository=student_repository,
+        stage_path_list_sub_service=stage_path_list_sub_service,
+        student_stage_path_result_repository=student_stage_path_result_repository,
+        student_mark_get_sub_service=student_mark_get_sub_service,
+        project_settings_get_usecase=project_settings_get_usecase,
+        stage_error_text_formatter=_formatter(),
+        student_list_id_usecase=Mock(),
+        student_run_next_stage_usecase=Mock(),
+        student_stage_result_clear_service=Mock(),
+        app_version_repository=Mock(),
+        resource_usage_io=Mock(),
+        student_change_event_bus=Mock(),
+        task_manager=Mock(),
     )
 
 
@@ -197,6 +230,57 @@ def test_table_error_cell_cache_is_invalidated_on_row_update(qt_app) -> None:
     assert provider.get_data(0, col, Qt.ToolTipRole) == ""
 
 
+def test_table_marked_row_has_no_state_background(qt_app) -> None:
+    """点数の有無によって学生行へ状態色を付けない。"""
+    from PyQt5.QtCore import Qt
+    from autoprogen.control.widget_student_table import (
+        CachedStudentTableModelDataProvider,
+        StudentTableColumns,
+        StudentTableModelDataProvider,
+    )
+
+    provider = CachedStudentTableModelDataProvider.from_provider(
+        StudentTableModelDataProvider(student_ids=[STUDENT]),
+    )
+    provider.set_rows([
+        _row([], mark=StudentMark(STUDENT, 80)),
+    ])
+
+    for column in range(len(StudentTableColumns.HEADER)):
+        assert provider.get_data(0, column, Qt.BackgroundRole) is None
+
+    provider.replace_row(
+        0,
+        _row([], mark=StudentMark(STUDENT, None)),
+    )
+
+    for column in range(len(StudentTableColumns.HEADER)):
+        assert provider.get_data(0, column, Qt.BackgroundRole) is None
+
+
+def test_bulk_grading_skipped_row_has_gray_background(qt_app) -> None:
+    """一括採点から除外した学生は行全体を薄い灰色で表示する。"""
+    from PyQt5.QtCore import Qt
+    from autoprogen.control.widget_student_table import (
+        StudentTableColumns,
+        StudentTableModelDataProvider,
+    )
+
+    provider = StudentTableModelDataProvider(student_ids=[STUDENT])
+    provider.set_rows([_row([], bulk_grading_skipped=True)])
+
+    for column in range(len(StudentTableColumns.HEADER)):
+        background = provider.get_data(0, column, Qt.BackgroundRole)
+        assert background.name() == "#e6e6e6"
+
+    provider.replace_row(
+        _row([], mark=StudentMark(STUDENT, None)),
+    )
+
+    for column in range(len(StudentTableColumns.HEADER)):
+        assert provider.get_data(0, column, Qt.BackgroundRole) is None
+
+
 def test_detail_widget_exact_message_joining_and_order(qt_app) -> None:
     """要約と詳細の結合規則、空行、複数エラーの順序を全文一致で固定する。"""
     from autoprogen.control.widget_student_error_detail import StudentErrorDetailWidget
@@ -289,15 +373,14 @@ def test_table_load_preserves_error_order_and_stage_states() -> None:
     repository.get.side_effect = stage_results
     mark_service = Mock()
     mark_service.execute.return_value = StudentMark(student_id=STUDENT, score=None)
-    usecase = StudentTableLoadUseCase(
-        student_repo=students,
+    facade = _table_facade(
+        student_repository=students,
         stage_path_list_sub_service=path_service,
-        student_stage_path_result_repo=repository,
+        student_stage_path_result_repository=repository,
         student_mark_get_sub_service=mark_service,
-        stage_error_text_formatter=_formatter(),
     )
 
-    row = usecase.execute(progress_callback=lambda _: None)[0]
+    row = facade.load_student_table(progress_callback=lambda _: None)[0]
     assert row.error_cell.text_entries == [
         _entry(
             "実行対象が存在しません",
@@ -349,15 +432,14 @@ def test_table_load_preserves_compile_output_in_detail(output: str) -> None:
     repository.get.return_value = _stage_path_result(path, build, failure)
     mark_service = Mock()
     mark_service.execute.return_value = StudentMark(student_id=STUDENT, score=None)
-    usecase = StudentTableLoadUseCase(
-        student_repo=students,
+    facade = _table_facade(
+        student_repository=students,
         stage_path_list_sub_service=path_service,
-        student_stage_path_result_repo=repository,
+        student_stage_path_result_repository=repository,
         student_mark_get_sub_service=mark_service,
-        stage_error_text_formatter=_formatter(),
     )
 
-    row = usecase.execute_row(STUDENT)
+    row = facade.load_student_table_row(STUDENT)
     assert row.error_cell.text_entries == [
         _entry(
             "コンパイルに失敗しました。\nコンパイラが設定されていません",

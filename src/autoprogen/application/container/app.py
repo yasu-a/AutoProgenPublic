@@ -17,14 +17,13 @@ from autoprogen.infra.repository.project import ProjectRepository
 from autoprogen.domain.service.match import MatchGetBestService
 from autoprogen.service.project import ProjectListIDQueryService, ProjectGetConfigStateQueryService, ProjectUpdateTimestampService, \
     ProjectGetSizeQueryService
-from autoprogen.usecase.app_version import AppVersionGetTextUseCase, AppVersionCheckIsStableUseCase
+from autoprogen.usecase.app_version import AppVersionGetTextUseCase
 from autoprogen.usecase.compiler import CompilerSearchUseCase
 from autoprogen.usecase.global_settings import GlobalSettingsGetUseCase, GlobalSettingsPutUseCase
 from autoprogen.usecase.project import ProjectCreateUseCase, ProjectOpenUseCase, ProjectListRecentSummaryUseCase, \
     ProjectCheckExistByNameUseCase, ProjectBaseFolderShowUseCase, ProjectFolderShowUseCase, ProjectDeleteUseCase, \
     ProjectGetSizeQueryUseCase
 from autoprogen.usecase.manaba_report_archive import ManabaReportArchiveValidateMasterExcelExistsUseCase
-from autoprogen.usecase.resource_usage import ResourceUsageGetUseCase
 from autoprogen.usecase.score_excel import ScoreExcelListWorksheetStatsUseCase, ScoreExcelHasDataUseCase, ScoreExcelApplyUseCase
 from autoprogen.usecase.test_test_stage import TestTestStageUseCase
 
@@ -41,6 +40,7 @@ class AppContainer:
         self._debug_settings = debug_settings
 
     def create_project_container(self, project_id: ProjectID) -> "ProjectContainer":
+        """指定されたプロジェクトの依存関係コンテナを作成する。"""
         return ProjectContainer(
             project_id=project_id,
             match_get_best_service=self.match_get_best_service,
@@ -49,6 +49,8 @@ class AppContainer:
             project_path_layout=self.project_repository.create_project_path_layout(project_id),
             project_core_io=self.project_core_io,
             readonly_excel_worksheet_gateway=self.readonly_excel_worksheet_gateway,
+            app_version_repository=self.app_version_repository,
+            resource_usage_io=self.resource_usage_io,
         )
 
     @cached_property
@@ -143,12 +145,6 @@ class AppContainer:
         )
 
     @cached_property
-    def app_version_check_is_stable_usecase(self):
-        return AppVersionCheckIsStableUseCase(
-            app_version_repo=self.app_version_repository,
-        )
-
-    @cached_property
     def global_settings_get_usecase(self):
         return GlobalSettingsGetUseCase(
             global_settings_repo=self.global_settings_repository,
@@ -158,12 +154,6 @@ class AppContainer:
     def global_settings_put_usecase(self):
         return GlobalSettingsPutUseCase(
             global_settings_repo=self.global_settings_repository,
-        )
-
-    @cached_property
-    def resource_usage_get_usecase(self):
-        return ResourceUsageGetUseCase(
-            resource_usage_io=self.resource_usage_io,
         )
 
     @cached_property

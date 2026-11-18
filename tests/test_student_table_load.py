@@ -1,14 +1,60 @@
 from unittest.mock import Mock
 
 import pytest
+from PyQt5.QtWidgets import QApplication
 
 from autoprogen.domain.model.stage import BuildStage, CompileStage
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.student import Student
 from autoprogen.domain.model.student_mark import StudentMark
+from autoprogen.domain.model.project_settings import ProjectSettings
 from autoprogen.domain.model.value import StudentID, TestCaseID as CaseID
-from autoprogen.usecase.student_table_load import StudentTableLoadUseCase
+from autoprogen.usecase.main_window import MainWindowFacade
 from autoprogen.usecase.dto.student_table_cell_data import StudentStageStateCellDataStageState
+
+
+@pytest.fixture
+def qt_app(monkeypatch: pytest.MonkeyPatch) -> QApplication:
+    """TaskManagerを保持するFacade用のQApplicationを返す。"""
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication([])
+    return app
+
+
+def _create_facade(
+        *,
+        student_repository: Mock,
+        stage_path_list_sub_service: Mock,
+        student_stage_path_result_repository: Mock,
+        student_mark_get_sub_service: Mock,
+        stage_error_text_formatter: Mock,
+        bulk_grading_skips: frozenset[StudentID] = frozenset(),
+) -> MainWindowFacade:
+    """学生テーブル構築に必要な依存を差し替えたFacadeを返す。"""
+    project_settings_get_usecase = Mock()
+    settings = ProjectSettings.create_default()
+    for student_id in bulk_grading_skips:
+        settings = settings.with_bulk_grading_skip(student_id)
+    project_settings_get_usecase.execute.return_value = settings
+    return MainWindowFacade(
+        current_project_repository=Mock(),
+        student_folder_show_in_explorer_io=Mock(),
+        student_repository=student_repository,
+        stage_path_list_sub_service=stage_path_list_sub_service,
+        student_stage_path_result_repository=student_stage_path_result_repository,
+        student_mark_get_sub_service=student_mark_get_sub_service,
+        project_settings_get_usecase=project_settings_get_usecase,
+        stage_error_text_formatter=stage_error_text_formatter,
+        student_list_id_usecase=Mock(),
+        student_run_next_stage_usecase=Mock(),
+        student_stage_result_clear_service=Mock(),
+        app_version_repository=Mock(),
+        resource_usage_io=Mock(),
+        student_change_event_bus=Mock(),
+        task_manager=Mock(),
+    )
 
 
 def test_load_reuses_each_stage_path_result_for_all_columns() -> None:
@@ -37,22 +83,27 @@ def test_load_reuses_each_stage_path_result_for_all_columns() -> None:
         result.last_stage_result = None
     result_repo.get.side_effect = stage_results
     mark_service = Mock()
-    mark_service.execute.return_value = StudentMark(student_id=student_id, score=75)
+    mark_service.execute.return_value = StudentMark(
+        student_id=student_id,
+        score=75,
+    )
     progress: list[str] = []
-    usecase = StudentTableLoadUseCase(
-        student_repo=student_repo,
+    facade = _create_facade(
+        student_repository=student_repo,
         stage_path_list_sub_service=path_service,
-        student_stage_path_result_repo=result_repo,
+        student_stage_path_result_repository=result_repo,
         student_mark_get_sub_service=mark_service,
         stage_error_text_formatter=Mock(),
+        bulk_grading_skips=frozenset({student_id}),
     )
 
-    rows = usecase.execute(progress_callback=progress.append)
+    rows = facade.load_student_table(progress_callback=progress.append)
 
     assert len(rows) == 1
     assert rows[0].id_cell.is_submission_folder_link_alive
     assert rows[0].name_cell.student_name == "試験 太郎"
     assert rows[0].mark.score == 75
+    assert rows[0].bulk_grading_skipped
     assert list(rows[0].stage_cells[BuildStage].states.values()) == [
         StudentStageStateCellDataStageState.FINISHED_SUCCESS,
         StudentStageStateCellDataStageState.FINISHED_SUCCESS,
@@ -63,6 +114,7 @@ def test_load_reuses_each_stage_path_result_for_all_columns() -> None:
     ]
     assert result_repo.get.call_count == len(paths)
     mark_service.execute.assert_called_once_with(student_id)
+    facade._project_settings_get_usecase.execute.assert_called_once_with()
     assert progress == [
         "学生の表示データを読み込み中... 0/1",
         "学生の表示データを読み込み中... 1/1",
@@ -73,16 +125,16 @@ def test_load_empty_student_list() -> None:
     """学生がいないプロジェクトでも空のロード結果を返す。"""
     student_repo = Mock()
     student_repo.list.return_value = []
-    usecase = StudentTableLoadUseCase(
-        student_repo=student_repo,
+    facade = _create_facade(
+        student_repository=student_repo,
         stage_path_list_sub_service=Mock(),
-        student_stage_path_result_repo=Mock(),
+        student_stage_path_result_repository=Mock(),
         student_mark_get_sub_service=Mock(),
         stage_error_text_formatter=Mock(),
     )
     progress: list[str] = []
 
-    assert usecase.execute(progress_callback=progress.append) == []
+    assert facade.load_student_table(progress_callback=progress.append) == []
     assert progress == ["学生の表示データを読み込み中... 0/0"]
 
 
@@ -104,25 +156,34 @@ def test_load_one_student_reuses_row_builder_without_listing_students() -> None:
     path_service = Mock()
     path_service.execute.return_value = []
     mark_service = Mock()
-    mark_service.execute.return_value = StudentMark(student_id=student_id, score=75)
-    usecase = StudentTableLoadUseCase(
-        student_repo=student_repo,
+    mark_service.execute.return_value = StudentMark(
+        student_id=student_id,
+        score=75,
+    )
+    facade = _create_facade(
+        student_repository=student_repo,
         stage_path_list_sub_service=path_service,
-        student_stage_path_result_repo=Mock(),
+        student_stage_path_result_repository=Mock(),
         student_mark_get_sub_service=mark_service,
         stage_error_text_formatter=Mock(),
+        bulk_grading_skips=frozenset({student_id}),
     )
 
-    expected = usecase.execute(progress_callback=lambda _: None)[0]
+    expected = facade.load_student_table(progress_callback=lambda _: None)[0]
     student_repo.reset_mock()
-    actual = usecase.execute_row(student_id)
+    actual = facade.load_student_table_row(student_id)
 
     assert actual == expected
+    assert actual.bulk_grading_skipped
+    assert facade._project_settings_get_usecase.execute.call_count == 2
     student_repo.get.assert_called_once_with(student_id)
     student_repo.list.assert_not_called()
 
 
-def test_load_initialized_project_from_archive(initialized_project_from_archive) -> None:
+def test_load_initialized_project_from_archive(
+        initialized_project_from_archive,
+        qt_app: QApplication,
+) -> None:
     """実際に初期化したプロジェクトの全学生を読み込める。"""
     project_container = initialized_project_from_archive(
         archive_name="report-test-1",
@@ -130,7 +191,7 @@ def test_load_initialized_project_from_archive(initialized_project_from_archive)
     )
     progress: list[str] = []
 
-    rows = project_container.student_table_load_usecase.execute(
+    rows = project_container.main_window_facade.load_student_table(
         progress_callback=progress.append,
     )
 

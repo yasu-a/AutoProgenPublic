@@ -4,7 +4,10 @@ from autoprogen.res.font import get_font
 
 
 class MarkHelpDialog(QDialog):
+    """採点画面で利用できるキーボード操作の一覧を表示する。"""
+
     def __init__(self, parent=None):
+        """ショートカット一覧を構築する。"""
         super().__init__(parent)
 
         self._init_ui()
@@ -13,14 +16,15 @@ class MarkHelpDialog(QDialog):
     _SHORTCUTS = [
         ("前の生徒", ["A", "Left"]),
         ("次の生徒", ["D", "Right"]),
-        ("前のテストケース", ["Q"]),
-        ("次のテストケース", ["E"]),
+        ("前のテストケース", ["W", "Up"]),
+        ("次のテストケース", ["S", "Down"]),
         ("前のストリーム", ["Z"]),
         ("次のストリーム", ["C"]),
         ("点数のクリア", ["Space", "Delete"])
     ]
 
     def _init_ui(self):
+        """操作名と対応キーを表形式で配置する。"""
         self.setModal(True)
 
         layout = QVBoxLayout()
@@ -61,6 +65,7 @@ class MarkHelpDialog(QDialog):
             layout_cell.addStretch(1)
 
     def _init_signals(self):
+        """接続が必要なシグナルはない。"""
         pass
 
 
