@@ -1,4 +1,4 @@
-"""採点画面の点数入力と確定状態の関係を検証する。"""
+"""採点画面の点数入力を検証する。"""
 
 import pytest
 from PyQt5.QtWidgets import QApplication
@@ -18,56 +18,44 @@ def qt_app(monkeypatch: pytest.MonkeyPatch) -> QApplication:
     return app
 
 
-@pytest.mark.parametrize("confirmed", [False, True])
-def test_score_edit_preserves_loaded_confirmation(
+@pytest.mark.parametrize(("text", "score"), [("", None), ("0", 0), ("80", 80)])
+def test_score_edit_distinguishes_empty_zero_and_score(
         qt_app: QApplication,
-        confirmed: bool,
+        text: str,
+        score: int | None,
 ) -> None:
-    """点数を編集しても読み込んだ確定状態を暗黙に変更しない。"""
+    """空欄・0点・通常点を区別して採点結果を返す。"""
     student_id = StudentID("21D5109047B")
     widget = MarkScoreEditWidget()
-    widget.set_data(StudentMark(student_id, 50, confirmed=confirmed))
+    widget.set_data(StudentMark(student_id, 50))
 
-    widget._le_score.setText("80")
+    widget._le_score.setText(text)
     actual = widget.get_data()
 
     assert actual is not None
-    assert actual.score == 80
-    assert actual.confirmed is confirmed
+    assert actual.student_id == student_id
+    assert actual.score == score
 
 
-def test_reentering_score_after_clear_remains_unconfirmed(
-        qt_app: QApplication,
-) -> None:
-    """点数を消して確定解除した後の再入力では自動確定しない。"""
-    student_id = StudentID("21D5109047B")
+def test_score_edit_tracks_changes_and_clear(qt_app: QApplication) -> None:
+    """読込直後は未変更で、点数変更とクリアを変更として扱う。"""
     widget = MarkScoreEditWidget()
-    widget.set_data(StudentMark(student_id, 50, confirmed=True))
+    widget.set_data(StudentMark(StudentID("21D5109047B"), 50))
+    assert not widget.is_modified()
 
-    widget.set_unmarked()
     widget._le_score.setText("80")
-    actual = widget.get_data()
-
-    assert actual is not None
-    assert actual.score == 80
-    assert not actual.confirmed
-
-
-def test_confirmation_changes_score_field_appearance(
-        qt_app: QApplication,
-) -> None:
-    """確定済みだけを緑色で表示し、点数クリア時に通常表示へ戻す。"""
-    student_id = StudentID("21D5109047B")
-    widget = MarkScoreEditWidget()
-    changes: list[bool] = []
-    widget.confirmation_changed.connect(changes.append)
-
-    widget.set_data(StudentMark(student_id, 50, confirmed=True))
-
-    assert "#dffe8b" in widget._le_score.styleSheet()
-    assert changes == [True]
+    assert widget.is_modified()
+    assert widget.get_data().score == 80
 
     widget.set_unmarked()
+    assert widget.get_data().score is None
 
-    assert widget._le_score.styleSheet() == ""
-    assert changes == [True, False]
+
+def test_none_disables_score_edit(qt_app: QApplication) -> None:
+    """学生が未指定の場合は点数入力とクリアを無効にする。"""
+    widget = MarkScoreEditWidget()
+    widget.set_data(None)
+
+    assert widget.get_data() is None
+    assert not widget._le_score.isEnabled()
+    assert not widget._b_unmark.isEnabled()

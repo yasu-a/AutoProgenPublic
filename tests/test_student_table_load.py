@@ -78,7 +78,6 @@ def test_load_reuses_each_stage_path_result_for_all_columns() -> None:
     mark_service.execute.return_value = StudentMark(
         student_id=student_id,
         score=75,
-        confirmed=True,
     )
     progress: list[str] = []
     facade = _create_facade(
@@ -149,7 +148,6 @@ def test_load_one_student_reuses_row_builder_without_listing_students() -> None:
     mark_service.execute.return_value = StudentMark(
         student_id=student_id,
         score=75,
-        confirmed=True,
     )
     facade = _create_facade(
         student_repository=student_repo,

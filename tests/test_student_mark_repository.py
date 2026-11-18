@@ -49,13 +49,11 @@ def test_create_get_and_exists(
     mark = repo.create(first)
     assert mark.score is None
     assert not mark.marked
-    assert not mark.confirmed
     assert repo.exists(first)
     assert not repo.exists(second)
     saved = repo.get(first)
     assert saved.student_id == first
     assert saved.score is None
-    assert not saved.confirmed
 
 
 def test_missing_student_mark_raises(
@@ -68,49 +66,33 @@ def test_missing_student_mark_raises(
     assert repo.list() == []
 
 
-@pytest.mark.parametrize("score, confirmed", [(None, False), (0, True), (50, False), (99, True)])
+@pytest.mark.parametrize("score", [None, 0, 50, 99])
 def test_put_get_round_trip(
     repo: StudentMarkRepository,
     student_ids: tuple[StudentID, StudentID],
     score: int | None,
-    confirmed: bool,
 ) -> None:
-    """未採点・0点・未確定・確定の各状態を保存して復元する。"""
+    """未採点・0点・通常点を保存して復元する。"""
     student_id = student_ids[0]
-    repo.put(StudentMark(student_id=student_id, score=score, confirmed=confirmed))
+    repo.put(StudentMark(student_id=student_id, score=score))
     saved = repo.get(student_id)
     assert saved.student_id == student_id
     assert saved.score == score
     assert saved.marked is (score is not None)
-    assert saved.confirmed is confirmed
-    assert repo.list()[0].confirmed is confirmed
-
-
-def test_overwrite_preserves_explicit_unconfirmed(
-    repo: StudentMarkRepository, student_ids: tuple[StudentID, StudentID]
-) -> None:
-    """確定済みの点数を未確定で上書きしても勝手に確定しない。"""
-    student_id = student_ids[0]
-    repo.put(StudentMark(student_id, 80, confirmed=True))
-    repo.put(StudentMark(student_id, 80, confirmed=False))
-    assert repo.get(student_id).score == 80
-    assert not repo.get(student_id).confirmed
-    assert not repo.list()[0].confirmed
+    assert repo.list()[0].score == score
 
 
 def test_list_multiple_students(
     repo: StudentMarkRepository, student_ids: tuple[StudentID, StudentID]
 ) -> None:
-    """複数学生の点数と確定状態を独立して保持する。"""
+    """複数学生の点数を独立して保持する。"""
     first, second = student_ids
-    repo.put(StudentMark(first, 50, confirmed=False))
-    repo.put(StudentMark(second, 0, confirmed=True))
+    repo.put(StudentMark(first, 50))
+    repo.put(StudentMark(second, 0))
     marks = {mark.student_id: mark for mark in repo.list()}
     assert set(marks) == set(student_ids)
     assert marks[first].score == 50
-    assert not marks[first].confirmed
     assert marks[second].score == 0
-    assert marks[second].confirmed
 
 
 def test_timestamps_update_only_on_write(
@@ -126,31 +108,30 @@ def test_timestamps_update_only_on_write(
     repo.get(student_id)
     repo.list()
     assert repo.get_timestamp(student_id) == created
-    repo.put(StudentMark(student_id, 60, confirmed=False))
+    repo.put(StudentMark(student_id, 60))
     updated = repo.get_timestamp(student_id)
     assert isinstance(updated, datetime)
     assert updated >= created
 
 
-def test_new_schema_has_confirmation_column(
+def test_new_schema_stores_only_score_and_timestamp(
     repo: StudentMarkRepository,
     database_io: ProjectDatabaseIO,
     student_ids: tuple[StudentID, StudentID],
 ) -> None:
-    """新規テーブルが確定状態をNULL不可の整数列として保存する。"""
+    """新規テーブルが採点状態を持たず点数と更新時刻だけを保存する。"""
     repo.create(student_ids[0])
     with database_io.connect() as con:
         columns = {
             row["name"]: row for row in con.execute("PRAGMA table_info(student_mark)")
         }
         row = con.execute(
-            "SELECT score, confirmed FROM student_mark WHERE student_id = ?",
+            "SELECT score, updated_at FROM student_mark WHERE student_id = ?",
             (str(student_ids[0]),),
         ).fetchone()
-    assert columns["confirmed"]["type"] == "INTEGER"
-    assert columns["confirmed"]["notnull"] == 1
+    assert "confirmed" not in columns
     assert row["score"] is None
-    assert row["confirmed"] == 0
+    assert row["updated_at"] is not None
 
 
 def test_foreign_key_is_enforced(
@@ -158,17 +139,16 @@ def test_foreign_key_is_enforced(
 ) -> None:
     """登録のない学生に採点結果を保存すると外部キー違反になる。"""
     with pytest.raises(sqlite3.IntegrityError):
-        repo.put(StudentMark(StudentID("25D5203184K"), 80, confirmed=True))
+        repo.put(StudentMark(StudentID("25D5203184K"), 80))
 
 
-def test_reopen_preserves_unconfirmed(
+def test_reopen_preserves_score(
     database_io: ProjectDatabaseIO,
     repo: StudentMarkRepository,
     student_ids: tuple[StudentID, StudentID],
 ) -> None:
-    """新規DBを再度開いたときも未確定状態を保持する。"""
+    """新規DBを再度開いたときも点数を保持する。"""
     student_id = student_ids[0]
-    repo.put(StudentMark(student_id, 50, confirmed=False))
+    repo.put(StudentMark(student_id, 50))
     reopened = StudentMarkRepository(project_database_io=database_io)
     assert reopened.get(student_id).score == 50
-    assert not reopened.get(student_id).confirmed

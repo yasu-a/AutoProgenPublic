@@ -1,4 +1,4 @@
-"""採点結果の確定状態がExcel出力の従来仕様に影響しないことを検証する。"""
+"""採点結果がExcel出力へ正しく渡されることを検証する。"""
 
 from pathlib import Path
 
@@ -9,8 +9,8 @@ from autoprogen.domain.model.value import StudentID, TargetID
 from autoprogen.infra.io.score_excel import ScoreExcelIO
 
 
-def test_unconfirmed_scores_are_still_exported(tmp_path: Path) -> None:
-    """未確定でも入力済みの点数を出力し、未採点は空欄にする。"""
+def test_scores_are_exported_and_unmarked_cell_is_empty(tmp_path: Path) -> None:
+    """入力済みの点数を出力し、未採点は空欄にする。"""
     first = StudentID("21D5109047B")
     second = StudentID("24A0007521M")
     third = StudentID("25D5203184K")
@@ -27,8 +27,8 @@ def test_unconfirmed_scores_are_still_exported(tmp_path: Path) -> None:
     io.apply(
         worksheet_name=worksheet.title,
         student_marks=[
-            StudentMark(first, 50, confirmed=False),
-            StudentMark(second, 0, confirmed=False),
+            StudentMark(first, 50),
+            StudentMark(second, 0),
             StudentMark(third, None),
         ],
         target_id=TargetID(1),

@@ -128,7 +128,7 @@ def test_mark_save_notifies_but_lazy_creation_does_not(student_id: StudentID) ->
         student_mark_repo=repository,
         student_change_event_bus=bus,
     )
-    mark = StudentMark(student_id=student_id, score=50, confirmed=True)
+    mark = StudentMark(student_id=student_id, score=50)
 
     get_service.execute(student_id)
     assert events == []

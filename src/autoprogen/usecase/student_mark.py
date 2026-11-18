@@ -42,9 +42,8 @@ class StudentMarkListUseCase:
             self,
             *,
             student_ids: Iterable[StudentID] | None = None,
-            confirmed: bool | None = None,
     ) -> list[StudentMark]:
-        """指定された学生IDと確定状態に一致する採点結果を一覧順で返す。"""
+        """指定された学生IDに一致する採点結果を元の一覧順で返す。"""
         student_marks = self._student_mark_list_service.execute()
 
         if student_ids is not None:
@@ -53,13 +52,6 @@ class StudentMarkListUseCase:
                 student_mark
                 for student_mark in student_marks
                 if student_mark.student_id in target_student_ids
-            ]
-
-        if confirmed is not None:
-            student_marks = [
-                student_mark
-                for student_mark in student_marks
-                if student_mark.confirmed is confirmed
             ]
 
         return student_marks

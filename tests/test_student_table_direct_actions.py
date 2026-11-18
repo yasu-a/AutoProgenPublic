@@ -60,7 +60,6 @@ def _row(
         mark=StudentMark(
             student_id,
             score,
-            confirmed=False if score is not None else None,
         ),
     )
 

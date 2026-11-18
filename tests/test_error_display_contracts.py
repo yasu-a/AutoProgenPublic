@@ -224,10 +224,9 @@ def test_table_error_cell_cache_is_invalidated_on_row_update(qt_app) -> None:
     assert provider.get_data(0, col, Qt.ToolTipRole) == ""
 
 
-def test_table_confirmed_row_has_distinct_background(qt_app) -> None:
-    """確定済みの行だけに背景色を付け、行更新時に表示を戻す。"""
+def test_table_marked_row_has_no_state_background(qt_app) -> None:
+    """点数の有無によって学生行へ状態色を付けない。"""
     from PyQt5.QtCore import Qt
-    from PyQt5.QtGui import QColor
     from autoprogen.control.widget_student_table import (
         CachedStudentTableModelDataProvider,
         StudentTableColumns,
@@ -238,15 +237,15 @@ def test_table_confirmed_row_has_distinct_background(qt_app) -> None:
         StudentTableModelDataProvider(student_ids=[STUDENT]),
     )
     provider.set_rows([
-        _row([], mark=StudentMark(STUDENT, 80, confirmed=True)),
+        _row([], mark=StudentMark(STUDENT, 80)),
     ])
 
     for column in range(len(StudentTableColumns.HEADER)):
-        assert provider.get_data(0, column, Qt.BackgroundRole) == QColor("#dffe8b")
+        assert provider.get_data(0, column, Qt.BackgroundRole) is None
 
     provider.replace_row(
         0,
-        _row([], mark=StudentMark(STUDENT, 80, confirmed=False)),
+        _row([], mark=StudentMark(STUDENT, None)),
     )
 
     for column in range(len(StudentTableColumns.HEADER)):

@@ -432,22 +432,7 @@ class MarkDialog(QDialog):
             self.__w_test_result_view_placeholder_selected_file_id_changed
         )
         self._w_mark_score.key_pressed.connect(self.__w_mark_score_key_pressed)
-        self._w_mark_score.confirmation_changed.connect(
-            self._update_confirmation_display
-        )
         self._b_help.clicked.connect(self.__b_help_clicked)
-
-    @pyqtSlot(bool)
-    def _update_confirmation_display(self, confirmed: bool) -> None:
-        """確定済みの場合だけ採点ダイアログ全体を緑枠で示す。"""
-        if confirmed:
-            self.setStyleSheet(
-                "MarkDialog { border: 4px solid #dffe8b; }"
-            )
-        else:
-            self.setStyleSheet(
-                "MarkDialog { border: 4px solid gray; }"
-            )
 
     def __get_student_mark_summary_view_data(
         self, student_id: StudentID,

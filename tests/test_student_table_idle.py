@@ -81,7 +81,6 @@ def test_initialized_table_stays_idle_and_reflects_mark_change(
             StudentMark(
                 student_id=student_id,
                 score=new_score,
-                confirmed=True,
             ),
         )
         while not changed_rows and perf_counter() - started_at < 0.5:

@@ -452,7 +452,6 @@ def test_grading_workflow_msvc(
             StudentMark(
                 student_id=StudentID(student_id_text),
                 score=score,
-                confirmed=True,
             )
         )
     _assert_marks(project_container)

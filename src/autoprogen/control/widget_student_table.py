@@ -129,13 +129,6 @@ class StudentTableModelDataProvider(AbstractStudentTableModelDataProvider):
         """ロード済みの採点データを返す。"""
         return self._row_snapshots[student_id].mark
 
-    def get_data(self, row: int, column: int, role: QtRoleType):
-        """確定済みの学生を緑色で示し、それ以外は列別表示へ委譲する。"""
-        student_id = self._student_ids[row]
-        if role == Qt.BackgroundRole and self._mark(student_id).confirmed:
-            return QColor("#dffe8b")
-        return super().get_data(row, column, role)
-
     def has_submission(self, row: int) -> bool:
         """指定行のロード済み提出状態を返す。"""
         student_id = self._student_ids[row]

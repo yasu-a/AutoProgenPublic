@@ -152,7 +152,7 @@ def test_loaded_table_uses_snapshot_until_student_changes(qt_app) -> None:
         name_cell=StudentNameCellData(student_id, "ロード済みの名前"),
         stage_cells=stage_cells,
         error_cell=StudentErrorCellData(student_id, []),
-        mark=StudentMark(student_id=student_id, score=50, confirmed=True),
+        mark=StudentMark(student_id=student_id, score=50),
     )
     row_loader = Mock()
     bus = StudentChangeEventBus()

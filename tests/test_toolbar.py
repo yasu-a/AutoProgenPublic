@@ -16,10 +16,10 @@ def qt_app(monkeypatch: pytest.MonkeyPatch) -> QApplication:
     return app
 
 
-def test_toolbar_labels_bulk_action_as_unconfirmed_grading(
+def test_toolbar_labels_bulk_grading_action(
         qt_app: QApplication,
 ) -> None:
-    """一括採点ボタンが未確定学生だけを対象とすることを明示する。"""
+    """一括採点ボタンの対象範囲を誤解しない名称を表示する。"""
     toolbar = ToolBar(task_manager=Mock())
 
-    assert toolbar._a_mark.text() == "未確定を採点"
+    assert toolbar._a_mark.text() == "一括採点"

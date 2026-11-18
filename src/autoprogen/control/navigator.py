@@ -238,13 +238,9 @@ class Navigator(INavigator):
         dialog.exec_()
 
     def open_scoring_dialog(self, parent: QWidget) -> None:
-        """未確定の学生を一覧順に対象として採点画面を開く。"""
+        """全学生を一覧順に対象として一括採点画面を開く。"""
         assert self._current_project_container is not None
-        student_marks = (
-            self._current_project_container.student_mark_list_usecase.execute(
-                confirmed=False,
-            )
-        )
+        student_marks = self._current_project_container.student_mark_list_usecase.execute()
         self._open_scoring_dialog(
             parent,
             [student_mark.student_id for student_mark in student_marks],
