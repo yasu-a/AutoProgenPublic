@@ -54,6 +54,7 @@ from autoprogen.service.student_submission import StudentSubmissionExistService,
 from autoprogen.service.testcase_config import TestCaseConfigCopyService, TestCaseConfigGetExecuteConfigMtimeService, \
     TestCaseConfigGetTestConfigMtimeService
 from autoprogen.usecase.current_project import CurrentProjectInitializeStaticUseCase
+from autoprogen.usecase.global_settings import GlobalSettingsGetUseCase
 from autoprogen.usecase.main_window import MainWindowFacade
 from autoprogen.usecase.project_settings import (
     BulkGradingSkipAddUseCase,
@@ -72,6 +73,9 @@ from autoprogen.usecase.student_run_execute import StudentRunExecuteStageUseCase
 from autoprogen.usecase.student_run_next_stage import StudentRunNextStageUseCase
 from autoprogen.usecase.student_run_test import StudentRunTestStageUseCase
 from autoprogen.usecase.student_source_code import StudentSourceCodeGetUseCase
+from autoprogen.usecase.source_code_check_skip import (
+    SourceCodeCheckSkipApproveUseCase,
+)
 from autoprogen.usecase.test_compile_stage import TestCompileStageUseCase
 from autoprogen.usecase.testcase_config import TestCaseDeleteUseCase, TestCaseGetUseCase, TestCaseListIDUseCase, \
     TestCasePutUseCase
@@ -191,6 +195,13 @@ class ProjectContainer:
     @cached_property
     def task_manager(self):
         return TaskManager(
+            global_settings_repo=self._global_settings_repository,
+        )
+
+    @cached_property
+    def global_settings_get_usecase(self) -> GlobalSettingsGetUseCase:
+        """アプリ全体の表示設定を取得するUseCaseを返す。"""
+        return GlobalSettingsGetUseCase(
             global_settings_repo=self._global_settings_repository,
         )
 
@@ -419,6 +430,44 @@ class ProjectContainer:
             student_mark_put_usecase=self.student_mark_put_usecase,
             bulk_grading_skip_add_usecase=self.bulk_grading_skip_add_usecase,
             project_settings_get_usecase=self.project_settings_get_usecase,
+            task_manager=self.task_manager,
+        )
+
+    @cached_property
+    def source_code_check_skip_approve_usecase(
+            self,
+    ) -> SourceCodeCheckSkipApproveUseCase:
+        """安全性チェックで停止した現在のソースを許可するUseCaseを返す。"""
+        return SourceCodeCheckSkipApproveUseCase(
+            student_source_code_get_usecase=self.student_source_code_get_usecase,
+            stage_path_list_sub_service=self.stage_path_list_sub_service,
+            student_stage_path_result_repository=(
+                self.student_stage_path_result_repository
+            ),
+            project_settings_get_usecase=self.project_settings_get_usecase,
+            project_settings_put_usecase=self.project_settings_put_usecase,
+            task_manager=self.task_manager,
+        )
+
+    @cached_property
+    def student_error_detail_coordinator(self):
+        """学生エラーの詳細表示と処置要求を調整するCoordinatorを返す。"""
+        from autoprogen.control.coordinator_student_error_detail import (
+            StudentErrorDetailCoordinator,
+        )
+
+        return StudentErrorDetailCoordinator(
+            main_window_facade=self.main_window_facade,
+            student_source_code_get_usecase=self.student_source_code_get_usecase,
+            global_settings_get_usecase=self.global_settings_get_usecase,
+            project_settings_get_usecase=self.project_settings_get_usecase,
+            source_code_check_skip_approve_usecase=(
+                self.source_code_check_skip_approve_usecase
+            ),
+            not_submitted_student_exclude_usecase=(
+                self.not_submitted_student_exclude_usecase
+            ),
+            student_mark_get_usecase=self.student_mark_get_usecase,
             task_manager=self.task_manager,
         )
 

@@ -226,7 +226,7 @@ def test_error_cell_replaces_detail_dock_for_clicked_student(
     )
     first_widget = QLabel("最初の詳細")
     second_widget = QLabel("次の詳細")
-    window._navigator.create_student_error_detail_widget.side_effect = (
+    window._student_error_detail_coordinator.create_widget.side_effect = (
         first_widget,
         second_widget,
     )

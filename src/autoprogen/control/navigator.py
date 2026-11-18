@@ -1,30 +1,18 @@
-from typing import TYPE_CHECKING, Callable
+from typing import Callable
 
 from PyQt5.QtWidgets import (
     QApplication,
     QDialog,
     QMainWindow,
     QMessageBox,
-    QVBoxLayout,
     QWidget,
 )
 
 from autoprogen.application.container import AppContainer, ProjectContainer
 from autoprogen.control.dialog_progress import AbstractProgressDialog
 from autoprogen.control.interface_navigator import INavigator
-from autoprogen.domain.error.stage.build import SubmissionNotFoundError
-from autoprogen.domain.error.stage.compile import SourceSafetyViolationError
-from autoprogen.domain.model.project_settings import SourceCodeCheckSkip
-from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.value import ProjectID, StudentID
-from autoprogen.usecase.project_settings import (
-    NotSubmittedStudentExcludeUseCaseError,
-)
 from autoprogen.util.app_logging import create_logger
-
-if TYPE_CHECKING:
-    from autoprogen.control.widget_not_submitted_error import NotSubmittedErrorWidget
-    from autoprogen.control.widget_source_safety_error import SourceSafetyErrorWidget
 
 
 class Navigator(INavigator):
@@ -93,266 +81,6 @@ class Navigator(INavigator):
             project_settings_put_usecase=container.project_settings_put_usecase,
         )
         dialog.exec_()
-
-    def create_student_error_detail_widget(
-            self,
-            parent: QWidget,
-            student_id: StudentID,
-    ) -> QWidget | None:
-        """学生のエラー詳細を取得し、ドックへ配置するWidgetを生成する。"""
-        from autoprogen.control.widget_student_error_detail import StudentErrorDetailWidget
-        assert self._current_project_container is not None
-        container = self._current_project_container
-        row = container.main_window_facade.load_student_table_row(student_id)
-        if not row.error_cell.text_entries:
-            return None
-        # 共有ステージの同一エラーが複数パスに保存されていても一度だけ表示する。
-        error_entries = row.error_cell.distinct_text_entries()
-        detail_widget = StudentErrorDetailWidget(
-            parent,
-            error_entries=error_entries,
-        )
-        extension_widgets: list[QWidget] = []
-        # 構造化エラーから安全性チェック停止だけを専用表示の対象にする。
-        safety_errors = tuple(
-            entry.error
-            for entry in error_entries
-            if isinstance(entry.error, SourceSafetyViolationError)
-        )
-        if safety_errors:
-            from autoprogen.control.widget_source_safety_error import SourceSafetyErrorWidget
-            try:
-                source_code = container.student_source_code_get_usecase.execute(
-                    student_id)
-            except UnicodeError:
-                source_code = None
-            global_settings = self._app_container.global_settings_get_usecase.execute()
-            project_settings = container.project_settings_get_usecase.execute()
-            source_hashes = {error.source_sha256 for error in safety_errors}
-            source_sha256 = (
-                next(iter(source_hashes)) if len(source_hashes) == 1 else None
-            )
-            already_approved = (
-                source_sha256 is not None
-                and SourceCodeCheckSkip(student_id, source_sha256)
-                in project_settings.source_code_check_skips
-            )
-            widget = SourceSafetyErrorWidget(
-                detail_widget,
-                source_code=source_code,
-                safety_errors=safety_errors,
-                show_editing_symbols=global_settings.show_editing_symbols_in_source_code,
-                enable_line_wrap=global_settings.enable_line_wrap_in_source_code,
-                can_approve=container.task_manager.is_empty(),
-                already_approved=already_approved,
-            )
-            widget.approval_requested.connect(
-                lambda: self._approve_source_code_check_skip(
-                    parent=widget,
-                    widget=widget,
-                    student_id=student_id,
-                    displayed_source_code=source_code,
-                    expected_sha256=source_sha256,
-                )
-            )
-            extension_widgets.append(widget)
-
-        # 未提出の構造化エラーがある場合だけ、0点保存と除外登録を提供する。
-        has_not_submitted_error = any(
-            isinstance(entry.error, SubmissionNotFoundError)
-            for entry in error_entries
-        )
-        if has_not_submitted_error:
-            from autoprogen.control.widget_not_submitted_error import (
-                NotSubmittedErrorWidget,
-            )
-            settings = container.project_settings_get_usecase.execute()
-            widget = NotSubmittedErrorWidget(
-                detail_widget,
-                can_exclude=container.task_manager.is_empty(),
-                already_excluded=student_id in settings.bulk_grading_skips,
-            )
-            widget.exclusion_requested.connect(
-                lambda: self._exclude_not_submitted_student(
-                    parent=widget,
-                    widget=widget,
-                    student_id=student_id,
-                )
-            )
-            extension_widgets.append(widget)
-
-        if len(extension_widgets) == 1:
-            detail_widget.set_extension_widget(extension_widgets[0])
-        elif extension_widgets:
-            # 異なる処置が同時に必要な場合は、いずれも失わず縦に並べる。
-            extensions = QWidget(detail_widget)
-            extensions_layout = QVBoxLayout(extensions)
-            extensions_layout.setContentsMargins(0, 0, 0, 0)
-            for extension_widget in extension_widgets:
-                extensions_layout.addWidget(extension_widget)
-            detail_widget.set_extension_widget(extensions)
-        return detail_widget
-
-    def _exclude_not_submitted_student(
-            self,
-            *,
-            parent: QWidget,
-            widget: "NotSubmittedErrorWidget",
-            student_id: StudentID,
-    ) -> None:
-        """最新の未提出状態を確認し、確認後に0点保存と除外登録を実行する。"""
-        assert self._current_project_container is not None
-        container = self._current_project_container
-
-        # 確認画面を出す前にも、実行状態と構造化エラーを読み直す。
-        if not container.task_manager.is_empty():
-            widget.set_exclusion_state(
-                "実行中は処置できません。実行完了後に開き直してください。",
-                enabled=False,
-            )
-            return
-        row = container.main_window_facade.load_student_table_row(student_id)
-        if not any(
-                isinstance(entry.error, SubmissionNotFoundError)
-                for entry in row.error_cell.distinct_text_entries()
-        ):
-            widget.set_exclusion_state(
-                "未提出エラーが解消されています。表示を更新してください。",
-                enabled=False,
-            )
-            return
-        settings = container.project_settings_get_usecase.execute()
-        if student_id in settings.bulk_grading_skips:
-            widget.set_exclusion_state(
-                "この学生はすでに一括採点から除外されています。",
-                enabled=False,
-            )
-            return
-
-        current_mark = container.student_mark_get_usecase.execute(student_id)
-        if current_mark.score is None:
-            score_message = "未採点の状態から0点として保存します。"
-        elif current_mark.score == 0:
-            score_message = "現在の0点を維持します。"
-        else:
-            score_message = (
-                f"現在の{current_mark.score}点を0点で上書きします。"
-            )
-        decision = QMessageBox.question(
-            parent,
-            "未提出学生への処置",
-            f"{score_message}\n"
-            "そのうえで、この学生を一括採点から除外します。\n"
-            "この処置を実行しますか？",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
-        )
-        if decision != QMessageBox.Yes:
-            return
-
-        try:
-            container.not_submitted_student_exclude_usecase.execute(student_id)
-        except NotSubmittedStudentExcludeUseCaseError as error:
-            self._logger.exception("未提出学生への処置を完了できませんでした")
-            QMessageBox.critical(
-                parent,
-                "未提出学生への処置",
-                str(error),
-            )
-            widget.set_exclusion_state(
-                str(error),
-                enabled=container.task_manager.is_empty(),
-            )
-            return
-        except Exception as error:
-            self._logger.exception("未提出学生への処置で予期しないエラーが発生しました")
-            QMessageBox.critical(
-                parent,
-                "未提出学生への処置",
-                f"処置を完了できませんでした。\n{error}",
-            )
-            return
-
-        widget.set_exclusion_state(
-            "0点と一括採点の除外設定を保存しました。",
-            enabled=False,
-        )
-
-    def _approve_source_code_check_skip(
-        self,
-        *,
-        parent: QWidget,
-        widget: "SourceSafetyErrorWidget",
-        student_id: StudentID,
-        displayed_source_code: SourceCode | None,
-        expected_sha256: str | None,
-    ) -> None:
-        """表示したソースの同一性を確認し、安全性チェックの省略を保存する。"""
-        assert self._current_project_container is not None
-        if displayed_source_code is None or expected_sha256 is None:
-            return
-        container = self._current_project_container
-        try:
-            # 確認前に保存済みソースが表示内容と一致しているか検証する。
-            current_source_code = container.student_source_code_get_usecase.execute(
-                student_id)
-            if (
-                    current_source_code != displayed_source_code
-                    or current_source_code.calculate_sha256() != expected_sha256
-            ):
-                widget.set_approval_state(
-                    "ソースコードが更新されました。再実行してから許可してください。",
-                    enabled=False,
-                )
-                return
-
-            # 採点者へ省略対象が現在の学生とソースだけであることを確認する。
-            decision = QMessageBox.question(
-                parent,
-                "安全性チェックの許可",
-                "この学生の現在のソースコードだけを許可しますか？\n"
-                "次回実行時に安全性チェックを省略します。",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No,
-            )
-            if decision != QMessageBox.Yes:
-                return
-
-            # 確認中にソースが変更されていないか保存直前に再検証する。
-            current_source_code = container.student_source_code_get_usecase.execute(
-                student_id)
-            if (
-                    current_source_code != displayed_source_code
-                    or current_source_code.calculate_sha256() != expected_sha256
-            ):
-                widget.set_approval_state(
-                    "ソースコードが更新されました。再実行してから許可してください。",
-                    enabled=False,
-                )
-                return
-
-            # 現在のプロジェクト設定へ学生とソースの組み合わせを追加する。
-            settings = container.project_settings_get_usecase.execute()
-            updated = settings.with_source_code_check_skip(
-                student_id=student_id,
-                source_sha256=expected_sha256,
-            )
-            if updated != settings:
-                container.project_settings_put_usecase.execute(updated)
-        except Exception as error:
-            self._logger.exception("ソースコードの許可を保存できませんでした")
-            QMessageBox.critical(
-                parent,
-                "安全性チェックの許可",
-                f"設定を保存できませんでした。\n{error}",
-            )
-            return
-
-        # 保存完了を表示し、同じ許可操作を繰り返せないようにする。
-        widget.set_approval_state(
-            "許可を保存しました。次に「実行」を押すとコンパイルを再試行します。",
-            enabled=False,
-        )
 
     def open_about_dialog(self, parent: QWidget) -> None:
         from autoprogen.control.dialog_about import AboutDialog
@@ -480,6 +208,9 @@ class Navigator(INavigator):
             lambda: MainWindow(
                 navigator=self,
                 main_window_facade=self._current_project_container.main_window_facade,
+                student_error_detail_coordinator=(
+                    self._current_project_container.student_error_detail_coordinator
+                ),
             )
         )
 

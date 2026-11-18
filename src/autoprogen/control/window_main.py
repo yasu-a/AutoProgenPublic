@@ -4,6 +4,9 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 from autoprogen.control.dialog_progress import AbstractProgressDialog
+from autoprogen.control.coordinator_student_error_detail import (
+    StudentErrorDetailCoordinator,
+)
 from autoprogen.control.qt_student_change_bridge import QtStudentChangeBridge
 from autoprogen.control.task.clean_all_stage import CleanAllStagesStudentTask
 from autoprogen.control.task.run_stage import RunStagesStudentTask
@@ -28,11 +31,13 @@ class MainWindow(QMainWindow):
             *,
             navigator: INavigator,
             main_window_facade: MainWindowFacade,
+            student_error_detail_coordinator: StudentErrorDetailCoordinator,
     ) -> None:
-        """Navigatorとメイン画面用Facadeを受け取って画面を構築する。"""
+        """画面遷移、メイン画面操作、エラー詳細の調整役を受け取る。"""
         super().__init__(parent)
         self._navigator = navigator
         self._facade = main_window_facade
+        self._student_error_detail_coordinator = student_error_detail_coordinator
         self._task_manager = main_window_facade.task_manager
         self._table_loading = False
         self._student_change_bridge = QtStudentChangeBridge(
@@ -211,7 +216,7 @@ class MainWindow(QMainWindow):
             student_id: StudentID,
     ) -> None:
         """指定学生のエラー詳細を表示し、対象がなければDockを閉じる。"""
-        detail_widget = self._navigator.create_student_error_detail_widget(
+        detail_widget = self._student_error_detail_coordinator.create_widget(
             self._student_error_dock,
             student_id,
         )

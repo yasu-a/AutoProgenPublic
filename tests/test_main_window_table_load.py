@@ -34,6 +34,7 @@ def test_main_window_loads_table_with_progress_dialog(
     window = MainWindow(
         navigator=Mock(),
         main_window_facade=facade,
+        student_error_detail_coordinator=Mock(),
     )
     window.show()
     QTest.qWait(30)

@@ -1,22 +1,14 @@
 """安全性チェックのエラー詳細表示とソース単位の許可を検証する。"""
 
 import hashlib
-from unittest.mock import Mock
 
 import pytest
 
-from autoprogen.domain.error.stage.compile import (
-    CompilerNotConfiguredError,
-    SourceSafetyViolationError,
-)
-from autoprogen.domain.error.stage.build import SubmissionNotFoundError
-from autoprogen.domain.model.project_settings import ProjectSettings, SourceCodeCheckSkip
-from autoprogen.domain.model.student_mark import StudentMark
+from autoprogen.domain.error.stage.compile import SourceSafetyViolationError
 from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.source_code_check import SourceCodeCheckFinding
 from autoprogen.domain.model.value import StudentID
 from autoprogen.usecase.dto.student_table_cell_data import (
-    StudentErrorCellData,
     StudentErrorCellDataTextEntry,
 )
 
@@ -99,207 +91,6 @@ def test_detail_widget_keeps_common_message_and_optional_extension(qt_app) -> No
     detail_widget.close()
 
 
-def _make_navigator_for_detail(error):
-    """構造化エラーを一件返すNavigatorとProjectContainerを作る。"""
-    from autoprogen.control.navigator import Navigator
-
-    entry = StudentErrorCellDataTextEntry(
-        summary_text="表示用の要約",
-        detailed_text="表示用の詳細",
-        error=error,
-    )
-    row = Mock()
-    row.error_cell = StudentErrorCellData(
-        student_id=STUDENT,
-        text_entries=[entry],
-    )
-
-    app_container = Mock()
-    global_settings = Mock()
-    global_settings.show_editing_symbols_in_source_code = False
-    global_settings.enable_line_wrap_in_source_code = False
-    app_container.global_settings_get_usecase.execute.return_value = global_settings
-
-    project_container = Mock()
-    project_container.main_window_facade.load_student_table_row.return_value = row
-    project_container.student_source_code_get_usecase.execute.return_value = _source_code()
-    project_container.project_settings_get_usecase.execute.return_value = (
-        ProjectSettings.create_default()
-    )
-    project_container.task_manager.is_empty.return_value = True
-
-    navigator = Navigator(app_container=app_container)
-    navigator._current_project_container = project_container
-    return navigator, project_container
-
-
-def test_navigator_does_not_show_approval_for_regular_error(qt_app) -> None:
-    """通常の構造化エラーでは安全性チェックの許可UIを追加しない。"""
-    navigator, container = _make_navigator_for_detail(CompilerNotConfiguredError())
-    detail_widget = navigator.create_student_error_detail_widget(None, STUDENT)
-
-    assert detail_widget is not None
-    assert detail_widget._extension_container.isHidden()
-    container.student_source_code_get_usecase.execute.assert_not_called()
-    detail_widget.close()
-
-
-def test_navigator_uses_structured_safety_error_for_approval_ui(
-        qt_app,
-) -> None:
-    """安全性チェック停止では構造化エラーを専用UIへ直接渡す。"""
-    error = _safety_error()
-    navigator, _ = _make_navigator_for_detail(error)
-    detail_widget = navigator.create_student_error_detail_widget(None, STUDENT)
-
-    assert detail_widget is not None
-    widget = detail_widget._extension_widget
-    assert widget._source_view.toPlainText() == SOURCE
-    assert [
-        selection.cursor.blockNumber() + 1
-        for selection in widget._source_view.extraSelections()
-    ] == [2, 4]
-    detail_widget.close()
-
-
-def test_navigator_shows_exclusion_only_for_not_submitted_error(qt_app) -> None:
-    """未提出の構造化エラーだけに0点保存と除外登録の操作を表示する。"""
-    navigator, _ = _make_navigator_for_detail(SubmissionNotFoundError())
-
-    detail_widget = navigator.create_student_error_detail_widget(None, STUDENT)
-
-    assert detail_widget is not None
-    widget = detail_widget._extension_widget
-    assert widget._exclude_button.isEnabled()
-    assert widget._exclude_button.text() == "0点にして一括採点から除外"
-    detail_widget.close()
-
-
-def test_not_submitted_exclusion_requires_confirmation(
-        qt_app,
-        monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """既存点数の上書きを明示し、キャンセル時は処置を実行しない。"""
-    from PyQt5.QtWidgets import QMessageBox
-
-    navigator, container = _make_navigator_for_detail(SubmissionNotFoundError())
-    container.student_mark_get_usecase.execute.return_value = StudentMark(STUDENT, 70)
-    question = Mock(return_value=QMessageBox.No)
-    monkeypatch.setattr(QMessageBox, "question", question)
-    detail_widget = navigator.create_student_error_detail_widget(None, STUDENT)
-    widget = detail_widget._extension_widget
-
-    widget._exclude_button.click()
-
-    assert "現在の70点を0点で上書きします" in question.call_args.args[2]
-    container.not_submitted_student_exclude_usecase.execute.assert_not_called()
-    detail_widget.close()
-
-
-def test_not_submitted_exclusion_executes_for_displayed_student(
-        qt_app,
-        monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """確認後は表示中の学生だけを専用UseCaseへ渡し、二重処置を防ぐ。"""
-    from PyQt5.QtWidgets import QMessageBox
-
-    navigator, container = _make_navigator_for_detail(SubmissionNotFoundError())
-    container.student_mark_get_usecase.execute.return_value = StudentMark(STUDENT, None)
-    monkeypatch.setattr(
-        QMessageBox,
-        "question",
-        lambda *args, **kwargs: QMessageBox.Yes,
-    )
-    detail_widget = navigator.create_student_error_detail_widget(None, STUDENT)
-    widget = detail_widget._extension_widget
-
-    widget._exclude_button.click()
-
-    container.not_submitted_student_exclude_usecase.execute.assert_called_once_with(
-        STUDENT,
-    )
-    assert not widget._exclude_button.isEnabled()
-    assert "保存しました" in widget._status_label.text()
-    detail_widget.close()
-
-
-def test_not_submitted_exclusion_is_disabled_while_running_or_already_excluded(
-        qt_app,
-) -> None:
-    """実行中または除外済みの場合は同じ処置を開始できない。"""
-    navigator, container = _make_navigator_for_detail(SubmissionNotFoundError())
-    container.task_manager.is_empty.return_value = False
-    running_detail = navigator.create_student_error_detail_widget(None, STUDENT)
-    assert not running_detail._extension_widget._exclude_button.isEnabled()
-    running_detail.close()
-
-    container.task_manager.is_empty.return_value = True
-    container.project_settings_get_usecase.execute.return_value = (
-        ProjectSettings.create_default().with_bulk_grading_skip(STUDENT)
-    )
-    excluded_detail = navigator.create_student_error_detail_widget(None, STUDENT)
-    assert not excluded_detail._extension_widget._exclude_button.isEnabled()
-    excluded_detail.close()
-
-
-def test_not_submitted_exclusion_rechecks_error_before_confirmation(qt_app) -> None:
-    """押下時に未提出エラーが解消済みなら確認も保存も行わない。"""
-    navigator, container = _make_navigator_for_detail(SubmissionNotFoundError())
-    detail_widget = navigator.create_student_error_detail_widget(None, STUDENT)
-    widget = detail_widget._extension_widget
-    refreshed_row = Mock()
-    refreshed_row.error_cell = StudentErrorCellData(
-        student_id=STUDENT,
-        text_entries=[],
-    )
-    container.main_window_facade.load_student_table_row.return_value = refreshed_row
-
-    widget._exclude_button.click()
-
-    container.not_submitted_student_exclude_usecase.execute.assert_not_called()
-    assert not widget._exclude_button.isEnabled()
-    assert "解消されています" in widget._status_label.text()
-    detail_widget.close()
-
-
-def test_not_submitted_and_safety_actions_can_coexist(qt_app) -> None:
-    """未提出と安全性チェックが混在しても両方の専用Widgetを保持する。"""
-    from PyQt5.QtWidgets import QPushButton
-
-    navigator, container = _make_navigator_for_detail(SubmissionNotFoundError())
-    entries = [
-        StudentErrorCellDataTextEntry(
-            summary_text="未提出",
-            detailed_text="提出物がありません。",
-            error=SubmissionNotFoundError(),
-        ),
-        StudentErrorCellDataTextEntry(
-            summary_text="安全性チェック",
-            detailed_text="危険な操作を検出しました。",
-            error=_safety_error(),
-        ),
-    ]
-    row = Mock()
-    row.error_cell = StudentErrorCellData(
-        student_id=STUDENT,
-        text_entries=entries,
-    )
-    container.main_window_facade.load_student_table_row.return_value = row
-
-    detail_widget = navigator.create_student_error_detail_widget(None, STUDENT)
-
-    assert detail_widget is not None
-    assert detail_widget._extension_widget.findChild(
-        QPushButton,
-        "excludeNotSubmittedStudent",
-    ) is not None
-    assert detail_widget._extension_widget.findChild(
-        QPushButton,
-        "approveSourceSafetySkip",
-    ) is not None
-    detail_widget.close()
-
-
 def test_widget_highlights_detected_lines(qt_app) -> None:
     """黄色のハイライトが検出された行に設定される。"""
     widget = _make_widget()
@@ -349,53 +140,10 @@ def test_widget_emits_approval_request(qt_app) -> None:
     widget.close()
 
 
-def _make_navigator_for_approval(source: str = SOURCE):
-    """許可処理用UseCaseをMock化したNavigatorとProjectContainerを作る。"""
-    from autoprogen.control.navigator import Navigator
+def test_widget_disables_approval_when_already_approved(qt_app) -> None:
+    """同じ学生とソースが許可済みの場合は許可操作を無効にする。"""
+    widget = _make_widget(already_approved=True)
 
-    container = Mock()
-    container.student_source_code_get_usecase.execute.return_value = SourceCode(text=source)
-    container.project_settings_get_usecase.execute.return_value = ProjectSettings.create_default()
-    navigator = Navigator(app_container=Mock())
-    navigator._current_project_container = container
-    return navigator, container
-
-
-def test_approval_records_only_student_and_hash(qt_app, monkeypatch) -> None:
-    """Navigatorは現在の設定を保持して許可した学生とハッシュだけを追加する。"""
-    from PyQt5.QtWidgets import QMessageBox
-
-    widget = _make_widget()
-    navigator, container = _make_navigator_for_approval()
-    monkeypatch.setattr(QMessageBox, "question", lambda *args, **kwargs: QMessageBox.Yes)
-    navigator._approve_source_code_check_skip(
-        parent=widget,
-        widget=widget,
-        student_id=STUDENT,
-        displayed_source_code=SourceCode(text=SOURCE),
-        expected_sha256=SOURCE_SHA,
-    )
-    updated = container.project_settings_put_usecase.execute.call_args.args[0]
-    assert SourceCodeCheckSkip(student_id=STUDENT, source_sha256=SOURCE_SHA) in updated.source_code_check_skips
-    assert (
-        updated.suppressed_source_code_checks
-        == container.project_settings_get_usecase.execute.return_value.suppressed_source_code_checks
-    )
     assert not widget._approve_button.isEnabled()
-    widget.close()
-
-
-def test_approval_rechecks_source_before_saving(qt_app) -> None:
-    """ダイアログを開いた後にソースが変わったら設定を書き込まない。"""
-    widget = _make_widget()
-    navigator, container = _make_navigator_for_approval(SOURCE + "changed")
-    navigator._approve_source_code_check_skip(
-        parent=widget,
-        widget=widget,
-        student_id=STUDENT,
-        displayed_source_code=SourceCode(text=SOURCE),
-        expected_sha256=SOURCE_SHA,
-    )
-    container.project_settings_put_usecase.execute.assert_not_called()
-    assert not widget._approve_button.isEnabled()
+    assert "すでに許可されています" in widget._status_label.text()
     widget.close()

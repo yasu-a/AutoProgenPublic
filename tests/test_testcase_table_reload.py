@@ -106,6 +106,7 @@ def test_main_window_reloads_table_only_after_testcase_changes(
     window = MainWindow(
         navigator=navigator,
         main_window_facade=Mock(),
+        student_error_detail_coordinator=Mock(),
     )
     window.load_student_table = Mock()
 

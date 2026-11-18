@@ -28,15 +28,6 @@ class INavigator(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def create_student_error_detail_widget(
-            self,
-            parent: QWidget,
-            student_id: StudentID,
-    ) -> QWidget | None:
-        """メイン画面へ埋め込む学生のエラー詳細を生成する。"""
-        raise NotImplementedError()
-
-    @abstractmethod
     def open_about_dialog(self, parent: QWidget) -> None:
         raise NotImplementedError()
 
