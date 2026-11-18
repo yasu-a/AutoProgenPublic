@@ -32,7 +32,7 @@ def _create_facade() -> tuple[MainWindowFacade, dict[str, Mock]]:
 
 
 def test_main_window_only_operations_are_owned_by_facade() -> None:
-    """プロジェクト概要の変換と提出フォルダ表示をFacadeが直接処理する。"""
+    """プロジェクト概要・学生名・提出フォルダ操作をFacadeが提供する。"""
     facade, dependencies = _create_facade()
     project = SimpleNamespace(
         project_id=ProjectID("facade-test"),
@@ -42,12 +42,17 @@ def test_main_window_only_operations_are_owned_by_facade() -> None:
     )
     dependencies["current_project_repository"].get.return_value = project
     student_id = StudentID("21D5109047B")
+    student = SimpleNamespace(name="試験 太郎")
+    dependencies["student_repository"].get.return_value = student
 
     summary = facade.get_project_summary()
+    student_name = facade.get_student_name(student_id)
     facade.open_student_submission_folder(student_id)
 
     assert summary.project_id == project.project_id
     assert summary.target_number == 4
+    assert student_name == "試験 太郎"
+    dependencies["student_repository"].get.assert_called_once_with(student_id)
     dependencies[
         "student_folder_show_in_explorer_io"
     ].show_submission_folder.assert_called_once_with(student_id)

@@ -223,7 +223,10 @@ class MainWindow(QMainWindow):
         self._student_error_dock.setWidget(detail_widget)
         if previous_widget is not None:
             previous_widget.deleteLater()
-        self._student_error_dock.setWindowTitle(f"エラーの詳細 - {student_id}")
+        student_name = self._facade.get_student_name(student_id)
+        self._student_error_dock.setWindowTitle(
+            f"エラーの詳細 - {student_id} {student_name}"
+        )
         self._student_error_dock.show()
         self._student_error_dock.raise_()
 

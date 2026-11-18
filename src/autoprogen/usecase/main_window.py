@@ -234,6 +234,10 @@ class MainWindowFacade:
             bulk_grading_skips,
         )
 
+    def get_student_name(self, student_id: StudentID) -> str:
+        """指定した学生の名前を返す。"""
+        return self._student_repository.get(student_id).name
+
     def open_student_submission_folder(self, student_id: StudentID) -> None:
         """選択学生の提出フォルダをエクスプローラーで開く。"""
         self._student_folder_show_in_explorer_io.show_submission_folder(student_id)

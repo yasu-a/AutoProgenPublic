@@ -220,6 +220,10 @@ def test_error_cell_replaces_detail_dock_for_clicked_student(
     second = StudentID("24A0007521M")
     window = Mock()
     window._student_error_dock = QDockWidget()
+    window._facade.get_student_name.side_effect = (
+        "試験 太郎",
+        "試験 花子",
+    )
     first_widget = QLabel("最初の詳細")
     second_widget = QLabel("次の詳細")
     window._navigator.create_student_error_detail_widget.side_effect = (
@@ -229,10 +233,14 @@ def test_error_cell_replaces_detail_dock_for_clicked_student(
 
     MainWindow._MainWindow__show_student_error_detail(window, first)
     assert window._student_error_dock.widget() is first_widget
-    assert window._student_error_dock.windowTitle() == f"エラーの詳細 - {first}"
+    assert window._student_error_dock.windowTitle() == (
+        f"エラーの詳細 - {first} 試験 太郎"
+    )
 
     MainWindow._MainWindow__show_student_error_detail(window, second)
     assert window._student_error_dock.widget() is second_widget
-    assert window._student_error_dock.windowTitle() == f"エラーの詳細 - {second}"
+    assert window._student_error_dock.windowTitle() == (
+        f"エラーの詳細 - {second} 試験 花子"
+    )
     assert window._student_error_dock.isVisible()
     window._student_error_dock.close()
