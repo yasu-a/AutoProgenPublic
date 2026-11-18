@@ -36,9 +36,11 @@ def _dialog(tmp_path: Path, marks: list[StudentMark]):
     apply.execute.return_value = None
     global_settings = Mock()
     global_settings.execute.return_value.backup_before_export = True
+    list_worksheet_stats = Mock()
+    list_worksheet_stats.execute.return_value = []
     dialog = ScoreExportDialog(
         global_settings_get_usecase=global_settings,
-        score_excel_list_worksheet_stats_usecase=Mock(),
+        score_excel_list_worksheet_stats_usecase=list_worksheet_stats,
         score_excel_has_data_usecase=has_data,
         score_excel_apply_usecase=apply,
         student_list_id_usecase=list_ids,
