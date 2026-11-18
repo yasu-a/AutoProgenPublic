@@ -31,6 +31,7 @@ from autoprogen.usecase.dto.student_mark_view_data import (
     StudentMarkSummaryViewData,
 )
 from autoprogen.usecase.global_settings import GlobalSettingsGetUseCase
+from autoprogen.usecase.project_settings import ProjectSettingsGetUseCase
 from autoprogen.usecase.student_mark import StudentMarkGetUseCase, StudentMarkPutUseCase
 from autoprogen.usecase.student_mark_view_data import (
     StudentMarkViewDataGetTestResultUseCase,
@@ -341,6 +342,7 @@ class MarkDialog(QDialog):
         student_source_code_get_usecase: StudentSourceCodeGetUseCase,
         student_mark_get_usecase: StudentMarkGetUseCase,
         student_mark_put_usecase: StudentMarkPutUseCase,
+        project_settings_get_usecase: ProjectSettingsGetUseCase,
     ):
         """採点対象の学生一覧と依存関係から画面を構築する。"""
         super().__init__(parent)
@@ -360,6 +362,7 @@ class MarkDialog(QDialog):
         self._student_source_code_get_usecase = student_source_code_get_usecase
         self._student_mark_get_usecase = student_mark_get_usecase
         self._student_mark_put_usecase = student_mark_put_usecase
+        self._project_settings_get_usecase = project_settings_get_usecase
 
         self._testcase_ids: list[TestCaseID] = self._testcase_config_list_id_usecase.execute(
         )
@@ -370,6 +373,7 @@ class MarkDialog(QDialog):
 
     def _init_ui(self):
         """現行の画面構成を変更せずに各Widgetを配置する。"""
+        self.setObjectName("markDialog")
         self.setWindowTitle("採点")
         self.setModal(True)
         self.resize(1300, 700)
@@ -546,23 +550,37 @@ class MarkDialog(QDialog):
             )
             self._w_test_result_list.set_selected_id(self._state.testcase_id)
 
+    def _is_student_excluded(self, student_id: StudentID) -> bool:
+        """画面内の操作時点で現在の除外設定を確認する。"""
+        settings = self._project_settings_get_usecase.execute()
+        return student_id in settings.bulk_grading_skips
+
     def _update_score_editor(self) -> None:
-        """選択学生の点数欄を読み込む。"""
+        """除外中は点数編集を禁止し、枠と入力欄を灰色にする。"""
         if self._state.student_id is None:
             self._w_mark_score.set_data(None)
-        else:
-            self._w_mark_score.set_data(
-                self.__get_student_mark(self._state.student_id)
-            )
+            self.setStyleSheet("")
+            return
+        excluded = self._is_student_excluded(self._state.student_id)
+        self._w_mark_score.set_data(
+            self.__get_student_mark(self._state.student_id),
+            editable=not excluded,
+        )
+        self.setStyleSheet(
+            "QDialog#markDialog { border: 2px solid #a0a0a0; }"
+            if excluded else ""
+        )
 
     def __save_data(self):
-        """点数欄が変更された場合に限り現在の学生へ保存する。"""
+        """変更があり、かつ除外中でない学生の点数だけを保存する。"""
         if not self._w_mark_score.is_modified():
             return
         student_mark = self._w_mark_score.get_data()
         if student_mark is not None:
-            self._logger.info(f"student mark saved\n{student_mark}")
             assert student_mark.student_id == self._state.student_id
+            if self._is_student_excluded(student_mark.student_id):
+                return
+            self._logger.info(f"student mark saved\n{student_mark}")
             self.__put_student_mark(student_mark)
 
     def set_state(self, state: MarkDialogState):

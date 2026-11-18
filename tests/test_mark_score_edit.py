@@ -59,3 +59,19 @@ def test_none_disables_score_edit(qt_app: QApplication) -> None:
     assert widget.get_data() is None
     assert not widget._le_score.isEnabled()
     assert not widget._b_unmark.isEnabled()
+
+
+def test_score_edit_read_only_prevents_clear_shortcut(qt_app: QApplication) -> None:
+    """除外中は点数を表示したままクリア操作を無効にする。"""
+    student_id = StudentID("21D5109047B")
+    widget = MarkScoreEditWidget()
+    widget.set_data(StudentMark(student_id, 0), editable=False)
+
+    assert not widget._le_score.isEnabled()
+    assert not widget._b_unmark.isEnabled()
+    assert "#e6e6e6" in widget._le_score.styleSheet()
+    widget.set_unmarked()
+    widget._MarkScoreEditWidget__b_unmark_clicked()
+    assert widget.get_data().score == 0
+    assert not widget.is_modified()
+    widget.close()

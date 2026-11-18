@@ -103,12 +103,21 @@ class Navigator(INavigator):
         dialog.exec_()
 
     def open_scoring_dialog(self, parent: QWidget) -> None:
-        """全学生を一覧順に対象として一括採点画面を開く。"""
+        """一括採点から除外された学生以外を一覧順に開く。"""
         assert self._current_project_container is not None
         student_marks = self._current_project_container.student_mark_list_usecase.execute()
+        skipped_ids = (
+            self._current_project_container
+            .project_settings_get_usecase.execute()
+            .bulk_grading_skips
+        )
         self._open_scoring_dialog(
             parent,
-            [student_mark.student_id for student_mark in student_marks],
+            [
+                student_mark.student_id
+                for student_mark in student_marks
+                if student_mark.student_id not in skipped_ids
+            ],
         )
 
     def open_scoring_dialog_for_student(self, parent: QWidget, student_id: StudentID) -> None:
@@ -145,6 +154,7 @@ class Navigator(INavigator):
             student_source_code_get_usecase=self._current_project_container.student_source_code_get_usecase,
             student_mark_get_usecase=self._current_project_container.student_mark_get_usecase,
             student_mark_put_usecase=self._current_project_container.student_mark_put_usecase,
+            project_settings_get_usecase=self._current_project_container.project_settings_get_usecase,
         )
         dialog.set_state(dialog.states.create_state_of_first_student())
         dialog.exec_()

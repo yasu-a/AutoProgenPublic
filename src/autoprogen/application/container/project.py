@@ -685,6 +685,7 @@ class ProjectContainer:
     def student_mark_put_usecase(self):
         return StudentMarkPutUseCase(
             student_mark_put_service=self.student_mark_put_service,
+            project_settings_get_usecase=self.project_settings_get_usecase,
         )
 
     @cached_property

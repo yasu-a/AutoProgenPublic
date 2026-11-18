@@ -196,3 +196,32 @@ def test_partial_clear_notifies_for_already_saved_result(student_id: StudentID) 
         clear_service.execute(student_id=student_id)
 
     assert received == [student_id]
+
+
+@pytest.mark.parametrize("score", [None, 0, 90])
+def test_mark_put_usecase_rejects_excluded_student(
+        student_id: StudentID,
+        score: int | None,
+) -> None:
+    """保存UseCaseは除外中の点数変更・クリアを拒否する。"""
+    from autoprogen.usecase.student_mark import (
+        StudentMarkPutUseCase,
+        StudentMarkPutUseCaseError,
+    )
+
+    service = Mock()
+    settings_get = Mock()
+    settings_get.execute.return_value.bulk_grading_skips = frozenset({student_id})
+    usecase = StudentMarkPutUseCase(
+        student_mark_put_service=service,
+        project_settings_get_usecase=settings_get,
+    )
+    mark = StudentMark(student_id, score)
+
+    with pytest.raises(StudentMarkPutUseCaseError, match="除外中"):
+        usecase.execute(mark)
+    service.execute.assert_not_called()
+
+    settings_get.execute.return_value.bulk_grading_skips = frozenset()
+    usecase.execute(mark)
+    service.execute.assert_called_once_with(mark)

@@ -1,3 +1,4 @@
+from dataclasses import replace
 from unittest.mock import Mock
 
 import pytest
@@ -308,3 +309,27 @@ def test_error_cell_replaces_detail_dock_for_clicked_student(
     )
     assert window._student_error_dock.isVisible()
     window._student_error_dock.close()
+
+
+def test_excluded_row_background_updates_with_snapshot(
+        qt_app: QApplication,
+) -> None:
+    """除外指定の追加・解除に伴い、全列の背景色キャッシュが更新される。"""
+    table, student_id, _ = _table()
+    model = table.model()
+    original_colors = [
+        model.data(model.index(0, column), Qt.BackgroundRole)
+        for column in range(model.columnCount())
+    ]
+    row = _row(student_id, has_submission=True, has_error=True, score=80)
+    table.replace_loaded_row(replace(row, bulk_grading_skipped=True))
+
+    for column in range(model.columnCount()):
+        assert model.data(model.index(0, column), Qt.BackgroundRole) == QColor("#e6e6e6")
+
+    table.replace_loaded_row(row)
+    assert [
+        model.data(model.index(0, column), Qt.BackgroundRole)
+        for column in range(model.columnCount())
+    ] == original_colors
+    table.close()

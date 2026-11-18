@@ -33,6 +33,8 @@ def _create_mark_dialog(
     """学生移動の検証に必要な最小限の依存関係でダイアログを作る。"""
     testcase_list_usecase = Mock()
     testcase_list_usecase.execute.return_value = testcase_ids or []
+    settings_get = Mock()
+    settings_get.execute.return_value.bulk_grading_skips = frozenset()
     return MarkDialog(
         student_ids=student_ids,
         global_settings_get_usecase=Mock(),
@@ -42,6 +44,7 @@ def _create_mark_dialog(
         student_source_code_get_usecase=Mock(),
         student_mark_get_usecase=Mock(),
         student_mark_put_usecase=Mock(),
+        project_settings_get_usecase=settings_get,
     )
 
 
@@ -150,6 +153,9 @@ def test_navigator_uses_common_launch_path_and_skips_empty_list(
     second = StudentID("24A0007521M")
     third = StudentID("25B0000001C")
     project_container = Mock()
+    project_container.project_settings_get_usecase.execute.return_value.bulk_grading_skips = (
+        frozenset({third})
+    )
     project_container.student_mark_list_usecase.execute.return_value = [
         StudentMark(second, 80),
         StudentMark(third, None),
@@ -167,8 +173,9 @@ def test_navigator_uses_common_launch_path_and_skips_empty_list(
     monkeypatch.setattr(dialog_mark, "MarkDialog", dialog_type)
 
     navigator.open_scoring_dialog(parent)
-    assert dialog_type.call_args.kwargs["student_ids"] == [second, third]
+    assert dialog_type.call_args.kwargs["student_ids"] == [second]
     project_container.student_mark_list_usecase.execute.assert_called_once_with()
+    project_container.project_settings_get_usecase.execute.assert_called_once_with()
     dialog.states.create_state_of_first_student.assert_called_once_with()
     dialog.exec_.assert_called_once_with()
 
@@ -184,8 +191,27 @@ def test_navigator_uses_common_launch_path_and_skips_empty_list(
         student_ids=(first,),
     )
 
+    # 除外中でも個別採点の画面は開ける。
+    dialog_type.reset_mock()
+    project_container.student_mark_list_usecase.execute.reset_mock()
+    project_container.student_mark_list_usecase.execute.return_value = [
+        StudentMark(third, None),
+    ]
+    navigator.open_scoring_dialog_for_student(parent, third)
+    assert dialog_type.call_args.kwargs["student_ids"] == [third]
+    project_container.student_mark_list_usecase.execute.assert_called_once_with(
+        student_ids=(third,),
+    )
+
+    # 対象がない場合も、全学生が除外されている場合も起動しない。
     dialog_type.reset_mock()
     project_container.student_mark_list_usecase.execute.return_value = []
+    navigator.open_scoring_dialog(parent)
+    dialog_type.assert_not_called()
+
+    project_container.student_mark_list_usecase.execute.return_value = [
+        StudentMark(third, None),
+    ]
     navigator.open_scoring_dialog(parent)
     dialog_type.assert_not_called()
 
@@ -235,3 +261,41 @@ def test_testcase_navigation_uses_ws_and_vertical_arrow_keys(
             QKeyEvent(QEvent.KeyPress, key, Qt.NoModifier),
         )
     dialog.set_state.assert_not_called()
+
+
+def test_excluded_student_is_read_only_and_returns_to_editable(
+        qt_app: QApplication,
+) -> None:
+    """除外中は灰色・編集不可で、設定解除後は編集と保存ができる。"""
+    student_id = StudentID("21D5109047B")
+    dialog = _create_mark_dialog([student_id])
+    dialog._state = MarkDialogState(student_id=student_id)
+    dialog._student_mark_get_usecase.execute.return_value = StudentMark(student_id, 70)
+    settings_get = dialog._project_settings_get_usecase
+    settings_get.execute.return_value.bulk_grading_skips = frozenset({student_id})
+
+    dialog._update_score_editor()
+    assert not dialog._w_mark_score._le_score.isEnabled()
+    assert not dialog._w_mark_score._b_unmark.isEnabled()
+    assert "#e6e6e6" in dialog._w_mark_score._le_score.styleSheet()
+    assert "#a0a0a0" in dialog.styleSheet()
+    dialog._w_mark_score.set_unmarked()
+    assert dialog._w_mark_score.get_data().score == 70
+
+    # 無効な入力欄をコードから変更しても、保存処理は除外状態を再確認する。
+    dialog._w_mark_score._le_score.setText("90")
+    dialog.closeEvent(QCloseEvent())
+    dialog._student_mark_put_usecase.execute.assert_not_called()
+
+    settings_get.execute.return_value.bulk_grading_skips = frozenset()
+    dialog._update_score_editor()
+    assert dialog._w_mark_score._le_score.isEnabled()
+    assert dialog._w_mark_score._b_unmark.isEnabled()
+    assert dialog._w_mark_score._le_score.styleSheet() == ""
+    assert dialog.styleSheet() == ""
+    dialog._w_mark_score._le_score.setText("80")
+    dialog.closeEvent(QCloseEvent())
+    saved = dialog._student_mark_put_usecase.execute.call_args.args[0]
+    assert saved.student_id == student_id
+    assert saved.score == 80
+    dialog.close()
