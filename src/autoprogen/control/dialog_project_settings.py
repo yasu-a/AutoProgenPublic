@@ -6,6 +6,7 @@ from autoprogen.control.dialog_settings_edit import AbstractSettingsEditDialog
 from autoprogen.control.widget_project_settings import ProjectSettingsEditWidget
 from autoprogen.domain.model.project_settings import ProjectSettings
 from autoprogen.domain.model.source_code_check import SourceCodeCheckCatalog
+from autoprogen.domain.model.value import StudentID
 from autoprogen.usecase.project_settings import ProjectSettingsGetUseCase, ProjectSettingsPutUseCase
 
 
@@ -17,6 +18,7 @@ class ProjectSettingsEditDialog(AbstractSettingsEditDialog[ProjectSettings]):
             parent: QWidget = None,
             *,
             catalog: SourceCodeCheckCatalog,
+            student_names: dict[StudentID, str],
             project_settings_get_usecase: ProjectSettingsGetUseCase,
             project_settings_put_usecase: ProjectSettingsPutUseCase,
     ) -> None:
@@ -27,7 +29,11 @@ class ProjectSettingsEditDialog(AbstractSettingsEditDialog[ProjectSettings]):
         self.setWindowTitle("プロジェクト設定")
         self.setModal(True)
         self.resize(1130, 680)
-        self._settings_view = ProjectSettingsEditWidget(self, catalog=catalog)
+        self._settings_view = ProjectSettingsEditWidget(
+            self,
+            catalog=catalog,
+            student_names=student_names,
+        )
         self.content_layout.addWidget(self._settings_view)
         self.add_standard_buttons()
         self.set_data(self._get_usecase.execute())

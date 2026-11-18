@@ -22,6 +22,7 @@ from autoprogen.domain.model.student_mark import StudentMark
 from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.source_code_check import SourceCodeCheckFinding
 from autoprogen.domain.model.project_settings import SourceCodeCheckSuppressions
+from autoprogen.domain.model.project_settings import ProjectSettings
 from autoprogen.domain.model.student_stage_path_result import StudentStagePathResult
 from autoprogen.domain.model.student_stage_result import (
     BuildStudentStageResult,
@@ -110,6 +111,8 @@ def _table_facade(
         student_mark_get_sub_service: Mock,
 ) -> MainWindowFacade:
     """エラー表示用の学生行を構築するFacadeを返す。"""
+    project_settings_get_usecase = Mock()
+    project_settings_get_usecase.execute.return_value = ProjectSettings.create_default()
     return MainWindowFacade(
         current_project_repository=Mock(),
         student_folder_show_in_explorer_io=Mock(),
@@ -117,6 +120,7 @@ def _table_facade(
         stage_path_list_sub_service=stage_path_list_sub_service,
         student_stage_path_result_repository=student_stage_path_result_repository,
         student_mark_get_sub_service=student_mark_get_sub_service,
+        project_settings_get_usecase=project_settings_get_usecase,
         stage_error_text_formatter=_formatter(),
         student_list_id_usecase=Mock(),
         student_run_next_stage_usecase=Mock(),

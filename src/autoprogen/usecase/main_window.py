@@ -40,6 +40,7 @@ from autoprogen.usecase.dto.student_table_cell_data import (
     StudentStageStateCellData,
     StudentStageStateCellDataStageState,
 )
+from autoprogen.usecase.project_settings import ProjectSettingsGetUseCase
 from autoprogen.usecase.student import StudentListIDUseCase
 from autoprogen.usecase.student_run_next_stage import StudentRunNextStageUseCase
 
@@ -54,6 +55,7 @@ class StudentTableRowSnapshot:
     stage_cells: dict[type[AbstractStage], StudentStageStateCellData]  # ステージ表示状態。
     error_cell: StudentErrorCellData  # エラー欄の本文とツールチップの元データ。
     mark: StudentMark  # 点数欄の表示内容。未採点なら点数はNone。
+    bulk_grading_skipped: bool = False  # 一括採点の除外対象ならTrue。
 
 
 class MainWindowFacade:
@@ -70,6 +72,7 @@ class MainWindowFacade:
             stage_path_list_sub_service: StagePathListSubService,
             student_stage_path_result_repository: StudentStagePathResultRepository,
             student_mark_get_sub_service: StudentMarkGetSubService,
+            project_settings_get_usecase: ProjectSettingsGetUseCase,
             stage_error_text_formatter: StageErrorTextFormatter,
             student_list_id_usecase: StudentListIDUseCase,
             student_run_next_stage_usecase: StudentRunNextStageUseCase,
@@ -88,6 +91,7 @@ class MainWindowFacade:
             student_stage_path_result_repository
         )
         self._student_mark_get_sub_service = student_mark_get_sub_service
+        self._project_settings_get_usecase = project_settings_get_usecase
         self._stage_error_text_formatter = stage_error_text_formatter
         self._student_list_id_usecase = student_list_id_usecase
         self._student_run_next_stage_usecase = student_run_next_stage_usecase
@@ -121,6 +125,7 @@ class MainWindowFacade:
             self,
             student: Student,
             stage_paths: list[StagePath],
+            bulk_grading_skips: frozenset[StudentID],
     ) -> StudentTableRowSnapshot:
         """学生一人分を取得し、各列でステージ結果を再利用する。"""
         student_id = student.student_id
@@ -183,6 +188,7 @@ class MainWindowFacade:
                 text_entries=error_entries,
             ),
             mark=self._student_mark_get_sub_service.execute(student_id),
+            bulk_grading_skipped=student_id in bulk_grading_skips,
         )
 
     def load_student_table(
@@ -193,12 +199,19 @@ class MainWindowFacade:
         """全学生の表示データを読み込み、進捗を通知する。"""
         students = self._student_repository.list()
         stage_paths = self._stage_path_list_sub_service.execute()
+        bulk_grading_skips = (
+            self._project_settings_get_usecase.execute().bulk_grading_skips
+        )
         total = len(students)
         rows = []
         progress_callback(f"学生の表示データを読み込み中... 0/{total}")
 
         for index, student in enumerate(students, start=1):
-            rows.append(self._load_student_table_row(student, stage_paths))
+            rows.append(self._load_student_table_row(
+                student,
+                stage_paths,
+                bulk_grading_skips,
+            ))
             if index == total or index % 10 == 0:
                 progress_callback(
                     f"学生の表示データを読み込み中... {index}/{total}"
@@ -212,7 +225,14 @@ class MainWindowFacade:
         """変更された学生一人の表示データを読み込む。"""
         student = self._student_repository.get(student_id)
         stage_paths = self._stage_path_list_sub_service.execute()
-        return self._load_student_table_row(student, stage_paths)
+        bulk_grading_skips = (
+            self._project_settings_get_usecase.execute().bulk_grading_skips
+        )
+        return self._load_student_table_row(
+            student,
+            stage_paths,
+            bulk_grading_skips,
+        )
 
     def open_student_submission_folder(self, student_id: StudentID) -> None:
         """選択学生の提出フォルダをエクスプローラーで開く。"""

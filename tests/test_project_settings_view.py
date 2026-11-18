@@ -46,42 +46,73 @@ def test_project_settings_view_round_trip_and_delete(qt_app) -> None:
             SourceCodeCheckSkip(StudentID("00A0000000A"), "a" * 64),
             SourceCodeCheckSkip(StudentID("00B0000000B"), "b" * 64),
         }),
+        bulk_grading_skips=frozenset({
+            StudentID("00A0000000A"),
+            StudentID("00B0000000B"),
+        }),
     )
-    view = ProjectSettingsEditWidget(catalog=catalog)
+    view = ProjectSettingsEditWidget(
+        catalog=catalog,
+        student_names={
+            StudentID("00A0000000A"): "試験 太郎",
+            StudentID("00B0000000B"): "試験 花子",
+        },
+    )
     view.set_data(existing)
-    assert view.count() == 2
-    assert view._rules_table.columnCount() == 3
-    assert view._skips_table.columnCount() == 2
-    assert view._rules_table.rowCount() == catalog.entry_count
-    assert view._rules_table.horizontalHeader().isHidden()
-    assert view._rules_table.selectionBehavior() == QAbstractItemView.SelectRows
-    assert view._rules_table.selectionMode() == QAbstractItemView.SingleSelection
-    assert not view._skips_table.horizontalHeader().isHidden()
-    assert view._skips_table.horizontalHeaderItem(0).text() == "学籍番号"
-    assert view._skips_table.horizontalHeaderItem(1).text() == "ソースコード SHA-256"
+    assert view.count() == 3
+    assert view.tabText(2) == "一括採点から除外する学生"
+    rules = view._rules_widget
+    source_skips = view._source_skips_widget
+    bulk_skips = view._bulk_skips_widget
+    assert rules._rules_table.columnCount() == 3
+    assert source_skips._table.columnCount() == 3
+    assert rules._rules_table.rowCount() == catalog.entry_count
+    assert rules._rules_table.horizontalHeader().isHidden()
+    assert rules._rules_table.selectionBehavior() == QAbstractItemView.SelectRows
+    assert rules._rules_table.selectionMode() == QAbstractItemView.SingleSelection
+    assert not source_skips._table.horizontalHeader().isHidden()
+    assert source_skips._table.horizontalHeaderItem(0).text() == "学籍番号"
+    assert source_skips._table.horizontalHeaderItem(1).text() == "名前"
+    assert source_skips._table.horizontalHeaderItem(2).text() == "ソースコード SHA-256"
+    assert source_skips._table.item(0, 0).text() == "00A0000000A"
+    assert source_skips._table.item(0, 1).text() == "試験 太郎"
+    assert source_skips._table.item(0, 2).text() == "a" * 64
+    assert bulk_skips._table.horizontalHeaderItem(0).text() == "学籍番号"
+    assert bulk_skips._table.horizontalHeaderItem(1).text() == "名前"
+    assert bulk_skips._table.item(0, 0).text() == "00A0000000A"
+    assert bulk_skips._table.item(0, 1).text() == "試験 太郎"
+    assert not bulk_skips._delete_button.isEnabled()
     first_entry = catalog.groups[0].entries[0]
-    assert view._rules_table.currentRow() == 0
-    assert view._rule_description.text() == first_entry.description
+    assert rules._rules_table.currentRow() == 0
+    assert rules._rule_description.text() == first_entry.description
     assert [
         label.text()
-        for label in view._rule_target_labels
+        for label in rules._rule_target_labels
     ] == list(first_entry.target_strings)
-    assert view._rule_example.toPlainText() == first_entry.example_source_code
-    assert view._rule_example.minimumHeight() == 250
-    assert view._rule_example.maximumHeight() == 250
+    assert rules._rule_example.toPlainText() == first_entry.example_source_code
+    assert rules._rule_example.minimumHeight() == 250
+    assert rules._rule_example.maximumHeight() == 250
     assert view.get_data() == existing
 
-    row = view._rule_ids.index(SourceCodeCheckIdentifier("process", "system"))
-    view._rules_table.selectRow(row)
-    assert view._rule_description.text() == first_entry.description
-    view._rules_table.item(row, 0).setCheckState(Qt.Checked)
-    view._skips_table.selectRow(0)
-    assert view._delete_button.isEnabled()
-    view._delete_button.click()
+    row = rules._rule_ids.index(SourceCodeCheckIdentifier("process", "system"))
+    rules._rules_table.selectRow(row)
+    assert rules._rule_description.text() == first_entry.description
+    rules._rules_table.item(row, 0).setCheckState(Qt.Checked)
+    source_skips._table.selectRow(0)
+    assert source_skips._delete_button.isEnabled()
+    source_skips._delete_button.click()
     after = view.get_data()
     assert SourceCodeCheckIdentifier("process", "system") not in after.suppressed_source_code_checks
     assert SourceCodeCheckIdentifier("future_group", "future_rule") in after.suppressed_source_code_checks
     assert len(after.source_code_check_skips) == 1
+    assert after.bulk_grading_skips == existing.bulk_grading_skips
+
+    bulk_skips._table.selectRow(0)
+    assert bulk_skips._delete_button.isEnabled()
+    bulk_skips._delete_button.click()
+    assert view.get_data().bulk_grading_skips == frozenset({
+        StudentID("00B0000000B"),
+    })
     view.close()
 
 
@@ -89,14 +120,18 @@ def test_project_settings_view_reset_replaces_previous_state(qt_app) -> None:
     """set_dataを繰り返しても除外一覧が重複しない。"""
     from autoprogen.control.widget_project_settings import ProjectSettingsEditWidget
 
-    view = ProjectSettingsEditWidget(catalog=SourceCodeCheckCatalogFactory().create())
+    view = ProjectSettingsEditWidget(
+        catalog=SourceCodeCheckCatalogFactory().create(),
+        student_names={},
+    )
     value = ProjectSettings.create_default().with_source_code_check_skip(
         student_id=StudentID("00A0000000A"),
         source_sha256="c" * 64,
     )
     view.set_data(value)
     view.set_data(ProjectSettings.create_default())
-    assert view._skips_table.rowCount() == 0
+    assert view._source_skips_widget._table.rowCount() == 0
+    assert view._bulk_skips_widget._table.rowCount() == 0
     assert view.get_data() == ProjectSettings.create_default()
     view.close()
 
@@ -120,10 +155,10 @@ def test_project_settings_view_highlights_example_lines(qt_app) -> None:
         entries=(entry,),
     ),))
 
-    view = ProjectSettingsEditWidget(catalog=catalog)
+    view = ProjectSettingsEditWidget(catalog=catalog, student_names={})
 
-    assert view._rule_example.toPlainText() == entry.example_source_code
-    selections = view._rule_example.extraSelections()
+    assert view._rules_widget._rule_example.toPlainText() == entry.example_source_code
+    selections = view._rules_widget._rule_example.extraSelections()
     assert len(selections) == 1
     assert selections[0].cursor.blockNumber() == 1
     assert selections[0].format.background().color() == QColor("#fff0a6")
@@ -135,26 +170,27 @@ def test_project_settings_view_searches_rules_without_changing_settings(qt_app) 
     from autoprogen.control.widget_project_settings import ProjectSettingsEditWidget
 
     catalog = SourceCodeCheckCatalogFactory().create()
-    view = ProjectSettingsEditWidget(catalog=catalog)
+    view = ProjectSettingsEditWidget(catalog=catalog, student_names={})
     settings_before_search = view.get_data()
 
-    view._rule_search.setText("process.system")
+    rules = view._rules_widget
+    rules._rule_search.setText("process.system")
 
     visible_rows = [
         row
-        for row in range(view._rules_table.rowCount())
-        if not view._rules_table.isRowHidden(row)
+        for row in range(rules._rules_table.rowCount())
+        if not rules._rules_table.isRowHidden(row)
     ]
     assert len(visible_rows) == 1
     visible_row = visible_rows[0]
-    assert view._rule_ids[visible_row] == SourceCodeCheckIdentifier("process", "system")
-    assert view._rules_table.currentRow() == visible_row
+    assert rules._rule_ids[visible_row] == SourceCodeCheckIdentifier("process", "system")
+    assert rules._rules_table.currentRow() == visible_row
     assert view.get_data() == settings_before_search
 
-    view._rule_search.clear()
+    rules._rule_search.clear()
     assert all(
-        not view._rules_table.isRowHidden(row)
-        for row in range(view._rules_table.rowCount())
+        not rules._rules_table.isRowHidden(row)
+        for row in range(rules._rules_table.rowCount())
     )
     view.close()
 
@@ -172,16 +208,21 @@ def test_project_settings_dialog_saves_only_on_save(
     repository = Mock()
     repository.get.return_value = settings
     get_usecase = ProjectSettingsGetUseCase(project_settings_repo=repository)
-    put_usecase = ProjectSettingsPutUseCase(project_settings_repo=repository)
+    put_usecase = ProjectSettingsPutUseCase(
+        project_settings_repo=repository,
+        student_change_event_bus=Mock(),
+    )
     catalog = SourceCodeCheckCatalogFactory().create()
 
     dialog = ProjectSettingsEditDialog(
         catalog=catalog,
+        student_names={},
         project_settings_get_usecase=get_usecase,
         project_settings_put_usecase=put_usecase,
     )
-    row = dialog._settings_view._rule_ids.index(SourceCodeCheckIdentifier("process", "system"))
-    checkbox = dialog._settings_view._rules_table.item(row, 0)
+    rules = dialog._settings_view._rules_widget
+    row = rules._rule_ids.index(SourceCodeCheckIdentifier("process", "system"))
+    checkbox = rules._rules_table.item(row, 0)
     checkbox.setCheckState(Qt.Unchecked if checkbox.checkState() == Qt.Checked else Qt.Checked)
     monkeypatch.setattr(dialog, "_confirm_close_without_saving", Mock(return_value=True))
     dialog.reject()
@@ -189,10 +230,11 @@ def test_project_settings_dialog_saves_only_on_save(
 
     dialog2 = ProjectSettingsEditDialog(
         catalog=catalog,
+        student_names={},
         project_settings_get_usecase=get_usecase,
         project_settings_put_usecase=put_usecase,
     )
-    checkbox2 = dialog2._settings_view._rules_table.item(row, 0)
+    checkbox2 = dialog2._settings_view._rules_widget._rules_table.item(row, 0)
     checkbox2.setCheckState(Qt.Unchecked if checkbox2.checkState() == Qt.Checked else Qt.Checked)
     dialog2._save()
     assert dialog2.result() == QDialog.Accepted
@@ -240,13 +282,85 @@ def test_project_settings_dialog_canceled_delete_is_not_saved(
     repository.get.return_value = settings
     dialog = ProjectSettingsEditDialog(
         catalog=SourceCodeCheckCatalogFactory().create(),
+        student_names={},
         project_settings_get_usecase=ProjectSettingsGetUseCase(project_settings_repo=repository),
-        project_settings_put_usecase=ProjectSettingsPutUseCase(project_settings_repo=repository),
+        project_settings_put_usecase=ProjectSettingsPutUseCase(
+            project_settings_repo=repository,
+            student_change_event_bus=Mock(),
+        ),
     )
-    dialog._settings_view._skips_table.selectRow(0)
-    dialog._settings_view._delete_button.click()
+    dialog._settings_view._source_skips_widget._table.selectRow(0)
+    dialog._settings_view._source_skips_widget._delete_button.click()
     assert not dialog._settings_view.get_data().source_code_check_skips
     monkeypatch.setattr(dialog, "_confirm_close_without_saving", Mock(return_value=True))
     dialog.reject()
     repository.put.assert_not_called()
+    dialog.close()
+
+
+def test_project_settings_dialog_canceled_bulk_skip_delete_is_not_saved(
+        qt_app,
+        monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """採点除外の削除はキャンセルした場合に永続化されない。"""
+    from autoprogen.control.dialog_project_settings import ProjectSettingsEditDialog
+
+    student_id = StudentID("00A0000000A")
+    settings = ProjectSettings.create_default().with_bulk_grading_skip(student_id)
+    repository = Mock()
+    repository.get.return_value = settings
+    dialog = ProjectSettingsEditDialog(
+        catalog=SourceCodeCheckCatalogFactory().create(),
+        student_names={student_id: "試験 太郎"},
+        project_settings_get_usecase=ProjectSettingsGetUseCase(
+            project_settings_repo=repository,
+        ),
+        project_settings_put_usecase=ProjectSettingsPutUseCase(
+            project_settings_repo=repository,
+            student_change_event_bus=Mock(),
+        ),
+    )
+    dialog._settings_view._bulk_skips_widget._table.selectRow(0)
+    dialog._settings_view._bulk_skips_widget._delete_button.click()
+    assert not dialog._settings_view.get_data().bulk_grading_skips
+
+    monkeypatch.setattr(
+        dialog,
+        "_confirm_close_without_saving",
+        Mock(return_value=True),
+    )
+    dialog.reject()
+
+    repository.put.assert_not_called()
+    dialog.close()
+
+
+def test_project_settings_dialog_saves_bulk_skip_delete(qt_app) -> None:
+    """採点除外の削除は保存操作を行った場合だけ永続化する。"""
+    from autoprogen.control.dialog_project_settings import ProjectSettingsEditDialog
+
+    student_id = StudentID("00A0000000A")
+    settings = ProjectSettings.create_default().with_bulk_grading_skip(student_id)
+    repository = Mock()
+    repository.get.return_value = settings
+    dialog = ProjectSettingsEditDialog(
+        catalog=SourceCodeCheckCatalogFactory().create(),
+        student_names={student_id: "試験 太郎"},
+        project_settings_get_usecase=ProjectSettingsGetUseCase(
+            project_settings_repo=repository,
+        ),
+        project_settings_put_usecase=ProjectSettingsPutUseCase(
+            project_settings_repo=repository,
+            student_change_event_bus=Mock(),
+        ),
+    )
+    dialog._settings_view._bulk_skips_widget._table.selectRow(0)
+    dialog._settings_view._bulk_skips_widget._delete_button.click()
+
+    dialog._save()
+
+    saved = repository.put.call_args.args[0]
+    assert saved.bulk_grading_skips == frozenset()
+    assert saved.suppressed_source_code_checks == settings.suppressed_source_code_checks
+    assert saved.source_code_check_skips == settings.source_code_check_skips
     dialog.close()

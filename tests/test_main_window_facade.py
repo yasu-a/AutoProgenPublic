@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+from autoprogen.domain.model.project_settings import ProjectSettings
 from autoprogen.domain.model.value import ProjectID, StudentID
 from autoprogen.usecase.main_window import MainWindowFacade
 
@@ -14,6 +15,7 @@ def _create_facade() -> tuple[MainWindowFacade, dict[str, Mock]]:
         "stage_path_list_sub_service": Mock(),
         "student_stage_path_result_repository": Mock(),
         "student_mark_get_sub_service": Mock(),
+        "project_settings_get_usecase": Mock(),
         "stage_error_text_formatter": Mock(),
         "student_list_id_usecase": Mock(),
         "student_run_next_stage_usecase": Mock(),
@@ -23,6 +25,9 @@ def _create_facade() -> tuple[MainWindowFacade, dict[str, Mock]]:
         "student_change_event_bus": Mock(),
         "task_manager": Mock(),
     }
+    dependencies["project_settings_get_usecase"].execute.return_value = (
+        ProjectSettings.create_default()
+    )
     return MainWindowFacade(**dependencies), dependencies
 
 

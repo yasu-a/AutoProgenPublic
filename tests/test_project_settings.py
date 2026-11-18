@@ -2,6 +2,8 @@ import json
 from pathlib import Path
 from unittest.mock import Mock
 
+import pytest
+
 from autoprogen.domain.model.project_settings import (
     ProjectSettings,
     SourceCodeCheckIdentifier,
@@ -53,6 +55,10 @@ def test_project_settings_survive_json_round_trip() -> None:
                 source_sha256="a" * 64,
             ),
         }),
+        bulk_grading_skips=frozenset({
+            StudentID("00B0000000B"),
+            StudentID("00A0000000A"),
+        }),
     )
 
     json_body = json.loads(json.dumps(settings.to_json()))
@@ -76,6 +82,57 @@ def test_project_settings_adds_source_code_check_skip() -> None:
             source_sha256="a" * 64,
         ),
     })
+
+
+def test_project_settings_adds_and_removes_bulk_grading_skip() -> None:
+    """採点除外の追加と解除で他の設定を維持する。"""
+    student_id = StudentID("00A0000000A")
+    original = ProjectSettings.create_default().with_source_code_check_skip(
+        student_id=student_id,
+        source_sha256="a" * 64,
+    )
+
+    added = original.with_bulk_grading_skip(student_id)
+    added_again = added.with_bulk_grading_skip(student_id)
+    removed = added.without_bulk_grading_skip(student_id)
+
+    assert added.bulk_grading_skips == frozenset({student_id})
+    assert added_again == added
+    assert removed.bulk_grading_skips == frozenset()
+    assert removed.suppressed_source_code_checks == original.suppressed_source_code_checks
+    assert removed.source_code_check_skips == original.source_code_check_skips
+
+
+def test_project_settings_bulk_grading_skips_validate_types() -> None:
+    """採点除外にはStudentIDだけを含むfrozensetを要求する。"""
+    with pytest.raises(TypeError, match="frozenset"):
+        ProjectSettings(
+            suppressed_source_code_checks=SourceCodeCheckSuppressions(),
+            source_code_check_skips=frozenset(),
+            bulk_grading_skips=None,  # type: ignore[arg-type]
+        )
+    with pytest.raises(TypeError, match="StudentID"):
+        ProjectSettings(
+            suppressed_source_code_checks=SourceCodeCheckSuppressions(),
+            source_code_check_skips=frozenset(),
+            bulk_grading_skips=frozenset({"00A0000000A"}),  # type: ignore[arg-type]
+        )
+
+
+def test_project_settings_json_orders_ids_and_accepts_missing_key() -> None:
+    """採点除外を学籍番号順に保存し、旧JSONでは空集合として読む。"""
+    settings = ProjectSettings.create_default()
+    for student_id in (StudentID("00B0000000B"), StudentID("00A0000000A")):
+        settings = settings.with_bulk_grading_skip(student_id)
+
+    body = settings.to_json()
+    assert body["bulk_grading_skips"] == ["00A0000000A", "00B0000000B"]
+
+    body_without_new_key = dict(body)
+    del body_without_new_key["bulk_grading_skips"]
+    restored = ProjectSettings.from_json(body_without_new_key)
+    assert restored.bulk_grading_skips == frozenset()
+    assert restored.suppressed_source_code_checks == settings.suppressed_source_code_checks
 
 
 def test_project_settings_repository_returns_default_when_file_is_missing(
@@ -111,6 +168,7 @@ def test_project_settings_repository_keeps_projects_independent(
                 source_sha256="a" * 64,
             ),
         }),
+        bulk_grading_skips=frozenset({StudentID("00A0000000A")}),
     )
     settings_b = ProjectSettings(
         suppressed_source_code_checks=SourceCodeCheckSuppressions({
@@ -122,6 +180,7 @@ def test_project_settings_repository_keeps_projects_independent(
                 source_sha256="b" * 64,
             ),
         }),
+        bulk_grading_skips=frozenset({StudentID("00B0000000B")}),
     )
 
     repository_a.put(settings_a)

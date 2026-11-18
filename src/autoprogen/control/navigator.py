@@ -66,13 +66,17 @@ class Navigator(INavigator):
         dialog.exec_()
 
     def open_project_settings_dialog(self, parent: QWidget) -> None:
-        """現在のプロジェクト専用の静的チェック設定を編集する。"""
+        """現在のプロジェクト専用設定を編集する。"""
         from autoprogen.control.dialog_project_settings import ProjectSettingsEditDialog
         assert self._current_project_container is not None
         container = self._current_project_container
         dialog = ProjectSettingsEditDialog(
             parent,
             catalog=container.source_code_check_catalog_factory.create(),
+            student_names={
+                student.student_id: student.name
+                for student in container.student_list_sub_service.execute()
+            },
             project_settings_get_usecase=container.project_settings_get_usecase,
             project_settings_put_usecase=container.project_settings_put_usecase,
         )

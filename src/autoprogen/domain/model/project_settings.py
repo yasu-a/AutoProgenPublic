@@ -154,6 +154,8 @@ class ProjectSettings:
     suppressed_source_code_checks: SourceCodeCheckSuppressions
     # 学生とソースコードの組み合わせごとに保存したチェック省略情報。
     source_code_check_skips: frozenset[SourceCodeCheckSkip]
+    # 一括採点の対象から除外する学生の学籍番号。
+    bulk_grading_skips: frozenset[StudentID] = frozenset()
 
     def __post_init__(self) -> None:
         """プロジェクト設定のフィールド型を検証する。"""
@@ -171,6 +173,13 @@ class ProjectSettings:
             raise TypeError(
                 "source_code_check_skipsの要素にはSourceCodeCheckSkipを指定してください"
             )
+        if not isinstance(self.bulk_grading_skips, frozenset):
+            raise TypeError("bulk_grading_skipsにはfrozensetを指定してください")
+        if any(
+                not isinstance(student_id, StudentID)
+                for student_id in self.bulk_grading_skips
+        ):
+            raise TypeError("bulk_grading_skipsの要素にはStudentIDを指定してください")
 
     @classmethod
     def create_default(cls) -> "ProjectSettings":
@@ -191,6 +200,7 @@ class ProjectSettings:
                 for check_id in check_ids
             ),
             source_code_check_skips=frozenset(),
+            bulk_grading_skips=frozenset(),
         )
 
     def with_source_code_check_skip(
@@ -207,9 +217,30 @@ class ProjectSettings:
         return ProjectSettings(
             suppressed_source_code_checks=self.suppressed_source_code_checks,
             source_code_check_skips=self.source_code_check_skips | {skip},
+            bulk_grading_skips=self.bulk_grading_skips,
         )
 
-    def to_json(self) -> dict[str, list[dict[str, str]]]:
+    def with_bulk_grading_skip(self, student_id: StudentID) -> "ProjectSettings":
+        """指定した学生を一括採点の除外対象へ追加する。"""
+        if not isinstance(student_id, StudentID):
+            raise TypeError("student_idにはStudentIDを指定してください")
+        return ProjectSettings(
+            suppressed_source_code_checks=self.suppressed_source_code_checks,
+            source_code_check_skips=self.source_code_check_skips,
+            bulk_grading_skips=self.bulk_grading_skips | {student_id},
+        )
+
+    def without_bulk_grading_skip(self, student_id: StudentID) -> "ProjectSettings":
+        """指定した学生を一括採点の除外対象から解除する。"""
+        if not isinstance(student_id, StudentID):
+            raise TypeError("student_idにはStudentIDを指定してください")
+        return ProjectSettings(
+            suppressed_source_code_checks=self.suppressed_source_code_checks,
+            source_code_check_skips=self.source_code_check_skips,
+            bulk_grading_skips=self.bulk_grading_skips - {student_id},
+        )
+
+    def to_json(self) -> dict[str, object]:
         """設定値をJSONへ保存できる辞書に変換する。"""
         skips = sorted(
             self.source_code_check_skips,
@@ -220,6 +251,13 @@ class ProjectSettings:
             "source_code_check_skips": [
                 skip.to_json()
                 for skip in skips
+            ],
+            "bulk_grading_skips": [
+                student_id.to_json()
+                for student_id in sorted(
+                    self.bulk_grading_skips,
+                    key=str,
+                )
             ],
         }
 
@@ -233,5 +271,9 @@ class ProjectSettings:
             source_code_check_skips=frozenset(
                 SourceCodeCheckSkip.from_json(skip)
                 for skip in body.get("source_code_check_skips", [])
+            ),
+            bulk_grading_skips=frozenset(
+                StudentID.from_json(student_id)
+                for student_id in body.get("bulk_grading_skips", [])
             ),
         )

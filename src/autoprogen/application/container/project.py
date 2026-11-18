@@ -55,7 +55,11 @@ from autoprogen.service.testcase_config import TestCaseConfigCopyService, TestCa
     TestCaseConfigGetTestConfigMtimeService
 from autoprogen.usecase.current_project import CurrentProjectInitializeStaticUseCase
 from autoprogen.usecase.main_window import MainWindowFacade
-from autoprogen.usecase.project_settings import ProjectSettingsGetUseCase, ProjectSettingsPutUseCase
+from autoprogen.usecase.project_settings import (
+    BulkGradingSkipAddUseCase,
+    ProjectSettingsGetUseCase,
+    ProjectSettingsPutUseCase,
+)
 from autoprogen.usecase.student import StudentListIDUseCase
 from autoprogen.usecase.student_dynamic import StudentDynamicTakeDiffSnapshotUseCase
 from autoprogen.usecase.student_mark import StudentMarkGetUseCase, StudentMarkListUseCase, StudentMarkPutUseCase
@@ -389,6 +393,16 @@ class ProjectContainer:
         """現在のプロジェクト設定を保存するUseCaseを返す。"""
         return ProjectSettingsPutUseCase(
             project_settings_repo=self.project_settings_repository,
+            student_change_event_bus=self.student_change_event_bus,
+        )
+
+    @cached_property
+    def bulk_grading_skip_add_usecase(self) -> BulkGradingSkipAddUseCase:
+        """採点済み学生を一括採点の除外対象へ追加するUseCaseを返す。"""
+        return BulkGradingSkipAddUseCase(
+            student_mark_get_usecase=self.student_mark_get_usecase,
+            project_settings_get_usecase=self.project_settings_get_usecase,
+            project_settings_put_usecase=self.project_settings_put_usecase,
         )
 
     @cached_property
@@ -534,6 +548,7 @@ class ProjectContainer:
                 self.student_stage_path_result_repository
             ),
             student_mark_get_sub_service=self.student_mark_get_sub_service,
+            project_settings_get_usecase=self.project_settings_get_usecase,
             stage_error_text_formatter=self.stage_error_text_formatter,
             student_list_id_usecase=self.student_list_id_usecase,
             student_run_next_stage_usecase=self.student_run_next_stage_usecase,

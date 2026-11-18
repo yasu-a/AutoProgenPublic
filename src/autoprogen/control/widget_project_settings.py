@@ -22,11 +22,26 @@ from autoprogen.domain.model.project_settings import (
     SourceCodeCheckSuppressions,
 )
 from autoprogen.domain.model.source_code_check import SourceCodeCheckCatalog, SourceCodeCheckEntry
+from autoprogen.domain.model.value import StudentID
 from autoprogen.res.font import get_font
 
 
-class ProjectSettingsEditWidget(QTabWidget):
-    """静的チェック規則と除外するソースコードを編集するビュー。"""
+def _set_readonly_item(
+        table: QTableWidget,
+        row: int,
+        column: int,
+        value: str,
+        tooltip: str,
+) -> None:
+    """表へ編集不可のテキストセルを追加する。"""
+    item = QTableWidgetItem(value)
+    item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+    item.setToolTip(tooltip)
+    table.setItem(row, column, item)
+
+
+class SourceCodeCheckRulesEditWidget(QWidget):
+    """ソースコードの静的チェック規則を編集するWidget。"""
 
     _TARGET_STRINGS_ROW_MAX_WIDTH = 300
     _TARGET_STRING_SPACING = 4
@@ -37,7 +52,7 @@ class ProjectSettingsEditWidget(QTabWidget):
             *,
             catalog: SourceCodeCheckCatalog,
     ) -> None:
-        """規則カタログを受け取り、見出しなしの2表を構築する。"""
+        """規則カタログを受け取り、規則一覧と詳細表示を構築する。"""
         super().__init__(parent)
         self._catalog = catalog
         self._rule_ids: list[SourceCodeCheckIdentifier] = []
@@ -45,31 +60,29 @@ class ProjectSettingsEditWidget(QTabWidget):
         self._rule_target_labels: list[QLabel] = []
         self._rule_target_rows: list[QWidget] = []
         self._unknown_suppressed_ids: frozenset[SourceCodeCheckIdentifier] = frozenset()
-        self._skips: list[SourceCodeCheckSkip] = []
         self._init_ui()
 
     def _init_ui(self) -> None:
-        """チェック項目と除外項目を別タブへ表示する。"""
-        rules_page = QWidget(self)
-        rules_layout = QVBoxLayout(rules_page)
+        """チェック規則の一覧・検索・詳細表示を構築する。"""
+        rules_layout = QVBoxLayout(self)
         rules_description = QLabel(
             "学生のソースコードに適用するチェック規則を選択します。"
             "チェックした規則に該当する操作が検出された場合、その学生のソースコードは"
             "コンパイルされません。チェックを外した規則は、このプロジェクトでは検査しません。",
-            rules_page,
+            self,
         )
         rules_description.setWordWrap(True)
         rules_layout.addWidget(rules_description)
 
         rules_content_layout = QHBoxLayout()
         rules_table_layout = QVBoxLayout()
-        self._rule_search = QLineEdit(rules_page)
+        self._rule_search = QLineEdit(self)
         self._rule_search.setObjectName("sourceCodeCheckSearch")
         self._rule_search.setPlaceholderText("規則を検索")
         self._rule_search.setClearButtonEnabled(True)
         self._rule_search.textChanged.connect(self._search_rules)
         rules_table_layout.addWidget(self._rule_search)
-        self._rules_table = QTableWidget(0, 3, rules_page)
+        self._rules_table = QTableWidget(0, 3, self)
         self._rules_table.setObjectName("sourceCodeCheckTable")
         self._rules_table.horizontalHeader().hide()
         self._rules_table.verticalHeader().hide()
@@ -85,15 +98,15 @@ class ProjectSettingsEditWidget(QTabWidget):
         rules_content_layout.addLayout(rules_table_layout, 3)
 
         rule_detail_layout = QVBoxLayout()
-        detail_title = QLabel("規則の説明", rules_page)
+        detail_title = QLabel("規則の説明", self)
         detail_title.setStyleSheet("font-weight: bold;")
         rule_detail_layout.addWidget(detail_title)
-        self._rule_description = QLabel(rules_page)
+        self._rule_description = QLabel(self)
         self._rule_description.setObjectName("sourceCodeCheckDescription")
         self._rule_description.setWordWrap(True)
         self._rule_description.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         rule_detail_layout.addWidget(self._rule_description)
-        target_strings_title = QLabel("検出する単語", rules_page)
+        target_strings_title = QLabel("検出する単語", self)
         target_strings_title.setStyleSheet("font-weight: bold;")
         rule_detail_layout.addWidget(target_strings_title)
         self._rule_target_strings_layout = QVBoxLayout()
@@ -101,10 +114,10 @@ class ProjectSettingsEditWidget(QTabWidget):
         self._rule_target_strings_layout.setSpacing(self._TARGET_STRING_SPACING)
         rule_detail_layout.addLayout(self._rule_target_strings_layout)
         rule_detail_layout.addStretch(1)
-        example_title = QLabel("代表的なソースコード", rules_page)
+        example_title = QLabel("代表的なソースコード", self)
         example_title.setStyleSheet("font-weight: bold;")
         rule_detail_layout.addWidget(example_title)
-        self._rule_example = SourceCodeTextEdit(rules_page)
+        self._rule_example = SourceCodeTextEdit(self)
         self._rule_example.setObjectName("sourceCodeCheckExample")
         self._rule_example.setReadOnly(True)
         self._rule_example.setFixedHeight(250)
@@ -112,7 +125,6 @@ class ProjectSettingsEditWidget(QTabWidget):
         rule_detail_layout.addWidget(self._rule_example)
         rules_content_layout.addLayout(rule_detail_layout, 2)
         rules_layout.addLayout(rules_content_layout, 1)
-        self.addTab(rules_page, "ソースコードの静的セキュリティチェック")
 
         for group in self._catalog.groups:
             for entry in group.entries:
@@ -131,110 +143,41 @@ class ProjectSettingsEditWidget(QTabWidget):
                 checkbox.setCheckState(Qt.Checked)
                 checkbox.setToolTip("チェックすると、この規則を適用します")
                 self._rules_table.setItem(row, 0, checkbox)
-                self._set_readonly_item(
+                _set_readonly_item(
                     self._rules_table, row, 1,
                     f"{group.group_id}.{entry.check_id}", group.name,
                 )
-                self._set_readonly_item(
+                _set_readonly_item(
                     self._rules_table, row, 2, entry.name, group.name,
                 )
 
         if self._rules_table.rowCount() > 0:
             self._rules_table.selectRow(0)
 
-        skips_page = QWidget(self)
-        skips_layout = QVBoxLayout(skips_page)
-        skips_description = QLabel(
-            "安全性を確認して個別に許可したソースコードの一覧です。"
-            "削除すると、次回のコンパイル時から安全性チェックを再び実行します。",
-            skips_page,
-        )
-        skips_description.setWordWrap(True)
-        skips_layout.addWidget(skips_description)
-
-        skips_content_layout = QHBoxLayout()
-        self._skips_table = QTableWidget(0, 2, skips_page)
-        self._skips_table.setObjectName("sourceCodeCheckSkipsTable")
-        self._skips_table.setHorizontalHeaderLabels(("学籍番号", "ソースコード SHA-256"))
-        self._skips_table.verticalHeader().hide()
-        self._skips_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self._skips_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self._skips_table.setSelectionMode(QAbstractItemView.SingleSelection)
-        self._skips_table.setAlternatingRowColors(True)
-        self._skips_table.setColumnWidth(0, 160)
-        self._skips_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        skips_content_layout.addWidget(self._skips_table, 1)
-
-        side_layout = QVBoxLayout()
-        self._delete_button = QPushButton("削除", skips_page)
-        self._delete_button.setObjectName("deleteSourceCodeCheckSkip")
-        self._delete_button.setEnabled(False)
-        self._delete_button.clicked.connect(self._remove_selected_skip)
-        side_layout.addWidget(self._delete_button)
-        side_layout.addStretch(1)
-        skips_content_layout.addLayout(side_layout)
-        skips_layout.addLayout(skips_content_layout, 1)
-        self._skips_table.itemSelectionChanged.connect(self._update_delete_button)
-        self.addTab(skips_page, "セキュリティチェックから除外するソースコード")
-
-    @staticmethod
-    def _set_readonly_item(
-            table: QTableWidget, row: int, column: int,
-            value: str, tooltip: str,
-    ) -> None:
-        """編集不可のテキストセルを追加する。"""
-        item = QTableWidgetItem(value)
-        item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-        item.setToolTip(tooltip)
-        table.setItem(row, column, item)
-
-    def set_data(self, settings: ProjectSettings) -> None:
-        """保存済みの設定を両タブへ反映する。"""
-        if not isinstance(settings, ProjectSettings):
-            raise TypeError("settingsにはProjectSettingsを指定してください")
+    def set_data(self, suppressions: SourceCodeCheckSuppressions) -> None:
+        """保存済みの規則抑制設定を一覧へ反映する。"""
+        if not isinstance(suppressions, SourceCodeCheckSuppressions):
+            raise TypeError("suppressionsにはSourceCodeCheckSuppressionsを指定してください")
         known_ids = frozenset(self._rule_ids)
         self._unknown_suppressed_ids = frozenset(
             identifier
-            for identifier in settings.suppressed_source_code_checks
+            for identifier in suppressions
             if identifier not in known_ids
         )
         for row, identifier in enumerate(self._rule_ids):
             checkbox = self._rules_table.item(row, 0)
             checkbox.setCheckState(
-                Qt.Unchecked if identifier in settings.suppressed_source_code_checks
+                Qt.Unchecked if identifier in suppressions
                 else Qt.Checked
             )
 
-        self._skips = sorted(
-            settings.source_code_check_skips,
-            key=lambda skip: (str(skip.student_id), skip.source_sha256),
-        )
-        self._skips_table.setRowCount(0)
-        for row, skip in enumerate(self._skips):
-            self._skips_table.insertRow(row)
-            self._set_readonly_item(
-                self._skips_table, row, 0, str(skip.student_id), "学籍番号",
-            )
-            self._set_readonly_item(
-                self._skips_table, row, 1, skip.source_sha256, "ソースコードのSHA-256",
-            )
-        self._skips_table.clearSelection()
-        self._update_delete_button()
-
-    def get_data(self) -> ProjectSettings:
-        """現在のチェック状態と残った除外情報を設定モデルへ変換する。"""
+    def get_data(self) -> SourceCodeCheckSuppressions:
+        """一覧のチェック状態を規則抑制設定へ変換する。"""
         suppressed_ids = set(self._unknown_suppressed_ids)
         for row, identifier in enumerate(self._rule_ids):
             if self._rules_table.item(row, 0).checkState() != Qt.Checked:
                 suppressed_ids.add(identifier)
-        return ProjectSettings(
-            suppressed_source_code_checks=SourceCodeCheckSuppressions(suppressed_ids),
-            source_code_check_skips=frozenset(self._skips),
-        )
-
-    def _update_delete_button(self) -> None:
-        """削除対象の行がある場合のみボタンを有効化する。"""
-        self._delete_button.setEnabled(bool(self._skips_table.selectionModel().selectedRows()))
+        return SourceCodeCheckSuppressions(suppressed_ids)
 
     def _show_selected_rule_detail(self) -> None:
         """選択行に対応する規則の説明とソースコード例を表示する。"""
@@ -325,13 +268,231 @@ class ProjectSettingsEditWidget(QTabWidget):
         if first_visible_row is not None:
             self._rules_table.selectRow(first_visible_row)
 
+
+class SourceCodeCheckSkipsEditWidget(QWidget):
+    """静的チェックを省略する学生とソースコードの組を編集するWidget。"""
+
+    def __init__(
+            self,
+            parent: QWidget = None,
+            *,
+            student_names: dict[StudentID, str],
+    ) -> None:
+        """学生名を受け取り、チェック省略一覧を構築する。"""
+        super().__init__(parent)
+        self._student_names = dict(student_names)
+        self._skips: list[SourceCodeCheckSkip] = []
+
+        layout = QVBoxLayout(self)
+        description = QLabel(
+            "安全性を確認して個別に許可したソースコードの一覧です。"
+            "削除すると、次回のコンパイル時から安全性チェックを再び実行します。",
+            self,
+        )
+        description.setWordWrap(True)
+        layout.addWidget(description)
+
+        content_layout = QHBoxLayout()
+        self._table = QTableWidget(0, 3, self)
+        self._table.setObjectName("sourceCodeCheckSkipsTable")
+        self._table.setHorizontalHeaderLabels(
+            ("学籍番号", "名前", "ソースコード SHA-256"),
+        )
+        self._table.verticalHeader().hide()
+        self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self._table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self._table.setAlternatingRowColors(True)
+        self._table.setColumnWidth(0, 160)
+        self._table.setColumnWidth(1, 180)
+        self._table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        content_layout.addWidget(self._table, 1)
+
+        side_layout = QVBoxLayout()
+        self._delete_button = QPushButton("削除", self)
+        self._delete_button.setObjectName("deleteSourceCodeCheckSkip")
+        self._delete_button.setEnabled(False)
+        self._delete_button.clicked.connect(self._remove_selected_skip)
+        side_layout.addWidget(self._delete_button)
+        side_layout.addStretch(1)
+        content_layout.addLayout(side_layout)
+        layout.addLayout(content_layout, 1)
+        self._table.itemSelectionChanged.connect(self._update_delete_button)
+
+    def set_data(self, skips: frozenset[SourceCodeCheckSkip]) -> None:
+        """保存済みのチェック省略情報を一覧へ反映する。"""
+        self._skips = sorted(
+            skips,
+            key=lambda skip: (str(skip.student_id), skip.source_sha256),
+        )
+        self._table.setRowCount(0)
+        for row, skip in enumerate(self._skips):
+            self._table.insertRow(row)
+            _set_readonly_item(
+                self._table, row, 0, str(skip.student_id), "学籍番号",
+            )
+            _set_readonly_item(
+                self._table, row, 1,
+                self._student_names.get(skip.student_id, ""), "名前",
+            )
+            _set_readonly_item(
+                self._table, row, 2, skip.source_sha256, "ソースコードのSHA-256",
+            )
+        self._table.clearSelection()
+        self._update_delete_button()
+
+    def get_data(self) -> frozenset[SourceCodeCheckSkip]:
+        """画面上に残っているチェック省略情報を返す。"""
+        return frozenset(self._skips)
+
+    def _update_delete_button(self) -> None:
+        """削除対象の行がある場合のみボタンを有効化する。"""
+        self._delete_button.setEnabled(bool(self._table.selectionModel().selectedRows()))
+
     def _remove_selected_skip(self) -> None:
-        """選択した除外設定を画面上から削除する（保存までは確定しない）。"""
-        selection = self._skips_table.selectionModel().selectedRows()
+        """選択したチェック省略情報を画面上から削除する。"""
+        selection = self._table.selectionModel().selectedRows()
         if not selection:
             return
         row = selection[0].row()
         self._skips.pop(row)
-        self._skips_table.removeRow(row)
-        self._skips_table.clearSelection()
+        self._table.removeRow(row)
+        self._table.clearSelection()
         self._update_delete_button()
+
+
+class BulkGradingSkipsEditWidget(QWidget):
+    """一括採点から除外する学生を編集するWidget。"""
+
+    def __init__(
+            self,
+            parent: QWidget = None,
+            *,
+            student_names: dict[StudentID, str],
+    ) -> None:
+        """学生名を受け取り、一括採点の除外一覧を構築する。"""
+        super().__init__(parent)
+        self._student_names = dict(student_names)
+        self._student_ids: list[StudentID] = []
+
+        layout = QVBoxLayout(self)
+        description = QLabel(
+            "一括採点の対象から除外する学生の一覧です。"
+            "削除した学生は、次回から再び一括採点の対象になります。",
+            self,
+        )
+        description.setWordWrap(True)
+        layout.addWidget(description)
+
+        content_layout = QHBoxLayout()
+        self._table = QTableWidget(0, 2, self)
+        self._table.setObjectName("bulkGradingSkipsTable")
+        self._table.setHorizontalHeaderLabels(("学籍番号", "名前"))
+        self._table.verticalHeader().hide()
+        self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self._table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self._table.setAlternatingRowColors(True)
+        self._table.setColumnWidth(0, 160)
+        self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        content_layout.addWidget(self._table, 1)
+
+        side_layout = QVBoxLayout()
+        self._delete_button = QPushButton("削除", self)
+        self._delete_button.setObjectName("deleteBulkGradingSkip")
+        self._delete_button.setEnabled(False)
+        self._delete_button.clicked.connect(self._remove_selected_student)
+        side_layout.addWidget(self._delete_button)
+        side_layout.addStretch(1)
+        content_layout.addLayout(side_layout)
+        layout.addLayout(content_layout, 1)
+        self._table.itemSelectionChanged.connect(self._update_delete_button)
+
+    def set_data(self, student_ids: frozenset[StudentID]) -> None:
+        """保存済みの一括採点除外を一覧へ反映する。"""
+        self._student_ids = sorted(student_ids, key=str)
+        self._table.setRowCount(0)
+        for row, student_id in enumerate(self._student_ids):
+            self._table.insertRow(row)
+            _set_readonly_item(
+                self._table, row, 0, str(student_id), "学籍番号",
+            )
+            _set_readonly_item(
+                self._table, row, 1,
+                self._student_names.get(student_id, ""), "名前",
+            )
+        self._table.clearSelection()
+        self._update_delete_button()
+
+    def get_data(self) -> frozenset[StudentID]:
+        """画面上に残っている一括採点除外を返す。"""
+        return frozenset(self._student_ids)
+
+    def _update_delete_button(self) -> None:
+        """削除対象の行がある場合のみボタンを有効化する。"""
+        self._delete_button.setEnabled(bool(self._table.selectionModel().selectedRows()))
+
+    def _remove_selected_student(self) -> None:
+        """選択した学生を画面上の除外一覧から削除する。"""
+        selection = self._table.selectionModel().selectedRows()
+        if not selection:
+            return
+        row = selection[0].row()
+        self._student_ids.pop(row)
+        self._table.removeRow(row)
+        self._table.clearSelection()
+        self._update_delete_button()
+
+
+class ProjectSettingsEditWidget(QTabWidget):
+    """プロジェクト設定を3つの専用Widgetへ分けて編集するビュー。"""
+
+    def __init__(
+            self,
+            parent: QWidget = None,
+            *,
+            catalog: SourceCodeCheckCatalog,
+            student_names: dict[StudentID, str],
+    ) -> None:
+        """規則カタログと学生名を各設定Widgetへ渡す。"""
+        super().__init__(parent)
+        self._rules_widget = SourceCodeCheckRulesEditWidget(
+            self,
+            catalog=catalog,
+        )
+        self._source_skips_widget = SourceCodeCheckSkipsEditWidget(
+            self,
+            student_names=student_names,
+        )
+        self._bulk_skips_widget = BulkGradingSkipsEditWidget(
+            self,
+            student_names=student_names,
+        )
+        self.addTab(
+            self._rules_widget,
+            "ソースコードの静的セキュリティチェック",
+        )
+        self.addTab(
+            self._source_skips_widget,
+            "セキュリティチェックから除外するソースコード",
+        )
+        self.addTab(
+            self._bulk_skips_widget,
+            "一括採点から除外する学生",
+        )
+
+    def set_data(self, settings: ProjectSettings) -> None:
+        """プロジェクト設定を各専用Widgetへ反映する。"""
+        if not isinstance(settings, ProjectSettings):
+            raise TypeError("settingsにはProjectSettingsを指定してください")
+        self._rules_widget.set_data(settings.suppressed_source_code_checks)
+        self._source_skips_widget.set_data(settings.source_code_check_skips)
+        self._bulk_skips_widget.set_data(settings.bulk_grading_skips)
+
+    def get_data(self) -> ProjectSettings:
+        """各専用Widgetの編集内容からプロジェクト設定を構築する。"""
+        return ProjectSettings(
+            suppressed_source_code_checks=self._rules_widget.get_data(),
+            source_code_check_skips=self._source_skips_widget.get_data(),
+            bulk_grading_skips=self._bulk_skips_widget.get_data(),
+        )
