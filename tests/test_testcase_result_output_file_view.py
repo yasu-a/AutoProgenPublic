@@ -67,7 +67,7 @@ def test_empty_stdin_is_shown_as_warning(qt_app: QApplication) -> None:
 
     assert widget._l_messages.isVisibleTo(widget)
     assert "標準入力は空です" in widget._l_messages.text()
-    assert "Visual Studio" in widget._l_messages.text()
+    assert "Visual Studio" not in widget._l_messages.text()
     assert widget._te.toPlainText() == ""
 
 

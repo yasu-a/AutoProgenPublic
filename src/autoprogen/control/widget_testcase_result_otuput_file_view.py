@@ -70,6 +70,7 @@ class TestCaseResultOutputFileViewWidget(QWidget):
                     errors.append(
                         (
                             "標準入力は空です",
+                            None,
                         )
                     )
                 else:
