@@ -22,6 +22,7 @@ from autoprogen.util.app_logging import create_logger
 
 from autoprogen.control.interface_navigator import INavigator
 
+
 class MainWindow(QMainWindow):
     _logger = create_logger()
 
@@ -85,10 +86,7 @@ class MainWindow(QMainWindow):
         self.resize(1500, 800)
 
         # ツールバー
-        self._tool_bar = ToolBar(
-            self,
-            task_manager=self._task_manager,
-        )
+        self._tool_bar = ToolBar(self)
         # noinspection PyUnresolvedReferences
         self.addToolBar(self._tool_bar)
 
@@ -157,7 +155,24 @@ class MainWindow(QMainWindow):
         self._student_change_bridge.student_changed.connect(
             self.__student_modification_observed,
         )
+        self._task_manager.busy_changed.connect(self._on_task_busy_changed)
+        # 画面を開く前にタスクが登録されていても実際の状態に揃える。
+        self._on_task_busy_changed(not self._task_manager.is_empty())
         self._resource_usage_timer.start()
+
+    @pyqtSlot(bool)
+    def _on_task_busy_changed(self, _is_busy: bool) -> None:
+        """タスクの実行状態に応じてUIを更新する。"""
+        # 受信した時点の最新状態を使いたいから受け取った状態は使用しない
+        del _is_busy
+        is_busy = not self._task_manager.is_empty()
+
+        self._tool_bar.update_button_state(is_task_alive=is_busy)
+        self._w_student_table.setEnabled(not is_busy)
+        self._student_error_dock.setEnabled(not is_busy)
+
+        if is_busy:
+            self._student_error_dock.hide()
 
     @pyqtSlot(StudentID)
     def __student_modification_observed(self, student_id: StudentID) -> None:
@@ -184,6 +199,8 @@ class MainWindow(QMainWindow):
             student_id: StudentID,
     ) -> None:
         """学籍番号セルの学生の展開済み提出フォルダを開く。"""
+        if not self._task_manager.is_empty():
+            return
         self._facade.open_student_submission_folder(student_id)
 
     @pyqtSlot(StudentID)
@@ -209,6 +226,8 @@ class MainWindow(QMainWindow):
             student_id: StudentID,
     ) -> None:
         """エラーセルの学生の詳細を下部Dockへ表示する。"""
+        if not self._task_manager.is_empty():
+            return
         self.__show_student_error_detail(student_id)
 
     def __show_student_error_detail(
@@ -216,6 +235,8 @@ class MainWindow(QMainWindow):
             student_id: StudentID,
     ) -> None:
         """指定学生のエラー詳細を表示し、対象がなければDockを閉じる。"""
+        if not self._task_manager.is_empty():
+            return
         detail_widget = self._student_error_detail_coordinator.create_widget(
             self._student_error_dock,
             student_id,
@@ -257,7 +278,6 @@ class MainWindow(QMainWindow):
 
     def __tool_bar_triggered(self, name: str) -> None:
         """ツールバーから要求されたメイン画面操作を実行する。"""
-        self._tool_bar.update_button_state(is_task_alive=True)
         if name == "run":
             self.__enqueue_student_tasks_if_not_run(
                 lambda student_id: RunStagesStudentTask(
@@ -305,5 +325,6 @@ class MainWindow(QMainWindow):
         # noinspection PyTypeChecker
         QTimer.singleShot(
             0,
-            lambda: self._navigator.transition_from_workspace_to_launcher(self),
+            lambda: self._navigator.transition_from_workspace_to_launcher(
+                self),
         )

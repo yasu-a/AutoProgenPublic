@@ -1,24 +1,16 @@
-from PyQt5.QtCore import pyqtSignal, QObject, Qt, QSize, QTimer, pyqtSlot
+from PyQt5.QtCore import pyqtSignal, QObject, Qt, QSize
 from PyQt5.QtWidgets import QToolBar, QAction, qApp
-
-from autoprogen.infra.task.manager import TaskManager
 from autoprogen.res.icon import get_icon
 
 
 class ToolBar(QToolBar):
     triggered = pyqtSignal(str)  # type: ignore
 
-    def __init__(self, parent: QObject = None, *, task_manager: TaskManager):
+    def __init__(self, parent: QObject = None) -> None:
+        """表示と操作要求のみを管理し、実行状態は外部から受け取る。"""
         super().__init__(parent)
-
-        self._task_manager = task_manager
-        self.__state_update_timer = QTimer(self)
-        self.__state_update_timer.setInterval(1000)
-
         self._init_ui()
         self._init_signals()
-
-        self.__state_update_timer.start()
 
     def _init_ui(self):
         self.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
@@ -79,10 +71,9 @@ class ToolBar(QToolBar):
         self.addAction(self._a_about)
 
     def _init_signals(self):
+        """操作を外部へ通知するSignalを接続する。"""
         # noinspection PyUnresolvedReferences
         self.actionTriggered.connect(self.__triggered)
-        # noinspection PyUnresolvedReferences
-        self.__state_update_timer.timeout.connect(self.__state_update_timer_timeout)
 
     def __triggered(self, a):
         # noinspection PyUnresolvedReferences
@@ -108,6 +99,3 @@ class ToolBar(QToolBar):
             self._a_mark.setEnabled(True)
             self._a_export_scores.setEnabled(True)
 
-    @pyqtSlot()
-    def __state_update_timer_timeout(self):
-        self.update_button_state(is_task_alive=not self._task_manager.is_empty())

@@ -212,6 +212,70 @@ def test_scoring_cell_keeps_existing_task_guard(
     warning.assert_called_once()
 
 
+def test_main_window_busy_state_disables_table_and_hides_dock(
+        qt_app: QApplication,
+) -> None:
+    """実行中は表を無効化しDockを隠し、終了後も自動再表示しない。"""
+    window = Mock()
+    window._student_error_dock = QDockWidget()
+    previous = QLabel("古いエラー詳細")
+    window._student_error_dock.setWidget(previous)
+    window._student_error_dock.show()
+    window._task_manager.is_empty.return_value = False
+
+    MainWindow._on_task_busy_changed(window, True)
+
+    window._tool_bar.update_button_state.assert_called_with(is_task_alive=True)
+    window._w_student_table.setEnabled.assert_called_with(False)
+    assert not window._student_error_dock.isEnabled()
+    assert window._student_error_dock.isHidden()
+
+    window._task_manager.is_empty.return_value = True
+    MainWindow._on_task_busy_changed(window, False)
+    window._tool_bar.update_button_state.assert_called_with(is_task_alive=False)
+    window._w_student_table.setEnabled.assert_called_with(True)
+    assert window._student_error_dock.isEnabled()
+    assert window._student_error_dock.isHidden()
+    window._student_error_dock.close()
+
+
+def test_main_window_ignores_stale_busy_signal(qt_app: QApplication) -> None:
+    """遅延した通知よりTaskManagerの現在の状態を優先する。"""
+    window = Mock()
+    window._student_error_dock = QDockWidget()
+    window._task_manager.is_empty.return_value = False
+    MainWindow._on_task_busy_changed(window, False)
+    window._tool_bar.update_button_state.assert_called_once_with(is_task_alive=True)
+    window._student_error_dock.close()
+
+
+def test_main_window_rejects_programmatic_cell_actions_when_busy(
+        qt_app: QApplication,
+) -> None:
+    """無効な表のシグナルが外部から届いてもDockやフォルダを開かない。"""
+    student_id = StudentID("21D5109047B")
+    window = Mock()
+    window._task_manager.is_empty.return_value = False
+    MainWindow._MainWindow__w_student_table_student_id_cell_triggered(
+        window, student_id,
+    )
+    MainWindow._MainWindow__w_student_table_error_cell_triggered(
+        window, student_id,
+    )
+    MainWindow._MainWindow__show_student_error_detail(window, student_id)
+    window._facade.open_student_submission_folder.assert_not_called()
+    window._MainWindow__show_student_error_detail.assert_not_called()
+    window._student_error_detail_coordinator.create_widget.assert_not_called()
+
+
+def test_about_action_does_not_force_busy_state(qt_app: QApplication) -> None:
+    """Aboutを開いただけでツールバーの実行中状態に切り替えない。"""
+    window = Mock()
+    MainWindow._MainWindow__tool_bar_triggered(window, "about")
+    window._navigator.open_about_dialog.assert_called_once_with(window)
+    window._tool_bar.update_button_state.assert_not_called()
+
+
 def test_error_cell_replaces_detail_dock_for_clicked_student(
         qt_app: QApplication,
 ) -> None:

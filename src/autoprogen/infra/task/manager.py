@@ -1,6 +1,6 @@
 import time
 from contextlib import contextmanager
-from PyQt5.QtCore import QObject, QTimer, QMutex, pyqtSlot
+from PyQt5.QtCore import QObject, QTimer, QMutex, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import qApp
 
 from autoprogen.infra.repository.global_settings import GlobalSettingsRepository
@@ -82,6 +82,7 @@ class _TaskStack:
 class TaskManager(QObject):
     # thread-safe
 
+    busy_changed = pyqtSignal(bool)
     _logger = create_logger()
 
     def __init__(self, global_settings_repo: GlobalSettingsRepository):
@@ -98,6 +99,7 @@ class TaskManager(QObject):
         self.__timer.start()
 
         self.__lock = QMutex()
+        self.__last_busy = False
 
     @contextmanager
     def _lock(self):
@@ -106,6 +108,14 @@ class TaskManager(QObject):
             yield
         finally:
             self.__lock.unlock()
+
+    def _capture_busy_transition_locked(self) -> bool | None:
+        """ロック保持中に空・非空の遷移を検出し、通知する値を返す。"""
+        current_busy = not self.__stack.is_empty()
+        if current_busy == self.__last_busy:
+            return None
+        self.__last_busy = current_busy
+        return current_busy
 
     def count(self):
         with self._lock():
@@ -120,14 +130,22 @@ class TaskManager(QObject):
             return self.__stack.is_empty()
 
     def enqueue(self, task: AbstractTask):
+        """タスクを登録し、最初の1件でbusyをロック外通知する。"""
+        transition: bool | None = None
         with self._lock():
             if isinstance(task, AbstractStudentTask):
                 self.__stack.enqueue("student", task)
             else:
                 assert False, task
+            transition = self._capture_busy_transition_locked()
+        # QtのスロットがTaskManagerを再参照できるよう、ロック外で通知する。
+        if transition is not None:
+            self.busy_changed.emit(transition)
 
     @pyqtSlot()
     def __timer_timeout(self):
+        """未開始のタスクを開始し、完了除去後のbusy遷移を通知する。"""
+        transition: bool | None = None
         with self._lock():
             # 未開始のタスクの開始
             n_max = max(self._max_workers - self.__stack.count_active(), 0)
@@ -138,8 +156,12 @@ class TaskManager(QObject):
 
             # 終了したタスクの削除
             self.__stack.dequeue_finished_tasks()
+            transition = self._capture_busy_transition_locked()
+        if transition is not None:
+            self.busy_changed.emit(transition)
 
     def terminate(self, progress_callback: ProgressCallback | None = None):
+        """登録済みタスクの停止を待ち、キューが空になったら通知する。"""
         while True:
             # メッセージ
             with self._lock():
@@ -162,12 +184,16 @@ class TaskManager(QObject):
                 self.__stack.send_stop_to_all_tasks()
             # 少し待つ
             time.sleep(0.1)
+            transition: bool | None = None
             with self._lock():
                 # 終了したタスクの削除
                 self.__stack.dequeue_finished_tasks()
                 # タスクが終了しているかを確認
                 n_tasks = self.__stack.count()
-                if n_tasks == 0:
-                    break
+                transition = self._capture_busy_transition_locked()
+            if transition is not None:
+                self.busy_changed.emit(transition)
+            if n_tasks == 0:
+                break
             # 少し待つ
             time.sleep(0.1)
