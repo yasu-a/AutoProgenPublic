@@ -11,7 +11,11 @@ class INavigator(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def transition_from_launcher_to_workspace(self, project_id: ProjectID) -> QMainWindow:
+    def transition_from_launcher_to_workspace(
+            self,
+            project_id: ProjectID,
+    ) -> QMainWindow | None:
+        """プロジェクトを開き、利用者が中止した場合はNoneを返す。"""
         raise NotImplementedError()
 
     @abstractmethod
