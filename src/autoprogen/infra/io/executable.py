@@ -40,7 +40,7 @@ class ExecutableIO:
         if input_file_fullpath is not None:
             # noinspection PyTypeChecker
             kwargs["stdin"] = input_file_fullpath.open(mode="r")
-        self._logger.info(
+        self._logger.debug(
             "Run executable:\n" + pformat(kwargs)
             + "\nFiles:\n" + "\n".join(map(str, executable_fullpath.parent.iterdir()))
         )
