@@ -110,40 +110,33 @@ class Navigator(INavigator):
         dialog.exec_()
 
     def open_scoring_dialog(self, parent: QWidget) -> None:
-        """一括採点から除外された学生以外を一覧順に開く。"""
+        """採点対象の学生一覧を取得して採点画面を開く。"""
         assert self._current_project_container is not None
-        student_marks = self._current_project_container.student_mark_list_usecase.execute()
-        skipped_ids = (
-            self._current_project_container
-            .project_settings_get_usecase.execute()
-            .bulk_grading_skips
+        student_ids = (
+            self._current_project_container.student_mark_list_usecase
+            .list_scoring_student_ids()
         )
-        self._open_scoring_dialog(
-            parent,
-            [
-                student_mark.student_id
-                for student_mark in student_marks
-                if student_mark.student_id not in skipped_ids
-            ],
-        )
+        self._open_scoring_dialog(parent, student_ids)
 
     def open_scoring_dialog_for_student(self, parent: QWidget, student_id: StudentID) -> None:
-        """指定された学生だけを対象として採点画面を開く。"""
+        """指定学生から採点を開き、移動対象はUseCaseに委ねる。"""
         assert self._current_project_container is not None
-        student_marks = (
-            self._current_project_container.student_mark_list_usecase.execute(
-                student_ids=(student_id,),
-            )
+        student_ids = (
+            self._current_project_container.student_mark_list_usecase
+            .list_scoring_student_ids(selected_student_id=student_id)
         )
         self._open_scoring_dialog(
             parent,
-            [student_mark.student_id for student_mark in student_marks],
+            student_ids,
+            initial_student_id=student_id,
         )
 
     def _open_scoring_dialog(
             self,
             parent: QWidget,
             student_ids: list[StudentID],
+            *,
+            initial_student_id: StudentID | None = None,
     ) -> None:
         """指定順の学生を対象として共通の採点画面を開く。"""
         from autoprogen.control.dialog_mark import MarkDialog
@@ -163,7 +156,10 @@ class Navigator(INavigator):
             student_mark_put_usecase=self._current_project_container.student_mark_put_usecase,
             project_settings_get_usecase=self._current_project_container.project_settings_get_usecase,
         )
-        dialog.set_state(dialog.states.create_state_of_first_student())
+        if initial_student_id is None:
+            dialog.set_state(dialog.states.create_state_of_first_student())
+        else:
+            dialog.set_state(dialog.states.create_state_by_student_id(initial_student_id))
         dialog.exec_()
 
     def open_testcase_list_edit_dialog(self, parent: QWidget) -> bool:

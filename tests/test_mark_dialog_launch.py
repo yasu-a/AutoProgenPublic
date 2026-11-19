@@ -153,19 +153,16 @@ def test_navigator_uses_common_launch_path_and_skips_empty_list(
     second = StudentID("24A0007521M")
     third = StudentID("25B0000001C")
     project_container = Mock()
-    project_container.project_settings_get_usecase.execute.return_value.bulk_grading_skips = (
-        frozenset({third})
-    )
-    project_container.student_mark_list_usecase.execute.return_value = [
-        StudentMark(second, 80),
-        StudentMark(third, None),
-    ]
+    project_container.student_mark_list_usecase.list_scoring_student_ids.return_value = [second]
     app_container = Mock()
     navigator = Navigator(app_container=app_container)
     navigator._current_project_container = project_container
     parent = QWidget()
 
     dialog = Mock()
+    dialog.states.create_state_by_student_id.side_effect = (
+        lambda student_id: MarkDialogState(student_id=student_id)
+    )
     dialog.states.create_state_of_first_student.return_value = MarkDialogState(
         student_id=second,
     )
@@ -174,46 +171,94 @@ def test_navigator_uses_common_launch_path_and_skips_empty_list(
 
     navigator.open_scoring_dialog(parent)
     assert dialog_type.call_args.kwargs["student_ids"] == [second]
-    project_container.student_mark_list_usecase.execute.assert_called_once_with()
-    project_container.project_settings_get_usecase.execute.assert_called_once_with()
+    project_container.student_mark_list_usecase.list_scoring_student_ids.assert_called_once_with()
     dialog.states.create_state_of_first_student.assert_called_once_with()
     dialog.exec_.assert_called_once_with()
 
     dialog_type.reset_mock()
     dialog.reset_mock()
-    project_container.student_mark_list_usecase.execute.reset_mock()
-    project_container.student_mark_list_usecase.execute.return_value = [
-        StudentMark(first, 90),
-    ]
+    project_container.student_mark_list_usecase.list_scoring_student_ids.reset_mock()
+    project_container.student_mark_list_usecase.list_scoring_student_ids.return_value = [first]
     navigator.open_scoring_dialog_for_student(parent, first)
     assert dialog_type.call_args.kwargs["student_ids"] == [first]
-    project_container.student_mark_list_usecase.execute.assert_called_once_with(
-        student_ids=(first,),
+    project_container.student_mark_list_usecase.list_scoring_student_ids.assert_called_once_with(
+        selected_student_id=first,
     )
+    dialog.states.create_state_by_student_id.assert_called_once_with(first)
+    dialog.states.create_state_of_first_student.assert_not_called()
+    dialog.set_state.assert_called_once_with(MarkDialogState(student_id=first))
 
-    # 除外中でも個別採点の画面は開ける。
+    # 除外中は従来どおり単独表示を維持する。
     dialog_type.reset_mock()
-    project_container.student_mark_list_usecase.execute.reset_mock()
-    project_container.student_mark_list_usecase.execute.return_value = [
-        StudentMark(third, None),
-    ]
+    dialog.reset_mock()
+    project_container.student_mark_list_usecase.list_scoring_student_ids.reset_mock()
+    project_container.student_mark_list_usecase.list_scoring_student_ids.return_value = [third]
     navigator.open_scoring_dialog_for_student(parent, third)
     assert dialog_type.call_args.kwargs["student_ids"] == [third]
-    project_container.student_mark_list_usecase.execute.assert_called_once_with(
-        student_ids=(third,),
+    project_container.student_mark_list_usecase.list_scoring_student_ids.assert_called_once_with(
+        selected_student_id=third,
     )
+    dialog.states.create_state_by_student_id.assert_called_once_with(third)
+    dialog.set_state.assert_called_once_with(MarkDialogState(student_id=third))
 
     # 対象がない場合も、全学生が除外されている場合も起動しない。
     dialog_type.reset_mock()
-    project_container.student_mark_list_usecase.execute.return_value = []
+    project_container.student_mark_list_usecase.list_scoring_student_ids.return_value = []
     navigator.open_scoring_dialog(parent)
     dialog_type.assert_not_called()
 
-    project_container.student_mark_list_usecase.execute.return_value = [
-        StudentMark(third, None),
-    ]
+    project_container.student_mark_list_usecase.list_scoring_student_ids.return_value = []
     navigator.open_scoring_dialog(parent)
     dialog_type.assert_not_called()
+
+
+def test_table_scoring_starts_at_clicked_student_and_skips_excluded(
+        qt_app: QApplication,
+        monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """点数セルから開くとクリックした学生を表示し、除外学生を飛ばして移動する。"""
+    from autoprogen.control import dialog_mark
+
+    first = StudentID("21D5109047B")
+    second = StudentID("24A0007521M")
+    excluded = StudentID("25B0000001C")
+    fourth = StudentID("26C0000002D")
+    project_container = Mock()
+    project_container.student_mark_list_usecase.list_scoring_student_ids.return_value = [
+        first, second, fourth,
+    ]
+    navigator = Navigator(app_container=Mock())
+    navigator._current_project_container = project_container
+    parent = QWidget()
+
+    dialog = Mock()
+    dialog.states.create_state_by_student_id.return_value = MarkDialogState(
+        student_id=second,
+    )
+    dialog_type = Mock(return_value=dialog)
+    monkeypatch.setattr(dialog_mark, "MarkDialog", dialog_type)
+
+    navigator.open_scoring_dialog_for_student(parent, second)
+
+    assert dialog_type.call_args.kwargs["student_ids"] == [first, second, fourth]
+    project_container.student_mark_list_usecase.list_scoring_student_ids.assert_called_once_with(
+        selected_student_id=second,
+    )
+    dialog.states.create_state_by_student_id.assert_called_once_with(second)
+    dialog.states.create_state_of_first_student.assert_not_called()
+    dialog.set_state.assert_called_once_with(MarkDialogState(student_id=second))
+    dialog.exec_.assert_called_once_with()
+
+    # 実際の採点ダイアログでも、クリックした学生の前後へ移動できる。
+    navigation_dialog = _create_mark_dialog([first, second, fourth])
+    navigation_dialog._state = navigation_dialog.states.create_state_by_student_id(second)
+    assert not navigation_dialog._w_student_control._b_prev.isHidden()
+    assert not navigation_dialog._w_student_control._b_next.isHidden()
+    assert navigation_dialog.states.can_move_to_prev_student()
+    assert navigation_dialog.states.can_move_to_next_student()
+    assert navigation_dialog.states.create_state_of_prev_student().student_id == first
+    assert navigation_dialog.states.create_state_of_next_student().student_id == fourth
+    navigation_dialog.close()
 
 
 def test_testcase_navigation_uses_ws_and_vertical_arrow_keys(
