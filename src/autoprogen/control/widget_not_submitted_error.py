@@ -1,10 +1,11 @@
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QWidget
 
 from autoprogen.control.widget_error_action import ErrorActionWidget
+from autoprogen.control.widget_error_extension import ErrorExtensionWidget
 
 
-class NotSubmittedErrorWidget(QWidget):
+class NotSubmittedErrorWidget(ErrorExtensionWidget):
     """未提出学生を0点にして一括採点から除外する操作を表示する。"""
 
     exclusion_requested = pyqtSignal(name="exclusion_requested")
@@ -18,8 +19,7 @@ class NotSubmittedErrorWidget(QWidget):
     ) -> None:
         """実行状態と既存の除外状態に応じて処置の可否を設定する。"""
         super().__init__(parent)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout = self.content_layout
 
         self._exclusion_action = ErrorActionWidget(
             self,
@@ -39,7 +39,8 @@ class NotSubmittedErrorWidget(QWidget):
 
         if already_excluded:
             self.set_exclusion_state(
-                "この学生はすでに一括採点から除外されています。再び採点するにはプロジェクト設定から除外設定を解除してください。",
+                "この学生はすでに一括採点から除外されています。\n"
+                "再び採点するにはプロジェクト設定から除外設定を解除してください。",
                 enabled=False,
             )
         elif not can_exclude:

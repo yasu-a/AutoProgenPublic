@@ -185,7 +185,7 @@ def test_main_window_routes_direct_cell_actions_to_existing_boundaries(
         student_id,
     )
 
-    window._facade.open_student_submission_folder.assert_called_once_with(student_id)
+    window._open_student_submission_folder.assert_called_once_with(student_id)
     window._navigator.open_scoring_dialog_for_student.assert_called_once_with(
         window,
         student_id,
@@ -333,3 +333,35 @@ def test_excluded_row_background_updates_with_snapshot(
         for column in range(model.columnCount())
     ] == original_colors
     table.close()
+
+
+def test_main_window_submission_folder_helper_forwards_to_facade(
+        qt_app: QApplication,
+) -> None:
+    """提出フォルダ表示の要求を、共通ヘルパーからFacadeへ渡す。"""
+    student_id = StudentID("21D5109047B")
+    window = Mock()
+    window._task_manager.is_empty.return_value = True
+
+    MainWindow._open_student_submission_folder(window, student_id)
+
+    window._facade.open_student_submission_folder.assert_called_once_with(student_id)
+
+
+def test_main_window_submission_folder_error_is_reported(
+        qt_app: QApplication,
+        monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """提出フォルダがない場合などの失敗は、ダイアログに示す。"""
+    student_id = StudentID("21D5109047B")
+    window = Mock()
+    window._task_manager.is_empty.return_value = True
+    window._facade.open_student_submission_folder.side_effect = (
+        OSError("folder unavailable")
+    )
+    critical = Mock()
+    monkeypatch.setattr(QMessageBox, "critical", critical)
+
+    MainWindow._open_student_submission_folder(window, student_id)
+
+    assert "folder unavailable" in critical.call_args.args[2]

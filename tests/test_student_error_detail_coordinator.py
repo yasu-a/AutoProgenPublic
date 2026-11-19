@@ -1,6 +1,7 @@
 """学生エラー詳細CoordinatorのWidget構成と操作接続を検証する。"""
 
 import hashlib
+from types import SimpleNamespace
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -27,18 +28,14 @@ from autoprogen.domain.error.stage.compile import (
 )
 from autoprogen.domain.error.stage.execute import ExecutionTimeoutError
 from autoprogen.domain.error.stage.test import OutputMatchingError
-from autoprogen.domain.model.project_settings import ProjectSettings
 from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.source_code_check import SourceCodeCheckFinding
-from autoprogen.domain.model.student_mark import StudentMark
 from autoprogen.domain.model.value import StudentID
 from autoprogen.usecase.dto.student_table_cell_data import (
     StudentErrorCellData,
     StudentErrorCellDataTextEntry,
 )
-from autoprogen.usecase.source_code_check_skip import (
-    SourceCodeCheckSkipApproveUseCaseError,
-)
+from autoprogen.usecase.main_window import StudentErrorActionRefused
 
 
 STUDENT = StudentID("21D5109047B")
@@ -83,6 +80,7 @@ def _row(student_id: StudentID, errors: list[Exception]) -> Mock:
             for error in errors
         ],
     )
+    row.bulk_grading_skipped = False
     return row
 
 
@@ -90,48 +88,21 @@ def _make_coordinator(
         *errors: Exception,
         student_id: StudentID = STUDENT,
 ) -> tuple[StudentErrorDetailCoordinator, dict[str, Mock]]:
-    """指定エラーを表示するCoordinatorと依存Mockを返す。"""
-    dependencies = {
-        "navigator": Mock(),
-        "facade": Mock(),
-        "source_get": Mock(),
-        "global_settings_get": Mock(),
-        "project_settings_get": Mock(),
-        "approve": Mock(),
-        "build_error_exclude": Mock(),
-        "mark_get": Mock(),
-        "task_manager": Mock(),
-    }
-    dependencies["facade"].load_student_table_row.return_value = _row(
-        student_id,
-        list(errors),
+    """FacadeだけをMock化してCoordinatorと表示データを返す。"""
+    facade = Mock()
+    facade.load_student_table_row.return_value = _row(student_id, list(errors))
+    facade.get_source_safety_display_data.return_value = SimpleNamespace(
+        source_code=SourceCode(text=SOURCE_TEXT),
+        source_sha256=SOURCE_SHA,
+        show_editing_symbols=False,
+        enable_line_wrap=False,
+        can_approve=True,
+        already_approved=False,
     )
-    dependencies["source_get"].execute.return_value = SourceCode(text=SOURCE_TEXT)
-    global_settings = Mock(
-        show_editing_symbols_in_source_code=False,
-        enable_line_wrap_in_source_code=False,
-    )
-    dependencies["global_settings_get"].execute.return_value = global_settings
-    dependencies["project_settings_get"].execute.return_value = (
-        ProjectSettings.create_default()
-    )
-    dependencies["mark_get"].execute.return_value = StudentMark(student_id, None)
-    dependencies["task_manager"].is_empty.return_value = True
-    dependencies["navigator"].open_testcase_list_edit_dialog.return_value = False
-    coordinator = StudentErrorDetailCoordinator(
-        navigator=dependencies["navigator"],
-        main_window_facade=dependencies["facade"],
-        student_source_code_get_usecase=dependencies["source_get"],
-        global_settings_get_usecase=dependencies["global_settings_get"],
-        project_settings_get_usecase=dependencies["project_settings_get"],
-        source_code_check_skip_approve_usecase=dependencies["approve"],
-        build_error_student_exclude_usecase=(
-            dependencies["build_error_exclude"]
-        ),
-        student_mark_get_usecase=dependencies["mark_get"],
-        task_manager=dependencies["task_manager"],
-    )
-    return coordinator, dependencies
+    facade.can_perform_student_error_action.return_value = True
+    facade.get_student_mark_score.return_value = None
+    coordinator = StudentErrorDetailCoordinator(main_window_facade=facade)
+    return coordinator, {"facade": facade}
 
 
 def test_regular_error_uses_only_common_detail_widget(qt_app: QApplication) -> None:
@@ -142,7 +113,7 @@ def test_regular_error_uses_only_common_detail_widget(qt_app: QApplication) -> N
 
     assert detail is not None
     assert detail._extension_container.isHidden()
-    dependencies["source_get"].execute.assert_not_called()
+    dependencies["facade"].get_source_safety_display_data.assert_not_called()
     detail.close()
 
 
@@ -157,11 +128,14 @@ def test_compile_recovery_requests_global_settings(
 ) -> None:
     """コンパイル環境エラーでは共通Widgetからグローバル設定を要求する。"""
     coordinator, dependencies = _make_coordinator(error)
+    requested = Mock()
+    coordinator.global_settings_requested.connect(requested)
     detail = coordinator.create_widget(None, STUDENT)
 
     detail.findChild(QPushButton, "openErrorRecoverySettings").click()
 
-    dependencies["navigator"].open_setting_dialog.assert_called_once()
+    requested.assert_called_once_with()
+    dependencies["facade"].load_student_table_row.assert_called_once_with(STUDENT)
     detail.close()
 
 
@@ -175,29 +149,29 @@ def test_testcase_recovery_requests_testcase_list(
 ) -> None:
     """実行・テスト設定エラーでは共通Widgetからテストケース一覧を要求する。"""
     coordinator, dependencies = _make_coordinator(error)
+    requested = Mock()
+    coordinator.testcase_list_requested.connect(requested)
     detail = coordinator.create_widget(None, STUDENT)
 
     detail.findChild(QPushButton, "openErrorRecoverySettings").click()
 
-    dependencies[
-        "navigator"
-    ].open_testcase_list_edit_dialog.assert_called_once()
+    requested.assert_called_once_with()
     detail.close()
 
 
-def test_testcase_change_requests_student_table_reload(
+def test_testcase_navigation_does_not_open_dialog_inside_coordinator(
         qt_app: QApplication,
 ) -> None:
-    """テストケース一覧の変更時だけ学生表の再読み込みを要求する。"""
+    """CoordinatorはSignalの通知だけを担当し、画面を直接開かない。"""
     coordinator, dependencies = _make_coordinator(ExecutionTimeoutError())
-    dependencies["navigator"].open_testcase_list_edit_dialog.return_value = True
-    changed = Mock()
-    coordinator.testcase_list_changed.connect(changed)
+    requested = Mock()
+    coordinator.testcase_list_requested.connect(requested)
     detail = coordinator.create_widget(None, STUDENT)
 
     detail.findChild(QPushButton, "openErrorRecoverySettings").click()
 
-    changed.assert_called_once_with()
+    requested.assert_called_once_with()
+    dependencies["facade"].approve_source_code_check.assert_not_called()
     detail.close()
 
 
@@ -238,9 +212,8 @@ def test_safety_error_builds_source_widget_and_delegates_approval(
         selection.cursor.blockNumber() + 1
         for selection in widget._source_view.extraSelections()
     ] == [2]
-    dependencies["approve"].execute.assert_called_once_with(
-        student_id=STUDENT,
-        expected_sha256=SOURCE_SHA,
+    dependencies["facade"].approve_source_code_check.assert_called_once_with(
+        STUDENT, SOURCE_SHA,
     )
     assert not widget._approve_button.isEnabled()
     detail.close()
@@ -260,11 +233,11 @@ def test_approval_cancel_and_rejection_keep_ui_consistent(
         lambda *args, **kwargs: QMessageBox.No,
     )
     widget._approve_button.click()
-    dependencies["approve"].execute.assert_not_called()
+    dependencies["facade"].approve_source_code_check.assert_not_called()
     assert widget._approve_button.isEnabled()
 
-    dependencies["approve"].execute.side_effect = (
-        SourceCodeCheckSkipApproveUseCaseError("ソースコードが更新されました。")
+    dependencies["facade"].approve_source_code_check.side_effect = (
+        StudentErrorActionRefused("ソースコードが更新されました。")
     )
     monkeypatch.setattr(
         QMessageBox,
@@ -283,7 +256,7 @@ def test_approval_save_failure_is_shown_in_dialog(
 ) -> None:
     """許可設定の保存失敗は成功表示にせずダイアログで通知する。"""
     coordinator, dependencies = _make_coordinator(_safety_error())
-    dependencies["approve"].execute.side_effect = OSError("write failed")
+    dependencies["facade"].approve_source_code_check.side_effect = OSError("write failed")
     critical = Mock()
     monkeypatch.setattr(
         QMessageBox,
@@ -307,7 +280,7 @@ def test_not_submitted_action_confirms_overwrite_and_delegates_exclusion(
 ) -> None:
     """未提出学生の既存点数を明示し、確認後に除外UseCaseへ渡す。"""
     coordinator, dependencies = _make_coordinator(SubmissionNotFoundError())
-    dependencies["mark_get"].execute.return_value = StudentMark(STUDENT, 70)
+    dependencies["facade"].get_student_mark_score.return_value = 70
     question = Mock(return_value=QMessageBox.Yes)
     monkeypatch.setattr(QMessageBox, "question", question)
 
@@ -316,7 +289,7 @@ def test_not_submitted_action_confirms_overwrite_and_delegates_exclusion(
     widget._exclude_button.click()
 
     assert "現在の70点を0点で上書きします" in question.call_args.args[2]
-    dependencies["build_error_exclude"].execute.assert_called_once_with(STUDENT)
+    dependencies["facade"].exclude_build_error_student.assert_called_once_with(STUDENT)
     assert not widget._exclude_button.isEnabled()
     detail.close()
 
@@ -336,7 +309,7 @@ def test_not_submitted_action_cancel_does_not_call_usecase(
     detail = coordinator.create_widget(None, STUDENT)
     detail._extension_widget._exclude_button.click()
 
-    dependencies["build_error_exclude"].execute.assert_not_called()
+    dependencies["facade"].exclude_build_error_student.assert_not_called()
     assert detail._extension_widget._exclude_button.isEnabled()
     detail.close()
 
@@ -346,7 +319,7 @@ def test_not_submitted_action_is_disabled_while_running(
 ) -> None:
     """実行中は未提出学生への処置を開始できない。"""
     coordinator, dependencies = _make_coordinator(SubmissionNotFoundError())
-    dependencies["task_manager"].is_empty.return_value = False
+    dependencies["facade"].can_perform_student_error_action.return_value = False
 
     detail = coordinator.create_widget(None, STUDENT)
 
@@ -386,36 +359,33 @@ def test_submission_file_error_actions_open_submission_and_exclude_student(
     assert view_button is not None
     assert exclude_button is not None
 
+    requested = Mock()
+    coordinator.submission_folder_requested.connect(requested)
     view_button.click()
     exclude_button.click()
 
-    dependencies["facade"].open_student_submission_folder.assert_called_once_with(
-        STUDENT,
-    )
-    dependencies["build_error_exclude"].execute.assert_called_once_with(STUDENT)
+    requested.assert_called_once_with(STUDENT)
+    dependencies["facade"].open_student_submission_folder.assert_not_called()
+    dependencies["facade"].exclude_build_error_student.assert_called_once_with(STUDENT)
     detail.close()
 
 
-def test_submission_folder_open_failure_is_reported(
+def test_submission_folder_request_is_only_signalled(
         qt_app: QApplication,
-        monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """提出フォルダを開けない場合は無反応にせず理由を通知する。"""
+    """提出フォルダを開く操作はMainWindowへ通知し、CoordinatorでIOを行わない。"""
     coordinator, dependencies = _make_coordinator(
         SubmissionSourceNotFoundError(),
     )
-    dependencies["facade"].open_student_submission_folder.side_effect = (
-        OSError("folder unavailable")
-    )
-    critical = Mock()
-    monkeypatch.setattr(QMessageBox, "critical", critical)
-
+    requested = Mock()
+    coordinator.submission_folder_requested.connect(requested)
     detail = coordinator.create_widget(None, STUDENT)
     view_button = detail.findChild(QPushButton, "openSubmissionFolder")
     assert view_button is not None
     view_button.click()
 
-    assert "folder unavailable" in critical.call_args.args[2]
+    requested.assert_called_once_with(STUDENT)
+    dependencies["facade"].open_student_submission_folder.assert_not_called()
     detail.close()
 
 
@@ -456,9 +426,9 @@ def test_signal_connections_keep_each_student_id(
     first._extension_widget._approve_button.click()
     second._extension_widget._approve_button.click()
 
-    assert dependencies["approve"].execute.call_args_list[0].kwargs["student_id"] == STUDENT
+    assert dependencies["facade"].approve_source_code_check.call_args_list[0].args[0] == STUDENT
     assert (
-        dependencies["approve"].execute.call_args_list[1].kwargs["student_id"]
+        dependencies["facade"].approve_source_code_check.call_args_list[1].args[0]
         == OTHER_STUDENT
     )
     first.close()

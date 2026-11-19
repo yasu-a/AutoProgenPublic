@@ -1,10 +1,11 @@
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QFrame, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QFrame, QWidget
 
 from autoprogen.control.widget_error_action import ErrorActionWidget
+from autoprogen.control.widget_error_extension import ErrorExtensionWidget
 
 
-class SubmissionFileRecoveryWidget(QWidget):
+class SubmissionFileRecoveryWidget(ErrorExtensionWidget):
     """提出ファイルの確認と0点・一括採点除外の操作を表示する。"""
 
     submission_view_requested = pyqtSignal(name="submission_view_requested")
@@ -19,13 +20,12 @@ class SubmissionFileRecoveryWidget(QWidget):
     ) -> None:
         """実行状態と既存の除外状態に応じて二つの処置を構成する。"""
         super().__init__(parent)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout = self.content_layout
 
         self._submission_action = ErrorActionWidget(
             self,
             message=(
-                "1. 提出フォルダを開いて内容を確認してください。 "
+                "1. 提出フォルダを開いて内容を確認してください。\n"
                 "修正できた場合は、メイン画面の「実行」から再実行してください。"
             ),
             button_text="提出フォルダを開く",
@@ -61,7 +61,8 @@ class SubmissionFileRecoveryWidget(QWidget):
 
         if already_excluded:
             self.set_exclusion_state(
-                "この学生はすでに一括採点から除外されています。再び採点するにはプロジェクト設定から除外設定を解除してください。",
+                "この学生はすでに一括採点から除外されています。\n"
+                "再び採点するにはプロジェクト設定から除外設定を解除してください。",
                 enabled=False,
             )
         elif not can_exclude:

@@ -2,21 +2,20 @@
 
 from collections.abc import Sequence
 
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import (
-    QHBoxLayout,
     QLabel,
-    QPushButton,
-    QVBoxLayout,
     QWidget,
 )
 
+from autoprogen.control.widget_error_action import ErrorActionWidget
+from autoprogen.control.widget_error_extension import ErrorExtensionWidget
 from autoprogen.control.widget_source_code_text_edit import SourceCodeTextEdit
 from autoprogen.domain.error.stage.compile import SourceSafetyViolationError
 from autoprogen.domain.model.source_code import SourceCode
 
 
-class SourceSafetyErrorWidget(QWidget):
+class SourceSafetyErrorWidget(ErrorExtensionWidget):
     """安全性チェックの検出内容を表示し、許可操作を外部へ通知する。"""
 
     approval_requested = pyqtSignal(name="approval_requested")
@@ -43,8 +42,7 @@ class SourceSafetyErrorWidget(QWidget):
         self._can_approve = can_approve
         self._already_approved = already_approved
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout = self.content_layout
         layout.addWidget(QLabel("問題が検出されたソースコード", self))
         self._source_view = SourceCodeTextEdit(self)
         self._source_view.setObjectName("sourceSafetySourceCode")
@@ -67,17 +65,17 @@ class SourceSafetyErrorWidget(QWidget):
         if highlighted_lines:
             self._source_view.centerCursor()
 
-        bottom = QHBoxLayout()
-        layout.addLayout(bottom)
-        bottom.addStretch(1)
-        self._approve_button = QPushButton("このソースコードを許可", self)
-        self._approve_button.setObjectName("approveSourceSafetySkip")
-        self._approve_button.clicked.connect(self._request_approval)
-        bottom.addWidget(self._approve_button)
-        self._status_label = QLabel(self)
+        self._approval_action = ErrorActionWidget(
+            self,
+            message="",
+            button_text="このソースコードを許可",
+            button_object_name="approveSourceSafetySkip",
+        )
+        self._approval_action.action_requested.connect(self._request_approval)
+        self._approve_button = self._approval_action.button
+        self._status_label = self._approval_action.message_label
         self._status_label.setObjectName("sourceSafetyStatus")
-        bottom.addWidget(self._status_label)
-        bottom.addStretch(1)
+        layout.addWidget(self._approval_action)
         self._update_approval_state()
 
     def _update_approval_state(self) -> None:
@@ -104,13 +102,11 @@ class SourceSafetyErrorWidget(QWidget):
                 enabled=True,
             )
             return
-        self._status_label.setText(message)
-        self._approve_button.setEnabled(False)
+        self._approval_action.set_state(message, enabled=False)
 
     def set_approval_state(self, message: str, *, enabled: bool) -> None:
         """許可操作の案内文とボタンの有効状態を更新する。"""
-        self._status_label.setText(message)
-        self._approve_button.setEnabled(enabled)
+        self._approval_action.set_state(message, enabled=enabled)
 
     def _request_approval(self) -> None:
         """許可可能な状態でボタンが押されたことを外部へ通知する。"""

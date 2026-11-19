@@ -83,7 +83,6 @@ if TYPE_CHECKING:
     from autoprogen.control.coordinator_student_error_detail import (
         StudentErrorDetailCoordinator,
     )
-    from autoprogen.control.interface_navigator import INavigator
 from autoprogen.usecase.testcase_config import TestCaseDeleteUseCase, TestCaseGetUseCase, TestCaseListIDUseCase, \
     TestCasePutUseCase
 from autoprogen.usecase.testcase_list_edit import TestCaseListSummaryUseCase, TestCaseCreateNewNameUseCase, TestCaseCreateUseCase, \
@@ -462,30 +461,13 @@ class ProjectContainer:
             task_manager=self.task_manager,
         )
 
-    def create_student_error_detail_coordinator(
-            self,
-            navigator: "INavigator",
-    ) -> "StudentErrorDetailCoordinator":
-        """現在のプロジェクトの依存とNavigatorからエラー詳細Coordinatorを構築する。"""
+    @cached_property
+    def student_error_detail_coordinator(self) -> "StudentErrorDetailCoordinator":
+        """Facadeのみに依存するエラー詳細Coordinatorを返す。"""
         from autoprogen.control.coordinator_student_error_detail import (
             StudentErrorDetailCoordinator,
         )
-
-        return StudentErrorDetailCoordinator(
-            navigator=navigator,
-            main_window_facade=self.main_window_facade,
-            student_source_code_get_usecase=self.student_source_code_get_usecase,
-            global_settings_get_usecase=self.global_settings_get_usecase,
-            project_settings_get_usecase=self.project_settings_get_usecase,
-            source_code_check_skip_approve_usecase=(
-                self.source_code_check_skip_approve_usecase
-            ),
-            build_error_student_exclude_usecase=(
-                self.build_error_student_exclude_usecase
-            ),
-            student_mark_get_usecase=self.student_mark_get_usecase,
-            task_manager=self.task_manager,
-        )
+        return StudentErrorDetailCoordinator(main_window_facade=self.main_window_facade)
 
     @cached_property
     def source_code_check_catalog_factory(self):
@@ -632,6 +614,10 @@ class ProjectContainer:
             student_mark_get_sub_service=self.student_mark_get_sub_service,
             project_settings_get_usecase=self.project_settings_get_usecase,
             stage_error_text_formatter=self.stage_error_text_formatter,
+            student_source_code_get_usecase=self.student_source_code_get_usecase,
+            global_settings_get_usecase=self.global_settings_get_usecase,
+            source_code_check_skip_approve_usecase=self.source_code_check_skip_approve_usecase,
+            build_error_student_exclude_usecase=self.build_error_student_exclude_usecase,
             student_list_id_usecase=self.student_list_id_usecase,
             student_run_next_stage_usecase=self.student_run_next_stage_usecase,
             student_stage_result_clear_service=self.student_stage_result_clear_service,

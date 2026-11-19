@@ -114,3 +114,34 @@ def test_main_window_reloads_table_only_after_testcase_changes(
 
     navigator.open_testcase_list_edit_dialog.assert_called_once_with(window)
     assert window.load_student_table.call_count == int(has_changes)
+
+
+@pytest.mark.parametrize("has_changes", [False, True])
+def test_main_window_handles_error_testcase_navigation(
+        qt_app,
+        has_changes: bool,
+) -> None:
+    """エラー画面から編集した場合も、変更時だけ一覧を再取得する。"""
+    from autoprogen.control.window_main import MainWindow
+
+    window = Mock()
+    window._task_manager.is_empty.return_value = True
+    window._navigator.open_testcase_list_edit_dialog.return_value = has_changes
+
+    MainWindow._open_error_testcase_list(window)
+
+    window._navigator.open_testcase_list_edit_dialog.assert_called_once_with(window)
+    assert window.load_student_table.call_count == int(has_changes)
+    assert window._student_error_dock.hide.call_count == int(has_changes)
+
+
+def test_main_window_handles_error_global_settings_navigation(qt_app) -> None:
+    """設定画面の要求はMainWindowからNavigatorに委譲する。"""
+    from autoprogen.control.window_main import MainWindow
+
+    window = Mock()
+    window._task_manager.is_empty.return_value = True
+
+    MainWindow._open_error_global_settings(window)
+
+    window._navigator.open_setting_dialog.assert_called_once_with(window)
