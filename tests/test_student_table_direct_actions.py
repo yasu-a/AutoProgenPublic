@@ -213,10 +213,10 @@ def test_scoring_cell_keeps_existing_task_guard(
     warning.assert_called_once()
 
 
-def test_main_window_busy_state_disables_table_and_hides_dock(
+def test_main_window_busy_state_locks_table_and_hides_dock(
         qt_app: QApplication,
 ) -> None:
-    """実行中は表を無効化しDockを隠し、終了後も自動再表示しない。"""
+    """実行中は表の操作を禁止してDockを隠し、終了後も自動再表示しない。"""
     window = Mock()
     window._student_error_dock = QDockWidget()
     previous = QLabel("古いエラー詳細")
@@ -227,14 +227,14 @@ def test_main_window_busy_state_disables_table_and_hides_dock(
     MainWindow._on_task_busy_changed(window, True)
 
     window._tool_bar.update_button_state.assert_called_with(is_task_alive=True)
-    window._w_student_table.setEnabled.assert_called_with(False)
+    window._w_student_table.set_interaction_enabled.assert_called_with(False)
     assert not window._student_error_dock.isEnabled()
     assert window._student_error_dock.isHidden()
 
     window._task_manager.is_empty.return_value = True
     MainWindow._on_task_busy_changed(window, False)
     window._tool_bar.update_button_state.assert_called_with(is_task_alive=False)
-    window._w_student_table.setEnabled.assert_called_with(True)
+    window._w_student_table.set_interaction_enabled.assert_called_with(True)
     assert window._student_error_dock.isEnabled()
     assert window._student_error_dock.isHidden()
     window._student_error_dock.close()

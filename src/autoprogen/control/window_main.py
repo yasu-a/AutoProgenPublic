@@ -171,7 +171,7 @@ class MainWindow(QMainWindow):
         is_busy = not self._task_manager.is_empty()
 
         self._tool_bar.update_button_state(is_task_alive=is_busy)
-        self._w_student_table.setEnabled(not is_busy)
+        self._w_student_table.set_interaction_enabled(not is_busy)
         self._student_error_dock.setEnabled(not is_busy)
 
         if is_busy:
