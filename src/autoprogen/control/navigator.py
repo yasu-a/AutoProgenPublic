@@ -1,3 +1,4 @@
+from dataclasses import replace
 from typing import Callable
 
 from PyQt5.QtWidgets import (
@@ -29,7 +30,13 @@ class Navigator(INavigator):
     def start(self) -> bool:
         return self.transition_to_launcher()
 
-    def transition_from_launcher_to_workspace(self, project_id: ProjectID) -> QMainWindow:
+    def transition_from_launcher_to_workspace(
+            self,
+            project_id: ProjectID,
+    ) -> QMainWindow | None:
+        """注意事項の確認後、指定されたプロジェクトの画面へ遷移する。"""
+        if not self._confirm_usage_notice_if_required():
+            return None
         self._open_project_and_prepare_container(project_id)
         return self._show_main_window()
 
@@ -176,6 +183,10 @@ class Navigator(INavigator):
         return dialog.has_changes
 
     def _launch_new_project(self, new_project_config) -> QMainWindow | None:
+        """注意事項の確認後、新しいプロジェクトを作成して開く。"""
+        if not self._confirm_usage_notice_if_required():
+            return None
+
         project_id = self._app_container.project_create_usecase.execute(
             project_name=new_project_config.project_name,
             target_number=new_project_config.target_number,
@@ -200,6 +211,28 @@ class Navigator(INavigator):
             return None
 
         return self._show_main_window()
+
+    def _confirm_usage_notice_if_required(self) -> bool:
+        """現在のバージョンで未同意の場合に注意事項を表示する。"""
+        from autoprogen.control.dialog_usage_notice import UsageNoticeDialog
+
+        app_version = self._app_container.app_version_repository.get()
+        global_settings = self._app_container.global_settings_get_usecase.execute()
+        if global_settings.last_agreed_usage_notice_version == app_version:
+            return True
+
+        dialog = UsageNoticeDialog(
+            app_version_text=str(app_version),
+        )
+        if dialog.exec_() != QDialog.Accepted:
+            return False
+
+        agreed_settings = replace(
+            global_settings,
+            last_agreed_usage_notice_version=app_version,
+        )
+        self._app_container.global_settings_put_usecase.execute(agreed_settings)
+        return True
 
     @staticmethod
     def _open_project(project_id: ProjectID, app_container: AppContainer) -> None:
@@ -229,35 +262,39 @@ class Navigator(INavigator):
         from autoprogen.control.dialog_welcome import WelcomeDialog
         from autoprogen.control.dto.new_project_config import NewProjectConfig
 
-        welcome = WelcomeDialog(
-            auto_generate_project_name=(
-                self._app_container.debug_settings.auto_generate_project_name
-            ),
-            initial_report_archive_fullpath=(
-                self._app_container.debug_settings.report_archive_fullpath
-            ),
-            initial_target_number=self._app_container.debug_settings.target_number,
-            project_check_exist_by_name_usecase=self._app_container.project_check_exist_by_name_usecase,
-            manaba_report_archive_validate_master_excel_exists_usecase=(
-                self._app_container.manaba_report_archive_validate_master_excel_exists_usecase
-            ),
-            project_list_recent_summary_usecase=self._app_container.project_list_recent_summary_usecase,
-            project_folder_show_usecase=self._app_container.project_folder_show_usecase,
-            project_delete_usecase=self._app_container.project_delete_usecase,
-            project_base_folder_show_usecase=self._app_container.project_base_folder_show_usecase,
-            project_get_size_query_usecase=self._app_container.project_get_size_query_usecase,
-        )
-        if welcome.exec_() != QDialog.Accepted:
-            return False
+        while True:
+            welcome = WelcomeDialog(
+                auto_generate_project_name=(
+                    self._app_container.debug_settings.auto_generate_project_name
+                ),
+                initial_report_archive_fullpath=(
+                    self._app_container.debug_settings.report_archive_fullpath
+                ),
+                initial_target_number=self._app_container.debug_settings.target_number,
+                project_check_exist_by_name_usecase=self._app_container.project_check_exist_by_name_usecase,
+                manaba_report_archive_validate_master_excel_exists_usecase=(
+                    self._app_container.manaba_report_archive_validate_master_excel_exists_usecase
+                ),
+                project_list_recent_summary_usecase=self._app_container.project_list_recent_summary_usecase,
+                project_folder_show_usecase=self._app_container.project_folder_show_usecase,
+                project_delete_usecase=self._app_container.project_delete_usecase,
+                project_base_folder_show_usecase=self._app_container.project_base_folder_show_usecase,
+                project_get_size_query_usecase=self._app_container.project_get_size_query_usecase,
+            )
+            if welcome.exec_() != QDialog.Accepted:
+                return False
 
-        result = welcome.get_data()
-        if isinstance(result, ProjectID):
-            self.transition_from_launcher_to_workspace(result)
-            return True
-        if isinstance(result, NewProjectConfig):
-            return self._launch_new_project(result) is not None
-
-        assert False, result
+            result = welcome.get_data()
+            if isinstance(result, ProjectID):
+                if self.transition_from_launcher_to_workspace(result) is None:
+                    continue
+                return True
+            elif isinstance(result, NewProjectConfig):
+                if self._launch_new_project(result) is None:
+                    continue
+                return True
+            else:
+                assert False, result
 
     def _replace_main_window(self, factory_func: Callable[[], QMainWindow]) -> QMainWindow:
         old_window = self._current_window

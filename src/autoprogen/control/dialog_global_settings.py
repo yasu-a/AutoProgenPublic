@@ -343,6 +343,11 @@ class GlobalSettingsEditWidget(QWidget):
         self._w_enable_line_wrap_in_source_code.setChecked(
             settings.enable_line_wrap_in_source_code,
         )
+        # 編集対象外の同意情報を、設定保存時にも維持する。
+        # TODO: dialog専用のDTOをやり取りするように修正し、編集しない項目をダイアログが管理しないようにする
+        self._last_agreed_usage_notice_version = (
+            settings.last_agreed_usage_notice_version
+        )
 
     def get_data(self) -> GlobalSettings:
         """各入力Widgetの値からグローバル設定を生成する。"""
@@ -370,7 +375,10 @@ class GlobalSettingsEditWidget(QWidget):
             ),
             enable_line_wrap_in_source_code=(
                 self._w_enable_line_wrap_in_source_code.isChecked()
-            )
+            ),
+            last_agreed_usage_notice_version=(
+                self._last_agreed_usage_notice_version
+            ),
         )
 
     # noinspection PyMethodMayBeStatic

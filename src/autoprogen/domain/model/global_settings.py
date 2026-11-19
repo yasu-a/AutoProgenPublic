@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from autoprogen.domain.model.app_version import AppVersion
+
 
 @dataclass
 class GlobalSettings:
@@ -22,6 +24,8 @@ class GlobalSettings:
     enable_line_wrap_in_stream_content: bool
     # ソースコードの表示で行を折り返すかどうか。
     enable_line_wrap_in_source_code: bool
+    # 使用上の注意事項へ最後に同意したアプリバージョン。未同意ならNone。
+    last_agreed_usage_notice_version: AppVersion | None
 
     def __post_init__(self) -> None:
         """設定値の型と並列タスク実行数の範囲を検証する。"""
@@ -54,6 +58,14 @@ class GlobalSettings:
             if not isinstance(getattr(self, field_name), bool):
                 raise TypeError(f"{field_name}にはboolを指定してください")
 
+        if (
+                self.last_agreed_usage_notice_version is not None
+                and not isinstance(self.last_agreed_usage_notice_version, AppVersion)
+        ):
+            raise TypeError(
+                "last_agreed_usage_notice_versionにはAppVersionまたはNoneを指定してください"
+            )
+
     @classmethod
     def create_default(
             cls,
@@ -70,6 +82,7 @@ class GlobalSettings:
             show_editing_symbols_in_source_code=False,
             enable_line_wrap_in_stream_content=False,
             enable_line_wrap_in_source_code=False,
+            last_agreed_usage_notice_version=None,
         )
 
     def to_json(self) -> dict:
@@ -87,6 +100,11 @@ class GlobalSettings:
             show_editing_symbols_in_source_code=self.show_editing_symbols_in_source_code,
             enable_line_wrap_in_stream_content=self.enable_line_wrap_in_stream_content,
             enable_line_wrap_in_source_code=self.enable_line_wrap_in_source_code,
+            last_agreed_usage_notice_version=(
+                self.last_agreed_usage_notice_version.to_json()
+                if self.last_agreed_usage_notice_version is not None
+                else None
+            ),
         )
 
     @classmethod
@@ -106,4 +124,9 @@ class GlobalSettings:
             show_editing_symbols_in_source_code=body["show_editing_symbols_in_source_code"],
             enable_line_wrap_in_stream_content=body["enable_line_wrap_in_stream_content"],
             enable_line_wrap_in_source_code=body["enable_line_wrap_in_source_code"],
+            last_agreed_usage_notice_version=(
+                AppVersion.from_json(body["last_agreed_usage_notice_version"])
+                if body.get("last_agreed_usage_notice_version") is not None
+                else None
+            ),
         )
