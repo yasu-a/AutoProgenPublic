@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QDialog
 from autoprogen.control.navigator import Navigator
 from autoprogen.domain.model.app_version import AppVersion, ReleaseType
 from autoprogen.domain.model.global_settings import GlobalSettings
+from autoprogen.domain.model.value import ProjectID
 
 
 APP_VERSION = AppVersion(
@@ -69,8 +70,11 @@ def test_usage_notice_acceptance_is_saved(
     dialog_constructor.assert_called_once_with(
         app_version_text="1.2-beta.1",
     )
-    assert settings.last_agreed_usage_notice_version == APP_VERSION
-    app_container.global_settings_put_usecase.execute.assert_called_once_with(settings)
+    saved_settings = (
+        app_container.global_settings_put_usecase.execute.call_args.args[0]
+    )
+    assert saved_settings.last_agreed_usage_notice_version == APP_VERSION
+    assert settings.last_agreed_usage_notice_version is None
 
 
 def test_usage_notice_rejection_does_not_save_agreement(
@@ -90,6 +94,29 @@ def test_usage_notice_rejection_does_not_save_agreement(
     assert not navigator._confirm_usage_notice_if_required()
     assert settings.last_agreed_usage_notice_version is None
     app_container.global_settings_put_usecase.execute.assert_not_called()
+
+
+def test_usage_notice_save_failure_does_not_change_agreement(
+        monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """同意バージョンの保存に失敗した場合は未同意の設定を維持する。"""
+    navigator, app_container, settings = _make_navigator(
+        agreed_version=None,
+    )
+    dialog = Mock()
+    dialog.exec_.return_value = QDialog.Accepted
+    monkeypatch.setattr(
+        "autoprogen.control.dialog_usage_notice.UsageNoticeDialog",
+        Mock(return_value=dialog),
+    )
+    app_container.global_settings_put_usecase.execute.side_effect = OSError(
+        "settings write failed",
+    )
+
+    with pytest.raises(OSError, match="settings write failed"):
+        navigator._confirm_usage_notice_if_required()
+
+    assert settings.last_agreed_usage_notice_version is None
 
 
 def test_existing_project_is_not_opened_when_usage_notice_is_rejected(
@@ -124,3 +151,30 @@ def test_new_project_is_not_created_when_usage_notice_is_rejected(
 
     assert result is None
     app_container.project_create_usecase.execute.assert_not_called()
+
+
+def test_welcome_dialog_reopens_without_recursive_calls(
+        monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """注意事項の拒否を繰り返しても再帰せずWELCOME画面へ戻る。"""
+    navigator, _, _ = _make_navigator(agreed_version=None)
+    project_id = ProjectID("test-project")
+    reopen_count = 1100
+    exec_results = [QDialog.Accepted] * reopen_count + [QDialog.Rejected]
+
+    welcome = Mock()
+    welcome.exec_.side_effect = exec_results
+    welcome.get_data.return_value = project_id
+    welcome_constructor = Mock(return_value=welcome)
+    monkeypatch.setattr(
+        "autoprogen.control.dialog_welcome.WelcomeDialog",
+        welcome_constructor,
+    )
+    monkeypatch.setattr(
+        navigator,
+        "transition_from_launcher_to_workspace",
+        Mock(return_value=None),
+    )
+
+    assert not navigator._show_welcome_dialog()
+    assert welcome_constructor.call_count == reopen_count + 1

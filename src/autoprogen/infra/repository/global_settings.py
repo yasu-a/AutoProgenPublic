@@ -46,12 +46,12 @@ class GlobalSettingsRepository:
         return self.__model
 
     def _set_model_unlocked(self, model: GlobalSettings) -> None:
-        self.__model = model
         json_fullpath = self._app_path_layout.settings_json
         self._global_core_io.write_json(
             json_fullpath=json_fullpath,
-            body=self.__model.to_json(),
+            body=model.to_json(),
         )
+        self.__model = model
 
     def put(self, model: GlobalSettings) -> None:
         with self._lock():
