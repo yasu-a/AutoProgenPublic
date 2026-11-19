@@ -247,13 +247,15 @@ class Navigator(INavigator):
         from autoprogen.control.window_main import MainWindow
 
         assert self._current_project_container is not None
+        container = self._current_project_container
+        error_detail_coordinator = (
+            container.create_student_error_detail_coordinator(self)
+        )
         return self._replace_main_window(
             lambda: MainWindow(
                 navigator=self,
-                main_window_facade=self._current_project_container.main_window_facade,
-                student_error_detail_coordinator=(
-                    self._current_project_container.student_error_detail_coordinator
-                ),
+                main_window_facade=container.main_window_facade,
+                student_error_detail_coordinator=error_detail_coordinator,
             )
         )
 

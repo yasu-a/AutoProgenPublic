@@ -1,6 +1,7 @@
 """学生エラー詳細CoordinatorのWidget構成と操作接続を検証する。"""
 
 import hashlib
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
@@ -9,11 +10,23 @@ from PyQt5.QtWidgets import QApplication, QMessageBox, QPushButton
 from autoprogen.control.coordinator_student_error_detail import (
     StudentErrorDetailCoordinator,
 )
-from autoprogen.domain.error.stage.build import SubmissionNotFoundError
-from autoprogen.domain.error.stage.compile import (
-    CompilerNotConfiguredError,
-    SourceSafetyViolationError,
+from autoprogen.domain.error.stage.build import (
+    MultipleSourceFilesError,
+    SourceEncodingUnknownError,
+    SourceFilenameMultipleNumbersError,
+    SourceFilenameNoNumberError,
+    SubmissionNotFoundError,
+    SubmissionSourceNotFoundError,
 )
+from autoprogen.domain.error.stage.compile import (
+    CompileSourceNotFoundError,
+    CompilerNotConfiguredError,
+    CompilerTimeoutError,
+    SourceSafetyViolationError,
+    VsDevToolNotFoundError,
+)
+from autoprogen.domain.error.stage.execute import ExecutionTimeoutError
+from autoprogen.domain.error.stage.test import OutputMatchingError
 from autoprogen.domain.model.project_settings import ProjectSettings
 from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.model.source_code_check import SourceCodeCheckFinding
@@ -79,12 +92,13 @@ def _make_coordinator(
 ) -> tuple[StudentErrorDetailCoordinator, dict[str, Mock]]:
     """指定エラーを表示するCoordinatorと依存Mockを返す。"""
     dependencies = {
+        "navigator": Mock(),
         "facade": Mock(),
         "source_get": Mock(),
         "global_settings_get": Mock(),
         "project_settings_get": Mock(),
         "approve": Mock(),
-        "exclude": Mock(),
+        "build_error_exclude": Mock(),
         "mark_get": Mock(),
         "task_manager": Mock(),
     }
@@ -103,13 +117,17 @@ def _make_coordinator(
     )
     dependencies["mark_get"].execute.return_value = StudentMark(student_id, None)
     dependencies["task_manager"].is_empty.return_value = True
+    dependencies["navigator"].open_testcase_list_edit_dialog.return_value = False
     coordinator = StudentErrorDetailCoordinator(
+        navigator=dependencies["navigator"],
         main_window_facade=dependencies["facade"],
         student_source_code_get_usecase=dependencies["source_get"],
         global_settings_get_usecase=dependencies["global_settings_get"],
         project_settings_get_usecase=dependencies["project_settings_get"],
         source_code_check_skip_approve_usecase=dependencies["approve"],
-        not_submitted_student_exclude_usecase=dependencies["exclude"],
+        build_error_student_exclude_usecase=(
+            dependencies["build_error_exclude"]
+        ),
         student_mark_get_usecase=dependencies["mark_get"],
         task_manager=dependencies["task_manager"],
     )
@@ -118,13 +136,84 @@ def _make_coordinator(
 
 def test_regular_error_uses_only_common_detail_widget(qt_app: QApplication) -> None:
     """通常エラーには専用の操作Widgetを追加しない。"""
-    coordinator, dependencies = _make_coordinator(CompilerNotConfiguredError())
+    coordinator, dependencies = _make_coordinator(CompileSourceNotFoundError())
 
     detail = coordinator.create_widget(None, STUDENT)
 
     assert detail is not None
     assert detail._extension_container.isHidden()
     dependencies["source_get"].execute.assert_not_called()
+    detail.close()
+
+
+@pytest.mark.parametrize("error", [
+    CompilerNotConfiguredError(),
+    VsDevToolNotFoundError(path=Path("VsDevCmd.bat")),
+    CompilerTimeoutError(),
+])
+def test_compile_recovery_requests_global_settings(
+        qt_app: QApplication,
+        error: Exception,
+) -> None:
+    """コンパイル環境エラーでは共通Widgetからグローバル設定を要求する。"""
+    coordinator, dependencies = _make_coordinator(error)
+    detail = coordinator.create_widget(None, STUDENT)
+
+    detail.findChild(QPushButton, "openErrorRecoverySettings").click()
+
+    dependencies["navigator"].open_setting_dialog.assert_called_once()
+    detail.close()
+
+
+@pytest.mark.parametrize("error", [
+    ExecutionTimeoutError(),
+    OutputMatchingError(detail="期待する出力と一致しません"),
+])
+def test_testcase_recovery_requests_testcase_list(
+        qt_app: QApplication,
+        error: Exception,
+) -> None:
+    """実行・テスト設定エラーでは共通Widgetからテストケース一覧を要求する。"""
+    coordinator, dependencies = _make_coordinator(error)
+    detail = coordinator.create_widget(None, STUDENT)
+
+    detail.findChild(QPushButton, "openErrorRecoverySettings").click()
+
+    dependencies[
+        "navigator"
+    ].open_testcase_list_edit_dialog.assert_called_once()
+    detail.close()
+
+
+def test_testcase_change_requests_student_table_reload(
+        qt_app: QApplication,
+) -> None:
+    """テストケース一覧の変更時だけ学生表の再読み込みを要求する。"""
+    coordinator, dependencies = _make_coordinator(ExecutionTimeoutError())
+    dependencies["navigator"].open_testcase_list_edit_dialog.return_value = True
+    changed = Mock()
+    coordinator.testcase_list_changed.connect(changed)
+    detail = coordinator.create_widget(None, STUDENT)
+
+    detail.findChild(QPushButton, "openErrorRecoverySettings").click()
+
+    changed.assert_called_once_with()
+    detail.close()
+
+
+def test_same_navigation_is_shown_only_once(qt_app: QApplication) -> None:
+    """同じ遷移先を持つエラーが複数あっても案内Widgetを重複表示しない。"""
+    coordinator, _ = _make_coordinator(
+        CompilerNotConfiguredError(),
+        CompilerTimeoutError(),
+    )
+
+    detail = coordinator.create_widget(None, STUDENT)
+
+    assert len(detail.findChildren(
+        QPushButton,
+        "openErrorRecoverySettings",
+    )) == 1
     detail.close()
 
 
@@ -227,7 +316,7 @@ def test_not_submitted_action_confirms_overwrite_and_delegates_exclusion(
     widget._exclude_button.click()
 
     assert "現在の70点を0点で上書きします" in question.call_args.args[2]
-    dependencies["exclude"].execute.assert_called_once_with(STUDENT)
+    dependencies["build_error_exclude"].execute.assert_called_once_with(STUDENT)
     assert not widget._exclude_button.isEnabled()
     detail.close()
 
@@ -247,7 +336,7 @@ def test_not_submitted_action_cancel_does_not_call_usecase(
     detail = coordinator.create_widget(None, STUDENT)
     detail._extension_widget._exclude_button.click()
 
-    dependencies["exclude"].execute.assert_not_called()
+    dependencies["build_error_exclude"].execute.assert_not_called()
     assert detail._extension_widget._exclude_button.isEnabled()
     detail.close()
 
@@ -262,6 +351,71 @@ def test_not_submitted_action_is_disabled_while_running(
     detail = coordinator.create_widget(None, STUDENT)
 
     assert not detail._extension_widget._exclude_button.isEnabled()
+    detail.close()
+
+
+@pytest.mark.parametrize("error", [
+    SourceFilenameMultipleNumbersError(
+        file_relative_path=Path("prog12.c"),
+        numbers=("1", "2"),
+    ),
+    SourceFilenameNoNumberError(file_relative_path=Path("prog.c")),
+    MultipleSourceFilesError(file_relative_paths=(Path("prog1.c"), Path("prog2.c"))),
+    SubmissionSourceNotFoundError(),
+    SourceEncodingUnknownError(file_relative_path=Path("prog1.c")),
+])
+def test_submission_file_error_actions_open_submission_and_exclude_student(
+        qt_app: QApplication,
+        monkeypatch: pytest.MonkeyPatch,
+        error: Exception,
+) -> None:
+    """提出ファイルエラー5種で共通の閲覧・除外処置を利用できる。"""
+    coordinator, dependencies = _make_coordinator(error)
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        lambda *args, **kwargs: QMessageBox.Yes,
+    )
+
+    detail = coordinator.create_widget(None, STUDENT)
+    view_button = detail.findChild(QPushButton, "openSubmissionFolder")
+    exclude_button = detail.findChild(
+        QPushButton,
+        "excludeSubmissionFileErrorStudent",
+    )
+    assert view_button is not None
+    assert exclude_button is not None
+
+    view_button.click()
+    exclude_button.click()
+
+    dependencies["facade"].open_student_submission_folder.assert_called_once_with(
+        STUDENT,
+    )
+    dependencies["build_error_exclude"].execute.assert_called_once_with(STUDENT)
+    detail.close()
+
+
+def test_submission_folder_open_failure_is_reported(
+        qt_app: QApplication,
+        monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """提出フォルダを開けない場合は無反応にせず理由を通知する。"""
+    coordinator, dependencies = _make_coordinator(
+        SubmissionSourceNotFoundError(),
+    )
+    dependencies["facade"].open_student_submission_folder.side_effect = (
+        OSError("folder unavailable")
+    )
+    critical = Mock()
+    monkeypatch.setattr(QMessageBox, "critical", critical)
+
+    detail = coordinator.create_widget(None, STUDENT)
+    view_button = detail.findChild(QPushButton, "openSubmissionFolder")
+    assert view_button is not None
+    view_button.click()
+
+    assert "folder unavailable" in critical.call_args.args[2]
     detail.close()
 
 

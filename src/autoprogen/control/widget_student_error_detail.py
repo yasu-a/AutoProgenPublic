@@ -7,7 +7,7 @@ from autoprogen.usecase.dto.student_table_cell_data import StudentErrorCellDataT
 
 
 class StudentErrorDetailWidget(QWidget):
-    """学生のエラー詳細とエラー固有UIをドック内へ表示する。"""
+    """学生のエラー詳細とエラー固有UIをDock内へ表示する。"""
 
     def __init__(
             self,

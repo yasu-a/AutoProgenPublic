@@ -1,4 +1,5 @@
 from functools import cached_property
+from typing import TYPE_CHECKING
 from autoprogen.service.student_change_event_bus import StudentChangeEventBus
 from autoprogen.service.stage_error_text import StageErrorTextFormatter
 from autoprogen.domain.model.value import ProjectID
@@ -57,8 +58,8 @@ from autoprogen.usecase.current_project import CurrentProjectInitializeStaticUse
 from autoprogen.usecase.global_settings import GlobalSettingsGetUseCase
 from autoprogen.usecase.main_window import MainWindowFacade
 from autoprogen.usecase.project_settings import (
+    BuildErrorStudentExcludeUseCase,
     BulkGradingSkipAddUseCase,
-    NotSubmittedStudentExcludeUseCase,
     ProjectSettingsGetUseCase,
     ProjectSettingsPutUseCase,
 )
@@ -77,6 +78,12 @@ from autoprogen.usecase.source_code_check_skip import (
     SourceCodeCheckSkipApproveUseCase,
 )
 from autoprogen.usecase.test_compile_stage import TestCompileStageUseCase
+
+if TYPE_CHECKING:
+    from autoprogen.control.coordinator_student_error_detail import (
+        StudentErrorDetailCoordinator,
+    )
+    from autoprogen.control.interface_navigator import INavigator
 from autoprogen.usecase.testcase_config import TestCaseDeleteUseCase, TestCaseGetUseCase, TestCaseListIDUseCase, \
     TestCasePutUseCase
 from autoprogen.usecase.testcase_list_edit import TestCaseListSummaryUseCase, TestCaseCreateNewNameUseCase, TestCaseCreateUseCase, \
@@ -418,11 +425,11 @@ class ProjectContainer:
         )
 
     @cached_property
-    def not_submitted_student_exclude_usecase(
+    def build_error_student_exclude_usecase(
             self,
-    ) -> NotSubmittedStudentExcludeUseCase:
-        """未提出学生を0点にして一括採点除外へ追加するUseCaseを返す。"""
-        return NotSubmittedStudentExcludeUseCase(
+    ) -> BuildErrorStudentExcludeUseCase:
+        """BUILDエラーの学生を0点にして一括採点除外へ追加するUseCaseを返す。"""
+        return BuildErrorStudentExcludeUseCase(
             stage_path_list_sub_service=self.stage_path_list_sub_service,
             student_stage_path_result_repository=(
                 self.student_stage_path_result_repository
@@ -431,6 +438,12 @@ class ProjectContainer:
             bulk_grading_skip_add_usecase=self.bulk_grading_skip_add_usecase,
             project_settings_get_usecase=self.project_settings_get_usecase,
             task_manager=self.task_manager,
+            student_submission_exist_service=(
+                self.student_submission_exist_service
+            ),
+            student_submission_get_checksum_service=(
+                self.student_submission_get_checksum_service
+            ),
         )
 
     @cached_property
@@ -449,14 +462,17 @@ class ProjectContainer:
             task_manager=self.task_manager,
         )
 
-    @cached_property
-    def student_error_detail_coordinator(self):
-        """学生エラーの詳細表示と処置要求を調整するCoordinatorを返す。"""
+    def create_student_error_detail_coordinator(
+            self,
+            navigator: "INavigator",
+    ) -> "StudentErrorDetailCoordinator":
+        """現在のプロジェクトの依存とNavigatorからエラー詳細Coordinatorを構築する。"""
         from autoprogen.control.coordinator_student_error_detail import (
             StudentErrorDetailCoordinator,
         )
 
         return StudentErrorDetailCoordinator(
+            navigator=navigator,
             main_window_facade=self.main_window_facade,
             student_source_code_get_usecase=self.student_source_code_get_usecase,
             global_settings_get_usecase=self.global_settings_get_usecase,
@@ -464,8 +480,8 @@ class ProjectContainer:
             source_code_check_skip_approve_usecase=(
                 self.source_code_check_skip_approve_usecase
             ),
-            not_submitted_student_exclude_usecase=(
-                self.not_submitted_student_exclude_usecase
+            build_error_student_exclude_usecase=(
+                self.build_error_student_exclude_usecase
             ),
             student_mark_get_usecase=self.student_mark_get_usecase,
             task_manager=self.task_manager,

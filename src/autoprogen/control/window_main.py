@@ -39,6 +39,9 @@ class MainWindow(QMainWindow):
         self._navigator = navigator
         self._facade = main_window_facade
         self._student_error_detail_coordinator = student_error_detail_coordinator
+        self._student_error_detail_coordinator.testcase_list_changed.connect(
+            self.load_student_table,
+        )
         self._task_manager = main_window_facade.task_manager
         self._table_loading = False
         self._student_change_bridge = QtStudentChangeBridge(
