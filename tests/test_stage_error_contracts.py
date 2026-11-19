@@ -18,6 +18,7 @@ from autoprogen.domain.error.stage.compile import (
     CompilerTimeoutError,
 )
 from autoprogen.domain.error.stage.execute import ExecutionTimeoutError
+from autoprogen.domain.error.stage.test import OutputDecodingError
 from autoprogen.domain.model.output_file import OutputFile, OutputFileCollection
 from autoprogen.domain.model.project_settings import ProjectSettings
 from autoprogen.domain.model.source_code import SourceCode
@@ -379,6 +380,69 @@ def test_test_stage_match_error_is_converted_to_failure() -> None:
     assert type(result) is StageTestResult
     assert _formatter().format_summary(result.error) == "マッチング失敗の理由"
     matcher.execute.assert_called_once()
+
+
+def test_test_stage_invalid_utf8_becomes_decoding_failure() -> None:
+    """判定対象の不正なUTF-8を構造化されたTEST失敗として保存する。"""
+    file_id = FileID(Path("out.txt"))
+    executed = ExecuteStudentStageResult.create_instance(
+        student_id=STUDENT,
+        testcase_id=TESTCASE,
+        execute_config_mtime=datetime(2026, 1, 1),
+        output_file_collection=OutputFileCollection([
+            OutputFile(file_id=file_id, content=b"invalid: \x81"),
+        ]),
+        error=None,
+    )
+    usecase, settings, put = _test_case(executed)
+    expected_files = settings.get.return_value.test_config.expected_output_file_collection
+    expected_files.file_ids = [file_id]
+    expected_files.has.return_value = True
+    expected_files.find.return_value.patterns = Mock()
+
+    usecase.execute(STUDENT, STAGE_PATH)
+
+    result = _saved_result(put)
+    assert type(result) is StageTestResult
+    assert not result.is_success
+    assert isinstance(result.error, OutputDecodingError)
+    assert result.error.file_id == file_id
+    summary = _formatter().format_summary(result.error)
+    assert str(file_id) in summary
+    assert "テストを実行できませんでした" in summary
+    assert "Visual Studio" in summary
+    usecase._match_get_best_service.execute.assert_not_called()
+
+
+def test_test_stage_passes_valid_utf8_text_to_matcher() -> None:
+    """正しいUTF-8の出力は従来どおり文字列として判定する。"""
+    file_id = FileID(Path("out.txt"))
+    executed = ExecuteStudentStageResult.create_instance(
+        student_id=STUDENT,
+        testcase_id=TESTCASE,
+        execute_config_mtime=datetime(2026, 1, 1),
+        output_file_collection=OutputFileCollection([
+            OutputFile(file_id=file_id, content="結果: 42\n"),
+        ]),
+        error=None,
+    )
+    usecase, settings, put = _test_case(executed)
+    expected_files = settings.get.return_value.test_config.expected_output_file_collection
+    expected_files.file_ids = [file_id]
+    expected_files.has.return_value = True
+    expected_output_file = expected_files.find.return_value
+    matcher = usecase._match_get_best_service
+    matcher.execute.return_value = Mock()
+
+    usecase.execute(STUDENT, STAGE_PATH)
+
+    result = _saved_result(put)
+    assert result.is_success
+    matcher.execute.assert_called_once_with(
+        content_string="結果: 42\n",
+        test_config_options=settings.get.return_value.test_config.options,
+        patterns=expected_output_file.patterns,
+    )
 
 
 def test_test_stage_wrong_answer_remains_success() -> None:

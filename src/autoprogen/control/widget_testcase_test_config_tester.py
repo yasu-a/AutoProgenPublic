@@ -118,8 +118,11 @@ class TestCaseTestConfigTesterWidget(QGroupBox):
 
             test_result_output_file_entry: AbstractTestResultOutputFileEntry \
                 = test_result.file_test_result
+            decoded_content = (
+                test_result_output_file_entry.actual.get_decoded_content()
+            )
             self._result_view.set_data(
-                source_code_text=test_result_output_file_entry.actual.content_string,
+                source_code_text=decoded_content.text,
                 matched_tokens=test_result_output_file_entry.test_result.matched_tokens,
             )
 

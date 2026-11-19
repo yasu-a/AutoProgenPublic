@@ -56,15 +56,15 @@ class TestCaseResultOutputFileViewWidget(QWidget):
             "生徒が提出したソースコードを直接Visual Studioで実行してください。"
         )
         if of.has_actual:
-            actual_content = of.actual.content_string
-            if actual_content is None:
+            decoded_content = of.actual.get_decoded_content()
+            actual_content = decoded_content.text
+            if not decoded_content.is_valid_utf8:
                 errors.append(
                     (
                         "このストリームの文字コードが不明です",
                         visual_studio_guidance,
                     )
                 )
-                actual_content = ""
             elif actual_content == "":
                 if of.file_id == FileID.STDIN:
                     errors.append(

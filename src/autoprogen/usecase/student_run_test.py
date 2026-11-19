@@ -1,6 +1,6 @@
 from autoprogen.domain.error import MatchServiceError
 from autoprogen.domain.error.stage.test import ExecuteResultFailedError, ExecuteResultNotFoundError, \
-    OutputMatchingError, TestStageError
+    OutputDecodingError, OutputMatchingError, TestStageError
 from autoprogen.domain.model.output_file import OutputFile
 from autoprogen.domain.model.stage_path import StagePath
 from autoprogen.domain.model.stage import ExecuteStage
@@ -104,9 +104,12 @@ class StudentRunTestStageUseCase:  # TODO: ロジックからStudentTestService�
                 elif actual_output_file is not None and expected_output_file is not None:
                     # 実行結果とテストケースの両方に含まれているファイル
                     #  -> テストを行う
+                    decoded_content = actual_output_file.get_decoded_content()
+                    if not decoded_content.is_valid_utf8:
+                        raise OutputDecodingError(file_id=file_id)
                     try:
                         match_result = self._match_get_best_service.execute(
-                            content_string=actual_output_file.content_string,
+                            content_string=decoded_content.text,
                             test_config_options=test_config.options,
                             patterns=expected_output_file.patterns,
                         )
