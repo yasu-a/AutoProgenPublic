@@ -1,8 +1,11 @@
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QWidget
+
+from autoprogen.control.widget_error_action import ErrorActionWidget
+from autoprogen.control.widget_error_extension import ErrorExtensionWidget
 
 
-class NotSubmittedErrorWidget(QWidget):
+class NotSubmittedErrorWidget(ErrorExtensionWidget):
     """未提出学生を0点にして一括採点から除外する操作を表示する。"""
 
     exclusion_requested = pyqtSignal(name="exclusion_requested")
@@ -14,46 +17,43 @@ class NotSubmittedErrorWidget(QWidget):
             can_exclude: bool,
             already_excluded: bool,
     ) -> None:
-        """実行状態と既存の除外状態に応じて操作可否を設定する。"""
+        """実行状態と既存の除外状態に応じて処置の可否を設定する。"""
         super().__init__(parent)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout = self.content_layout
 
-        bottom = QHBoxLayout()
-        layout.addLayout(bottom)
-        bottom.addStretch(1)
-        self._exclude_button = QPushButton(
-            "0点にして一括採点から除外",
+        self._exclusion_action = ErrorActionWidget(
             self,
+            message=(
+                "未提出の学生を0点として保存し、"
+                "一括採点から除外します。"
+            ),
+            button_text="0点にして一括採点から除外",
+            button_object_name="excludeNotSubmittedStudent",
         )
-        self._exclude_button.setObjectName("excludeNotSubmittedStudent")
-        self._exclude_button.clicked.connect(self._request_exclusion)
-        bottom.addWidget(self._exclude_button)
-        self._status_label = QLabel(self)
-        self._status_label.setObjectName("notSubmittedExclusionStatus")
-        bottom.addWidget(self._status_label)
-        bottom.addStretch(1)
+        self._exclusion_action.action_requested.connect(
+            self._request_exclusion,
+        )
+        self._exclude_button = self._exclusion_action.button
+        self._status_label = self._exclusion_action.message_label
+        layout.addWidget(self._exclusion_action)
 
         if already_excluded:
             self.set_exclusion_state(
-                "この学生はすでに一括採点から除外されています。",
+                "この学生はすでに一括採点から除外されています。\n"
+                "再び採点するにはプロジェクト設定から除外設定を解除してください。",
                 enabled=False,
             )
         elif not can_exclude:
             self.set_exclusion_state(
-                "処理中は点数と除外設定を変更できません。実行完了後に開いてください。",
+                "実行中は点数と除外設定を変更できません。",
                 enabled=False,
             )
         else:
-            self.set_exclusion_state(
-                "未提出の学生を0点として保存し、一括採点から除外します。",
-                enabled=True,
-            )
+            self._exclude_button.setEnabled(True)
 
     def set_exclusion_state(self, message: str, *, enabled: bool) -> None:
-        """処置の案内文とボタンの有効状態を更新する。"""
-        self._status_label.setText(message)
-        self._exclude_button.setEnabled(enabled)
+        """処置の案内文と除外ボタンの有効状態を更新する。"""
+        self._exclusion_action.set_state(message, enabled=enabled)
 
     def _request_exclusion(self) -> None:
         """操作可能な場合だけ除外要求を通知する。"""

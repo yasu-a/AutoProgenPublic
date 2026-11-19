@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import QApplication
 from autoprogen.control.widget_testcase_result_otuput_file_view import (
     TestCaseResultOutputFileViewWidget,
 )
+from autoprogen.domain.model.output_file import OutputFile
 from autoprogen.domain.model.value import FileID
 
 TestCaseResultOutputFileViewWidget.__test__ = False
@@ -42,7 +43,7 @@ def _empty_output_entry(file_id: FileID) -> Mock:
     entry.file_id = file_id
     entry.has_actual = True
     entry.has_expected = True
-    entry.actual.content_string = ""
+    entry.actual = OutputFile(file_id=file_id, content=b"")
     entry.test_result.matched_tokens = []
     return entry
 
@@ -71,16 +72,16 @@ def test_empty_stdin_is_shown_as_warning(qt_app: QApplication) -> None:
     assert widget._te.toPlainText() == ""
 
 
-def test_unknown_encoding_is_shown_with_visual_studio_guidance(
+def test_invalid_utf8_is_shown_with_visual_studio_guidance(
         qt_app: QApplication,
 ) -> None:
-    """文字コード不明時は本文を空にしてVisual Studioでの確認を案内する。"""
+    """不正なUTF-8をエスケープ表示してVisual Studioでの確認を案内する。"""
     entry = _empty_output_entry(FileID.STDOUT)
-    entry.actual.content_string = None
+    entry.actual = OutputFile(file_id=FileID.STDOUT, content=b"result: \x81\xff")
     widget = _create_widget()
 
     widget.set_data(entry)
 
     assert "このストリームの文字コードが不明です" in widget._l_messages.text()
     assert "Visual Studio" in widget._l_messages.text()
-    assert widget._te.toPlainText() == ""
+    assert widget._te.toPlainText() == r"result: \x81\xff"

@@ -244,9 +244,11 @@ def _assert_stage_results(project_container) -> None:
             )
 
             # 標準出力の内容を直接比較する。
-            actual_stdout = execute_result.output_file_collection.find(
+            decoded_stdout = execute_result.output_file_collection.find(
                 FileID.STDOUT
-            ).content_string
+            ).get_decoded_content()
+            assert decoded_stdout.is_valid_utf8
+            actual_stdout = decoded_stdout.text
             expected_stdout = _read_fixture(
                 case, "stdout_expected.txt"
             )
@@ -265,9 +267,11 @@ def _assert_stage_results(project_container) -> None:
             file_id = FileID(Path("savedata.txt"))
             if case == "case_yes":
                 assert execute_result.output_file_collection.has(file_id)
-                actual_file = execute_result.output_file_collection.find(
+                decoded_file = execute_result.output_file_collection.find(
                     file_id
-                ).content_string
+                ).get_decoded_content()
+                assert decoded_file.is_valid_utf8
+                actual_file = decoded_file.text
                 expected_file = (
                     "9\n"
                     if student_id_text.endswith("003C")

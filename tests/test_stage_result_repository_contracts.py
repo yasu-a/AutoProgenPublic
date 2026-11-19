@@ -379,7 +379,11 @@ def test_execute_output_collection_and_timestamp_roundtrip(repository) -> None:
     assert type(restored) is ExecuteStudentStageResult
     assert restored.execute_config_mtime == EXECUTE_MTIME
     assert restored.output_file_collection.to_json() == _execute_ok().output_file_collection.to_json()
-    assert restored.output_file_collection.find(FileID.STDOUT).content_string == "結果: 42\n"
+    decoded_stdout = restored.output_file_collection.find(
+        FileID.STDOUT,
+    ).get_decoded_content()
+    assert decoded_stdout.is_valid_utf8
+    assert decoded_stdout.text == "結果: 42\n"
 
 
 def test_compile_security_state_roundtrip(repository) -> None:

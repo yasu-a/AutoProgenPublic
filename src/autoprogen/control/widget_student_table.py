@@ -8,6 +8,7 @@ from PyQt5.QtGui import QColor, QFont, QMouseEvent
 from PyQt5.QtWidgets import *
 
 from autoprogen.control.mixin_shift_horizontal_scroll import HorizontalScrollWithShiftAndWheelMixin
+from autoprogen.control.widget_scrollable_lock_table_view import ScrollableLockTableView
 from autoprogen.domain.model.stage import AbstractStage, BuildStage, CompileStage, ExecuteStage, TestStage
 from autoprogen.domain.model.student_mark import StudentMark
 from autoprogen.domain.model.value import StudentID
@@ -468,7 +469,10 @@ class StudentTableModel(QAbstractTableModel):
         return self._data_provider.has_submission(row)
 
 
-class StudentTableWidget(QTableView, HorizontalScrollWithShiftAndWheelMixin):
+class StudentTableWidget(
+        ScrollableLockTableView,
+        HorizontalScrollWithShiftAndWheelMixin,
+):
     _logger = create_logger()
 
     student_id_cell_triggered = pyqtSignal(

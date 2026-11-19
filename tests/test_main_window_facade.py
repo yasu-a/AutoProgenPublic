@@ -17,6 +17,10 @@ def _create_facade() -> tuple[MainWindowFacade, dict[str, Mock]]:
         "student_mark_get_sub_service": Mock(),
         "project_settings_get_usecase": Mock(),
         "stage_error_text_formatter": Mock(),
+        "student_source_code_get_usecase": Mock(),
+        "global_settings_get_usecase": Mock(),
+        "source_code_check_skip_approve_usecase": Mock(),
+        "build_error_student_exclude_usecase": Mock(),
         "student_list_id_usecase": Mock(),
         "student_run_next_stage_usecase": Mock(),
         "student_stage_result_clear_service": Mock(),
@@ -100,3 +104,49 @@ def test_facade_owns_main_window_operations_and_delegates_shared_usecase() -> No
     ].execute.assert_called_once_with(
         student_id=student_id,
     )
+
+
+def test_student_error_operations_delegate_through_facade() -> None:
+    """エラー処置の入口がFacadeに集約され、個別UseCaseへ委譲される。"""
+    facade, dependencies = _create_facade()
+    student_id = StudentID("21D5109047B")
+    dependencies["task_manager"].is_empty.return_value = True
+    dependencies["student_mark_get_sub_service"].execute.return_value.score = 75
+
+    assert facade.can_perform_student_error_action()
+    assert facade.get_student_mark_score(student_id) == 75
+    facade.approve_source_code_check(student_id, "valid-hash")
+    facade.exclude_build_error_student(student_id)
+
+    dependencies["source_code_check_skip_approve_usecase"].execute.assert_called_once_with(
+        student_id=student_id,
+        expected_sha256="valid-hash",
+    )
+    dependencies["build_error_student_exclude_usecase"].execute.assert_called_once_with(
+        student_id,
+    )
+
+
+def test_student_error_usecase_refusal_is_converted_by_facade() -> None:
+    """UseCaseの想定内拒否をGUI側へ統一した例外として返す。"""
+    import pytest
+
+    from autoprogen.usecase.main_window import StudentErrorActionRefused
+    from autoprogen.usecase.project_settings import BuildErrorStudentExcludeUseCaseError
+    from autoprogen.usecase.source_code_check_skip import (
+        SourceCodeCheckSkipApproveUseCaseError,
+    )
+
+    facade, dependencies = _create_facade()
+    student_id = StudentID("21D5109047B")
+    dependencies["build_error_student_exclude_usecase"].execute.side_effect = (
+        BuildErrorStudentExcludeUseCaseError("提出フォルダが変更されました")
+    )
+    dependencies["source_code_check_skip_approve_usecase"].execute.side_effect = (
+        SourceCodeCheckSkipApproveUseCaseError("ソースコードが変更されました")
+    )
+
+    with pytest.raises(StudentErrorActionRefused, match="提出フォルダ"):
+        facade.exclude_build_error_student(student_id)
+    with pytest.raises(StudentErrorActionRefused, match="ソースコード"):
+        facade.approve_source_code_check(student_id, "valid-hash")

@@ -1,6 +1,7 @@
 from typing import Any, ClassVar
 
 from autoprogen.domain.error.stage.base import StageError
+from autoprogen.domain.model.value import FileID
 
 
 class TestStageError(StageError):
@@ -47,3 +48,31 @@ class OutputMatchingError(TestStageError):
         if type(detail) is not str:
             raise TypeError("detailはstrである必要があります")
         return cls(detail=detail)
+
+
+class OutputDecodingError(TestStageError):
+    """出力内容のデコードに失敗したためテストを実行できなかった。"""
+
+    error_type_id: ClassVar[str] = "output_decoding_error"
+
+    # デコードできなかった出力ファイルの識別子。
+    file_id: FileID
+
+    def __init__(self, *, file_id: FileID) -> None:
+        """デコードできなかった出力ファイルの識別子を保持する。"""
+        if not isinstance(file_id, FileID):
+            raise TypeError("file_idはFileIDである必要があります")
+        super().__init__()
+        self.file_id = file_id
+
+    def to_params_dict(self) -> dict[str, Any]:
+        """出力ファイルの識別子を保存用辞書へ変換する。"""
+        return {"file_id": self.file_id.to_json()}
+
+    @classmethod
+    def from_params_dict(cls, params: dict[str, Any]) -> "OutputDecodingError":
+        """保存用辞書から出力ファイルの識別子を復元する。"""
+        file_id = params["file_id"]
+        if type(file_id) is not str:
+            raise TypeError("file_idはstrである必要があります")
+        return cls(file_id=FileID.from_json(file_id))

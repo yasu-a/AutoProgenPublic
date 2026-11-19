@@ -9,7 +9,7 @@ from autoprogen.service.student_change_event_bus import StudentChangeEventBus
 class QtStudentChangeBridge(QObject):
     """Qt非依存の学生変更通知をGUIスレッドのシグナルへ橋渡しする。"""
 
-    _COALESCE_INTERVAL_MS = 20
+    _COALESCE_INTERVAL_MS = 50
     _delivery_requested = pyqtSignal(StudentID)
     student_changed = pyqtSignal(StudentID)
 

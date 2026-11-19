@@ -61,6 +61,7 @@ _ERROR_TYPES: tuple[type[StageError], ...] = (
     test_errors.ExecuteResultNotFoundError,
     test_errors.ExecuteResultFailedError,
     test_errors.OutputMatchingError,
+    test_errors.OutputDecodingError,
 )
 
 

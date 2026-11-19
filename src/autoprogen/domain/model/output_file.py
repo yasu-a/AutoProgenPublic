@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from typing import Iterable
 
+from autoprogen.domain.model.decoded_content import DecodedContent
 from autoprogen.domain.model.value import FileID
 from autoprogen.util.json_util import bytes_to_jsonable, jsonable_to_bytes
 
@@ -45,12 +46,21 @@ class OutputFile:
     def content_bytes(self) -> bytes:
         return self._content
 
-    @property
-    def content_string(self) -> str | None:  # None if encoding unsupported
+    def get_decoded_content(self) -> DecodedContent:
+        """内容をUTF-8でデコードし、不正なバイトは表示可能な形式で返す。"""
         try:
-            return self._content.decode("utf-8")
+            return DecodedContent(
+                text=self._content.decode("utf-8"),
+                is_valid_utf8=True,
+            )
         except UnicodeDecodeError:
-            return None
+            return DecodedContent(
+                text=self._content.decode(
+                    "utf-8",
+                    errors="backslashreplace",
+                ),
+                is_valid_utf8=False,
+            )
 
 
 class OutputFileCollection:

@@ -140,6 +140,15 @@ class MainWindow(QMainWindow):
     def _init_signals(self) -> None:
         """メイン画面の操作要求を各処理へ接続する。"""
         self._tool_bar.triggered.connect(self.__tool_bar_triggered)
+        self._student_error_detail_coordinator.global_settings_requested.connect(
+            self._open_error_global_settings,
+        )
+        self._student_error_detail_coordinator.testcase_list_requested.connect(
+            self._open_error_testcase_list,
+        )
+        self._student_error_detail_coordinator.submission_folder_requested.connect(
+            self._open_student_submission_folder,
+        )
         self._w_student_table.student_id_cell_triggered.connect(
             self.__w_student_table_student_id_cell_triggered
         )
@@ -168,7 +177,7 @@ class MainWindow(QMainWindow):
         is_busy = not self._task_manager.is_empty()
 
         self._tool_bar.update_button_state(is_task_alive=is_busy)
-        self._w_student_table.setEnabled(not is_busy)
+        self._w_student_table.set_interaction_enabled(not is_busy)
         self._student_error_dock.setEnabled(not is_busy)
 
         if is_busy:
@@ -201,7 +210,7 @@ class MainWindow(QMainWindow):
         """学籍番号セルの学生の展開済み提出フォルダを開く。"""
         if not self._task_manager.is_empty():
             return
-        self._facade.open_student_submission_folder(student_id)
+        self._open_student_submission_folder(student_id)
 
     @pyqtSlot(StudentID)
     def __w_student_table_mark_result_cell_triggered(
@@ -255,6 +264,33 @@ class MainWindow(QMainWindow):
         )
         self._student_error_dock.show()
         self._student_error_dock.raise_()
+
+    def _open_error_global_settings(self) -> None:
+        """エラー画面からの設定要求を既存Navigatorへ委譲する。"""
+        if self._task_manager.is_empty():
+            self._navigator.open_setting_dialog(self)
+
+    def _open_error_testcase_list(self) -> None:
+        """テストケース一覧を開き、変更があれば学生テーブルを更新する。"""
+        if not self._task_manager.is_empty():
+            return
+        if self._navigator.open_testcase_list_edit_dialog(self):
+            self.load_student_table()
+            self._student_error_dock.hide()
+
+    def _open_student_submission_folder(self, student_id: StudentID) -> None:
+        """学生の展開済み提出フォルダを開き、失敗はGUIへ通知する。"""
+        if not self._task_manager.is_empty():
+            return
+        try:
+            self._facade.open_student_submission_folder(student_id)
+        except Exception as error:
+            self._logger.exception("提出フォルダを開けませんでした")
+            QMessageBox.critical(
+                self,
+                "提出フォルダを開く",
+                f"提出フォルダを開けませんでした。\n{error}",
+            )
 
     def __perform_stop_tasks(self) -> None:
         """実行中の学生タスクがあれば停止処理を行う。"""

@@ -1,6 +1,9 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from autoprogen.domain.error.stage.compile import SourceSafetyViolationError
+from autoprogen.domain.model.project_settings import SourceCodeCheckSkip
+from autoprogen.domain.model.source_code import SourceCode
 from autoprogen.domain.error import StopTask
 from autoprogen.domain.model.stage import (
     AbstractStage,
@@ -40,7 +43,17 @@ from autoprogen.usecase.dto.student_table_cell_data import (
     StudentStageStateCellData,
     StudentStageStateCellDataStageState,
 )
-from autoprogen.usecase.project_settings import ProjectSettingsGetUseCase
+from autoprogen.usecase.project_settings import (
+    BuildErrorStudentExcludeUseCase,
+    BuildErrorStudentExcludeUseCaseError,
+    ProjectSettingsGetUseCase,
+)
+from autoprogen.usecase.global_settings import GlobalSettingsGetUseCase
+from autoprogen.usecase.source_code_check_skip import (
+    SourceCodeCheckSkipApproveUseCase,
+    SourceCodeCheckSkipApproveUseCaseError,
+)
+from autoprogen.usecase.student_source_code import StudentSourceCodeGetUseCase
 from autoprogen.usecase.student import StudentListIDUseCase
 from autoprogen.usecase.student_run_next_stage import StudentRunNextStageUseCase
 
@@ -56,6 +69,22 @@ class StudentTableRowSnapshot:
     error_cell: StudentErrorCellData  # エラー欄の本文とツールチップの元データ。
     mark: StudentMark  # 点数欄の表示内容。未採点なら点数はNone。
     bulk_grading_skipped: bool = False  # 一括採点の除外対象ならTrue。
+
+
+@dataclass(frozen=True, slots=True)
+class SourceSafetyDisplayData:
+    """安全性チェックエラー用のQtに依存しない表示データ。"""
+
+    source_code: SourceCode | None
+    source_sha256: str | None
+    show_editing_symbols: bool
+    enable_line_wrap: bool
+    can_approve: bool
+    already_approved: bool
+
+
+class StudentErrorActionRefused(RuntimeError):
+    """Facadeの操作が現在の状態では実行できないことを表す。"""
 
 
 class MainWindowFacade:
@@ -74,6 +103,10 @@ class MainWindowFacade:
             student_mark_get_sub_service: StudentMarkGetSubService,
             project_settings_get_usecase: ProjectSettingsGetUseCase,
             stage_error_text_formatter: StageErrorTextFormatter,
+            student_source_code_get_usecase: StudentSourceCodeGetUseCase,
+            global_settings_get_usecase: GlobalSettingsGetUseCase,
+            source_code_check_skip_approve_usecase: SourceCodeCheckSkipApproveUseCase,
+            build_error_student_exclude_usecase: BuildErrorStudentExcludeUseCase,
             student_list_id_usecase: StudentListIDUseCase,
             student_run_next_stage_usecase: StudentRunNextStageUseCase,
             student_stage_result_clear_service: StudentStageResultClearService,
@@ -93,6 +126,12 @@ class MainWindowFacade:
         self._student_mark_get_sub_service = student_mark_get_sub_service
         self._project_settings_get_usecase = project_settings_get_usecase
         self._stage_error_text_formatter = stage_error_text_formatter
+        self._student_source_code_get_usecase = student_source_code_get_usecase
+        self._global_settings_get_usecase = global_settings_get_usecase
+        self._source_code_check_skip_approve_usecase = (
+            source_code_check_skip_approve_usecase
+        )
+        self._build_error_student_exclude_usecase = build_error_student_exclude_usecase
         self._student_list_id_usecase = student_list_id_usecase
         self._student_run_next_stage_usecase = student_run_next_stage_usecase
         self._student_stage_result_clear_service = student_stage_result_clear_service
@@ -100,6 +139,63 @@ class MainWindowFacade:
         self._resource_usage_io = resource_usage_io
         self._student_change_event_bus = student_change_event_bus
         self._task_manager = task_manager
+
+    def can_perform_student_error_action(self) -> bool:
+        """学生への処置が実行可能か、タスクの現在状態から判定する。"""
+        return self._task_manager.is_empty()
+
+    def get_student_mark_score(self, student_id: StudentID) -> int | None:
+        """確認ダイアログ用に、クリック時点の点数を取得する。"""
+        return self._student_mark_get_sub_service.execute(student_id).score
+
+    def get_source_safety_display_data(
+            self,
+            student_id: StudentID,
+            safety_errors: tuple[SourceSafetyViolationError, ...],
+    ) -> SourceSafetyDisplayData:
+        """安全性チェック用のSourceCodeと許可状態を取得する。"""
+        try:
+            source_code = self._student_source_code_get_usecase.execute(student_id)
+        except UnicodeError:
+            source_code = None
+        settings = self._global_settings_get_usecase.execute()
+        project_settings = self._project_settings_get_usecase.execute()
+        source_hashes = {error.source_sha256 for error in safety_errors}
+        source_sha256 = next(iter(source_hashes)) if len(source_hashes) == 1 else None
+        already_approved = (
+            source_sha256 is not None
+            and SourceCodeCheckSkip(student_id, source_sha256)
+            in project_settings.source_code_check_skips
+        )
+        return SourceSafetyDisplayData(
+            source_code=source_code,
+            source_sha256=source_sha256,
+            show_editing_symbols=settings.show_editing_symbols_in_source_code,
+            enable_line_wrap=settings.enable_line_wrap_in_source_code,
+            can_approve=self.can_perform_student_error_action(),
+            already_approved=already_approved,
+        )
+
+    def approve_source_code_check(
+            self,
+            student_id: StudentID,
+            expected_sha256: str,
+    ) -> None:
+        """安全性チェック許可を既存UseCaseへ委譲する。"""
+        try:
+            self._source_code_check_skip_approve_usecase.execute(
+                student_id=student_id,
+                expected_sha256=expected_sha256,
+            )
+        except SourceCodeCheckSkipApproveUseCaseError as error:
+            raise StudentErrorActionRefused(str(error)) from error
+
+    def exclude_build_error_student(self, student_id: StudentID) -> None:
+        """BUILDエラーを再検証し0点・除外する既存UseCaseへ委譲する。"""
+        try:
+            self._build_error_student_exclude_usecase.execute(student_id)
+        except BuildErrorStudentExcludeUseCaseError as error:
+            raise StudentErrorActionRefused(str(error)) from error
 
     @property
     def student_change_event_bus(self) -> StudentChangeEventBus:

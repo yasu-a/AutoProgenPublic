@@ -24,6 +24,7 @@ from autoprogen.domain.error.stage.execute import ExecutableNotFoundError, Execu
 from autoprogen.domain.error.stage.test import (
     ExecuteResultFailedError,
     ExecuteResultNotFoundError,
+    OutputDecodingError,
     OutputMatchingError,
 )
 from autoprogen.domain.model.student_stage_result import (
@@ -105,6 +106,13 @@ class StageErrorTextFormatter:
             return "実行結果が見つかりません"
         if isinstance(error, ExecuteResultFailedError):
             return "失敗した実行のテストはできません"
+        if isinstance(error, OutputDecodingError):
+            return (
+                f"出力ファイル「{error.file_id!s}」をUTF-8として読み取れないため、"
+                "テストを実行できませんでした。\n"
+                "学生のソースコードをVisual Studioでコンパイル・実行し、"
+                "実際の出力を確認してください。"
+            )
         if isinstance(error, OutputMatchingError):
             return error.detail
         raise TypeError(f"未対応のステージエラーです: {type(error).__name__}")
