@@ -51,8 +51,10 @@ class StudentMarkListUseCase:
             self,
             *,
             student_mark_list_service: StudentMarkListService,
+            project_settings_get_usecase: "ProjectSettingsGetUseCase",
     ):
         self._student_mark_list_service = student_mark_list_service
+        self._project_settings_get_usecase = project_settings_get_usecase
 
     def execute(
             self,
@@ -71,3 +73,21 @@ class StudentMarkListUseCase:
             ]
 
         return student_marks
+
+    def list_scoring_student_ids(
+            self,
+            *,
+            selected_student_id: StudentID | None = None,
+    ) -> list[StudentID]:
+        """採点画面に渡す学生一覧を、採点除外設定に応じて取得する。"""
+        student_ids = [mark.student_id for mark in self.execute()]
+        skipped_ids = self._project_settings_get_usecase.execute().bulk_grading_skips
+
+        if selected_student_id is not None:
+            if selected_student_id not in student_ids:
+                return []
+            if selected_student_id in skipped_ids:
+                # 採点対象外は従来どおり、その学生だけの閲覧画面を開く。
+                return [selected_student_id]
+
+        return [student_id for student_id in student_ids if student_id not in skipped_ids]
