@@ -2,7 +2,7 @@ from unittest.mock import Mock
 
 import pytest
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QDialog
+from PyQt5.QtWidgets import QApplication, QDialog, QMessageBox
 
 from autoprogen.control.dialog_settings_edit import AbstractSettingsEditDialog
 from autoprogen.domain.model.global_settings import GlobalSettings
@@ -82,13 +82,13 @@ def test_settings_dialog_confirms_discard_before_rejecting(
     dialog.set_data(1)
     dialog.current_data = 2
     dialog.show()
-    confirmation = Mock(return_value=False)
-    monkeypatch.setattr(dialog, "_confirm_close_without_saving", confirmation)
+    confirmation = Mock(return_value=QMessageBox.Cancel)
+    monkeypatch.setattr(dialog, "_confirm_unsaved_changes", confirmation)
 
     dialog.reject()
 
     assert dialog.isVisible()
-    confirmation.return_value = True
+    confirmation.return_value = QMessageBox.Discard
     dialog.reject()
     assert not dialog.isVisible()
     dialog.save_data_mock.assert_not_called()
@@ -103,15 +103,101 @@ def test_settings_dialog_close_uses_discard_confirmation(
     dialog.set_data(1)
     dialog.current_data = 2
     dialog.show()
-    confirmation = Mock(return_value=False)
-    monkeypatch.setattr(dialog, "_confirm_close_without_saving", confirmation)
+    confirmation = Mock(return_value=QMessageBox.Cancel)
+    monkeypatch.setattr(dialog, "_confirm_unsaved_changes", confirmation)
 
     dialog.close()
 
     confirmation.assert_called_once()
     assert dialog.isVisible()
-    confirmation.return_value = True
+    confirmation.return_value = QMessageBox.Discard
     dialog.reject()
+
+
+def test_settings_dialog_confirmation_has_three_choices(
+        qt_app: QApplication,
+        monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """確認画面が3択で、初期選択とEscは「戻る」になる。"""
+    dialog = _SettingsEditDialog()
+    dialog.set_data(1)
+    dialog.current_data = 2
+    dialog.show()
+
+    def check_buttons(message_box: QMessageBox) -> int:
+        """表示された確認画面の選択肢と既定動作を検証する。"""
+        assert message_box.standardButtons() == (
+            QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel
+        )
+        assert message_box.button(QMessageBox.Save).text() == "保存して閉じる"
+        assert message_box.button(QMessageBox.Discard).text() == "破棄"
+        assert message_box.button(QMessageBox.Cancel).text() == "戻る"
+        assert message_box.defaultButton() == message_box.button(QMessageBox.Cancel)
+        assert message_box.escapeButton() == message_box.button(QMessageBox.Cancel)
+        return QMessageBox.Cancel
+
+    monkeypatch.setattr(QMessageBox, "exec_", check_buttons)
+    dialog.reject()
+
+    assert dialog.isVisible()
+    dialog.save_data_mock.assert_not_called()
+    dialog.current_data = 1
+    dialog.close()
+
+
+def test_settings_dialog_save_from_close_confirmation(
+        qt_app: QApplication,
+        monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """閉じる際の「保存して閉じる」でも既存の保存経路を使う。"""
+    dialog = _SettingsEditDialog()
+    dialog.set_data(1)
+    dialog.current_data = 2
+    dialog.show()
+    monkeypatch.setattr(
+        dialog,
+        "_confirm_unsaved_changes",
+        Mock(return_value=QMessageBox.Save),
+    )
+
+    dialog.close()
+
+    dialog.save_data_mock.assert_called_once_with(2)
+    assert dialog.has_changes is True
+    assert dialog.result() == QDialog.Accepted
+    assert not dialog.isVisible()
+
+
+def test_settings_dialog_save_failure_from_close_confirmation(
+        qt_app: QApplication,
+        monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """保存失敗時はダイアログを閉じず、変更内容を残す。"""
+    dialog = _SettingsEditDialog()
+    dialog.set_data(1)
+    dialog.current_data = 2
+    dialog.save_data_mock.side_effect = ValueError("invalid value")
+    dialog.show()
+    monkeypatch.setattr(
+        dialog,
+        "_confirm_unsaved_changes",
+        Mock(return_value=QMessageBox.Save),
+    )
+    critical = Mock()
+    monkeypatch.setattr(QMessageBox, "critical", critical)
+
+    dialog.reject()
+
+    dialog.save_data_mock.assert_called_once_with(2)
+    critical.assert_called_once()
+    assert "invalid value" in critical.call_args.args[2]
+    assert dialog.isVisible()
+    assert dialog.result() != QDialog.Accepted
+    assert not dialog.has_changes
+    assert dialog.current_data == 2
+    assert dialog.has_unsaved_changes()
+    dialog.save_data_mock.side_effect = None
+    dialog.close()
 
 
 def _assert_dialog_confirms_unsaved_changes(
@@ -119,8 +205,8 @@ def _assert_dialog_confirms_unsaved_changes(
         monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """変更済みダイアログの終了時に破棄確認が呼ばれることを確認する。"""
-    confirmation = Mock(return_value=True)
-    monkeypatch.setattr(dialog, "_confirm_close_without_saving", confirmation)
+    confirmation = Mock(return_value=QMessageBox.Discard)
+    monkeypatch.setattr(dialog, "_confirm_unsaved_changes", confirmation)
 
     dialog.reject()
 
@@ -132,8 +218,8 @@ def _assert_dialog_closes_without_confirmation(
         monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """未変更のダイアログが破棄確認なしで閉じることを確認する。"""
-    confirmation = Mock(return_value=True)
-    monkeypatch.setattr(dialog, "_confirm_close_without_saving", confirmation)
+    confirmation = Mock(return_value=QMessageBox.Discard)
+    monkeypatch.setattr(dialog, "_confirm_unsaved_changes", confirmation)
 
     dialog.reject()
 
@@ -146,8 +232,8 @@ def _assert_dialog_saves_without_confirmation(
         monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """変更済みのダイアログが破棄確認なしで保存されることを確認する。"""
-    confirmation = Mock(return_value=True)
-    monkeypatch.setattr(dialog, "_confirm_close_without_saving", confirmation)
+    confirmation = Mock(return_value=QMessageBox.Discard)
+    monkeypatch.setattr(dialog, "_confirm_unsaved_changes", confirmation)
 
     dialog._save()
 

@@ -1,6 +1,7 @@
 from unittest.mock import Mock
 
 import pytest
+from PyQt5.QtWidgets import QMessageBox
 
 from autoprogen.domain.model.project_settings import (
     ProjectSettings,
@@ -224,7 +225,7 @@ def test_project_settings_dialog_saves_only_on_save(
     row = rules._rule_ids.index(SourceCodeCheckIdentifier("process", "system"))
     checkbox = rules._rules_table.item(row, 0)
     checkbox.setCheckState(Qt.Unchecked if checkbox.checkState() == Qt.Checked else Qt.Checked)
-    monkeypatch.setattr(dialog, "_confirm_close_without_saving", Mock(return_value=True))
+    monkeypatch.setattr(dialog, "_confirm_unsaved_changes", Mock(return_value=QMessageBox.Discard))
     dialog.reject()
     repository.put.assert_not_called()
 
@@ -292,7 +293,7 @@ def test_project_settings_dialog_canceled_delete_is_not_saved(
     dialog._settings_view._source_skips_widget._table.selectRow(0)
     dialog._settings_view._source_skips_widget._delete_button.click()
     assert not dialog._settings_view.get_data().source_code_check_skips
-    monkeypatch.setattr(dialog, "_confirm_close_without_saving", Mock(return_value=True))
+    monkeypatch.setattr(dialog, "_confirm_unsaved_changes", Mock(return_value=QMessageBox.Discard))
     dialog.reject()
     repository.put.assert_not_called()
     dialog.close()
@@ -326,8 +327,8 @@ def test_project_settings_dialog_canceled_bulk_skip_delete_is_not_saved(
 
     monkeypatch.setattr(
         dialog,
-        "_confirm_close_without_saving",
-        Mock(return_value=True),
+        "_confirm_unsaved_changes",
+        Mock(return_value=QMessageBox.Discard),
     )
     dialog.reject()
 

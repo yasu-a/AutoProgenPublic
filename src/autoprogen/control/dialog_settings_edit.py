@@ -104,23 +104,31 @@ class AbstractSettingsEditDialog(QDialog, Generic[_DataType]):
         self.accept()
 
     def reject(self) -> None:
-        """未保存の変更がある場合は、破棄の確認後にだけ閉じる。"""
+        """未保存の変更がある場合は、保存・破棄・編集継続を選択させる。"""
         if not self.has_unsaved_changes():
             super().reject()
             return
 
-        if self._confirm_close_without_saving():
+        choice = self._confirm_unsaved_changes()
+        if choice == QMessageBox.Discard:
             super().reject()
+        elif choice == QMessageBox.Save:
+            # 通常の「保存」ボタンと同じ処理を使い、保存成功時のみ閉じる。
+            self._save()
 
-    def _confirm_close_without_saving(self) -> bool:
-        """未保存の変更を破棄して閉じるか確認する。"""
+    def _confirm_unsaved_changes(self) -> int:
+        """未保存の編集を保存・破棄するか、編集に戻るか確認する。"""
         message_box = QMessageBox(self)
         message_box.setIcon(QMessageBox.Warning)
         message_box.setWindowTitle(self.windowTitle())
         message_box.setText("保存されていない変更があります。")
-        message_box.setInformativeText("保存せずに閉じますか？")
-        message_box.setStandardButtons(QMessageBox.Discard | QMessageBox.Cancel)
+        message_box.setInformativeText("変更を保存してから閉じますか？")
+        message_box.setStandardButtons(
+            QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel
+        )
         message_box.setDefaultButton(QMessageBox.Cancel)
-        message_box.button(QMessageBox.Discard).setText("保存せず閉じる")
+        message_box.setEscapeButton(QMessageBox.Cancel)
+        message_box.button(QMessageBox.Save).setText("保存して閉じる")
+        message_box.button(QMessageBox.Discard).setText("破棄")
         message_box.button(QMessageBox.Cancel).setText("戻る")
-        return message_box.exec_() == QMessageBox.Discard
+        return message_box.exec_()
